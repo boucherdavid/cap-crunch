@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-08-07
+Derniere mise a jour: 2026-08-08
 
 ## Role du fichier
 
@@ -20,6 +20,72 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-08-08
+
+**[Décision] — Abandon de la reconstruction Excel, repart des rosters d'octobre 2025** :
+- L'écart actif/reserviste non résolu (voir session 2026-08-06/07) a coûté plus cher à
+  déboguer qu'à refaire : David repart des alignements réels d'octobre 2025 (`/admin/init`),
+  saisit manuellement les transactions majeures (agents libres, IR, échanges) via
+  `/admin/historique` (choisi plutôt que `/admin/transactions`/`/gestion-effectifs` pour le
+  gros du travail — seul outil à faire un échange N-contre-M + choix de repêchage en une
+  transaction atomique, avec correction/annulation ligne par ligne), et valide contre de
+  vraies feuilles de match NHL plutôt que des captures marqueur.com.
+- `pooler_rosters`/`roster_change_log` de la saison 2025-26 vidés en staging (386 + 815
+  lignes) pour repartir propre. Prod non touchée.
+- Les outils `/gestion-effectifs`/`/admin/transactions` restent utiles séparément pour
+  tester le fonctionnement réel des outils de saison (validations, notifications, trace
+  `/transactions`) — indépendant du calcul des points, qui exige une date forcée dans la
+  fenêtre déjà jouée (le calendrier réel n'a aucune incidence en staging).
+
+**[Fix] — Choix de repêchage orphelins bloquant `/admin/repechage`** (staging uniquement) :
+- 4 lignes `pool_draft_picks` (rondes 1-4, saison 2025-26) avaient `current_owner_id` et
+  `original_owner_id` tous les deux `null`, faisant planter `DraftBoard.tsx`
+  (`Cannot read properties of null (reading 'id')`).
+- Cause probable : un compte pooler jetable créé/supprimé le 2026-07-30 pour un test
+  Playwright (voir session de cette date) — le trigger `create_picks_for_new_pooler()` lui
+  a créé 4 choix (seule saison existante à ce moment), puis `ON DELETE SET NULL`
+  (`schema.sql`) a vidé les deux colonnes propriétaire à sa suppression. Reste une zone
+  d'ombre : les saisons créées plus tard (2026-PO, 2026-27/27-28/28-29) n'ont pas le même
+  problème alors qu'elles existaient déjà à cette date — pas pu vérifier si le trigger est
+  réellement actif en base (pas d'accès SQL direct).
+- Lignes supprimées (ids 417-420). Les 32 choix restants (8 poolers × 4 rondes) sont intacts.
+- Puisque `pooler_rosters` avait aussi été vidé (décision ci-dessus), le repêchage 2025 déjà
+  complété (32/32) n'affichait plus aucune recrue sur `/poolers` ni `/repechage-recrues`
+  (l'assignation recrue↔pick vit dans `pooler_rosters`, pas `pool_draft_picks`). Choix
+  ramenés à `is_used=false`/`pending_player_id=null` pour refaire le repêchage 2025 pour de
+  vrai via `/admin/repechage` — sert aussi de test de cet outil.
+
+**[Fix] — Recrues disponibles au repêchage non filtrées par année** (`app/app/admin/repechage/page.tsx`) :
+- La requête `players` du tableau de repêchage incluait une fenêtre de 5 années
+  (`draft_year >= poolDraftYear - 4`) au lieu de l'année sélectionnée seule — confusion
+  entre la règle de protection recrue (5 saisons, une fois choisie) et l'éligibilité à
+  l'affichage dans CE repêchage. Filtré strictement sur `draft_year = poolDraftYear`.
+
+**[UI] — Recherche de joueurs remontée en haut sur écran étroit** (`app/app/admin/rosters/RosterManager.tsx`) :
+- Sous le point de rupture `lg`, le bloc "Joueurs disponibles" (colonne de droite en
+  affichage large) passe en premier via `order-first lg:order-none` — évite de défiler
+  jusqu'en bas à chaque ajout de joueur pendant l'initialisation des alignements sur une
+  fenêtre réduite. Aucun changement au-delà de `lg`. Page admin desktop-only donc pas
+  d'obligation responsive, mais amélioration UX demandée par David.
+
+**[Fix] — Bug de scraping dupliquant des joueurs avec un nom corrompu** (`python_script/scrape_puckpedia.py`) :
+- Repéré par David en cherchant Simon Edvinsson dans `/admin/init?tab=rosters` : deux
+  fiches, une correcte et une `EdvinssonDage23cap$894k`.
+- Cause : quand la cellule du nom n'a pas de lien `<a>` (variante de mise en page
+  PuckPedia), le code retombait sur `cells[0].get_text(strip=True)`, qui aspire tout le
+  texte de la cellule (nom + position + âge + cap hit imbriqués) sans séparateur. Le
+  `nhl_id` de ces lignes restant toujours `null`, `import_supabase.py` ne les fait jamais
+  correspondre au joueur existant et en insère un nouveau à chaque run plutôt que de
+  corriger l'existant.
+- **Ampleur réelle, découverte en creusant au-delà du cas signalé** : 16 doublons en
+  staging, **175 en PROD** (accumulés du 16 au 30 juillet sur plusieurs runs, le plus gros
+  lot du 21 juillet). Vérifié avant suppression : aucune référence dans `player_contracts`
+  ni `pooler_rosters` — suppression sans collatéral.
+- Correctif : sur cette cellule, retirer les `<div>`/`<span>` d'info imbriqués (mêmes
+  blocs utilisés plus loin pour position/âge/tir) avant de lire le texte restant.
+- Nettoyage exécuté : 16 lignes supprimées en staging, 175 en PROD (`last_name ILIKE
+  '%cap$%'`, confirmé sans collatéral avant suppression).
 
 ### 2026-08-06
 

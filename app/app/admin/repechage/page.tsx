@@ -66,10 +66,8 @@ export default async function RepechageAdminPage({
     supabase
       .from('players')
       .select('id, first_name, last_name, position, status, draft_year, draft_round, draft_overall, teams(code)')
-      .or(`is_rookie.eq.true,draft_year.gte.${poolDraftYear - 4}`)
-      .not('draft_year', 'is', null)
+      .eq('draft_year', poolDraftYear)
       .not('draft_overall', 'is', null)
-      .order('draft_year', { ascending: false })
       .order('draft_round', { ascending: true, nullsFirst: false })
       .order('draft_overall', { ascending: true, nullsFirst: false }),
     supabase
