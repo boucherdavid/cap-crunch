@@ -599,8 +599,10 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
           )}
         </div>
 
-        {/* Joueurs disponibles */}
-        <div className="bg-white rounded-lg shadow p-5">
+        {/* Joueurs disponibles — remonté en premier quand la fenêtre est trop étroite pour
+            afficher les 2 colonnes côte à côte (sous lg), pour éviter de devoir défiler
+            jusqu'en bas à chaque ajout de joueur pendant l'initialisation. */}
+        <div className="order-first lg:order-none bg-white rounded-lg shadow p-5">
           <h2 className="font-semibold text-gray-700 mb-4">
             {initMode ? 'Tous les joueurs' : 'Joueurs disponibles'}
           </h2>
