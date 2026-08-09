@@ -26,6 +26,7 @@ type CartItem = {
   swapReservisteEntry?: RosterEntry
   recrueEntry?: RosterEntry
   deactivateActifEntry?: RosterEntry
+  demoteEntry?: RosterEntry
   ltirEntry?: RosterEntry
   returnLtirEntry?: RosterEntry
   releaseEntry?: RosterEntry
@@ -91,6 +92,10 @@ function projectRoster(roster: RosterForPooler, cart: CartItem[]): RosterForPool
         if (item.recrueEntry && map.has(item.recrueEntry.id))
           map.get(item.recrueEntry.id)!.playerType = 'actif'
         break
+      case 'demote_rookie':
+        if (item.demoteEntry && map.has(item.demoteEntry.id))
+          map.get(item.demoteEntry.id)!.playerType = 'recrue'
+        break
       case 'ltir':
         if (item.ltirEntry && map.has(item.ltirEntry.id))
           map.get(item.ltirEntry.id)!.playerType = 'ltir'
@@ -137,6 +142,7 @@ function cartItemToInput(item: CartItem): BatchActionInput {
     swapReservisteId:  item.swapReservisteEntry?.id,
     recrueEntryId:     item.recrueEntry?.id,
     deactivateActifId: item.deactivateActifEntry?.id,
+    demoteRookieId:    item.demoteEntry?.id,
     ltirEntryId:       item.ltirEntry?.id,
     returnLtirEntryId: item.returnLtirEntry?.id,
     releaseEntryId:    item.releaseEntry?.id,
@@ -258,6 +264,7 @@ function PlayerSearch({
 const ACTION_DEFS: { type: ActionType; label: string; description: string; adminOnly?: boolean }[] = [
   { type: 'swap',            label: 'Ajustement',        description: 'Actif ↔ réserviste' },
   { type: 'activate_rookie', label: 'Activation recrue', description: 'Recrue → actif' },
+  { type: 'demote_rookie',   label: 'Retour banque',     description: 'Actif/réserviste → recrue' },
   { type: 'sign',            label: 'Signature',         description: 'Ajouter un agent libre' },
   { type: 'ballotage',      label: 'Ballotage',         description: 'Réclamer un joueur au ballotage', adminOnly: true },
   { type: 'release',         label: 'Libération',        description: 'Retirer un joueur' },
@@ -305,6 +312,7 @@ export default function GestionEffectifsManager({
   const [addSwapResId, setAddSwapResId]     = useState(0)
   const [addRecruId, setAddRecruId]         = useState(0)
   const [addDeactifId, setAddDeactifId]     = useState(0)
+  const [addDemoteId, setAddDemoteId]       = useState(0)
   const [addLtirId, setAddLtirId]           = useState(0)
   const [addReturnLtirId, setAddReturnLtirId] = useState(0)
   const [addReleaseId, setAddReleaseId]     = useState(0)
@@ -381,7 +389,7 @@ export default function GestionEffectifsManager({
   function resetAddForm() {
     setAddType(null)
     setAddSwapActifId(0); setAddSwapResId(0)
-    setAddRecruId(0); setAddDeactifId(0)
+    setAddRecruId(0); setAddDeactifId(0); setAddDemoteId(0)
     setAddLtirId(0); setAddReturnLtirId(0)
     setAddReleaseId(0); setAddNewPlayer(null)
     setAddNewPlayerType('actif')
@@ -391,7 +399,7 @@ export default function GestionEffectifsManager({
   function handleSelectAddType(type: ActionType) {
     setAddType(type)
     setAddSwapActifId(0); setAddSwapResId(0)
-    setAddRecruId(0); setAddDeactifId(0)
+    setAddRecruId(0); setAddDeactifId(0); setAddDemoteId(0)
     setAddLtirId(0); setAddReturnLtirId(0)
     setAddReleaseId(0); setAddNewPlayer(null)
     setSearchKey(k => k + 1)
@@ -409,6 +417,8 @@ export default function GestionEffectifsManager({
         return !!(addSwapActifId && addSwapResId && !swapResLocked)
       case 'activate_rookie':
         return !!(addRecruId && addDeactifId)
+      case 'demote_rookie':
+        return !!addDemoteId
       case 'ltir':
         return !!addLtirId
       case 'return_ltir':
@@ -441,6 +451,7 @@ export default function GestionEffectifsManager({
       nhlId: addNewPlayer!.nhlId,
       capNumber: addNewPlayer!.capNumber,
       lastDeactivatedAt: null,
+      recrueEligible: false,
     })
 
     switch (addType) {
@@ -453,6 +464,11 @@ export default function GestionEffectifsManager({
         const rec = findEntry(addRecruId); const act = findEntry(addDeactifId)
         if (!rec || !act) return null
         return { localId, type: 'activate_rookie', label: `Recrue : ${rec.lastName} → ACT / ${act.lastName} → RÉS`, recrueEntry: rec, deactivateActifEntry: act }
+      }
+      case 'demote_rookie': {
+        const e = findEntry(addDemoteId)
+        if (!e) return null
+        return { localId, type: 'demote_rookie', label: `Retour banque : ${e.lastName}, ${e.firstName} → REC`, demoteEntry: e }
       }
       case 'ltir': {
         const e = findEntry(addLtirId)
@@ -551,6 +567,17 @@ export default function GestionEffectifsManager({
             <EntrySelect label="Actif à désactiver" entries={projected.actifs}  value={addDeactifId} onChange={setAddDeactifId} />
           </div>
         )
+      case 'demote_rookie': {
+        const eligible = [...projected.actifs, ...projected.reservistes].filter(e => e.recrueEligible)
+        return (
+          <div className="space-y-2">
+            <EntrySelect label="Joueur à renvoyer à la banque de recrues" entries={eligible} value={addDemoteId} onChange={setAddDemoteId} />
+            {eligible.length === 0 && (
+              <p className="text-xs text-gray-400">Aucun actif/réserviste encore admissible à la banque de recrues (protection de 5 saisons expirée pour les autres).</p>
+            )}
+          </div>
+        )
+      }
       case 'ltir':
         return <EntrySelect label="Actif à mettre sur LTIR" entries={projected.actifs} value={addLtirId} onChange={setAddLtirId} />
       case 'return_ltir':

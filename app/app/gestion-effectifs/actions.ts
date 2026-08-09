@@ -11,6 +11,7 @@ export type PlayerType = 'actif' | 'reserviste' | 'ltir' | 'recrue'
 export type ActionType =
   | 'swap'
   | 'activate_rookie'
+  | 'demote_rookie'
   | 'ltir'
   | 'return_ltir'
   | 'ltir_sign'
@@ -29,6 +30,7 @@ export type RosterEntry = {
   nhlId: number | null
   capNumber: number | null
   lastDeactivatedAt: string | null  // ISO timestamp de la dernière désactivation (actif→res ou ltir)
+  recrueEligible: boolean  // is_rookie ou draft_year dans la fenêtre de protection 5 saisons — peut retourner à la banque de recrues
 }
 
 export type RosterForPooler = {
@@ -70,6 +72,7 @@ export type BatchActionInput = {
   swapReservisteId?: number
   recrueEntryId?: number
   deactivateActifId?: number
+  demoteRookieId?: number
   ltirEntryId?: number
   returnLtirEntryId?: number
   newPlayerId?: number
@@ -107,13 +110,18 @@ export async function getPoolerRosterAction(
 ): Promise<RosterForPooler> {
   const supabase = await createClient()
 
+  // Fenêtre de protection recrue (5 saisons) — même formule que getDraftYearCutoff()
+  // dans admin/rosters/actions.ts, pour déterminer si un actif/réserviste peut encore
+  // retourner à la banque de recrues.
+  const draftYearCutoff = parseInt(season.split('-')[0], 10) + 1 - 5
+
   const [{ data: rosterData }, { data: deactRows }] = await Promise.all([
     supabase
       .from('pooler_rosters')
       .select(`
         id, player_id, player_type,
         players (
-          first_name, last_name, position, nhl_id,
+          first_name, last_name, position, nhl_id, is_rookie, draft_year,
           teams (code),
           player_contracts (season, cap_number)
         )
@@ -148,6 +156,7 @@ export async function getPoolerRosterAction(
     nhlId: r.players?.nhl_id ?? null,
     capNumber: r.players?.player_contracts?.find((c: any) => c.season === season)?.cap_number ?? null,
     lastDeactivatedAt: deactMap.get(r.player_id) ?? null,
+    recrueEligible: !!(r.players?.is_rookie || (r.players?.draft_year != null && r.players.draft_year >= draftYearCutoff)),
   }))
 
   return {
@@ -225,9 +234,15 @@ export async function submitBatchAction(input: {
   // Fetch config
   const { data: saisonConfig } = await db
     .from('pool_seasons')
-    .select('delai_reactivation_jours, max_signatures_al, max_signatures_ltir, saison_start_date')
+    .select('delai_reactivation_jours, max_signatures_al, max_signatures_ltir, saison_start_date, season')
     .eq('id', input.saisonId)
     .single()
+
+  // Fenêtre de protection recrue (5 saisons) — même formule que getPoolerRosterAction()
+  // et admin/rosters/actions.ts, revalidée ici côté serveur pour 'demote_rookie'.
+  const draftYearCutoff = saisonConfig?.season
+    ? parseInt(saisonConfig.season.split('-')[0], 10) + 1 - 5
+    : new Date().getFullYear() - 4
 
   const delaiJours    = saisonConfig?.delai_reactivation_jours ?? 7
   const maxAl         = saisonConfig?.max_signatures_al ?? 10
@@ -262,10 +277,13 @@ export async function submitBatchAction(input: {
   async function getEntry(entryId: number) {
     const { data } = await db
       .from('pooler_rosters')
-      .select('player_id, player_type, added_at, players (nhl_id)')
+      .select('player_id, player_type, added_at, rookie_type, players (nhl_id, is_rookie, draft_year)')
       .eq('id', entryId)
       .single()
-    return data as { player_id: number; player_type: string; added_at: string | null; players: { nhl_id: number | null } | null } | null
+    return data as {
+      player_id: number; player_type: string; added_at: string | null; rookie_type: string | null
+      players: { nhl_id: number | null; is_rookie: boolean | null; draft_year: number | null } | null
+    } | null
   }
 
   async function log(playerId: number, changeType: string, oldType: string | null, newType: string | null) {
@@ -301,9 +319,12 @@ export async function submitBatchAction(input: {
     }
   }
 
-  async function deactivate(entryId: number, toType: 'reserviste' | 'ltir') {
+  async function deactivate(entryId: number, toType: 'reserviste' | 'ltir' | 'recrue') {
     const e = await getEntry(entryId)
     if (!e) throw new Error('Entrée introuvable')
+    if (toType === 'recrue' && !e.rookie_type) {
+      warnings.push('Joueur renvoyé à la banque de recrues sans type recrue défini — à compléter dans Rosters initiaux (Repêché / Agent libre).')
+    }
     const conflict = await checkFutureRosterConflict(db, input.poolerId, e.player_id, input.saisonId, changedAt, toType)
     if (conflict.error) throw new Error(conflict.error)
     const { addedAtOverride, warning } = computeTypeChangeAddedAt(e.added_at, changedAt)
@@ -311,7 +332,7 @@ export async function submitBatchAction(input: {
     await db.from('pooler_rosters')
       .update({ player_type: toType, ...(addedAtOverride ? { added_at: addedAtOverride } : {}) })
       .eq('id', entryId)
-    await log(e.player_id, toType === 'ltir' ? 'ltir' : 'deactivation', e.player_type, toType)
+    await log(e.player_id, toType === 'ltir' ? 'ltir' : toType === 'recrue' ? 'changement_type' : 'deactivation', e.player_type, toType)
   }
 
   async function activate(entryId: number, fromType: string, withDelayCheck = false) {
@@ -392,6 +413,19 @@ export async function submitBatchAction(input: {
           await deactivate(action.deactivateActifId, 'reserviste')
           await activate(action.recrueEntryId, 'recrue')
           break
+
+        case 'demote_rookie': {
+          if (!action.demoteRookieId) throw new Error('Joueur manquant (retour banque)')
+          const e = await getEntry(action.demoteRookieId)
+          if (!e) throw new Error('Entrée introuvable (retour banque)')
+          if (e.player_type !== 'actif' && e.player_type !== 'reserviste') {
+            throw new Error('Seul un joueur actif ou réserviste peut retourner à la banque de recrues')
+          }
+          const eligible = !!(e.players?.is_rookie || (e.players?.draft_year != null && e.players.draft_year >= draftYearCutoff))
+          if (!eligible) throw new Error('Ce joueur a dépassé la protection recrue (5 saisons) — ne peut plus retourner à la banque')
+          await deactivate(action.demoteRookieId, 'recrue')
+          break
+        }
 
         case 'ltir':
           if (!action.ltirEntryId) throw new Error('Joueur manquant (LTIR)')

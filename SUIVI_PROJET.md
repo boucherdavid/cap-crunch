@@ -116,6 +116,24 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   voir décision du 2026-08-08) pour valider la mécanique de périodes actives et les
   transferts joueurs/choix.
 
+**[Feature] — Action « Retour banque » ajoutée à Gestion d'effectifs** (`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `actions.ts`) :
+- David a signalé, en testant les transactions, qu'aucune action ne permettait de renvoyer
+  un joueur actif/réserviste à la banque de recrues — seule la direction inverse
+  (« Activation recrue ») existait.
+- Nouvelle action `demote_rookie`, symétrique à `activate_rookie`, disponible pour tous
+  (pas admin-only) sur `/gestion-effectifs` et `/admin/effectifs?tab=mouvements`.
+- Liste filtrée sur l'admissibilité recrue (`is_rookie` ou `draft_year` dans la fenêtre de
+  protection de 5 saisons — même formule que `getDraftYearCutoff()` dans
+  `admin/rosters/actions.ts`), revalidée côté serveur en plus du filtre client.
+- `rookie_type`/`pool_draft_year` déjà sur la ligne `pooler_rosters` sont conservés tels
+  quels (jamais touchés par un simple changement de `player_type`) ; si absents (joueur
+  jamais passé par la banque sur cette ligne), avertissement non bloquant plutôt que blocage
+  — cohérent avec l'affichage existant de `/admin/init?tab=rosters` qui invite déjà à
+  compléter le type recrue manquant.
+- `deactivate()` (helper interne de `submitBatchAction`) étendu pour accepter `'recrue'`
+  comme type cible, en plus de `'reserviste'`/`'ltir'` — réutilise `checkFutureRosterConflict`
+  et `computeTypeChangeAddedAt` sans dupliquer la logique.
+
 ### 2026-08-06
 
 **[Fix] — Bug de doublons `pooler_rosters` causé par l'apply du 2026-08-05, repéré par David via `/classement` et `/poolers/[id]`** (`python_script/import_mouvements_excel.py`) :
