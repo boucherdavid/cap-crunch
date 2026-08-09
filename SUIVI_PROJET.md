@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-08-08
+Derniere mise a jour: 2026-08-09
 
 ## Role du fichier
 
@@ -86,6 +86,35 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   blocs utilisés plus loin pour position/âge/tir) avant de lire le texte restant.
 - Nettoyage exécuté : 16 lignes supprimées en staging, 175 en PROD (`last_name ILIKE
   '%cap$%'`, confirmé sans collatéral avant suppression).
+
+### 2026-08-09
+
+**[Fix] — Doublon Mitch/Mitchell Marner (staging + PROD)** :
+- Repéré par David en saisissant les alignements initiaux : deux fiches pour le même
+  joueur, `Mitch Marner` (`nhl_id` vide, créée début juillet) et `Mitchell Marner`
+  (`nhl_id=8478483`, la fiche canonique déjà utilisée dans les rosters/journal). Cause
+  distincte du bug de scraping ci-dessus (pas de nom corrompu) : PuckPedia affiche le
+  diminutif sur une page et le nom complet sur une autre, et le matching par nom exact de
+  `import_supabase.py` (aucune règle de rapprochement par diminutif) ne les relie jamais.
+  Le dédoublonnage existant du pipeline (cas 1-3 documentés dans `import_supabase.py`,
+  ~ligne 350) ne couvre pas non plus ce cas puisqu'il compare des noms normalisés
+  identiques, pas des variantes.
+- La fiche fantôme avait un contrat 2030-31 (12 M$) absent de la fiche canonique — reporté
+  avant suppression pour ne rien perdre. Vérifié sans référence dans `pooler_rosters`/
+  `roster_change_log`/`transaction_items`/`player_stat_snapshots` dans les deux bases avant
+  suppression.
+- **Pas de correctif de code** cette fois — cas ponctuel plutôt qu'un bug systémique
+  reproductible comme le scraping ; pas exploré de règle générale de rapprochement par
+  diminutif (risque de faux positifs élevé, ex. deux joueurs différents partageant un
+  diminutif). À surveiller si d'autres cas du genre apparaissent pendant la saisie.
+
+**[Jalon] — Alignements initiaux (octobre 2025) saisis au complet en staging** :
+- David a terminé la saisie des 8 rosters de départ via `/admin/init?tab=rosters`.
+- Prochaine étape (annoncée par David, pas encore commencée) : saisir les transactions
+  majeures et quelques mouvements de test via `/admin/historique` (gros du travail) et les
+  outils `/gestion-effectifs`/`/admin/transactions` (test des outils + calcul des points,
+  voir décision du 2026-08-08) pour valider la mécanique de périodes actives et les
+  transferts joueurs/choix.
 
 ### 2026-08-06
 
