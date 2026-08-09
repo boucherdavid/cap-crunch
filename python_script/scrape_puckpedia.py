@@ -329,7 +329,20 @@ def scraper_depuis_html(fichier_html, sigle, headless=True, driver=None):
                 continue
 
             a_tag = cells[0].find("a")
-            name = a_tag.get_text(strip=True) if a_tag else cells[0].get_text(strip=True)
+            if a_tag:
+                name = a_tag.get_text(strip=True)
+            else:
+                # Fallback quand la cellule n'a pas de lien joueur : cells[0].get_text()
+                # collait le nom aux blocs position/âge/tir imbriqués sans séparateur
+                # (ex: "EdvinssonDage23cap$894k") faute de <a>, produisant un nhl_id
+                # jamais résolu et donc un nouveau joueur en double à chaque run du
+                # pipeline plutôt qu'une mise à jour du joueur existant. On retire les
+                # blocs d'info (mêmes <div>/<span> lus plus bas pour position/âge/tir)
+                # avant de lire le texte restant, qui ne devrait être que le nom.
+                name_only = BeautifulSoup(str(cells[0]), "html.parser")
+                for info_tag in name_only.find_all(["div", "span"]):
+                    info_tag.decompose()
+                name = name_only.get_text(strip=True)
             if not name or not any(c.isalpha() for c in name):
                 continue
 
