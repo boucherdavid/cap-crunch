@@ -9,15 +9,15 @@ import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/roste
 export type PlayerType = 'actif' | 'reserviste' | 'ltir' | 'recrue'
 
 export type ActionType =
-  | 'swap'
-  | 'activate_rookie'
-  | 'demote_rookie'
+  | 'change_status'
   | 'ltir'
   | 'return_ltir'
   | 'ltir_sign'
   | 'sign'
   | 'release'
   | 'ballotage'
+
+export type RosterStatus = 'actif' | 'reserviste' | 'recrue'
 
 export type RosterEntry = {
   id: number
@@ -68,13 +68,13 @@ export type SigningCounts = {
 
 export type BatchActionInput = {
   type: ActionType
-  swapActifId?: number
-  swapReservisteId?: number
-  recrueEntryId?: number
-  deactivateActifId?: number
-  demoteRookieId?: number
+  entry1Id?: number
+  newType1?: RosterStatus
+  entry2Id?: number
+  newType2?: RosterStatus
   ltirEntryId?: number
   returnLtirEntryId?: number
+  deactivateActifId?: number
   newPlayerId?: number
   newPlayerType?: 'actif' | 'reserviste'
   releaseEntryId?: number
@@ -322,8 +322,12 @@ export async function submitBatchAction(input: {
   async function deactivate(entryId: number, toType: 'reserviste' | 'ltir' | 'recrue') {
     const e = await getEntry(entryId)
     if (!e) throw new Error('Entrée introuvable')
-    if (toType === 'recrue' && !e.rookie_type) {
-      warnings.push('Joueur renvoyé à la banque de recrues sans type recrue défini — à compléter dans Rosters initiaux (Repêché / Agent libre).')
+    if (toType === 'recrue') {
+      const eligible = !!(e.players?.is_rookie || (e.players?.draft_year != null && e.players.draft_year >= draftYearCutoff))
+      if (!eligible) throw new Error('Ce joueur a dépassé la protection recrue (5 saisons) — ne peut plus retourner à la banque')
+      if (!e.rookie_type) {
+        warnings.push('Joueur renvoyé à la banque de recrues sans type recrue défini — à compléter dans Rosters initiaux (Repêché / Agent libre).')
+      }
     }
     const conflict = await checkFutureRosterConflict(db, input.poolerId, e.player_id, input.saisonId, changedAt, toType)
     if (conflict.error) throw new Error(conflict.error)
@@ -347,6 +351,21 @@ export async function submitBatchAction(input: {
       .update({ player_type: 'actif', ...(addedAtOverride ? { added_at: addedAtOverride } : {}) })
       .eq('id', entryId)
     await log(e.player_id, fromType === 'ltir' ? 'retour_ltir' : 'activation', fromType, 'actif')
+  }
+
+  // Changement de statut générique (actif/réserviste/recrue), utilisé par 'change_status' —
+  // le délai de réactivation est toujours vérifié pour une entrée vers 'actif' (même un
+  // joueur venant de la banque de recrues, au cas où il aurait été désactivé récemment sur
+  // cette même ligne avant d'être renvoyé en recrue) puisque checkReactivationDelay() ne
+  // trouve simplement rien à bloquer si aucun historique de désactivation n'existe.
+  async function applyStatus(entryId: number, newType: RosterStatus) {
+    if (newType === 'actif') {
+      const e = await getEntry(entryId)
+      if (!e) throw new Error('Entrée introuvable')
+      await activate(entryId, e.player_type, /* withDelayCheck */ true)
+    } else {
+      await deactivate(entryId, newType)
+    }
   }
 
   async function addNewPlayer(playerId: number, playerType: 'actif' | 'reserviste', signingType: 'al' | 'ltir' | 'ballotage') {
@@ -402,28 +421,11 @@ export async function submitBatchAction(input: {
   try {
     for (const action of input.actions) {
       switch (action.type) {
-        case 'swap':
-          if (!action.swapActifId || !action.swapReservisteId) throw new Error('Joueurs manquants (échange)')
-          await deactivate(action.swapActifId, 'reserviste')
-          await activate(action.swapReservisteId, 'reserviste', /* withDelayCheck */ true)
-          break
-
-        case 'activate_rookie':
-          if (!action.recrueEntryId || !action.deactivateActifId) throw new Error('Joueurs manquants (activation recrue)')
-          await deactivate(action.deactivateActifId, 'reserviste')
-          await activate(action.recrueEntryId, 'recrue')
-          break
-
-        case 'demote_rookie': {
-          if (!action.demoteRookieId) throw new Error('Joueur manquant (retour banque)')
-          const e = await getEntry(action.demoteRookieId)
-          if (!e) throw new Error('Entrée introuvable (retour banque)')
-          if (e.player_type !== 'actif' && e.player_type !== 'reserviste') {
-            throw new Error('Seul un joueur actif ou réserviste peut retourner à la banque de recrues')
-          }
-          const eligible = !!(e.players?.is_rookie || (e.players?.draft_year != null && e.players.draft_year >= draftYearCutoff))
-          if (!eligible) throw new Error('Ce joueur a dépassé la protection recrue (5 saisons) — ne peut plus retourner à la banque')
-          await deactivate(action.demoteRookieId, 'recrue')
+        case 'change_status': {
+          if (!action.entry1Id || !action.newType1) throw new Error('Joueur ou statut manquant (changement de statut)')
+          if (action.entry2Id === action.entry1Id) throw new Error('Les deux joueurs sélectionnés doivent être différents')
+          await applyStatus(action.entry1Id, action.newType1)
+          if (action.entry2Id && action.newType2) await applyStatus(action.entry2Id, action.newType2)
           break
         }
 

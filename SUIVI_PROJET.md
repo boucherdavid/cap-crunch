@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-08-09
+Derniere mise a jour: 2026-08-10
 
 ## Role du fichier
 
@@ -20,6 +20,79 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-08-10
+
+**[Refactor] — Fusion Ajustement / Activation recrue / Retour banque en une seule action « Changement de statut »** (`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `actions.ts`) :
+- David a trouvé les 3 tuiles ajoutées la veille confuses (elles se chevauchaient
+  conceptuellement — toutes des variantes de "changer le statut d'un ou deux joueurs") et a
+  demandé un seul menu où on choisit librement le nouveau statut de chaque joueur impliqué
+  (Actif/Réserviste/Recrue, n'importe quelle combinaison), plutôt que des tuiles
+  pré-configurées par paire de statuts.
+- `ActionType` simplifié : `'swap' | 'activate_rookie' | 'demote_rookie'` remplacés par un
+  seul `'change_status'`, avec `entry1Id`/`newType1` + `entry2Id`/`newType2` optionnel (2e
+  joueur pour un échange en une seule action de panier au lieu de deux distinctes).
+- Chaque transition applique automatiquement la bonne validation selon le **statut cible**
+  plutôt que selon la tuile choisie : délai de réactivation désormais systématique vers
+  `actif` (amélioration incidente — l'ancienne « Activation recrue » ne le vérifiait jamais,
+  ce qui aurait permis de contourner le délai en repassant un joueur par la banque de recrues
+  avant de le réactiver), admissibilité recrue (5 saisons) + avertissement `rookie_type`
+  manquant vers `recrue` (déplacés dans `deactivate()` pour s'appliquer peu importe l'appelant).
+- `deactivate()`/`activate()` (déjà génériques) réutilisés tels quels via un petit wrapper
+  `applyStatus()` — aucune duplication de logique de validation.
+- Aucune donnée persistée ne référençait les anciens noms `ActionType` (valeurs transitoires
+  d'une requête, jamais écrites en base — `roster_change_log.change_type` utilise un
+  vocabulaire distinct et inchangé), donc remplacement propre sans migration nécessaire.
+
+### 2026-08-09
+
+**[Fix] — Doublon Mitch/Mitchell Marner (staging + PROD)** :
+- Repéré par David en saisissant les alignements initiaux : deux fiches pour le même
+  joueur, `Mitch Marner` (`nhl_id` vide, créée début juillet) et `Mitchell Marner`
+  (`nhl_id=8478483`, la fiche canonique déjà utilisée dans les rosters/journal). Cause
+  distincte du bug de scraping ci-dessus (pas de nom corrompu) : PuckPedia affiche le
+  diminutif sur une page et le nom complet sur une autre, et le matching par nom exact de
+  `import_supabase.py` (aucune règle de rapprochement par diminutif) ne les relie jamais.
+  Le dédoublonnage existant du pipeline (cas 1-3 documentés dans `import_supabase.py`,
+  ~ligne 350) ne couvre pas non plus ce cas puisqu'il compare des noms normalisés
+  identiques, pas des variantes.
+- La fiche fantôme avait un contrat 2030-31 (12 M$) absent de la fiche canonique — reporté
+  avant suppression pour ne rien perdre. Vérifié sans référence dans `pooler_rosters`/
+  `roster_change_log`/`transaction_items`/`player_stat_snapshots` dans les deux bases avant
+  suppression.
+- **Pas de correctif de code** cette fois — cas ponctuel plutôt qu'un bug systémique
+  reproductible comme le scraping ; pas exploré de règle générale de rapprochement par
+  diminutif (risque de faux positifs élevé, ex. deux joueurs différents partageant un
+  diminutif). À surveiller si d'autres cas du genre apparaissent pendant la saisie.
+
+**[Jalon] — Alignements initiaux (octobre 2025) saisis au complet en staging** :
+- David a terminé la saisie des 8 rosters de départ via `/admin/init?tab=rosters`.
+- Prochaine étape (annoncée par David, pas encore commencée) : saisir les transactions
+  majeures et quelques mouvements de test via `/admin/historique` (gros du travail) et les
+  outils `/gestion-effectifs`/`/admin/transactions` (test des outils + calcul des points,
+  voir décision du 2026-08-08) pour valider la mécanique de périodes actives et les
+  transferts joueurs/choix.
+
+**[Feature] — Action « Retour banque » ajoutée à Gestion d'effectifs, fusionnée le lendemain (voir 2026-08-10)** (`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `actions.ts`) :
+- David a signalé, en testant les transactions, qu'aucune action ne permettait de renvoyer
+  un joueur actif/réserviste à la banque de recrues — seule la direction inverse
+  (« Activation recrue ») existait.
+- Nouvelle action `demote_rookie`, symétrique à `activate_rookie`, disponible pour tous
+  (pas admin-only) sur `/gestion-effectifs` et `/admin/effectifs?tab=mouvements`.
+- Liste filtrée sur l'admissibilité recrue (`is_rookie` ou `draft_year` dans la fenêtre de
+  protection de 5 saisons — même formule que `getDraftYearCutoff()` dans
+  `admin/rosters/actions.ts`), revalidée côté serveur en plus du filtre client.
+- `rookie_type`/`pool_draft_year` déjà sur la ligne `pooler_rosters` sont conservés tels
+  quels (jamais touchés par un simple changement de `player_type`) ; si absents (joueur
+  jamais passé par la banque sur cette ligne), avertissement non bloquant plutôt que blocage
+  — cohérent avec l'affichage existant de `/admin/init?tab=rosters` qui invite déjà à
+  compléter le type recrue manquant.
+- `deactivate()` (helper interne de `submitBatchAction`) étendu pour accepter `'recrue'`
+  comme type cible, en plus de `'reserviste'`/`'ltir'` — réutilise `checkFutureRosterConflict`
+  et `computeTypeChangeAddedAt` sans dupliquer la logique.
+- **Remplacé le lendemain** par la fusion générique « Changement de statut » (voir
+  2026-08-10) — cette action `demote_rookie` dédiée n'existe plus telle quelle, sa logique de
+  validation a été absorbée dans `deactivate()`.
 
 ### 2026-08-08
 
@@ -86,53 +159,6 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   blocs utilisés plus loin pour position/âge/tir) avant de lire le texte restant.
 - Nettoyage exécuté : 16 lignes supprimées en staging, 175 en PROD (`last_name ILIKE
   '%cap$%'`, confirmé sans collatéral avant suppression).
-
-### 2026-08-09
-
-**[Fix] — Doublon Mitch/Mitchell Marner (staging + PROD)** :
-- Repéré par David en saisissant les alignements initiaux : deux fiches pour le même
-  joueur, `Mitch Marner` (`nhl_id` vide, créée début juillet) et `Mitchell Marner`
-  (`nhl_id=8478483`, la fiche canonique déjà utilisée dans les rosters/journal). Cause
-  distincte du bug de scraping ci-dessus (pas de nom corrompu) : PuckPedia affiche le
-  diminutif sur une page et le nom complet sur une autre, et le matching par nom exact de
-  `import_supabase.py` (aucune règle de rapprochement par diminutif) ne les relie jamais.
-  Le dédoublonnage existant du pipeline (cas 1-3 documentés dans `import_supabase.py`,
-  ~ligne 350) ne couvre pas non plus ce cas puisqu'il compare des noms normalisés
-  identiques, pas des variantes.
-- La fiche fantôme avait un contrat 2030-31 (12 M$) absent de la fiche canonique — reporté
-  avant suppression pour ne rien perdre. Vérifié sans référence dans `pooler_rosters`/
-  `roster_change_log`/`transaction_items`/`player_stat_snapshots` dans les deux bases avant
-  suppression.
-- **Pas de correctif de code** cette fois — cas ponctuel plutôt qu'un bug systémique
-  reproductible comme le scraping ; pas exploré de règle générale de rapprochement par
-  diminutif (risque de faux positifs élevé, ex. deux joueurs différents partageant un
-  diminutif). À surveiller si d'autres cas du genre apparaissent pendant la saisie.
-
-**[Jalon] — Alignements initiaux (octobre 2025) saisis au complet en staging** :
-- David a terminé la saisie des 8 rosters de départ via `/admin/init?tab=rosters`.
-- Prochaine étape (annoncée par David, pas encore commencée) : saisir les transactions
-  majeures et quelques mouvements de test via `/admin/historique` (gros du travail) et les
-  outils `/gestion-effectifs`/`/admin/transactions` (test des outils + calcul des points,
-  voir décision du 2026-08-08) pour valider la mécanique de périodes actives et les
-  transferts joueurs/choix.
-
-**[Feature] — Action « Retour banque » ajoutée à Gestion d'effectifs** (`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `actions.ts`) :
-- David a signalé, en testant les transactions, qu'aucune action ne permettait de renvoyer
-  un joueur actif/réserviste à la banque de recrues — seule la direction inverse
-  (« Activation recrue ») existait.
-- Nouvelle action `demote_rookie`, symétrique à `activate_rookie`, disponible pour tous
-  (pas admin-only) sur `/gestion-effectifs` et `/admin/effectifs?tab=mouvements`.
-- Liste filtrée sur l'admissibilité recrue (`is_rookie` ou `draft_year` dans la fenêtre de
-  protection de 5 saisons — même formule que `getDraftYearCutoff()` dans
-  `admin/rosters/actions.ts`), revalidée côté serveur en plus du filtre client.
-- `rookie_type`/`pool_draft_year` déjà sur la ligne `pooler_rosters` sont conservés tels
-  quels (jamais touchés par un simple changement de `player_type`) ; si absents (joueur
-  jamais passé par la banque sur cette ligne), avertissement non bloquant plutôt que blocage
-  — cohérent avec l'affichage existant de `/admin/init?tab=rosters` qui invite déjà à
-  compléter le type recrue manquant.
-- `deactivate()` (helper interne de `submitBatchAction`) étendu pour accepter `'recrue'`
-  comme type cible, en plus de `'reserviste'`/`'ltir'` — réutilise `checkFutureRosterConflict`
-  et `computeTypeChangeAddedAt` sans dupliquer la logique.
 
 ### 2026-08-06
 

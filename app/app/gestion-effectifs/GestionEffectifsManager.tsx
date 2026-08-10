@@ -11,6 +11,7 @@ import type {
   ActionType,
   RosterEntry,
   RosterForPooler,
+  RosterStatus,
   PlayerSearchResult,
   BatchActionInput,
   SigningCounts,
@@ -18,17 +19,20 @@ import type {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+const STATUS_LABEL: Record<RosterStatus, string> = { actif: 'Actif', reserviste: 'Réserviste', recrue: 'Recrue' }
+const STATUS_SHORT: Record<RosterStatus, string> = { actif: 'ACT', reserviste: 'RÉS', recrue: 'REC' }
+
 type CartItem = {
   localId: string
   type: ActionType
   label: string
-  swapActifEntry?: RosterEntry
-  swapReservisteEntry?: RosterEntry
-  recrueEntry?: RosterEntry
-  deactivateActifEntry?: RosterEntry
-  demoteEntry?: RosterEntry
+  entry1?: RosterEntry
+  newType1?: RosterStatus
+  entry2?: RosterEntry
+  newType2?: RosterStatus
   ltirEntry?: RosterEntry
   returnLtirEntry?: RosterEntry
+  deactivateActifEntry?: RosterEntry
   releaseEntry?: RosterEntry
   newPlayerEntry?: RosterEntry
   newPlayerType?: 'actif' | 'reserviste'
@@ -72,6 +76,14 @@ function unlockDate(entry: RosterEntry | undefined, delaiJours: number): string 
   return d.toLocaleDateString('fr-CA', { day: 'numeric', month: 'short' })
 }
 
+// Statuts atteignables depuis le statut courant d'une entrée — exclut le statut courant,
+// et 'recrue' si le joueur n'est plus dans la fenêtre de protection (5 saisons).
+function allowedNewStatuses(entry: RosterEntry | undefined): RosterStatus[] {
+  if (!entry) return []
+  const all: RosterStatus[] = ['actif', 'reserviste', 'recrue']
+  return all.filter(s => s !== entry.playerType && (s !== 'recrue' || entry.recrueEligible))
+}
+
 function projectRoster(roster: RosterForPooler, cart: CartItem[]): RosterForPooler {
   const map = new Map<number, RosterEntry>()
   for (const e of [...roster.actifs, ...roster.reservistes, ...roster.ltir, ...roster.recrues]) {
@@ -80,21 +92,11 @@ function projectRoster(roster: RosterForPooler, cart: CartItem[]): RosterForPool
   let fakeId = -1
   for (const item of cart) {
     switch (item.type) {
-      case 'swap':
-        if (item.swapActifEntry && map.has(item.swapActifEntry.id))
-          map.get(item.swapActifEntry.id)!.playerType = 'reserviste'
-        if (item.swapReservisteEntry && map.has(item.swapReservisteEntry.id))
-          map.get(item.swapReservisteEntry.id)!.playerType = 'actif'
-        break
-      case 'activate_rookie':
-        if (item.deactivateActifEntry && map.has(item.deactivateActifEntry.id))
-          map.get(item.deactivateActifEntry.id)!.playerType = 'reserviste'
-        if (item.recrueEntry && map.has(item.recrueEntry.id))
-          map.get(item.recrueEntry.id)!.playerType = 'actif'
-        break
-      case 'demote_rookie':
-        if (item.demoteEntry && map.has(item.demoteEntry.id))
-          map.get(item.demoteEntry.id)!.playerType = 'recrue'
+      case 'change_status':
+        if (item.entry1 && item.newType1 && map.has(item.entry1.id))
+          map.get(item.entry1.id)!.playerType = item.newType1
+        if (item.entry2 && item.newType2 && map.has(item.entry2.id))
+          map.get(item.entry2.id)!.playerType = item.newType2
         break
       case 'ltir':
         if (item.ltirEntry && map.has(item.ltirEntry.id))
@@ -138,11 +140,11 @@ function computeCap(roster: RosterForPooler) {
 function cartItemToInput(item: CartItem): BatchActionInput {
   return {
     type: item.type,
-    swapActifId:       item.swapActifEntry?.id,
-    swapReservisteId:  item.swapReservisteEntry?.id,
-    recrueEntryId:     item.recrueEntry?.id,
+    entry1Id:          item.entry1?.id,
+    newType1:          item.newType1,
+    entry2Id:          item.entry2?.id,
+    newType2:          item.newType2,
     deactivateActifId: item.deactivateActifEntry?.id,
-    demoteRookieId:    item.demoteEntry?.id,
     ltirEntryId:       item.ltirEntry?.id,
     returnLtirEntryId: item.returnLtirEntry?.id,
     releaseEntryId:    item.releaseEntry?.id,
@@ -262,9 +264,7 @@ function PlayerSearch({
 // ─── Action definitions ───────────────────────────────────────────────────────
 
 const ACTION_DEFS: { type: ActionType; label: string; description: string; adminOnly?: boolean }[] = [
-  { type: 'swap',            label: 'Ajustement',        description: 'Actif ↔ réserviste' },
-  { type: 'activate_rookie', label: 'Activation recrue', description: 'Recrue → actif' },
-  { type: 'demote_rookie',   label: 'Retour banque',     description: 'Actif/réserviste → recrue' },
+  { type: 'change_status',   label: 'Changement de statut', description: 'Actif / Réserviste / Recrue' },
   { type: 'sign',            label: 'Signature',         description: 'Ajouter un agent libre' },
   { type: 'ballotage',      label: 'Ballotage',         description: 'Réclamer un joueur au ballotage', adminOnly: true },
   { type: 'release',         label: 'Libération',        description: 'Retirer un joueur' },
@@ -308,11 +308,11 @@ export default function GestionEffectifsManager({
 
   // Add-form fields
   const [addType, setAddType]               = useState<ActionType | null>(null)
-  const [addSwapActifId, setAddSwapActifId] = useState(0)
-  const [addSwapResId, setAddSwapResId]     = useState(0)
-  const [addRecruId, setAddRecruId]         = useState(0)
+  const [addEntry1Id, setAddEntry1Id]       = useState(0)
+  const [addNewType1, setAddNewType1]       = useState<RosterStatus | ''>('')
+  const [addEntry2Id, setAddEntry2Id]       = useState(0)
+  const [addNewType2, setAddNewType2]       = useState<RosterStatus | ''>('')
   const [addDeactifId, setAddDeactifId]     = useState(0)
-  const [addDemoteId, setAddDemoteId]       = useState(0)
   const [addLtirId, setAddLtirId]           = useState(0)
   const [addReturnLtirId, setAddReturnLtirId] = useState(0)
   const [addReleaseId, setAddReleaseId]     = useState(0)
@@ -360,8 +360,9 @@ export default function GestionEffectifsManager({
   const canAddLtirSign = ltirRemaining > 0 || alRemaining > 0
 
   // Reactivation lock for currently selected entries (non-admins)
-  const swapResLocked     = !isAdmin && isLocked(projected ? findEntry(addSwapResId) : undefined, delaiReactivationJours)
   const returnLtirLocked  = !isAdmin && isLocked(projected ? findEntry(addReturnLtirId) : undefined, delaiReactivationJours)
+  const entry1Locked = !isAdmin && addNewType1 === 'actif' && isLocked(projected ? findEntry(addEntry1Id) : undefined, delaiReactivationJours)
+  const entry2Locked = !isAdmin && addNewType2 === 'actif' && isLocked(projected ? findEntry(addEntry2Id) : undefined, delaiReactivationJours)
 
   const compositionOk = actifCounts.F === 12 && actifCounts.D === 6 && actifCounts.G === 2
   const reservistesOk = (projected?.reservistes.length ?? 0) >= 2
@@ -388,8 +389,8 @@ export default function GestionEffectifsManager({
 
   function resetAddForm() {
     setAddType(null)
-    setAddSwapActifId(0); setAddSwapResId(0)
-    setAddRecruId(0); setAddDeactifId(0); setAddDemoteId(0)
+    setAddEntry1Id(0); setAddNewType1(''); setAddEntry2Id(0); setAddNewType2('')
+    setAddDeactifId(0)
     setAddLtirId(0); setAddReturnLtirId(0)
     setAddReleaseId(0); setAddNewPlayer(null)
     setAddNewPlayerType('actif')
@@ -398,8 +399,8 @@ export default function GestionEffectifsManager({
 
   function handleSelectAddType(type: ActionType) {
     setAddType(type)
-    setAddSwapActifId(0); setAddSwapResId(0)
-    setAddRecruId(0); setAddDeactifId(0); setAddDemoteId(0)
+    setAddEntry1Id(0); setAddNewType1(''); setAddEntry2Id(0); setAddNewType2('')
+    setAddDeactifId(0)
     setAddLtirId(0); setAddReturnLtirId(0)
     setAddReleaseId(0); setAddNewPlayer(null)
     setSearchKey(k => k + 1)
@@ -413,12 +414,11 @@ export default function GestionEffectifsManager({
   function isAddReady(): boolean {
     if (!addType) return false
     switch (addType) {
-      case 'swap':
-        return !!(addSwapActifId && addSwapResId && !swapResLocked)
-      case 'activate_rookie':
-        return !!(addRecruId && addDeactifId)
-      case 'demote_rookie':
-        return !!addDemoteId
+      case 'change_status':
+        return !!(
+          addEntry1Id && addNewType1 && !entry1Locked &&
+          (!addEntry2Id || (addNewType2 && !entry2Locked && addEntry2Id !== addEntry1Id))
+        )
       case 'ltir':
         return !!addLtirId
       case 'return_ltir':
@@ -455,20 +455,23 @@ export default function GestionEffectifsManager({
     })
 
     switch (addType) {
-      case 'swap': {
-        const a = findEntry(addSwapActifId); const r = findEntry(addSwapResId)
-        if (!a || !r) return null
-        return { localId, type: 'swap', label: `Ajustement : ${a.lastName} → RÉS / ${r.lastName} → ACT`, swapActifEntry: a, swapReservisteEntry: r }
-      }
-      case 'activate_rookie': {
-        const rec = findEntry(addRecruId); const act = findEntry(addDeactifId)
-        if (!rec || !act) return null
-        return { localId, type: 'activate_rookie', label: `Recrue : ${rec.lastName} → ACT / ${act.lastName} → RÉS`, recrueEntry: rec, deactivateActifEntry: act }
-      }
-      case 'demote_rookie': {
-        const e = findEntry(addDemoteId)
-        if (!e) return null
-        return { localId, type: 'demote_rookie', label: `Retour banque : ${e.lastName}, ${e.firstName} → REC`, demoteEntry: e }
+      case 'change_status': {
+        const e1 = findEntry(addEntry1Id)
+        if (!e1 || !addNewType1) return null
+        const item: CartItem = {
+          localId, type: 'change_status',
+          label: `Statut : ${e1.lastName}, ${e1.firstName} → ${STATUS_SHORT[addNewType1]}`,
+          entry1: e1, newType1: addNewType1,
+        }
+        if (addEntry2Id && addNewType2) {
+          const e2 = findEntry(addEntry2Id)
+          if (e2) {
+            item.entry2 = e2
+            item.newType2 = addNewType2
+            item.label = `Statut : ${e1.lastName} → ${STATUS_SHORT[addNewType1]} / ${e2.lastName} → ${STATUS_SHORT[addNewType2]}`
+          }
+        }
+        return item
       }
       case 'ltir': {
         const e = findEntry(addLtirId)
@@ -550,31 +553,63 @@ export default function GestionEffectifsManager({
   function renderAddFields() {
     if (!addType || !projected) return null
     switch (addType) {
-      case 'swap':
+      case 'change_status': {
+        const combined = [...projected.actifs, ...projected.reservistes, ...projected.recrues]
+        const e1 = findEntry(addEntry1Id)
+        const e2 = findEntry(addEntry2Id)
+        const options1 = allowedNewStatuses(e1)
+        const options2 = allowedNewStatuses(e2)
         return (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <EntrySelect label="Actif à désactiver"   entries={projected.actifs}      value={addSwapActifId} onChange={setAddSwapActifId} />
-              <EntrySelect label="Réserviste à activer" entries={projected.reservistes} value={addSwapResId}   onChange={setAddSwapResId} />
+              <EntrySelect
+                label="Joueur"
+                entries={combined}
+                value={addEntry1Id}
+                onChange={v => { setAddEntry1Id(v); setAddNewType1('') }}
+              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nouveau statut</label>
+                <select
+                  value={addNewType1}
+                  onChange={e => setAddNewType1(e.target.value as RosterStatus)}
+                  disabled={!e1}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-400"
+                >
+                  <option value="">— Choisir —</option>
+                  {options1.map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+                </select>
+                {e1 && !e1.recrueEligible && (
+                  <p className="text-xs text-gray-400 mt-1">Protection recrue (5 saisons) expirée — retour à la banque impossible.</p>
+                )}
+              </div>
             </div>
-            {renderLockWarning(findEntry(addSwapResId), 'Ce réserviste')}
-          </div>
-        )
-      case 'activate_rookie':
-        return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <EntrySelect label="Recrue à activer"   entries={projected.recrues} value={addRecruId}   onChange={setAddRecruId} />
-            <EntrySelect label="Actif à désactiver" entries={projected.actifs}  value={addDeactifId} onChange={setAddDeactifId} />
-          </div>
-        )
-      case 'demote_rookie': {
-        const eligible = [...projected.actifs, ...projected.reservistes].filter(e => e.recrueEligible)
-        return (
-          <div className="space-y-2">
-            <EntrySelect label="Joueur à renvoyer à la banque de recrues" entries={eligible} value={addDemoteId} onChange={setAddDemoteId} />
-            {eligible.length === 0 && (
-              <p className="text-xs text-gray-400">Aucun actif/réserviste encore admissible à la banque de recrues (protection de 5 saisons expirée pour les autres).</p>
-            )}
+            {renderLockWarning(addNewType1 === 'actif' ? e1 : undefined, 'Ce joueur')}
+
+            <div className="pt-3 border-t border-gray-100 space-y-4">
+              <p className="text-xs text-gray-500">2e joueur (optionnel — pour un échange en une seule action)</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <EntrySelect
+                  label="Joueur"
+                  entries={combined.filter(e => e.id !== addEntry1Id)}
+                  value={addEntry2Id}
+                  onChange={v => { setAddEntry2Id(v); setAddNewType2('') }}
+                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nouveau statut</label>
+                  <select
+                    value={addNewType2}
+                    onChange={e => setAddNewType2(e.target.value as RosterStatus)}
+                    disabled={!e2}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-400"
+                  >
+                    <option value="">— Choisir —</option>
+                    {options2.map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+                  </select>
+                </div>
+              </div>
+              {renderLockWarning(addNewType2 === 'actif' ? e2 : undefined, 'Ce joueur')}
+            </div>
           </div>
         )
       }
