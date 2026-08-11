@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-08-10
+Derniere mise a jour: 2026-08-11
 
 ## Role du fichier
 
@@ -20,6 +20,37 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-08-11
+
+**[Fix] — 328/330 lignes `pooler_rosters` mal datées (saisie au lieu du début de saison), staging** :
+- Point de départ : David a signalé un blocage de délai de réactivation sur Sam Rinzel chez
+  Paule après un échange saisi au 11 octobre 2025. Investigation a révélé 3 lignes
+  `roster_change_log` résiduelles datées d'aujourd'hui (tests précédents) — supprimées.
+- En vérifiant le cas voisin (David Jiricek), David a remarqué que sa ligne était datée du
+  9 août 2026 (date réelle de saisie) au lieu du début de saison — question qui a mené à
+  vérifier l'ensemble de la saison plutôt qu'un cas isolé.
+- **Ampleur confirmée** : sur 330 lignes `pooler_rosters` (saison 2025-26), seulement 2
+  étaient correctement datées (le vrai échange du 11 octobre). Les 328 autres portaient la
+  date réelle de saisie (8-9 août 2026) au lieu du 7 octobre 2025 (`saison_start_date`).
+  Même chose pour `roster_change_log` : 298 lignes de bruit sur 302 (seules 4, liées à
+  l'échange, étaient légitimes).
+- **Cause** (`app/app/admin/rosters/RosterManager.tsx:115`) : le bouton « Mode init » —
+  qui force `added_at` au début de saison et n'écrit aucune ligne de journal
+  (`adminInitRosterAction`, conçu "sans validations, sans snapshots") — est un état
+  purement local au navigateur (`useState(false)`), désactivé par défaut et réinitialisé à
+  chaque rechargement de page. Sur une saisie de 8 poolers étalée sur 2 jours avec
+  plusieurs rechargements probables, facile à oublier de réactiver.
+- **Correctifs appliqués (staging)** :
+  1. `pooler_rosters.added_at` ramené à `2025-10-07T12:00:00Z` pour les 328 lignes
+     concernées (`UPDATE ... WHERE added_at LIKE '2026%'`).
+  2. Les 298 lignes `roster_change_log` de bruit supprimées (pas juste redatées — le mode
+     init n'est censé en écrire aucune, donc aligné avec le comportement voulu plutôt que
+     de garder des événements `old_type=null` qui n'auraient pas dû exister).
+  3. `initMode` démarre maintenant à `true` par défaut sur cette page — son seul but est la
+     saisie des rosters de départ, donc plus cohérent que de compter sur un bouton qu'on
+     peut oublier d'activer. Reste basculable au besoin (cas rares hors init).
+- Prod non touchée (aucune donnée saisie là-bas pour cette reconstruction).
 
 ### 2026-08-10
 
