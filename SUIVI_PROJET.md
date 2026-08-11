@@ -52,6 +52,44 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
      peut oublier d'activer. Reste basculable au besoin (cas rares hors init).
 - Prod non touchée (aucune donnée saisie là-bas pour cette reconstruction).
 
+**[Fix] — J.J. Peterka à 0 pt malgré un statut actif correct depuis le 7 octobre (staging)** :
+- Repéré par David dans l'alignement de Vincent : `MJ` à « — » et 0 pt alors que la fenêtre
+  active était correcte (contrairement au cas du 328/330 ci-dessus, réglé juste avant).
+- **Cause** : `players.nhl_id` était `null` pour Peterka (id=1343) — sans lui, aucun match
+  ne peut jamais être relié, peu importe la fenêtre `added_at→removed_at`. Pas un problème
+  de diminutif (le nom `John-Jason Peterka` correspond exactement dans l'API NHL,
+  `nhl_id=8482175`) : `backfill_nhl_ids.py` n'avait simplement jamais été relancé depuis
+  qu'il a commencé à jouer pour de vrai cette saison. Particularité pour staging : ce
+  script fait partie du pipeline hebdomadaire automatique (`run_pipeline.py`, lundi 6h UTC)
+  mais **seulement contre prod** — staging ne se met à jour que si on le lance dessus
+  manuellement, donc ce genre de retard y est normal et pourrait resurgir pour d'autres
+  joueurs qui débutent en cours de saison.
+- **Erreur en cours de route** : `backfill_nhl_ids.py` charge `.env` par défaut (pas
+  `.env.staging`, contrairement aux autres scripts one-off utilisés cette session) — mon
+  premier `--dry-run` et la première exécution réelle ont donc tourné contre **PROD** par
+  erreur. Impact vérifié et sans collatéral : une seule ligne modifiée (le `nhl_id` de
+  Peterka, id=1343 dans les deux bases), correction légitime identique des deux côtés.
+  Relancé correctement ensuite avec les variables d'env de staging exportées explicitement.
+- **Gap découvert dans `backfill_regular_game_logs.py`** : une fois le `nhl_id` posé, le
+  rejeu du calendrier n'a récupéré que 4 matchs sur 82 — le script saute les **dates**
+  déjà en base (optimisation normale pour un run de routine), donc les ~187 dates déjà
+  traitées pour d'autres joueurs avant que Peterka ait un `nhl_id` ne sont jamais
+  revisitées pour lui. Pas de flag `--force` existant pour ce cas.
+- **Correctif appliqué** : script one-off (non committé) allant chercher directement le
+  journal de matchs complet de Peterka via l'API NHL par joueur
+  (`/v1/player/{nhl_id}/game-log/...`, 1 seul appel pour toute la saison) plutôt que de
+  rejouer les 197 dates ; heure exacte de chaque match récupérée via boxscore par
+  `gameId` (nécessaire pour `statusAt()`, `standings.ts:261`). 82 lignes upsertées
+  (`on_conflict=player_id,game_date,season,game_type`, donc sans risque de doublon) — 25B
+  22A (47 pts) au total.
+- **Audit de portée** : comparé les 110 joueurs actuellement rosterés en staging *avec* un
+  `nhl_id` déjà valide contre leurs vrais matchs joués (API NHL) — **aucun écart trouvé**.
+  Peterka était un cas isolé ; les ~564 joueurs rosterés/sous contrat sans `nhl_id` restant
+  n'ont légitimement aucun match NHL cette saison (prospects, etc.), déjà tous essayés sans
+  correspondance par `backfill_nhl_ids.py`.
+- Aucun changement de code cette fois — script one-off, pas un bug reproductible du
+  pipeline lui-même (contrairement au bug de scraping du 2026-08-08).
+
 ### 2026-08-10
 
 **[Refactor] — Fusion Ajustement / Activation recrue / Retour banque en une seule action « Changement de statut »** (`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `actions.ts`) :
