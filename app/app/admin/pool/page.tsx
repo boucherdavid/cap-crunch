@@ -9,6 +9,7 @@ import ConfigTabsClient from '../config/ConfigTabsClient'
 import FeedbackAdminView from '../feedback/FeedbackAdminView'
 import SuiviTable from '../suivi/SuiviTable'
 import type { Event } from '../suivi/SuiviTable'
+import JournalExport from '../suivi/JournalExport'
 import PlayerMerge from '../joueurs/PlayerMerge'
 import AddProspectForm from '../draft-center/AddProspectForm'
 import DraftProspectActions from '../draft-center/DraftProspectActions'
@@ -143,7 +144,16 @@ export default async function AdminPoolPage({
 
   // ── Suivi ─────────────────────────────────────────────────────────────────
   let events: Event[] = []
+  let suiviSeasons: { id: number; label: string }[] = []
+  let suiviDefaultSeasonId: number | null = null
   if (activeTab === 'suivi') {
+    const { data: seasonsData } = await supabase
+      .from('pool_seasons')
+      .select('id, season, is_active, is_playoff')
+      .order('season', { ascending: false })
+    suiviSeasons = (seasonsData ?? []).map(s => ({ id: s.id, label: s.is_playoff ? `${s.season} (séries)` : s.season }))
+    suiviDefaultSeasonId = (seasonsData ?? []).find(s => s.is_active && !s.is_playoff)?.id ?? seasonsData?.[0]?.id ?? null
+
     const [rcr, txr] = await Promise.all([
       supabase.from('roster_change_log').select('id, change_type, old_type, new_type, changed_at, is_admin_override, players(first_name, last_name), poolers!roster_change_log_pooler_id_fkey(name)').order('changed_at', { ascending: false }).limit(100),
       supabase.from('transactions').select('id, notes, created_at, poolers!transactions_created_by_fkey(name)').order('created_at', { ascending: false }).limit(50),
@@ -341,6 +351,7 @@ export default async function AdminPoolPage({
       {activeTab === 'suivi' && (
         <div className="space-y-6">
           <h1 className="text-2xl font-bold text-gray-800">{'Suivi de l\'activité'}</h1>
+          <JournalExport seasons={suiviSeasons} defaultSeasonId={suiviDefaultSeasonId} />
           <SuiviTable events={events} />
         </div>
       )}

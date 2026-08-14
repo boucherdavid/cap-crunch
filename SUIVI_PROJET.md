@@ -21,6 +21,29 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-13 (suite)
+
+**[Feature] — Export CSV du journal complet d'une saison** (`app/app/admin/suivi/export-actions.ts`,
+`app/app/admin/suivi/JournalExport.tsx`, `app/app/admin/pool/page.tsx`) :
+- Demandé par David : une preuve/backup exportable de tous les mouvements d'une saison
+  (alignement + transactions), triée par date effective, pour utilisation dans un tableur
+  externe si l'app venait à ne plus fonctionner.
+- Plutôt qu'une nouvelle page, ajouté un bloc « Journal complet d'une saison » à l'onglet
+  Suivi existant (`/admin/pool?tab=suivi`) — sélecteur de saison + bouton d'export,
+  indépendant du fil d'activité affiché au-dessus (qui reste plafonné à 100/50 lignes
+  récentes, pensé pour un coup d'œil rapide, pas un export complet).
+- **Une seule source suffit** : `roster_change_log` capture déjà tous les mouvements réels
+  peu importe l'outil d'origine (`/gestion-effectifs`, `/admin/historique`,
+  `/admin/transactions` — ce dernier y écrit aussi en plus de `transactions`, voir
+  `CLAUDE.md` section 6) — pas besoin de fusionner deux sources séparées comme le fait le
+  fil d'activité actuel (qui, lui, duplique déjà l'info pour les transactions : une ligne
+  générique "Transaction" en plus des lignes détaillées par joueur).
+- Export CSV point-virgule (délimiteur attendu par Excel en locale française) avec BOM
+  UTF-8 (accents), date effective en premier (`YYYY-MM-DD HH:mm`, fuseau Toronto, format
+  qui reste trié correctement même en texte brut), une ligne par mouvement avec joueur/choix,
+  action, ancien/nouveau statut, et si la date a été forcée manuellement.
+- Requête paginée (dépasse la limite Supabase de 1000 lignes sur une saison complète).
+
 ### 2026-08-13
 
 **[Refactor] — Fusion Ajustement/Activation recrue/Retour banque en Changement de statut** — voir commit
