@@ -660,9 +660,13 @@ export default function GestionEffectifsManager({
   }
 
   const visibleActions = ACTION_DEFS.filter(a => isAdmin || !a.adminOnly)
-  const poolerName = isAdmin
-    ? (poolers?.find(p => p.id === poolerId)?.name ?? '')
-    : (selfPoolerName ?? '')
+  // La liste de poolers n'est fournie que par le hub admin (/admin/effectifs) — la page
+  // personnelle (/gestion-effectifs) n'agit jamais que sur son propre pooler, même pour
+  // un admin, donc le sélecteur ne doit dépendre de rien d'autre que de la présence de
+  // cette liste (pas de isAdmin seul, sinon un admin sur sa propre page voit un menu
+  // déroulant vide — repéré par David le 2026-08-13).
+  const showPoolerPicker = !!poolers && poolers.length > 0
+  const poolerName = poolers?.find(p => p.id === poolerId)?.name ?? selfPoolerName ?? ''
 
   // ── Signing budget pill helper ─────────────────────────────────────────────
 
@@ -681,8 +685,8 @@ export default function GestionEffectifsManager({
   return (
     <div className="max-w-3xl mx-auto space-y-6">
 
-      {/* Pooler selector (admin) */}
-      {isAdmin && (
+      {/* Pooler selector — hub admin seulement (liste fournie par l'appelant) */}
+      {showPoolerPicker && (
         <div className="bg-white rounded-lg shadow p-5">
           <label className="block text-sm font-medium text-gray-700 mb-1">Pooler</label>
           <select value={poolerId} onChange={e => setPoolerId(e.target.value)}

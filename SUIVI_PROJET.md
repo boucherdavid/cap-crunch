@@ -52,6 +52,19 @@ et le résumé de la page d'accueil** (`app/lib/standings.ts`, `app/app/poolers/
   cherchant tous les usages de `playerType === 'actif'` après le signalement initial sur
   `/poolers/[id]`.
 
+**[Fix] — Sélecteur de pooler vide sur `/gestion-effectifs` (page personnelle, pas le hub admin)**
+(`app/app/gestion-effectifs/GestionEffectifsManager.tsx`) :
+- David (admin) ne voyait aucune option dans le menu déroulant « Pooler » sur
+  `/gestion-effectifs` — contrairement à `/admin/effectifs?tab=mouvements`, cette page ne
+  récupère/passe jamais la liste des poolers, mais le sélecteur s'affichait quand même
+  (conditionné sur `isAdmin` seul, pas sur la présence réelle de la liste), vide et inutile.
+- **Décision** : `/gestion-effectifs` doit toujours agir sur son propre pooler, même pour
+  un admin qui teste sa propre page — `/admin/effectifs` couvre déjà le cas "choisir
+  n'importe quel pooler". Sélecteur maintenant conditionné sur `!!poolers && poolers.length
+  > 0` (donc seulement quand le hub admin le fournit) au lieu de `isAdmin`. `poolerName`
+  (ligne de confirmation avant soumission) corrigé en même temps — dépendait aussi de
+  `isAdmin` seul et se serait retrouvé vide dans le même scénario.
+
 ### 2026-08-11
 
 **[Fix] — 328/330 lignes `pooler_rosters` mal datées (saisie au lieu du début de saison), staging** :
