@@ -31,7 +31,7 @@ export default function SummaryTable({ standings }: { standings: PoolerStanding[
           </thead>
           <tbody className="divide-y divide-gray-100">
             {standings.map((pooler, i) => {
-              const active = pooler.players.filter(p => p.playerType === 'actif')
+              const active = pooler.players.filter(p => p.playerType === 'actif' && p.stillRostered)
               const goals    = active.reduce((s, p) => s + p.goals, 0)
               const assists  = active.reduce((s, p) => s + p.assists, 0)
               const wins     = active.reduce((s, p) => s + p.goalieWins, 0)

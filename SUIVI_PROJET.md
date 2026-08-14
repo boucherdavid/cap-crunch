@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-08-11
+Derniere mise a jour: 2026-08-13
 
 ## Role du fichier
 
@@ -20,6 +20,37 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-08-13
+
+**[Refactor] — Fusion Ajustement/Activation recrue/Retour banque en Changement de statut** — voir commit
+`901b2dc` (déjà fait la veille, documenté ici pour référence croisée avec les échanges de
+cette session qui l'utilisent).
+
+**[Fix] — Joueur parti d'un pooler affiché comme actif dans `/poolers/[id]`, `/classement`
+et le résumé de la page d'accueil** (`app/lib/standings.ts`, `app/app/poolers/[id]/PoolerPageTabs.tsx`,
+`app/app/classement/ClassementTable.tsx`, `app/components/SummaryTable.tsx`) :
+- Repéré par David : après avoir signé Nick Schmaltz chez Paule (1er novembre, via
+  « Changement de statut » + « Libération » combinés dans un même panier — a confirmé que
+  la soumission combinée fonctionne bien, doute initial dissipé après vérification en
+  base : les deux lignes de `roster_change_log` sont créées à la même seconde), Jonathan
+  Marchessault (retiré le même jour) continuait de s'afficher identique à un joueur
+  actif — pas grisé comme un réserviste/LTIR, malgré son départ complet du pooler.
+- **Cause** : `PlayerContrib.playerType` (retourné par `buildStandings()`) reflète le
+  `player_type` de la **dernière ligne `pooler_rosters`** pour ce (pooler, joueur), qui
+  reste `'actif'` même après un retrait complet (`is_active=false`, `removed_at` posé) —
+  rien ne distinguait "encore sur le roster mais pas actif" (réserviste/LTIR/recrue, déjà
+  grisé) de "plus du tout sur le roster" (jamais grisé, car `playerType` vaut quand même
+  `'actif'`).
+- **Correctif** : nouveau champ `PlayerContrib.stillRostered` (`true` seulement si la
+  dernière ligne a `removed_at === null`, donc encore ouverte). Les 3 endroits qui
+  dérivaient un style "actif" de `playerType === 'actif'` seul vérifient maintenant aussi
+  `stillRostered` — grisé + badge **« PARTI »** dans les tableaux de points, exclu du
+  sous-total B/A/V/DP/BL du résumé page d'accueil (le total de points, lui, était déjà
+  correct — calculé période par période, indépendant du statut actuel).
+- Bug systémique (dupliqué dans les 3 fichiers, pas propre à une seule page) — trouvé en
+  cherchant tous les usages de `playerType === 'actif'` après le signalement initial sur
+  `/poolers/[id]`.
 
 ### 2026-08-11
 

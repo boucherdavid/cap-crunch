@@ -164,8 +164,11 @@ function PeriodPopup({ playerName, isGoalie, periods, totalPoints, onClose }: {
 
 function PlayerStatsRow({ p, streaks, onPeriodClick }: { p: PlayerContrib; streaks: Record<number, StreakInfo>; onPeriodClick?: (p: PlayerContrib) => void }) {
   const isGoalie = p.position === 'G'
-  const isActif = p.playerType === 'actif'
-  const badge = TYPE_BADGE[p.playerType]
+  const isActif = p.playerType === 'actif' && p.stillRostered
+  // Un joueur qui a quitté le pooler (échangé/libéré) garde son dernier playerType
+  // ('actif' la plupart du temps) — sans ce cas à part il s'affichait identique à un
+  // vrai actif malgré ses points déjà gagnés et son départ (repéré par David le 2026-08-13).
+  const badge = !p.stillRostered ? 'PARTI' : TYPE_BADGE[p.playerType]
   return (
     <tr className={isActif ? 'hover:bg-gray-50' : 'hover:bg-gray-50 opacity-60'}>
       <td className="px-4 py-2">

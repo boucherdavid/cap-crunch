@@ -18,6 +18,7 @@ export type PlayerContrib = {
   lastName: string
   position: string
   playerType: string
+  stillRostered: boolean  // false = a quitté le pooler (échangé/libéré) — playerType reflète son dernier statut, pas son état actuel
   teamAbbrev: string
   gamesPlayed: number
   goals: number
@@ -310,6 +311,7 @@ export async function buildStandings(supabase: any, seasonId: string | number): 
       lastName:       player.last_name,
       position:       player.position,
       playerType:     currentRow.player_type,
+      stillRostered:  currentRow.removed_at === null,
       teamAbbrev:     player.teams?.code ?? '—',
       gamesPlayed:    periods.reduce((s, p) => s + p.gamesPlayed, 0),
       goals:          total.goals,
