@@ -21,6 +21,21 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-16 (suite 2)
+
+**[Feature] — Étend le sélecteur de statut aux joueurs LTIR échangés**
+(`app/app/admin/transactions/TransactionBuilder.tsx`) :
+- David a signalé un cas manquant : un pooler avec un joueur en LTIR peut vouloir l'échanger
+  directement (plutôt que le réactiver puis le mettre au ballotage faute de place) ; le
+  receveur doit alors pouvoir choisir son statut d'arrivée.
+- Sélecteur du résumé « Échanges » ([TransactionBuilder.tsx:333](app/app/admin/transactions/TransactionBuilder.tsx#L333)) étendu : `old_player_type === 'ltir'`
+  déclenche maintenant aussi le sélecteur, avec une option LTIR ajoutée en plus
+  d'Actif/Réserviste (le receveur peut aussi le garder en LTIR).
+- Aucun changement backend requis : `submitTransactionAction` (`actions.ts`) accepte déjà
+  n'importe quel `new_player_type` sur la branche `transfer`, et `validateFinalRoster`
+  exclut déjà les LTIR du calcul de cap et des limites de roster.
+- Validé : `npx tsc --noEmit` propre.
+
 ### 2026-08-16 (suite)
 
 **[Feature] — Choix du statut Actif/Réserviste pour un joueur reçu dans un échange**

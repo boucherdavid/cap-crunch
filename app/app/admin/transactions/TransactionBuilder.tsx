@@ -330,7 +330,7 @@ export default function TransactionBuilder({ poolers, saison }: { poolers: Poole
                       <span className="font-medium text-blue-700">{i.sideLabel}</span> donne {i.label}
                     </span>
                     <div className="flex items-center gap-2 ml-3">
-                      {i.player_id && (i.old_player_type === 'actif' || i.old_player_type === 'reserviste') && (
+                      {i.player_id && (i.old_player_type === 'actif' || i.old_player_type === 'reserviste' || i.old_player_type === 'ltir') && (
                         <select
                           value={i.new_player_type}
                           onChange={e => updateItemDestType(i.tempId, e.target.value)}
@@ -338,6 +338,7 @@ export default function TransactionBuilder({ poolers, saison }: { poolers: Poole
                         >
                           <option value="actif">Actif</option>
                           <option value="reserviste">Réserviste</option>
+                          <option value="ltir">LTIR</option>
                         </select>
                       )}
                       <button onClick={() => removeItem(i.tempId)} className="text-red-400 hover:text-red-600 text-xs">✕</button>
