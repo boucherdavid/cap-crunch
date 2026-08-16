@@ -21,6 +21,21 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-16 (suite)
+
+**[Feature] — Choix du statut Actif/Réserviste pour un joueur reçu dans un échange**
+(`app/app/admin/transactions/TransactionBuilder.tsx`) :
+- David a remarqué que le joueur reçu dans un échange héritait automatiquement du statut
+  qu'il avait chez le pooler donneur (`new_player_type = entry.player_type` dans
+  `addTransferPlayer`), sans possibilité de le recevoir Réserviste plutôt qu'Actif (ou
+  l'inverse) si le roster du receveur est déjà plein sur ce statut.
+- Ajouté un sélecteur Actif/Réserviste directement sur la ligne « Échanges » du résumé de
+  transaction (`updateItemDestType`), visible seulement pour les items `transfer` avec
+  `player_id` dont le statut source est `actif` ou `reserviste` — les recrues et joueurs
+  LTIR continuent d'hériter automatiquement de leur statut (protection recrue, LTIR suit
+  le joueur), comme avant.
+- Validé : `npx tsc --noEmit` propre.
+
 ### 2026-08-16
 
 **[Fix] — Retrait du bouton « Ballotage » dans `/admin/transactions`** (`app/app/admin/transactions/TransactionBuilder.tsx`,

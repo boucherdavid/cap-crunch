@@ -291,6 +291,8 @@ export default function TransactionBuilder({ poolers, saison }: { poolers: Poole
 
   const addItem = (item: TxItem) => setItems(prev => [...prev, item])
   const removeItem = (tempId: string) => setItems(prev => prev.filter(i => i.tempId !== tempId))
+  const updateItemDestType = (tempId: string, newType: string) =>
+    setItems(prev => prev.map(i => i.tempId === tempId ? { ...i, new_player_type: newType } : i))
 
   const handleSubmit = async () => {
     if (items.length === 0) return
@@ -327,7 +329,19 @@ export default function TransactionBuilder({ poolers, saison }: { poolers: Poole
                     <span className="text-gray-700">
                       <span className="font-medium text-blue-700">{i.sideLabel}</span> donne {i.label}
                     </span>
-                    <button onClick={() => removeItem(i.tempId)} className="text-red-400 hover:text-red-600 text-xs ml-3">✕</button>
+                    <div className="flex items-center gap-2 ml-3">
+                      {i.player_id && (i.old_player_type === 'actif' || i.old_player_type === 'reserviste') && (
+                        <select
+                          value={i.new_player_type}
+                          onChange={e => updateItemDestType(i.tempId, e.target.value)}
+                          className="text-xs border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="actif">Actif</option>
+                          <option value="reserviste">Réserviste</option>
+                        </select>
+                      )}
+                      <button onClick={() => removeItem(i.tempId)} className="text-red-400 hover:text-red-600 text-xs">✕</button>
+                    </div>
                   </div>
                 ))}
               </div>
