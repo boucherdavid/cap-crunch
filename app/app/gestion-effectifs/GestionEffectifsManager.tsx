@@ -33,6 +33,7 @@ type CartItem = {
   ltirEntry?: RosterEntry
   returnLtirEntry?: RosterEntry
   deactivateActifEntry?: RosterEntry
+  deactivateNewType?: 'reserviste' | 'ltir'
   releaseEntry?: RosterEntry
   newPlayerEntry?: RosterEntry
   newPlayerType?: 'actif' | 'reserviste'
@@ -104,7 +105,7 @@ function projectRoster(roster: RosterForPooler, cart: CartItem[]): RosterForPool
         break
       case 'return_ltir':
         if (item.deactivateActifEntry && map.has(item.deactivateActifEntry.id))
-          map.get(item.deactivateActifEntry.id)!.playerType = 'reserviste'
+          map.get(item.deactivateActifEntry.id)!.playerType = item.deactivateNewType ?? 'reserviste'
         if (item.returnLtirEntry && map.has(item.returnLtirEntry.id))
           map.get(item.returnLtirEntry.id)!.playerType = 'actif'
         break
@@ -145,6 +146,7 @@ function cartItemToInput(item: CartItem): BatchActionInput {
     entry2Id:          item.entry2?.id,
     newType2:          item.newType2,
     deactivateActifId: item.deactivateActifEntry?.id,
+    deactivateNewType: item.deactivateNewType,
     ltirEntryId:       item.ltirEntry?.id,
     returnLtirEntryId: item.returnLtirEntry?.id,
     releaseEntryId:    item.releaseEntry?.id,
@@ -313,6 +315,7 @@ export default function GestionEffectifsManager({
   const [addEntry2Id, setAddEntry2Id]       = useState(0)
   const [addNewType2, setAddNewType2]       = useState<RosterStatus | ''>('')
   const [addDeactifId, setAddDeactifId]     = useState(0)
+  const [addDeactifNewType, setAddDeactifNewType] = useState<'reserviste' | 'ltir'>('reserviste')
   const [addLtirId, setAddLtirId]           = useState(0)
   const [addReturnLtirId, setAddReturnLtirId] = useState(0)
   const [addReleaseId, setAddReleaseId]     = useState(0)
@@ -390,7 +393,7 @@ export default function GestionEffectifsManager({
   function resetAddForm() {
     setAddType(null)
     setAddEntry1Id(0); setAddNewType1(''); setAddEntry2Id(0); setAddNewType2('')
-    setAddDeactifId(0)
+    setAddDeactifId(0); setAddDeactifNewType('reserviste')
     setAddLtirId(0); setAddReturnLtirId(0)
     setAddReleaseId(0); setAddNewPlayer(null)
     setAddNewPlayerType('actif')
@@ -400,7 +403,7 @@ export default function GestionEffectifsManager({
   function handleSelectAddType(type: ActionType) {
     setAddType(type)
     setAddEntry1Id(0); setAddNewType1(''); setAddEntry2Id(0); setAddNewType2('')
-    setAddDeactifId(0)
+    setAddDeactifId(0); setAddDeactifNewType('reserviste')
     setAddLtirId(0); setAddReturnLtirId(0)
     setAddReleaseId(0); setAddNewPlayer(null)
     setSearchKey(k => k + 1)
@@ -481,7 +484,11 @@ export default function GestionEffectifsManager({
       case 'return_ltir': {
         const ret = findEntry(addReturnLtirId); const act = findEntry(addDeactifId)
         if (!ret || !act) return null
-        return { localId, type: 'return_ltir', label: `Retour LTIR : ${ret.lastName} → ACT / ${act.lastName} → RÉS`, returnLtirEntry: ret, deactivateActifEntry: act }
+        return {
+          localId, type: 'return_ltir',
+          label: `Retour LTIR : ${ret.lastName} → ACT / ${act.lastName} → ${addDeactifNewType === 'ltir' ? 'LTIR' : 'RÉS'}`,
+          returnLtirEntry: ret, deactivateActifEntry: act, deactivateNewType: addDeactifNewType,
+        }
       }
       case 'ltir_sign': {
         const e = findEntry(addLtirId)
@@ -621,6 +628,18 @@ export default function GestionEffectifsManager({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <EntrySelect label="Joueur LTIR à réintégrer" entries={projected.ltir}   value={addReturnLtirId} onChange={setAddReturnLtirId} />
               <EntrySelect label="Actif à désactiver"       entries={projected.actifs} value={addDeactifId}    onChange={setAddDeactifId} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ce joueur devient</label>
+              <select
+                value={addDeactifNewType}
+                onChange={e => setAddDeactifNewType(e.target.value as 'reserviste' | 'ltir')}
+                disabled={!addDeactifId}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-400"
+              >
+                <option value="reserviste">Réserviste</option>
+                <option value="ltir">LTIR (coïncide avec une nouvelle blessure)</option>
+              </select>
             </div>
             {renderLockWarning(findEntry(addReturnLtirId), 'Ce joueur')}
           </div>

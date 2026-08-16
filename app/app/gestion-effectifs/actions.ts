@@ -75,6 +75,7 @@ export type BatchActionInput = {
   ltirEntryId?: number
   returnLtirEntryId?: number
   deactivateActifId?: number
+  deactivateNewType?: 'reserviste' | 'ltir'
   newPlayerId?: number
   newPlayerType?: 'actif' | 'reserviste'
   releaseEntryId?: number
@@ -436,7 +437,7 @@ export async function submitBatchAction(input: {
 
         case 'return_ltir':
           if (!action.returnLtirEntryId || !action.deactivateActifId) throw new Error('Joueurs manquants (retour LTIR)')
-          await deactivate(action.deactivateActifId, 'reserviste')
+          await deactivate(action.deactivateActifId, action.deactivateNewType ?? 'reserviste')
           await activate(action.returnLtirEntryId, 'ltir', /* withDelayCheck */ true)
           break
 

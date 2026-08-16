@@ -21,6 +21,24 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-16 (suite 3)
+
+**[Feature] — « Retour LTIR » : le joueur qui fait de la place peut aller sur LTIR au lieu de Réserviste**
+(`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `app/app/gestion-effectifs/actions.ts`) :
+- David a signalé un blocage réel : quand un joueur revient de la LTIR alors que le roster
+  actif est déjà plein (12A/6D/2G), l'action « Retour LTIR » forçait systématiquement à
+  démouvoir l'actif libérant la place vers Réserviste — or ce joueur est parfois lui-même en
+  train de se blesser au même moment, et devrait plutôt aller sur LTIR (ce qui, en prime,
+  sort sa masse salariale du calcul de cap, contrairement à Réserviste qui compte toujours).
+- Ajouté un sélecteur « Ce joueur devient » (Réserviste / LTIR) dans le formulaire Retour
+  LTIR — `deactivateNewType` propagé de `CartItem` → `BatchActionInput` →
+  `deactivate(action.deactivateActifId, action.deactivateNewType ?? 'reserviste')` côté
+  serveur. Défaut `reserviste` inchangé si l'admin ne touche pas au nouveau sélecteur.
+- Le backend `deactivate()` acceptait déjà `'ltir'` comme `toType` (utilisé par l'action
+  simple `LTIR` existante) — aucune nouvelle validation nécessaire, la fonction gère déjà
+  `checkFutureRosterConflict`/journalisation pour ce cas.
+- Validé : `npx tsc --noEmit` propre.
+
 ### 2026-08-16 (suite 2)
 
 **[Feature] — Étend le sélecteur de statut aux joueurs LTIR échangés**
