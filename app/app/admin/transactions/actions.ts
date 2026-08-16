@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/rosterTypeChange'
 
-export type ActionType = 'transfer' | 'promote' | 'sign' | 'reactivate' | 'release' | 'type_change' | 'ballotage'
+export type ActionType = 'transfer' | 'promote' | 'sign' | 'reactivate' | 'release' | 'type_change'
 
 export type TxItemPayload = {
   action_type: ActionType
@@ -213,7 +213,7 @@ export async function submitTransactionAction(
       continue
     }
 
-    if ((action_type === 'transfer' || action_type === 'ballotage') && player_id) {
+    if (action_type === 'transfer' && player_id) {
       const fromRoster = virtual.get(from_pooler_id!)
       const entry = fromRoster?.find(e => e.player_id === player_id)
       if (!entry) return { error: `Joueur (id: ${player_id}) introuvable dans le roster source.` }
@@ -324,7 +324,7 @@ export async function submitTransactionAction(
       continue
     }
 
-    if ((action_type === 'transfer' || action_type === 'ballotage') && player_id) {
+    if (action_type === 'transfer' && player_id) {
       const destType = new_player_type ?? 'actif'
       const conflict = await checkFutureRosterConflict(supabase, to_pooler_id!, player_id, saisonId, txTs, destType)
       if (conflict.error) return conflict

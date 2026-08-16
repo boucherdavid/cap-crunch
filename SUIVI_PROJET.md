@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-08-13
+Derniere mise a jour: 2026-08-16
 
 ## Role du fichier
 
@@ -20,6 +20,22 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-08-16
+
+**[Fix] — Retrait du bouton « Ballotage » dans `/admin/transactions`** (`app/app/admin/transactions/TransactionBuilder.tsx`,
+`app/app/admin/transactions/actions.ts`) :
+- David a signalé que le bouton orange « Ballotage » (à côté de « Donner » dans la liste de
+  joueurs d'un pooler) était mélangeant : il assignait automatiquement le joueur au Pooler B
+  sélectionné pour l'échange, alors que le ballotage devrait pouvoir se faire sans désigner
+  de réclamant précis dans cet outil — ce cas passe déjà par le bouton « Libérer joueur »
+  (Ajustements) plus bas.
+- Retiré : bouton Ballotage, fonction `addBallotagePlayer`, section résumé « Ballotage »,
+  et le type `'ballotage'` de `ActionType`/`submitTransactionAction` (fusionné avec la
+  branche `transfer`, logique identique). Confirmé que `admin/transactions/actions.ts`
+  n'est importé que par `TransactionBuilder.tsx` — aucun impact sur les mécanismes de
+  ballotage distincts et toujours actifs dans `/gestion-effectifs` et `/admin/historique`.
+- Validé : `npx tsc --noEmit` propre.
 
 ### 2026-08-13 (suite)
 

@@ -334,29 +334,12 @@ export default function TransactionBuilder({ poolers, saison }: { poolers: Poole
             </div>
           )}
 
-          {/* Ballotage */}
-          {items.filter(i => i.action_type === 'ballotage').length > 0 && (
-            <div className="mb-3">
-              <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Ballotage</p>
-              <div className="space-y-1">
-                {items.filter(i => i.action_type === 'ballotage').map(i => (
-                  <div key={i.tempId} className="flex items-center justify-between text-sm px-3 py-1.5 bg-orange-50 rounded">
-                    <span className="text-gray-700">
-                      <span className="font-medium text-orange-600">{i.sideLabel}</span> cède {i.label}
-                    </span>
-                    <button onClick={() => removeItem(i.tempId)} className="text-red-400 hover:text-red-600 text-xs ml-3">✕</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Ajustements */}
-          {items.filter(i => i.action_type !== 'transfer' && i.action_type !== 'ballotage').length > 0 && (
+          {items.filter(i => i.action_type !== 'transfer').length > 0 && (
             <div className="mb-3">
               <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Ajustements</p>
               <div className="space-y-1">
-                {items.filter(i => i.action_type !== 'transfer' && i.action_type !== 'ballotage').map(i => (
+                {items.filter(i => i.action_type !== 'transfer').map(i => (
                   <div key={i.tempId} className="flex items-center justify-between text-sm px-3 py-1.5 bg-slate-50 rounded">
                     <span className="text-gray-700">
                       <span className="font-medium text-slate-700">{i.sideLabel}</span> — {i.label}
@@ -494,7 +477,7 @@ function PoolerPanelStateful({
   const poolerName = poolers.find(p => p.id === poolerId)?.name ?? '?'
 
   const selectedPlayerIds = new Set(
-    items.filter(i => (i.action_type === 'transfer' || i.action_type === 'ballotage') && (i.from_pooler_id === poolerId)).map(i => i.player_id).filter(Boolean)
+    items.filter(i => i.action_type === 'transfer' && (i.from_pooler_id === poolerId)).map(i => i.player_id).filter(Boolean)
   )
   const selectedPickIds = new Set(
     items.filter(i => i.action_type === 'transfer' && i.from_pooler_id === poolerId && i.pick_id).map(i => i.pick_id)
@@ -508,22 +491,6 @@ function PoolerPanelStateful({
     onAddItem({
       tempId: nextId(),
       action_type: 'transfer',
-      from_pooler_id: poolerId,
-      to_pooler_id: otherPoolerId,
-      player_id: entry.player_id,
-      old_player_type: entry.player_type,
-      new_player_type: entry.player_type,
-      label: `${p.last_name}, ${p.first_name} (${p.teams?.code ?? DASH}) → ${poolers.find(pp => pp.id === otherPoolerId)?.name}`,
-      sideLabel: poolerName,
-    })
-  }
-
-  const addBallotagePlayer = (entry: RosterEntry) => {
-    if (!otherPoolerId) return
-    const p = entry.players
-    onAddItem({
-      tempId: nextId(),
-      action_type: 'ballotage',
       from_pooler_id: poolerId,
       to_pooler_id: otherPoolerId,
       player_id: entry.player_id,
@@ -583,10 +550,7 @@ function PoolerPanelStateful({
                     <div className="flex items-center gap-2">
                       <span className="text-gray-400">{cap > 0 ? fmt(cap) : DASH}</span>
                       {!inTx && otherPoolerId && (
-                        <>
-                          <button onClick={() => addTransferPlayer(entry)} className="text-blue-600 hover:text-blue-800 font-medium text-xs">Donner</button>
-                          <button onClick={() => addBallotagePlayer(entry)} className="text-orange-500 hover:text-orange-700 font-medium text-xs">Ballotage</button>
-                        </>
+                        <button onClick={() => addTransferPlayer(entry)} className="text-blue-600 hover:text-blue-800 font-medium text-xs">Donner</button>
                       )}
                       {inTx && <span className="text-blue-500 font-medium">✓</span>}
                     </div>
