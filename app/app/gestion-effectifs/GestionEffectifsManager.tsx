@@ -36,7 +36,7 @@ type CartItem = {
   deactivateNewType?: 'reserviste' | 'ltir'
   releaseEntry?: RosterEntry
   newPlayerEntry?: RosterEntry
-  newPlayerType?: 'actif' | 'reserviste'
+  newPlayerType?: 'actif' | 'reserviste' | 'recrue'
   newPlayerId?: number
 }
 
@@ -320,7 +320,7 @@ export default function GestionEffectifsManager({
   const [addReturnLtirId, setAddReturnLtirId] = useState(0)
   const [addReleaseId, setAddReleaseId]     = useState(0)
   const [addNewPlayer, setAddNewPlayer]     = useState<PlayerSearchResult | null>(null)
-  const [addNewPlayerType, setAddNewPlayerType] = useState<'actif' | 'reserviste'>('actif')
+  const [addNewPlayerType, setAddNewPlayerType] = useState<'actif' | 'reserviste' | 'recrue'>('actif')
   const [searchKey, setSearchKey]           = useState(0)
 
   // Admin date override
@@ -406,6 +406,7 @@ export default function GestionEffectifsManager({
     setAddDeactifId(0); setAddDeactifNewType('reserviste')
     setAddLtirId(0); setAddReturnLtirId(0)
     setAddReleaseId(0); setAddNewPlayer(null)
+    setAddNewPlayerType('actif')
     setSearchKey(k => k + 1)
   }
 
@@ -443,7 +444,7 @@ export default function GestionEffectifsManager({
     if (!addType || !projected) return null
     const localId = crypto.randomUUID()
 
-    const makeNewEntry = (type: 'actif' | 'reserviste'): RosterEntry => ({
+    const makeNewEntry = (type: 'actif' | 'reserviste' | 'recrue'): RosterEntry => ({
       id: -(Date.now()),
       playerId: addNewPlayer!.id,
       playerType: type,
@@ -497,11 +498,11 @@ export default function GestionEffectifsManager({
       }
       case 'sign': {
         if (!addNewPlayer) return null
-        return { localId, type: 'sign', label: `Signature : ${addNewPlayer.lastName}, ${addNewPlayer.firstName} (${addNewPlayerType})`, newPlayerEntry: makeNewEntry(addNewPlayerType), newPlayerId: addNewPlayer.id, newPlayerType: addNewPlayerType }
+        return { localId, type: 'sign', label: `Signature : ${addNewPlayer.lastName}, ${addNewPlayer.firstName} (${STATUS_LABEL[addNewPlayerType]})`, newPlayerEntry: makeNewEntry(addNewPlayerType), newPlayerId: addNewPlayer.id, newPlayerType: addNewPlayerType }
       }
       case 'ballotage': {
         if (!addNewPlayer) return null
-        return { localId, type: 'ballotage', label: `Ballotage : ${addNewPlayer.lastName}, ${addNewPlayer.firstName} (${addNewPlayerType})`, newPlayerEntry: makeNewEntry(addNewPlayerType), newPlayerId: addNewPlayer.id, newPlayerType: addNewPlayerType }
+        return { localId, type: 'ballotage', label: `Ballotage : ${addNewPlayer.lastName}, ${addNewPlayer.firstName} (${STATUS_LABEL[addNewPlayerType]})`, newPlayerEntry: makeNewEntry(addNewPlayerType), newPlayerId: addNewPlayer.id, newPlayerType: addNewPlayerType }
       }
       case 'release': {
         const e = findEntry(addReleaseId)
@@ -658,10 +659,11 @@ export default function GestionEffectifsManager({
             <PlayerSearch key={searchKey} label={addType === 'ballotage' ? 'Joueur réclamé au ballotage' : 'Joueur à signer'} season={season} onSelect={setAddNewPlayer} />
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Rôle</label>
-              <select value={addNewPlayerType} onChange={e => setAddNewPlayerType(e.target.value as 'actif' | 'reserviste')}
+              <select value={addNewPlayerType} onChange={e => setAddNewPlayerType(e.target.value as 'actif' | 'reserviste' | 'recrue')}
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm">
                 <option value="actif">Actif</option>
                 <option value="reserviste">Réserviste</option>
+                {addType === 'sign' && <option value="recrue">Recrue (agent libre sur ELC)</option>}
               </select>
             </div>
           </div>

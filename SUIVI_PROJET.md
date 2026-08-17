@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-08-16
+Derniere mise a jour: 2026-08-17
 
 ## Role du fichier
 
@@ -20,6 +20,34 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-08-17
+
+**[Feature] — Signer/classer directement un agent libre sur ELC comme recrue, sans passer par `/admin/init`**
+(`app/app/gestion-effectifs/actions.ts`, `app/app/gestion-effectifs/GestionEffectifsManager.tsx`,
+`app/app/admin/transactions/actions.ts`, `app/app/admin/transactions/TransactionBuilder.tsx`) :
+- David a clarifié la répartition voulue entre les deux mécanismes de classement recrue :
+  `/admin/init` → Banque de recrues reste réservé au cas où le joueur a été **repêché par le
+  pool** (pas la LNH) mais n'est **plus** sur son ELC — il faut alors rattacher manuellement
+  `pool_draft_year` pour la fenêtre de protection de 5 saisons, une info que rien d'autre ne
+  peut déduire. Le cas **agent libre encore sur son ELC** (protégé tant que ELC, peu importe
+  `pool_draft_year`) doit pouvoir se faire directement dans le flux normal de signature/
+  changement de statut, sans détour admin.
+- **Éligibilité recrue élargie** (partout où elle est vérifiée pour ce nouveau chemin) :
+  `is_rookie` OU `draft_year` dans la fenêtre 5 saisons OU **statut de contrat `ELC`** —
+  avant, seul `is_rookie`/`draft_year` étaient acceptés, ce qui bloquait un agent libre sur
+  ELC sans historique de repêchage pertinent (ex: universitaire non repêché tout juste signé).
+- **`/gestion-effectifs`** : « Signer agent libre » offre maintenant « Recrue (agent libre sur
+  ELC) » comme destination (en plus d'Actif/Réserviste), et « Changement de statut » vers
+  Recrue fixe automatiquement `rookie_type = 'agent_libre'` quand la ligne n'a jamais été
+  classée (`deactivate()` — remplace l'ancien avertissement « à compléter dans Rosters
+  initiaux »). Le cas repêché par le pool (`rookie_type` déjà posé à `'repeche'` dès le
+  repêchage annuel, voir `admin/repechage/actions.ts`) n'est jamais écrasé — seule une ligne
+  encore non classée bascule vers `agent_libre`.
+- **`/admin/transactions`** : action « Signer » accepte aussi « Recrue » comme nouveau statut,
+  avec la même validation d'éligibilité et le même `rookie_type = 'agent_libre'` posé côté
+  serveur (`submitTransactionAction`).
+- Validé : `npx tsc --noEmit` propre.
 
 ### 2026-08-16 (suite 3)
 

@@ -30,7 +30,7 @@ export type RosterEntry = {
   nhlId: number | null
   capNumber: number | null
   lastDeactivatedAt: string | null  // ISO timestamp de la dernière désactivation (actif→res ou ltir)
-  recrueEligible: boolean  // is_rookie ou draft_year dans la fenêtre de protection 5 saisons — peut retourner à la banque de recrues
+  recrueEligible: boolean  // is_rookie, draft_year dans la fenêtre de 5 saisons, ou statut ELC — peut retourner à la banque de recrues
 }
 
 export type RosterForPooler = {
@@ -77,7 +77,7 @@ export type BatchActionInput = {
   deactivateActifId?: number
   deactivateNewType?: 'reserviste' | 'ltir'
   newPlayerId?: number
-  newPlayerType?: 'actif' | 'reserviste'
+  newPlayerType?: 'actif' | 'reserviste' | 'recrue'
   releaseEntryId?: number
 }
 
@@ -122,7 +122,7 @@ export async function getPoolerRosterAction(
       .select(`
         id, player_id, player_type,
         players (
-          first_name, last_name, position, nhl_id, is_rookie, draft_year,
+          first_name, last_name, position, nhl_id, is_rookie, draft_year, status,
           teams (code),
           player_contracts (season, cap_number)
         )
@@ -157,7 +157,7 @@ export async function getPoolerRosterAction(
     nhlId: r.players?.nhl_id ?? null,
     capNumber: r.players?.player_contracts?.find((c: any) => c.season === season)?.cap_number ?? null,
     lastDeactivatedAt: deactMap.get(r.player_id) ?? null,
-    recrueEligible: !!(r.players?.is_rookie || (r.players?.draft_year != null && r.players.draft_year >= draftYearCutoff)),
+    recrueEligible: !!(r.players?.is_rookie || (r.players?.draft_year != null && r.players.draft_year >= draftYearCutoff) || r.players?.status === 'ELC'),
   }))
 
   return {
@@ -278,12 +278,12 @@ export async function submitBatchAction(input: {
   async function getEntry(entryId: number) {
     const { data } = await db
       .from('pooler_rosters')
-      .select('player_id, player_type, added_at, rookie_type, players (nhl_id, is_rookie, draft_year)')
+      .select('player_id, player_type, added_at, rookie_type, players (nhl_id, is_rookie, draft_year, status)')
       .eq('id', entryId)
       .single()
     return data as {
       player_id: number; player_type: string; added_at: string | null; rookie_type: string | null
-      players: { nhl_id: number | null; is_rookie: boolean | null; draft_year: number | null } | null
+      players: { nhl_id: number | null; is_rookie: boolean | null; draft_year: number | null; status: string | null } | null
     } | null
   }
 
@@ -323,19 +323,25 @@ export async function submitBatchAction(input: {
   async function deactivate(entryId: number, toType: 'reserviste' | 'ltir' | 'recrue') {
     const e = await getEntry(entryId)
     if (!e) throw new Error('Entrée introuvable')
+    const rookieFields: Record<string, unknown> = {}
     if (toType === 'recrue') {
-      const eligible = !!(e.players?.is_rookie || (e.players?.draft_year != null && e.players.draft_year >= draftYearCutoff))
-      if (!eligible) throw new Error('Ce joueur a dépassé la protection recrue (5 saisons) — ne peut plus retourner à la banque')
-      if (!e.rookie_type) {
-        warnings.push('Joueur renvoyé à la banque de recrues sans type recrue défini — à compléter dans Rosters initiaux (Repêché / Agent libre).')
-      }
+      const eligible = !!(
+        e.players?.is_rookie ||
+        (e.players?.draft_year != null && e.players.draft_year >= draftYearCutoff) ||
+        e.players?.status === 'ELC'
+      )
+      if (!eligible) throw new Error('Ce joueur a dépassé la protection recrue (5 saisons) et n\'est pas sur ELC — ne peut plus retourner à la banque')
+      // Jamais classé auparavant (pas passé par le repêchage du pool, qui fixe rookie_type='repeche'
+      // dès la sélection) — seul le cas agent libre/ELC peut être déduit automatiquement ici. Le cas
+      // repêché-mais-plus-sur-ELC (protection 5 saisons) reste manuel via /admin/init (pool_draft_year requis).
+      if (!e.rookie_type) rookieFields.rookie_type = 'agent_libre'
     }
     const conflict = await checkFutureRosterConflict(db, input.poolerId, e.player_id, input.saisonId, changedAt, toType)
     if (conflict.error) throw new Error(conflict.error)
     const { addedAtOverride, warning } = computeTypeChangeAddedAt(e.added_at, changedAt)
     if (warning) warnings.push(warning)
     await db.from('pooler_rosters')
-      .update({ player_type: toType, ...(addedAtOverride ? { added_at: addedAtOverride } : {}) })
+      .update({ player_type: toType, ...(addedAtOverride ? { added_at: addedAtOverride } : {}), ...rookieFields })
       .eq('id', entryId)
     await log(e.player_id, toType === 'ltir' ? 'ltir' : toType === 'recrue' ? 'changement_type' : 'deactivation', e.player_type, toType)
   }
@@ -369,7 +375,7 @@ export async function submitBatchAction(input: {
     }
   }
 
-  async function addNewPlayer(playerId: number, playerType: 'actif' | 'reserviste', signingType: 'al' | 'ltir' | 'ballotage') {
+  async function addNewPlayer(playerId: number, playerType: 'actif' | 'reserviste' | 'recrue', signingType: 'al' | 'ltir' | 'ballotage') {
     // Validate budget (non-admins seulement, ballotage exempt)
     if (!isAdmin && signingType !== 'ballotage') {
       if (signingType === 'ltir') {
@@ -384,6 +390,17 @@ export async function submitBatchAction(input: {
       }
     }
 
+    // Signature directe en recrue (agent libre encore sur son ELC) — évite le détour par
+    // /admin/init (Banque de recrues), qui reste nécessaire seulement pour le cas repêché-par-
+    // le-pool mais plus sur ELC (protection 5 saisons, pool_draft_year requis).
+    const rookieFields: Record<string, unknown> = {}
+    if (playerType === 'recrue') {
+      const { data: player } = await db.from('players').select('is_rookie, draft_year, status').eq('id', playerId).single()
+      const eligible = !!(player?.is_rookie || (player?.draft_year != null && player.draft_year >= draftYearCutoff) || player?.status === 'ELC')
+      if (!eligible) throw new Error('Ce joueur n\'est pas admissible à la banque de recrues (protection recrue expirée et pas sur ELC)')
+      rookieFields.rookie_type = 'agent_libre'
+    }
+
     const conflict = await checkFutureRosterConflict(db, input.poolerId, playerId, input.saisonId, changedAt, playerType)
     if (conflict.error) throw new Error(conflict.error)
 
@@ -393,12 +410,12 @@ export async function submitBatchAction(input: {
       .eq('pool_season_id', input.saisonId).maybeSingle()
     if (existing) {
       await db.from('pooler_rosters')
-        .update({ is_active: true, player_type: playerType, removed_at: null, added_at: changedAt }).eq('id', existing.id)
+        .update({ is_active: true, player_type: playerType, removed_at: null, added_at: changedAt, ...rookieFields }).eq('id', existing.id)
     } else {
       await db.from('pooler_rosters').insert({
         pooler_id: input.poolerId, player_id: playerId,
         pool_season_id: input.saisonId, player_type: playerType, is_active: true,
-        added_at: changedAt,
+        added_at: changedAt, ...rookieFields,
       })
     }
 

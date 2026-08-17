@@ -136,6 +136,10 @@ export async function submitTransactionAction(
   const { data: saison } = await supabase.from('pool_seasons').select('season, pool_cap').eq('id', saisonId).single()
   if (!saison) return { error: 'Saison introuvable.' }
 
+  // Fenêtre de protection recrue (5 saisons) — même formule que gestion-effectifs/actions.ts
+  // et admin/rosters/actions.ts.
+  const draftYearCutoff = parseInt(saison.season.split('-')[0], 10) + 1 - 5
+
   // Poolers affectés
   const affectedIds = new Set<string>()
   for (const item of items) {
@@ -181,7 +185,7 @@ export async function submitTransactionAction(
   if (signPlayerIds.length > 0) {
     const { data: sPlayers } = await supabase
       .from('players')
-      .select(`id, position, nhl_id, player_contracts (season, cap_number)`)
+      .select(`id, first_name, last_name, position, nhl_id, is_rookie, draft_year, status, player_contracts (season, cap_number)`)
       .in('id', signPlayerIds)
     for (const p of (sPlayers ?? [])) signPlayerMap.set(p.id, p)
   }
@@ -234,6 +238,10 @@ export async function submitTransactionAction(
     if (action_type === 'sign') {
       const p = signPlayerMap.get(player_id!)
       if (!p) return { error: `Joueur (id: ${player_id}) introuvable.` }
+      if (new_player_type === 'recrue') {
+        const eligible = !!(p.is_rookie || (p.draft_year != null && p.draft_year >= draftYearCutoff) || p.status === 'ELC')
+        if (!eligible) return { error: `${p.last_name}, ${p.first_name} n'est pas admissible à la banque de recrues (protection recrue expirée et pas sur ELC).` }
+      }
       const cap = p.player_contracts?.find((c: any) => c.season === saison.season)?.cap_number ?? 0
       virtual.get(to_pooler_id!)!.push({ roster_id: -1, player_id: player_id!, player_type: new_player_type!, position: p.position, cap_number: cap, nhl_id: p.nhl_id ?? null })
       continue
@@ -387,12 +395,17 @@ export async function submitTransactionAction(
       const conflict = await checkFutureRosterConflict(supabase, to_pooler_id!, player_id!, saisonId, txTs, new_player_type!)
       if (conflict.error) return conflict
 
+      // Signature directe en recrue (agent libre encore sur son ELC) — évite le détour par
+      // /admin/init (Banque de recrues), réservé au cas repêché-par-le-pool mais plus sur
+      // ELC (protection 5 saisons, pool_draft_year requis, non déductible ici).
+      const rookieFields = new_player_type === 'recrue' ? { rookie_type: 'agent_libre' } : {}
+
       const { data: existing } = await supabase.from('pooler_rosters').select('id').eq('pooler_id', to_pooler_id!).eq('player_id', player_id!).eq('pool_season_id', saisonId).maybeSingle()
       if (existing) {
-        const { error } = await supabase.from('pooler_rosters').update({ is_active: true, player_type: new_player_type!, removed_at: null, added_at: txTs }).eq('id', existing.id)
+        const { error } = await supabase.from('pooler_rosters').update({ is_active: true, player_type: new_player_type!, removed_at: null, added_at: txTs, ...rookieFields }).eq('id', existing.id)
         if (error) return { error: error.message }
       } else {
-        const { error } = await supabase.from('pooler_rosters').insert({ pooler_id: to_pooler_id, player_id, pool_season_id: saisonId, player_type: new_player_type, is_active: true, added_at: txTs })
+        const { error } = await supabase.from('pooler_rosters').insert({ pooler_id: to_pooler_id, player_id, pool_season_id: saisonId, player_type: new_player_type, is_active: true, added_at: txTs, ...rookieFields })
         if (error) return { error: error.message }
       }
       await log(player_id!, to_pooler_id!, null, new_player_type!)

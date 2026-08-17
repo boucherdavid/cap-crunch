@@ -260,10 +260,12 @@ function AdjustmentForm({
         >
           {(action === 'type_change'
             ? ['actif', 'reserviste', 'ltir']
-            : action === 'sign' || action === 'promote' || action === 'reactivate'
-              ? ['actif', 'reserviste']
-              : []
-          ).map(t => <option key={t} value={t}>{typeLabel[t]}</option>)}
+            : action === 'sign'
+              ? ['actif', 'reserviste', 'recrue']
+              : action === 'promote' || action === 'reactivate'
+                ? ['actif', 'reserviste']
+                : []
+          ).map(t => <option key={t} value={t}>{t === 'recrue' ? 'Recrue (agent libre sur ELC)' : typeLabel[t]}</option>)}
         </select>
       )}
 
