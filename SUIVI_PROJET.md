@@ -21,6 +21,25 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-17 (suite)
+
+**[Clarification] — Ordre de repêchage 2026-27 vs classement final 2025-26** (aucun fichier
+modifié) :
+- David s'inquiète que le classement final 2025-26 (en cours de reconstruction manuelle
+  depuis l'abandon de l'import Excel, voir entrée 2026-08-07) ne soit pas identique à la
+  réalité, et se demandait si ce classement dicterait automatiquement l'ordre de repêchage
+  de la saison 2026-27.
+- Confirmé en lisant le code : `/admin/presaison` a un bouton optionnel « Initialiser à
+  partir du classement précédent (inversé) » (`PresaisonManager.tsx:765-770` →
+  `initDraftOrderFromStandingsAction` → `computeReverseStandingsOrder()` dans
+  `app/lib/draftOrder.ts`, qui appelle `buildStandings()` sur la saison précédente et
+  inverse l'ordre). Ce n'est **pas automatique** — un seul clic, à tout moment avant le
+  repêchage — et l'ordre reste réordonnable à la main ensuite via `/admin/repechage` →
+  « Ordre de sélection » (`DraftOrderEditor.tsx`, flèches ▲▼). Même mécanique répétée chaque
+  préseason, jamais un verrou définitif.
+- Donc pas de blocage : si le classement 2025-26 reconstruit s'avère peu fiable, David peut
+  simplement ignorer ce bouton et fixer l'ordre 2026-27 à la main.
+
 ### 2026-08-17
 
 **[Feature] — Signer/classer directement un agent libre sur ELC comme recrue, sans passer par `/admin/init`**
