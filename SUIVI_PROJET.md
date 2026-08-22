@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-08-17
+Derniere mise a jour: 2026-08-22
 
 ## Role du fichier
 
@@ -20,6 +20,53 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-08-22
+
+**[Décision] — Transition 2025-26 → 2026-27 en prod : copier les alignements finaux, pas l'historique complet** (aucun fichier modifié) :
+- David a confirmé l'approche pour la mise en place de la saison 2026-27 en prod : au
+  lieu de terminer la reconstruction historique complète 2025-26 (piste staging
+  uniquement, voir [[project_historique_excel_import]]), pousser directement les
+  alignements finaux 2025-26 dans la nouvelle saison via `adminInitRosterAction`
+  (`/admin/init?tab=rosters` — écrit seulement `pooler_rosters`, sans
+  `roster_change_log`), puis dérouler le flux normal de transition déjà existant :
+  pipeline de données (salaires à jour), `/admin/presaison` (protections recrues
+  expirées → activation/libération, décisions ELC, reset LTIR, ordre de repêchage),
+  puis `/admin/repechage` (repêchage annuel réel). Confirmé par lecture du code
+  (`app/app/admin/presaison/actions.ts`) que cette séquence gère déjà tout ça — aucun
+  nouvel outil requis.
+- Prévu de valider d'abord toute cette séquence en staging (environnement isolé) avant
+  de la refaire en prod.
+- **Clarification en cours de route** : la saison 2025-26 existe déjà en prod (`pool_seasons`,
+  32 `pool_draft_picks`, et surtout **351 lignes `pooler_rosters` réelles** — la saison a
+  été jouée normalement dans l'app, avec de vrais mouvements actif/réserviste/LTIR).
+  Correction d'une fausse piste : `CLAUDE.md`/mémoire donnaient l'impression que
+  `pooler_rosters` 2025-26 était vide en prod (confusion avec le fait que le repêchage
+  recrues 2025 n'avait jamais été *soumis* — `is_used=false` sur les 32 picks). Les deux
+  faits sont distincts : rosters réels présents, mais sans lien vers le repêchage.
+
+**[Data] — Repêchage recrues 2025 relié en prod pour consultation** (nouveau script
+`python_script/push_repechage_2025_to_prod.py`) :
+- Suite à la clarification ci-dessus, David a demandé d'ajouter le repêchage 2025 pour
+  consultation en prod (`/repechage-recrues`, `/admin/repechage`, `/admin/init?tab=choix`
+  y étaient vides faute de picks `is_used`).
+- Script écrit sur le modèle de `sync_staging_to_prod.py` (dry-run par défaut, `--apply`
+  + confirmation "oui"), mais **aucun insert** : les 32 recrues du repêchage 2025
+  existaient déjà comme lignes `pooler_rosters` réelles en prod (`player_type='recrue'`),
+  simplement sans `rookie_type`/`pool_draft_year`/`draft_pick_id` renseignés. Le script
+  a seulement fait un UPDATE des 32 lignes existantes (retrouvées par
+  pooler+joueur, avec mapping `players.id` staging→prod par `nhl_id` puis nom) +
+  `pool_draft_picks.is_used=true` sur les 32 choix — `player_type`, `is_active`,
+  `added_at`/`removed_at` jamais touchés, `current_owner_id` des picks pas écrasé
+  (l'ownership réelle en prod fait foi, pas la reconstruction staging).
+- Accord 32/32 entre le pooler assigné par pick en staging (`current_owner_id`) et le
+  pooler qui détient réellement ce joueur en prod — confirme que la reconstruction
+  staging du repêchage correspond à la réalité prod pour cette partie précise.
+- Dry-run vérifié et présenté à David avant `--apply`. Exécuté et vérifié après coup
+  (32/32 picks `is_used`, 32/32 lignes liées via `draft_pick_id`).
+- Portée volontairement limitée à ce seul repêchage — le reste de l'historique 2025-26
+  (mouvements de saison, transactions) n'est toujours pas reconstruit en prod, et ne le
+  sera pas (voir décision ci-dessus).
 
 ### 2026-08-17 (suite)
 
