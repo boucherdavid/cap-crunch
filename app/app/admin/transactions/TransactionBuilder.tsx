@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import MovementHistoryPanel from '@/components/MovementHistoryPanel'
 import { loadRosterAction, searchFreeAgentsAction, submitTransactionAction, ActionType, TxItemPayload } from './actions'
 
 const DASH = '\u2014'
@@ -290,6 +291,7 @@ export default function TransactionBuilder({ poolers, saison }: { poolers: Poole
   const [transactionDate, setTransactionDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null)
+  const [historyRefresh, setHistoryRefresh] = useState(0)
 
   const addItem = (item: TxItem) => setItems(prev => [...prev, item])
   const removeItem = (tempId: string) => setItems(prev => prev.filter(i => i.tempId !== tempId))
@@ -310,12 +312,16 @@ export default function TransactionBuilder({ poolers, saison }: { poolers: Poole
       setMessage(result.warning
         ? { type: 'warning', text: `Transaction enregistrée. ⚠ ${result.warning}` }
         : { type: 'success', text: 'Transaction enregistrée.' })
+      setHistoryRefresh(k => k + 1)
     }
     setTimeout(() => setMessage(null), 5000)
   }
 
-  return (
-    <div className="space-y-6">
+  const historyPoolerId = selectedA || selectedB || null
+  const historyPoolerName = poolers.find(p => p.id === historyPoolerId)?.name
+
+  const mainContent = (
+    <div className="space-y-6 flex-1 min-w-0">
       {/* Résumé */}
       {items.length > 0 && (
         <div className="bg-white rounded-lg shadow p-5 border-l-4 border-blue-500">
@@ -461,6 +467,13 @@ export default function TransactionBuilder({ poolers, saison }: { poolers: Poole
           />
         </div>
       )}
+    </div>
+  )
+
+  return (
+    <div className="flex gap-6 items-start">
+      {mainContent}
+      <MovementHistoryPanel poolerId={historyPoolerId} poolerName={historyPoolerName} refreshKey={historyRefresh} />
     </div>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useTransition } from 'react'
+import MovementHistoryPanel from '@/components/MovementHistoryPanel'
 import {
   getPoolerRosterAction,
   searchPlayersAction,
@@ -332,6 +333,7 @@ export default function GestionEffectifsManager({
   const [error, setError]   = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [submitWarning, setSubmitWarning] = useState<string | null>(null)
+  const [historyRefresh, setHistoryRefresh] = useState(0)
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -537,6 +539,7 @@ export default function GestionEffectifsManager({
         setSubmitWarning(result.warning ?? null)
         setCart([])
         resetAddForm()
+        setHistoryRefresh(k => k + 1)
         const [r, counts] = await Promise.all([
           getPoolerRosterAction(poolerId, saisonId, season),
           getSigningCountsAction(poolerId, saisonId),
@@ -703,8 +706,8 @@ export default function GestionEffectifsManager({
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  return (
-    <div className="max-w-3xl mx-auto space-y-6">
+  const mainContent = (
+    <div className="max-w-3xl flex-1 min-w-0 space-y-6">
 
       {/* Pooler selector — hub admin seulement (liste fournie par l'appelant) */}
       {showPoolerPicker && (
@@ -855,6 +858,17 @@ export default function GestionEffectifsManager({
       {error   && <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">{error}</div>}
       {success && <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-700">✓ Mouvements appliqués avec succès.</div>}
       {submitWarning && <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-sm text-orange-700">⚠ {submitWarning}</div>}
+    </div>
+  )
+
+  if (!isAdmin) {
+    return <div className="max-w-3xl mx-auto">{mainContent}</div>
+  }
+
+  return (
+    <div className="flex gap-6 items-start">
+      {mainContent}
+      <MovementHistoryPanel poolerId={poolerId || null} poolerName={poolerName} refreshKey={historyRefresh} />
     </div>
   )
 }

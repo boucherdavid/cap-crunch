@@ -85,7 +85,7 @@ export default async function AdminEffectifsPage({
 
       {/* ── Mouvements ── */}
       {activeTab === 'mouvements' && (
-        <div className="max-w-3xl">
+        <div className="max-w-6xl">
           <h1 className="text-2xl font-bold text-gray-800 mb-1">{'Gestion d\'effectifs'}</h1>
           <p className="text-sm text-gray-500 mb-6">
             Plusieurs actions peuvent être combinées en une seule soumission.

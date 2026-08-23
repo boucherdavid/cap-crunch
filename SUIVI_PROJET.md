@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-08-22
+Derniere mise a jour: 2026-08-23
 
 ## Role du fichier
 
@@ -20,6 +20,36 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-08-23
+
+**[Feature] — Panneau latéral d'historique des mouvements dans les outils admin**
+(`app/lib/rosterChangeLabels.ts` nouveau, `app/components/movement-history-actions.ts` nouveau,
+`app/components/MovementHistoryPanel.tsx` nouveau, `app/app/admin/pool/page.tsx`,
+`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `app/app/gestion-effectifs/page.tsx`,
+`app/app/admin/transactions/TransactionBuilder.tsx`, `app/app/admin/effectifs/page.tsx`) :
+- David voulait pouvoir suivre l'historique des mouvements d'alignement pendant qu'il saisit
+  des actions dans `/gestion-effectifs` ou `/admin/transactions`, sans naviguer vers l'onglet
+  Suivi séparément.
+- Ajout d'un panneau latéral réutilisable (`MovementHistoryPanel`) affiché uniquement en mode
+  admin (`isAdmin`), sur les deux outils. Deux modes : filtré sur le pooler actuellement
+  sélectionné dans le formulaire (par défaut) ou "Tous" pour la vue globale — bascule via
+  onglets dans le panneau. Se rafraîchit automatiquement après chaque soumission réussie
+  (`refreshKey` incrémenté).
+- Même source de données que l'onglet Suivi existant (`roster_change_log` + `transactions`),
+  extraite dans une nouvelle server action `getMovementHistoryAction` — filtrage par pooler
+  via `pooler_id` sur `roster_change_log`, et via une jointure sur `transaction_items`
+  (`from_pooler_id`/`to_pooler_id`) pour les transactions par lot.
+- `CHANGE_LABEL`/`CHANGE_COLOR` (libellés et couleurs par `change_type`) extraits de
+  `admin/pool/page.tsx` vers `app/lib/rosterChangeLabels.ts` pour éviter la duplication
+  (réutilisés par la nouvelle server action).
+- Dans `TransactionBuilder`, le pooler suivi est celui sélectionné en A (ou B si seul B est
+  choisi) pour une transaction.
+- Conteneurs élargis (`max-w-3xl` → `max-w-6xl`) sur `/gestion-effectifs` (seulement si admin)
+  et l'onglet Mouvements de `/admin/effectifs` pour laisser la place au panneau.
+- Validé : `npx tsc --noEmit` propre. Vérification visuelle faite par David en local (pas de
+  vérification par navigateur automatisé — pas d'accès aux identifiants admin dans cette
+  session).
 
 ### 2026-08-22
 

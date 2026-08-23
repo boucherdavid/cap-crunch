@@ -49,7 +49,7 @@ export default async function GestionEffectifsPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className={`${isAdmin ? 'max-w-6xl' : 'max-w-3xl'} mx-auto px-4 py-8`}>
       <h1 className="text-2xl font-bold text-gray-800 mb-1">Gestion d&apos;effectifs</h1>
       <p className="text-sm text-gray-500 mb-6">
         Ajoutez une ou plusieurs actions, vérifiez l&apos;état projeté, puis soumettez en une seule opération.
