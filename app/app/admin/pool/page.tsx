@@ -88,7 +88,7 @@ export default async function AdminPoolPage({
   let activePlayoffSaison: any = null
   if (activeTab === 'config') {
     const [sr, scr] = await Promise.all([
-      supabase.from('pool_seasons').select('id, season, nhl_cap, cap_multiplier, pool_cap, is_active, is_playoff, next_nhl_cap, delai_reactivation_jours, max_signatures_al, max_signatures_ltir, duree_min_ltir_jours, gestion_effectifs_ouvert, playoff_submission_deadline, playoff_max_changes, playoff_max_elim_changes, playoff_max_f, playoff_max_d, playoff_max_g, indicator_streak_chaud, indicator_streak_forme, indicator_streak_froid, indicator_streak_crise, indicator_fenetre_tendance, indicator_goalie_wins_streak, indicator_goalie_sv_pct, indicator_goalie_gaa, indicator_goalie_min_games, draft_rounds, saison_start_date, saison_end_date').order('season', { ascending: false }),
+      supabase.from('pool_seasons').select('id, season, nhl_cap, cap_multiplier, pool_cap, is_active, is_public, is_playoff, next_nhl_cap, delai_reactivation_jours, max_signatures_al, max_signatures_ltir, duree_min_ltir_jours, gestion_effectifs_ouvert, playoff_submission_deadline, playoff_max_changes, playoff_max_elim_changes, playoff_max_f, playoff_max_d, playoff_max_g, indicator_streak_chaud, indicator_streak_forme, indicator_streak_froid, indicator_streak_crise, indicator_fenetre_tendance, indicator_goalie_wins_streak, indicator_goalie_sv_pct, indicator_goalie_gaa, indicator_goalie_min_games, draft_rounds, saison_start_date, saison_end_date').order('season', { ascending: false }),
       supabase.from('scoring_config').select('id, stat_key, label, points, points_playoffs, scope').order('id'),
     ])
     saisonsConfig = sr.data ?? []

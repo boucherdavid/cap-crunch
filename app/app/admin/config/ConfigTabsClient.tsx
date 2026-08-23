@@ -15,6 +15,7 @@ type Saison = {
   cap_multiplier: number
   pool_cap: number
   is_active: boolean
+  is_public: boolean
   is_playoff: boolean
   next_nhl_cap?: number | null
   delai_reactivation_jours?: number | null

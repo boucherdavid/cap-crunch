@@ -238,6 +238,27 @@ export async function transitionSeasonAction(
   return { copied: toInsert.length }
 }
 
+// Masque/affiche une saison inactive dans les sélecteurs publics (/transactions,
+// /repechage-recrues) — n'a aucun effet sur la saison active, toujours visible dans son
+// propre sélecteur (voir le filtre .or('is_public.eq.true,is_active.eq.true') des pages).
+export async function setSeasonVisibilityAction(saisonId: number, isPublic: boolean): Promise<{ error?: string }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  if (!me?.is_admin) return { error: 'Accès refusé.' }
+
+  const { error } = await supabase
+    .from('pool_seasons')
+    .update({ is_public: isPublic })
+    .eq('id', saisonId)
+  if (error) return { error: error.message }
+
+  revalidateAll()
+  return {}
+}
+
 export async function deleteSeasonAction(saisonId: number): Promise<{ error?: string }> {
   const supabase = await createClient()
 

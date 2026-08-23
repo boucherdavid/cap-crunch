@@ -49,9 +49,15 @@ CREATE TABLE pool_seasons (
   cap_multiplier DECIMAL(5,4) NOT NULL DEFAULT 1.24,  -- facteur configurable (ex: 1.24 = 124%)
   pool_cap DECIMAL(12,2) GENERATED ALWAYS AS (CEIL(nhl_cap * cap_multiplier / 1000000) * 1000000) STORED,
   is_active BOOLEAN DEFAULT false,
+  is_public BOOLEAN NOT NULL DEFAULT true,  -- masque une saison inactive des sélecteurs publics (transactions, repêchage recrues) — n'affecte jamais la saison active elle-même
   saison_start_date DATE,                -- début du comptage; NULL = saison déjà démarrée
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migration 2026-08-23 : is_public sur pool_seasons
+-- À exécuter une seule fois dans le SQL Editor Supabase si la table existe déjà :
+--
+-- ALTER TABLE pool_seasons ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT true;
 
 -- Poolers (liés aux comptes Supabase Auth)
 CREATE TABLE poolers (

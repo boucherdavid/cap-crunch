@@ -21,6 +21,33 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-23 (suite 2)
+
+**[Feature] — Masquer une saison inactive aux poolers (`is_public` sur `pool_seasons`)**
+(`schema.sql`, `app/app/admin/config/actions.ts`, `app/app/admin/config/SeasonsManager.tsx`,
+`app/app/admin/config/ConfigTabsClient.tsx`, `app/app/admin/pool/page.tsx`,
+`app/app/transactions/page.tsx`, `app/app/repechage-recrues/page.tsx`) :
+- Contexte : en préparant la transition 2025-26 → 2026-27 (voir plus haut), David a demandé
+  que les poolers ne puissent pas tomber sur la saison 2025-26 une fois 2026-27 active, pour
+  éviter qu'un alignement/historique jugé non présentable donne l'impression d'un bug.
+- Recherche (agent dédié) : sur toutes les pages de consultation, seules **2** laissent un
+  pooler non-admin naviguer vers une saison passée sans filtre sur `is_active` —
+  `/transactions` (dropdown + `?saison=`) et `/repechage-recrues` (dropdown + `?saisonId=`).
+  Toutes les autres (`/classement`, `/poolers/[id]`, `/joueurs`, `/gestion-effectifs`,
+  `/calendrier`, `/résultats`, `/statistiques`, accueil) suivent automatiquement la saison
+  active, sans possibilité de revenir en arrière.
+- Nouvelle colonne `pool_seasons.is_public` (`BOOLEAN NOT NULL DEFAULT true`) — migration
+  exécutée manuellement en staging par David (`ALTER TABLE ... ADD COLUMN IF NOT EXISTS`,
+  à rejouer en prod au moment de la vraie transition).
+- Toggle par saison inactive dans `/admin/pool?tab=config` (« Masquer aux poolers » /
+  « Rendre visible ») → `setSeasonVisibilityAction`. Sans effet sur la saison active —
+  toujours incluse dans son propre sélecteur via `.or('is_public.eq.true,is_active.eq.true')`
+  sur les deux pages concernées, pour éviter qu'elle disparaisse de son propre menu.
+- Solution générique et réutilisable (pas un correctif ponctuel pour 2025-26 seulement) —
+  applicable à chaque future transition de saison.
+- Validé : `npx tsc --noEmit` propre. Colonne confirmée présente en staging après exécution
+  du SQL par David (`is_public=true` par défaut sur les 5 saisons existantes).
+
 ### 2026-08-23 (suite)
 
 **[Feature] — Report atomique au lendemain si un match est déjà commencé (soumissions en direct)**
