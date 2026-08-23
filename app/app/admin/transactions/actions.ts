@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/rosterTypeChange'
+import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
 
 export type ActionType = 'transfer' | 'promote' | 'sign' | 'reactivate' | 'release' | 'type_change'
 
@@ -285,7 +286,21 @@ export async function submitTransactionAction(
   // Ainsi, si une mutation échoue à mi-chemin, l'intent est toujours tracé
   // et un admin peut identifier et corriger l'état partiel.
   // (Une atomicité complète nécessiterait une fonction PostgreSQL via rpc().)
-  const txTs = transactionDate ? `${transactionDate}T12:00:00Z` : new Date().toISOString()
+  //
+  // Sans date forcée (transaction "en direct"), on reporte tout le lot à demain si un des
+  // joueurs impliqués a déjà un match commencé aujourd'hui — évite qu'un même échange
+  // applique le nouveau statut pour aujourd'hui à un joueur mais pas à l'autre selon
+  // l'heure de son propre match (voir app/lib/gameDayLock.ts).
+  let deferredToTomorrow = false
+  let txTs: string
+  if (transactionDate) {
+    txTs = `${transactionDate}T12:00:00Z`
+  } else {
+    const touchedPlayerIds = items.filter(i => i.player_id).map(i => i.player_id!)
+    const { effectiveAt, deferred } = await computeBatchEffectiveDate(touchedPlayerIds)
+    txTs = effectiveAt
+    deferredToTomorrow = deferred
+  }
 
   const txPayload: Record<string, unknown> = { pool_season_id: saisonId, notes: notes || null, created_by: user.id }
   if (transactionDate) txPayload.created_at = txTs
@@ -323,6 +338,9 @@ export async function submitTransactionAction(
 
   // Appliquer
   const warnings: string[] = []
+  if (deferredToTomorrow) {
+    warnings.push("Un des joueurs impliqués a déjà un match commencé aujourd'hui — cette transaction sera effective à compter de demain.")
+  }
   for (const item of items) {
     const { action_type, from_pooler_id, to_pooler_id, player_id, pick_id, old_player_type, new_player_type } = item
 

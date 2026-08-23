@@ -21,6 +21,46 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-23 (suite)
+
+**[Feature] — Report atomique au lendemain si un match est déjà commencé (soumissions en direct)**
+(`app/lib/gameDayLock.ts` nouveau, `app/app/gestion-effectifs/actions.ts`,
+`app/app/admin/transactions/actions.ts`) :
+- Contexte : en validant les points d'une période (popup ↩ sur `/classement`), David a
+  repéré un écart d'1 passe pour Auston Matthews entre l'appli et NHL.com sur Oct 7 -
+  Dec 2 2025. Cause trouvée : une ligne `pooler_rosters` (reconstruction staging) avait
+  `removed_at = 2025-12-02T12:00:00Z` (convention `T12:00:00Z` pour une date saisie sans
+  heure, soit 7h heure de l'Est) alors que le match des Leafs ce soir-là a débuté à 19h30
+  heure de l'Est — le match tombait donc après la fin de fenêtre, excluant légitimement
+  cette passe (cas confirmé correct par David, pas un bug).
+- Ça a mené à une question plus large : pour une **vraie soumission en direct** (pas une
+  date forcée), `added_at`/`removed_at` = l'heure réelle de soumission (`now()`), comparée
+  ensuite au `game_start_time` exact de chaque joueur dans `buildStandings()`
+  (`app/lib/standings.ts:262`). Donc dans un même lot touchant 2 joueurs (ex: échange même
+  pooler où l'un sort pendant que l'autre entre), si le match d'un des deux joueurs est déjà
+  commencé au moment de la soumission mais pas celui de l'autre, l'un basculerait sous son
+  ancien statut pour son match du jour et l'autre sous le nouveau — un résultat asymétrique
+  au sein d'un même mouvement. David a demandé que ce soit plutôt atomique : si un des
+  joueurs touchés n'est plus éligible pour la journée (match déjà commencé), tout le lot
+  bascule au lendemain plutôt que chacun selon son propre match.
+- Nouvelle fonction partagée `computeBatchEffectiveDate(playerIds)` (`app/lib/gameDayLock.ts`) :
+  résout l'équipe LNH actuelle de chaque joueur touché, interroge l'horaire NHL du jour en
+  direct (`https://api-web.nhle.com/v1/schedule/{date}` — mêmes endpoint/format que
+  `/calendrier`, pas `player_game_logs` qui n'est peuplé qu'après coup par le pipeline
+  nocturne), et si un match d'une équipe concernée a déjà débuté (`startTimeUTC <= now`),
+  retourne un horodatage de report au lendemain (`{demain}T12:00:00Z`, même convention que
+  les dates historiques). Ne bloque jamais la soumission en cas d'échec/timeout de l'API
+  NHL (repli sur `now()`, comportement actuel inchangé) — même philosophie que les autres
+  appels NHL API du projet (timeout + repli silencieux).
+- Câblé dans `submitBatchAction` (`/gestion-effectifs`) et `submitTransactionAction`
+  (`/admin/transactions`), uniquement sur la branche "en direct" (ni pré-saison, ni date
+  forcée — ces deux cas ont déjà leur propre date explicite). Message d'avertissement
+  affiché après soumission quand le report a eu lieu.
+- Validé : `npx tsc --noEmit` propre. Format de réponse de l'API NHL revérifié via `curl`
+  sur une date connue (2025-12-02, correspond exactement au `game_start_time` déjà en base
+  pour Matthews) et sur une date hors-saison (aucun match, aucun report — comportement
+  inchangé).
+
 ### 2026-08-23
 
 **[Feature] — Panneau latéral d'historique des mouvements dans les outils admin**

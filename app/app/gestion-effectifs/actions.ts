@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 import { sendPushToUser } from '@/lib/push'
 import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/rosterTypeChange'
+import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
 
 export type PlayerType = 'actif' | 'reserviste' | 'ltir' | 'recrue'
 
@@ -254,11 +255,40 @@ export async function submitBatchAction(input: {
   const isPreseason = startDate !== null && new Date() < startDate
   const isAdminOverride = !isPreseason && !!input.forcedDate && isAdmin
 
+  // Joueurs touchés par le lot (des deux côtés — celui qui sort, celui qui entre) pour la
+  // règle d'atomicité : si l'un d'eux a déjà un match commencé aujourd'hui, tout le lot est
+  // reporté à demain plutôt que de laisser chaque joueur basculer selon l'heure de son
+  // propre match (voir app/lib/gameDayLock.ts). Seulement pour une soumission "en direct" —
+  // pré-saison et date forcée ont déjà leur propre date explicite, pas de now() ambigu ici.
+  let deferredToTomorrow = false
+  let liveEffectiveAt = new Date().toISOString()
+  if (!isPreseason && !input.forcedDate) {
+    const entryIdsToResolve = new Set<number>()
+    const directPlayerIds: number[] = []
+    for (const action of input.actions) {
+      if (action.entry1Id) entryIdsToResolve.add(action.entry1Id)
+      if (action.entry2Id) entryIdsToResolve.add(action.entry2Id)
+      if (action.ltirEntryId) entryIdsToResolve.add(action.ltirEntryId)
+      if (action.returnLtirEntryId) entryIdsToResolve.add(action.returnLtirEntryId)
+      if (action.deactivateActifId) entryIdsToResolve.add(action.deactivateActifId)
+      if (action.releaseEntryId) entryIdsToResolve.add(action.releaseEntryId)
+      if (action.newPlayerId) directPlayerIds.push(action.newPlayerId)
+    }
+    let resolvedPlayerIds: number[] = []
+    if (entryIdsToResolve.size > 0) {
+      const { data: rows } = await db.from('pooler_rosters').select('id, player_id').in('id', Array.from(entryIdsToResolve))
+      resolvedPlayerIds = (rows ?? []).map(r => r.player_id)
+    }
+    const { effectiveAt, deferred } = await computeBatchEffectiveDate([...resolvedPlayerIds, ...directPlayerIds])
+    liveEffectiveAt = effectiveAt
+    deferredToTomorrow = deferred
+  }
+
   const changedAt = isPreseason
     ? `${saisonConfig!.saison_start_date}T12:00:00Z`
     : input.forcedDate
       ? `${input.forcedDate}T12:00:00Z`
-      : new Date().toISOString()
+      : liveEffectiveAt
 
   // Count existing signings
   const { data: existingSigns } = await db
@@ -274,6 +304,9 @@ export async function submitBatchAction(input: {
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
   const warnings: string[] = []
+  if (deferredToTomorrow) {
+    warnings.push("Un des joueurs impliqués a déjà un match commencé aujourd'hui — ce mouvement sera effectif à compter de demain.")
+  }
 
   async function getEntry(entryId: number) {
     const { data } = await db
