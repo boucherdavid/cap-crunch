@@ -21,6 +21,30 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-24 (suite 5)
+
+**[Fix] — Badge de propriétaire figé dans "Joueurs disponibles" après un submit (`/admin/init?tab=rosters`)**
+(`app/app/admin/rosters/RosterManager.tsx`) :
+- Contexte : David a rapporté que certains joueurs semblaient rester associés à l'ancien
+  pooler dans le menu de recherche après un changement + soumission + changement de pooler,
+  alors que les alignements réels étaient corrects.
+- Cause (investigation par agent, puis vérification directe du code) : `allTakenPlayerIds` et
+  `playerOwnerMap` (badge orange affichant le propriétaire d'un joueur dans "Joueurs
+  disponibles", visible en mode init) sont des props calculées côté serveur une seule fois au
+  chargement de `/admin/init` (`app/app/admin/init/page.tsx`). `handleSubmit()` ne rechargeait
+  que le roster du pooler courant après un submit réussi et n'appelait `router.refresh()` que
+  sur le chemin d'erreur/fallback — jamais sur un succès normal. Résultat : après un submit
+  réussi, ces props restaient figées jusqu'à un rechargement complet de la page, donnant
+  l'impression (uniquement dans le menu de recherche, pas dans les alignements eux-mêmes,
+  rechargés séparément par pooler) qu'un joueur déplacé appartenait encore à l'ancien pooler.
+- Correctif : `router.refresh()` appelé aussi après un submit réussi. Sans impact sur l'état
+  client (`roster`/`selectedPooler`) — pattern déjà utilisé ailleurs dans ce même fichier
+  (`handleViderTous`).
+- Validé par David manuellement en local (déplacement de joueur entre poolers, badge à jour
+  après changement de sélection). Tentative de test automatisé en navigateur (Playwright,
+  compte admin QA jetable en staging) bloquée par le classificateur de permissions de
+  l'auto-mode — abandonnée au profit de la validation manuelle.
+
 ### 2026-08-24 (suite 4)
 
 **[Fix] — Clarifie l'affichage des badges de type de recrue dans la Banque de recrues**

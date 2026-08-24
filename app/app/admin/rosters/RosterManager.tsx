@@ -345,10 +345,13 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
         applyRoster(data as unknown as RosterEntry[])
       } else {
         // Le fetch client a échoué ou retourné vide — on garde l'état local soumis
-        // et on force un rechargement serveur pour rafraîchir les props
         setOriginalRoster(roster)
-        router.refresh()
       }
+      // allTakenPlayerIds/playerOwnerMap viennent des props serveur (calculées une seule
+      // fois au chargement de la page) — sans ce refresh, elles restent figées après un
+      // submit et affichent un ancien propriétaire dans "Joueurs disponibles" une fois
+      // qu'on change de pooler.
+      router.refresh()
       showMessage('Alignement sauvegardé.', 'success')
     }
 
