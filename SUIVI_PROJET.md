@@ -21,6 +21,20 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-24 (suite 7)
+
+**[Chore] — Pipeline PuckPedia validé et poussé vers prod**
+(`python_script/PuckPedia_offline.csv`, `python_script/PuckPedia_update.csv`,
+`python_script/teams_offline/*.csv`) :
+- David a roulé `run_pipeline_staging.ps1`. Log `run_pipeline_staging_2026-08-24_11-47-47.log`
+  validé : 4/4 étapes réussies (scraping 246.2s, import joueurs/contrats 47.3s, import
+  repêchages 4.8s, backfill nhl_id 3.8s, total 302.1s), aucune erreur/timeout/échec HTTP.
+  Seul signal : 564 joueurs sans correspondance `nhl_id` — gap connu et déjà documenté (voir
+  session sur le bug nhl_id manquant de Peterka), pas un blocage.
+- CSV modifiés (32 équipes + `PuckPedia_offline`/`PuckPedia_update`) committés et poussés sur
+  `main` (commit `84f87d3`) selon la convention CLAUDE.md — déclenche automatiquement
+  `.github/workflows/import.yml` vers prod (confirmé démarré via `gh run list`).
+
 ### 2026-08-24 (suite 6)
 
 **[Feature] — Panneau "Guide admin" avec checklist de transition de saison**
