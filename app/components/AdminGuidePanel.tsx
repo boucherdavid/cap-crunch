@@ -12,20 +12,6 @@ type Step = {
 
 const STEPS: Step[] = [
   {
-    title: 'Reporter les rosters finaux dans la nouvelle saison',
-    route: '/admin/init',
-    href: '/admin/init?tab=rosters',
-    body: (
-      <>
-        Onglet <strong>Rosters initiaux</strong>, mode init activé. Une fois la saison
-        précédente terminée et les rosters finaux connus, les pousser directement dans la
-        nouvelle ligne de saison. N&apos;écrit que <code>pooler_rosters</code> — pas besoin
-        d&apos;historique détaillé, le calcul de classement se base sur le type de la ligne
-        jusqu&apos;au premier vrai mouvement de la nouvelle saison.
-      </>
-    ),
-  },
-  {
     title: 'Rouler le pipeline de données',
     route: 'PowerShell',
     href: '',
@@ -34,7 +20,24 @@ const STEPS: Step[] = [
         <code>./run_pipeline_staging.ps1</code> pour valider, puis committer/pousser les CSV
         modifiés sur <code>main</code> pour déclencher l&apos;import automatique en prod (voir
         CLAUDE.md section 2). Met à jour les contrats/salaires de la nouvelle saison dans{' '}
-        <code>player_contracts</code>.
+        <code>player_contracts</code>. La nouvelle saison doit déjà exister dans{' '}
+        <strong>Configuration → Saisons</strong> (sinon la créer là, avec son plafond NHL).
+      </>
+    ),
+  },
+  {
+    title: 'Transitionner les rosters puis activer la nouvelle saison',
+    route: '/admin/pool',
+    href: '/admin/pool?tab=config',
+    body: (
+      <>
+        Onglet <strong>Configuration</strong>, section Saisons. Sur la ligne de la nouvelle
+        saison, cliquer <strong>« Transitionner les rosters → »</strong> — copie les rosters
+        actifs de la saison encore active vers la nouvelle (LTIR redevient actif
+        automatiquement). Un aperçu affiche le nombre de joueurs/poolers concernés et avertit
+        pour les joueurs sans contrat cette saison-là (copiés à cap 0 $, à libérer en
+        pré-saison). Une fois confirmé, cliquer <strong>« Activer »</strong> sur la nouvelle
+        saison — désactive automatiquement l&apos;ancienne.
       </>
     ),
   },
@@ -46,9 +49,9 @@ const STEPS: Step[] = [
       <>
         Onglet <strong>Pré-saison</strong>. Détecte automatiquement les protections recrues
         expirées (5 saisons pour un repêché du pool, expiration ELC pour un agent libre),
-        permet de trancher les décisions ELC (garder actif ou retour à la banque), remet les
-        LTIR à actif, et signale les poolers non conformes (cap ou alignement) à ajuster
-        manuellement.
+        permet de trancher les décisions ELC (garder actif ou retour à la banque), et signale
+        les poolers non conformes (cap ou alignement, incluant les joueurs sans contrat
+        signalés à l&apos;étape précédente) à ajuster manuellement.
       </>
     ),
   },
