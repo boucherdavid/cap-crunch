@@ -21,6 +21,30 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-24 (suite 8)
+
+**[Fix] — Corrige le panneau Guide admin : la transition de saison a déjà un outil dédié**
+(`app/components/AdminGuidePanel.tsx`) :
+- En répondant à "comment je fais le changement de saison ?", découvert que le panneau Guide
+  ajouté plus tôt cette session décrivait l'**ancienne** méthode manuelle (`/admin/init?tab=
+  rosters` en mode init) — celle du plan confirmé le 2026-08-19/20
+  ([[project_historique_excel_import]]), avant qu'un outil dédié soit construit entretemps
+  dans `/admin/pool?tab=config` (`SeasonsManager.tsx` + `previewTransitionAction`/
+  `transitionSeasonAction`/`activateSeasonAction` dans `admin/config/actions.ts`) : bouton
+  "Transitionner les rosters →" qui copie automatiquement les rosters actifs de la saison
+  active vers la saison cible (LTIR→actif automatique), avec aperçu (nb joueurs/poolers,
+  avertissement joueurs sans contrat pour la nouvelle saison) avant confirmation, puis
+  "Activer" pour basculer la saison active.
+- Panneau corrigé : l'étape "Reporter les rosters" pointe maintenant vers
+  `/admin/pool?tab=config` et décrit le vrai flux (Transitionner → aperçu → Confirmer →
+  Activer) au lieu du report manuel via le mode init.
+- Vérifié en staging que la saison 2026-27 (`pool_seasons.id=4`) existe déjà (créée le
+  2026-06-06, cap NHL 104M$, cap pool 129M$) — reste à cliquer Transitionner puis Activer une
+  fois les rosters finaux 2025-26 arrêtés.
+- Leçon : avant d'écrire un contenu de référence figé dans l'UI (checklist, guide), vérifier
+  l'état actuel du code plutôt que de se fier à une mémoire de session qui peut avoir été
+  supplantée par du travail plus récent non revu à ce moment-là.
+
 ### 2026-08-24 (suite 7)
 
 **[Chore] — Pipeline PuckPedia validé et poussé vers prod**
