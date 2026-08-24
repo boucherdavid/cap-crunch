@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createSeasonAction, activateSeasonAction, deactivateSeasonAction, previewTransitionAction, transitionSeasonAction, deleteSeasonAction } from './actions'
+import { createSeasonAction, activateSeasonAction, deactivateSeasonAction, previewTransitionAction, transitionSeasonAction, deleteSeasonAction, setSeasonVisibilityAction } from './actions'
 
 type Saison = {
   id: number
@@ -11,6 +11,7 @@ type Saison = {
   cap_multiplier: number
   pool_cap: number
   is_active: boolean
+  is_public: boolean
   is_playoff: boolean
 }
 
@@ -38,6 +39,7 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
   const [preview, setPreview] = useState<{ toId: number; data: TransitionPreview } | null>(null)
   const [applyingTransition, setApplyingTransition] = useState(false)
   const [deleting, setDeleting] = useState<number | null>(null)
+  const [togglingVisibility, setTogglingVisibility] = useState<number | null>(null)
 
   const poolCapPreview = isPlayoff
     ? parseFloat(nhlCap) || 0
@@ -136,6 +138,20 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
     }
   }
 
+  const handleToggleVisibility = async (saisonId: number, saisonLabel: string, makePublic: boolean) => {
+    setTogglingVisibility(saisonId)
+    const result = await setSeasonVisibilityAction(saisonId, makePublic)
+    setTogglingVisibility(null)
+    if (result.error) {
+      showMsg('error', result.error)
+    } else {
+      showMsg('success', makePublic
+        ? `Saison ${saisonLabel} de nouveau visible aux poolers.`
+        : `Saison ${saisonLabel} masquée aux poolers (transactions, repêchage recrues).`)
+      router.refresh()
+    }
+  }
+
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-4">
@@ -165,6 +181,9 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
               {s.is_playoff && (
                 <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded font-medium">Séries</span>
               )}
+              {!s.is_active && !s.is_public && (
+                <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded font-medium">Masquée aux poolers</span>
+              )}
             </div>
             <div className="flex items-center gap-4">
               <span className="text-xs text-gray-500">
@@ -172,6 +191,15 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
               </span>
               {(!s.is_active || s.is_playoff) && (
                 <div className="flex items-center gap-3">
+                  {!s.is_active && (
+                    <button
+                      onClick={() => handleToggleVisibility(s.id, s.season, !s.is_public)}
+                      disabled={togglingVisibility === s.id}
+                      className="text-xs text-gray-500 hover:text-gray-700 font-medium disabled:opacity-40"
+                    >
+                      {togglingVisibility === s.id ? '...' : s.is_public ? 'Masquer aux poolers' : 'Rendre visible'}
+                    </button>
+                  )}
                   {!s.is_active && saisons.some(s2 => s2.is_active) && !s.is_playoff && (
                     <button
                       onClick={() => handlePreviewTransition(s.id)}

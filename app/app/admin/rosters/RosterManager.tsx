@@ -112,7 +112,13 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState<'success' | 'error'>('success')
-  const [initMode, setInitMode] = useState(false)
+  // Démarre activé : cette page ne sert qu'à saisir les rosters de départ d'une saison,
+  // et l'état étant local au navigateur (pas persisté), il se réinitialise à chaque
+  // rechargement — une saisie multi-poolers étalée dans le temps oubliait facilement de
+  // le réactiver, produisant des lignes datées de la saisie au lieu du début de saison et
+  // du bruit dans roster_change_log (bug trouvé par David le 2026-08-11, 328/330 lignes
+  // pooler_rosters mal datées en staging).
+  const [initMode, setInitMode] = useState(true)
 
   const showMessage = (text: string, type: 'success' | 'error' = 'success') => {
     setMessage(text)
@@ -599,8 +605,10 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
           )}
         </div>
 
-        {/* Joueurs disponibles */}
-        <div className="bg-white rounded-lg shadow p-5">
+        {/* Joueurs disponibles — remonté en premier quand la fenêtre est trop étroite pour
+            afficher les 2 colonnes côte à côte (sous lg), pour éviter de devoir défiler
+            jusqu'en bas à chaque ajout de joueur pendant l'initialisation. */}
+        <div className="order-first lg:order-none bg-white rounded-lg shadow p-5">
           <h2 className="font-semibold text-gray-700 mb-4">
             {initMode ? 'Tous les joueurs' : 'Joueurs disponibles'}
           </h2>

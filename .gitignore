@@ -4,6 +4,7 @@ app/.env.local
 app/.env*
 
 excel
+marqueur
 
 python_script/venv/
 python_script/__pycache__/

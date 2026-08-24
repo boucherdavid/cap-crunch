@@ -16,6 +16,10 @@ export default async function RepechageRecruesPage({
     .from('pool_seasons')
     .select('id, season, is_active')
     .eq('is_playoff', false)
+    // Une saison peut être masquée aux poolers (is_public=false) une fois inactive si son
+    // historique n'est pas jugé présentable (ex: transition 2025-26 → 2026-27) — toujours
+    // inclure la saison active elle-même, sinon elle disparaîtrait de son propre sélecteur.
+    .or('is_public.eq.true,is_active.eq.true')
     .order('season', { ascending: false })
 
   const saisons = (allSaisons ?? []) as { id: number; season: string; is_active: boolean }[]

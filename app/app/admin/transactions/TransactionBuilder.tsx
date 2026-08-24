@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import MovementHistoryPanel from '@/components/MovementHistoryPanel'
 import { loadRosterAction, searchFreeAgentsAction, submitTransactionAction, ActionType, TxItemPayload } from './actions'
 
 const DASH = '\u2014'
@@ -260,10 +261,12 @@ function AdjustmentForm({
         >
           {(action === 'type_change'
             ? ['actif', 'reserviste', 'ltir']
-            : action === 'sign' || action === 'promote' || action === 'reactivate'
-              ? ['actif', 'reserviste']
-              : []
-          ).map(t => <option key={t} value={t}>{typeLabel[t]}</option>)}
+            : action === 'sign'
+              ? ['actif', 'reserviste', 'recrue']
+              : action === 'promote' || action === 'reactivate'
+                ? ['actif', 'reserviste']
+                : []
+          ).map(t => <option key={t} value={t}>{t === 'recrue' ? 'Recrue (agent libre sur ELC)' : typeLabel[t]}</option>)}
         </select>
       )}
 
@@ -288,9 +291,12 @@ export default function TransactionBuilder({ poolers, saison }: { poolers: Poole
   const [transactionDate, setTransactionDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null)
+  const [historyRefresh, setHistoryRefresh] = useState(0)
 
   const addItem = (item: TxItem) => setItems(prev => [...prev, item])
   const removeItem = (tempId: string) => setItems(prev => prev.filter(i => i.tempId !== tempId))
+  const updateItemDestType = (tempId: string, newType: string) =>
+    setItems(prev => prev.map(i => i.tempId === tempId ? { ...i, new_player_type: newType } : i))
 
   const handleSubmit = async () => {
     if (items.length === 0) return
@@ -306,12 +312,16 @@ export default function TransactionBuilder({ poolers, saison }: { poolers: Poole
       setMessage(result.warning
         ? { type: 'warning', text: `Transaction enregistrée. ⚠ ${result.warning}` }
         : { type: 'success', text: 'Transaction enregistrée.' })
+      setHistoryRefresh(k => k + 1)
     }
     setTimeout(() => setMessage(null), 5000)
   }
 
-  return (
-    <div className="space-y-6">
+  const historyPoolerId = selectedA || selectedB || null
+  const historyPoolerName = poolers.find(p => p.id === historyPoolerId)?.name
+
+  const mainContent = (
+    <div className="space-y-6 flex-1 min-w-0">
       {/* Résumé */}
       {items.length > 0 && (
         <div className="bg-white rounded-lg shadow p-5 border-l-4 border-blue-500">
@@ -327,24 +337,20 @@ export default function TransactionBuilder({ poolers, saison }: { poolers: Poole
                     <span className="text-gray-700">
                       <span className="font-medium text-blue-700">{i.sideLabel}</span> donne {i.label}
                     </span>
-                    <button onClick={() => removeItem(i.tempId)} className="text-red-400 hover:text-red-600 text-xs ml-3">✕</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Ballotage */}
-          {items.filter(i => i.action_type === 'ballotage').length > 0 && (
-            <div className="mb-3">
-              <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Ballotage</p>
-              <div className="space-y-1">
-                {items.filter(i => i.action_type === 'ballotage').map(i => (
-                  <div key={i.tempId} className="flex items-center justify-between text-sm px-3 py-1.5 bg-orange-50 rounded">
-                    <span className="text-gray-700">
-                      <span className="font-medium text-orange-600">{i.sideLabel}</span> cède {i.label}
-                    </span>
-                    <button onClick={() => removeItem(i.tempId)} className="text-red-400 hover:text-red-600 text-xs ml-3">✕</button>
+                    <div className="flex items-center gap-2 ml-3">
+                      {i.player_id && (i.old_player_type === 'actif' || i.old_player_type === 'reserviste' || i.old_player_type === 'ltir') && (
+                        <select
+                          value={i.new_player_type}
+                          onChange={e => updateItemDestType(i.tempId, e.target.value)}
+                          className="text-xs border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="actif">Actif</option>
+                          <option value="reserviste">Réserviste</option>
+                          <option value="ltir">LTIR</option>
+                        </select>
+                      )}
+                      <button onClick={() => removeItem(i.tempId)} className="text-red-400 hover:text-red-600 text-xs">✕</button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -352,11 +358,11 @@ export default function TransactionBuilder({ poolers, saison }: { poolers: Poole
           )}
 
           {/* Ajustements */}
-          {items.filter(i => i.action_type !== 'transfer' && i.action_type !== 'ballotage').length > 0 && (
+          {items.filter(i => i.action_type !== 'transfer').length > 0 && (
             <div className="mb-3">
               <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Ajustements</p>
               <div className="space-y-1">
-                {items.filter(i => i.action_type !== 'transfer' && i.action_type !== 'ballotage').map(i => (
+                {items.filter(i => i.action_type !== 'transfer').map(i => (
                   <div key={i.tempId} className="flex items-center justify-between text-sm px-3 py-1.5 bg-slate-50 rounded">
                     <span className="text-gray-700">
                       <span className="font-medium text-slate-700">{i.sideLabel}</span> — {i.label}
@@ -463,6 +469,13 @@ export default function TransactionBuilder({ poolers, saison }: { poolers: Poole
       )}
     </div>
   )
+
+  return (
+    <div className="flex gap-6 items-start">
+      {mainContent}
+      <MovementHistoryPanel poolerId={historyPoolerId} poolerName={historyPoolerName} refreshKey={historyRefresh} />
+    </div>
+  )
 }
 
 // Wrapper qui charge le roster quand poolerId change
@@ -494,7 +507,7 @@ function PoolerPanelStateful({
   const poolerName = poolers.find(p => p.id === poolerId)?.name ?? '?'
 
   const selectedPlayerIds = new Set(
-    items.filter(i => (i.action_type === 'transfer' || i.action_type === 'ballotage') && (i.from_pooler_id === poolerId)).map(i => i.player_id).filter(Boolean)
+    items.filter(i => i.action_type === 'transfer' && (i.from_pooler_id === poolerId)).map(i => i.player_id).filter(Boolean)
   )
   const selectedPickIds = new Set(
     items.filter(i => i.action_type === 'transfer' && i.from_pooler_id === poolerId && i.pick_id).map(i => i.pick_id)
@@ -508,22 +521,6 @@ function PoolerPanelStateful({
     onAddItem({
       tempId: nextId(),
       action_type: 'transfer',
-      from_pooler_id: poolerId,
-      to_pooler_id: otherPoolerId,
-      player_id: entry.player_id,
-      old_player_type: entry.player_type,
-      new_player_type: entry.player_type,
-      label: `${p.last_name}, ${p.first_name} (${p.teams?.code ?? DASH}) → ${poolers.find(pp => pp.id === otherPoolerId)?.name}`,
-      sideLabel: poolerName,
-    })
-  }
-
-  const addBallotagePlayer = (entry: RosterEntry) => {
-    if (!otherPoolerId) return
-    const p = entry.players
-    onAddItem({
-      tempId: nextId(),
-      action_type: 'ballotage',
       from_pooler_id: poolerId,
       to_pooler_id: otherPoolerId,
       player_id: entry.player_id,
@@ -583,10 +580,7 @@ function PoolerPanelStateful({
                     <div className="flex items-center gap-2">
                       <span className="text-gray-400">{cap > 0 ? fmt(cap) : DASH}</span>
                       {!inTx && otherPoolerId && (
-                        <>
-                          <button onClick={() => addTransferPlayer(entry)} className="text-blue-600 hover:text-blue-800 font-medium text-xs">Donner</button>
-                          <button onClick={() => addBallotagePlayer(entry)} className="text-orange-500 hover:text-orange-700 font-medium text-xs">Ballotage</button>
-                        </>
+                        <button onClick={() => addTransferPlayer(entry)} className="text-blue-600 hover:text-blue-800 font-medium text-xs">Donner</button>
                       )}
                       {inTx && <span className="text-blue-500 font-medium">✓</span>}
                     </div>

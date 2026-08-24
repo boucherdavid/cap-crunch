@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-07-31
+Derniere mise a jour: 2026-08-24
 
 ## Role du fichier
 
@@ -20,6 +20,988 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-08-24
+
+**[Design] — Mise à jour de l'icône de l'app avec le nouveau logo**
+(`app/public/icons/*.png`, `app/app/favicon.ico`, `docs/branding/cap-crunch-logo1.jpg`,
+`docs/branding/cap-crunch-logo2.jpg`) :
+- David a fourni deux variantes du logo "puck + cerveau fissuré" (`cap-crunch-logo1.jpg`,
+  `cap-crunch-logo2.jpg`). Retenu : logo2 — traits plus épais/pleins (cerveau en forme
+  blanche pleine plutôt que fins contours) et fissure plus large, donc plus lisible à petite
+  taille d'icône que logo1.
+- Le pictogramme seul (sans le texte "CAP CRUNCH", illisible en petit format) a été recadré
+  depuis logo2, puis recentré sur un canevas carré avec la couleur de fond du manifest
+  (`#f9fafb`) pour remplir ~82% du cadre (même logique que l'icône précédente, en pleine
+  bordure plutôt qu'avec une grosse marge blanche).
+- Régénéré : `favicon-16x16.png`, `favicon-32x32.png`, `apple-touch-icon.png` (180×180),
+  `icon-192x192.png`, `icon-512x512.png`, `favicon.ico` (multi-résolution 16/32/48/256).
+  Aucun changement de code (`manifest.ts`, `layout.tsx`) — les chemins et tailles référencés
+  n'ont pas changé.
+
+### 2026-08-23 (suite 2)
+
+**[Feature] — Masquer une saison inactive aux poolers (`is_public` sur `pool_seasons`)**
+(`schema.sql`, `app/app/admin/config/actions.ts`, `app/app/admin/config/SeasonsManager.tsx`,
+`app/app/admin/config/ConfigTabsClient.tsx`, `app/app/admin/pool/page.tsx`,
+`app/app/transactions/page.tsx`, `app/app/repechage-recrues/page.tsx`) :
+- Contexte : en préparant la transition 2025-26 → 2026-27 (voir plus haut), David a demandé
+  que les poolers ne puissent pas tomber sur la saison 2025-26 une fois 2026-27 active, pour
+  éviter qu'un alignement/historique jugé non présentable donne l'impression d'un bug.
+- Recherche (agent dédié) : sur toutes les pages de consultation, seules **2** laissent un
+  pooler non-admin naviguer vers une saison passée sans filtre sur `is_active` —
+  `/transactions` (dropdown + `?saison=`) et `/repechage-recrues` (dropdown + `?saisonId=`).
+  Toutes les autres (`/classement`, `/poolers/[id]`, `/joueurs`, `/gestion-effectifs`,
+  `/calendrier`, `/résultats`, `/statistiques`, accueil) suivent automatiquement la saison
+  active, sans possibilité de revenir en arrière.
+- Nouvelle colonne `pool_seasons.is_public` (`BOOLEAN NOT NULL DEFAULT true`) — migration
+  exécutée manuellement en staging par David (`ALTER TABLE ... ADD COLUMN IF NOT EXISTS`,
+  à rejouer en prod au moment de la vraie transition).
+- Toggle par saison inactive dans `/admin/pool?tab=config` (« Masquer aux poolers » /
+  « Rendre visible ») → `setSeasonVisibilityAction`. Sans effet sur la saison active —
+  toujours incluse dans son propre sélecteur via `.or('is_public.eq.true,is_active.eq.true')`
+  sur les deux pages concernées, pour éviter qu'elle disparaisse de son propre menu.
+- Solution générique et réutilisable (pas un correctif ponctuel pour 2025-26 seulement) —
+  applicable à chaque future transition de saison.
+- Validé : `npx tsc --noEmit` propre. Colonne confirmée présente en staging après exécution
+  du SQL par David (`is_public=true` par défaut sur les 5 saisons existantes).
+
+### 2026-08-23 (suite)
+
+**[Feature] — Report atomique au lendemain si un match est déjà commencé (soumissions en direct)**
+(`app/lib/gameDayLock.ts` nouveau, `app/app/gestion-effectifs/actions.ts`,
+`app/app/admin/transactions/actions.ts`) :
+- Contexte : en validant les points d'une période (popup ↩ sur `/classement`), David a
+  repéré un écart d'1 passe pour Auston Matthews entre l'appli et NHL.com sur Oct 7 -
+  Dec 2 2025. Cause trouvée : une ligne `pooler_rosters` (reconstruction staging) avait
+  `removed_at = 2025-12-02T12:00:00Z` (convention `T12:00:00Z` pour une date saisie sans
+  heure, soit 7h heure de l'Est) alors que le match des Leafs ce soir-là a débuté à 19h30
+  heure de l'Est — le match tombait donc après la fin de fenêtre, excluant légitimement
+  cette passe (cas confirmé correct par David, pas un bug).
+- Ça a mené à une question plus large : pour une **vraie soumission en direct** (pas une
+  date forcée), `added_at`/`removed_at` = l'heure réelle de soumission (`now()`), comparée
+  ensuite au `game_start_time` exact de chaque joueur dans `buildStandings()`
+  (`app/lib/standings.ts:262`). Donc dans un même lot touchant 2 joueurs (ex: échange même
+  pooler où l'un sort pendant que l'autre entre), si le match d'un des deux joueurs est déjà
+  commencé au moment de la soumission mais pas celui de l'autre, l'un basculerait sous son
+  ancien statut pour son match du jour et l'autre sous le nouveau — un résultat asymétrique
+  au sein d'un même mouvement. David a demandé que ce soit plutôt atomique : si un des
+  joueurs touchés n'est plus éligible pour la journée (match déjà commencé), tout le lot
+  bascule au lendemain plutôt que chacun selon son propre match.
+- Nouvelle fonction partagée `computeBatchEffectiveDate(playerIds)` (`app/lib/gameDayLock.ts`) :
+  résout l'équipe LNH actuelle de chaque joueur touché, interroge l'horaire NHL du jour en
+  direct (`https://api-web.nhle.com/v1/schedule/{date}` — mêmes endpoint/format que
+  `/calendrier`, pas `player_game_logs` qui n'est peuplé qu'après coup par le pipeline
+  nocturne), et si un match d'une équipe concernée a déjà débuté (`startTimeUTC <= now`),
+  retourne un horodatage de report au lendemain (`{demain}T12:00:00Z`, même convention que
+  les dates historiques). Ne bloque jamais la soumission en cas d'échec/timeout de l'API
+  NHL (repli sur `now()`, comportement actuel inchangé) — même philosophie que les autres
+  appels NHL API du projet (timeout + repli silencieux).
+- Câblé dans `submitBatchAction` (`/gestion-effectifs`) et `submitTransactionAction`
+  (`/admin/transactions`), uniquement sur la branche "en direct" (ni pré-saison, ni date
+  forcée — ces deux cas ont déjà leur propre date explicite). Message d'avertissement
+  affiché après soumission quand le report a eu lieu.
+- Validé : `npx tsc --noEmit` propre. Format de réponse de l'API NHL revérifié via `curl`
+  sur une date connue (2025-12-02, correspond exactement au `game_start_time` déjà en base
+  pour Matthews) et sur une date hors-saison (aucun match, aucun report — comportement
+  inchangé).
+
+### 2026-08-23
+
+**[Feature] — Panneau latéral d'historique des mouvements dans les outils admin**
+(`app/lib/rosterChangeLabels.ts` nouveau, `app/components/movement-history-actions.ts` nouveau,
+`app/components/MovementHistoryPanel.tsx` nouveau, `app/app/admin/pool/page.tsx`,
+`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `app/app/gestion-effectifs/page.tsx`,
+`app/app/admin/transactions/TransactionBuilder.tsx`, `app/app/admin/effectifs/page.tsx`) :
+- David voulait pouvoir suivre l'historique des mouvements d'alignement pendant qu'il saisit
+  des actions dans `/gestion-effectifs` ou `/admin/transactions`, sans naviguer vers l'onglet
+  Suivi séparément.
+- Ajout d'un panneau latéral réutilisable (`MovementHistoryPanel`) affiché uniquement en mode
+  admin (`isAdmin`), sur les deux outils. Deux modes : filtré sur le pooler actuellement
+  sélectionné dans le formulaire (par défaut) ou "Tous" pour la vue globale — bascule via
+  onglets dans le panneau. Se rafraîchit automatiquement après chaque soumission réussie
+  (`refreshKey` incrémenté).
+- Même source de données que l'onglet Suivi existant (`roster_change_log` + `transactions`),
+  extraite dans une nouvelle server action `getMovementHistoryAction` — filtrage par pooler
+  via `pooler_id` sur `roster_change_log`, et via une jointure sur `transaction_items`
+  (`from_pooler_id`/`to_pooler_id`) pour les transactions par lot.
+- `CHANGE_LABEL`/`CHANGE_COLOR` (libellés et couleurs par `change_type`) extraits de
+  `admin/pool/page.tsx` vers `app/lib/rosterChangeLabels.ts` pour éviter la duplication
+  (réutilisés par la nouvelle server action).
+- Dans `TransactionBuilder`, le pooler suivi est celui sélectionné en A (ou B si seul B est
+  choisi) pour une transaction.
+- Conteneurs élargis (`max-w-3xl` → `max-w-6xl`) sur `/gestion-effectifs` (seulement si admin)
+  et l'onglet Mouvements de `/admin/effectifs` pour laisser la place au panneau.
+- Validé : `npx tsc --noEmit` propre. Vérification visuelle faite par David en local (pas de
+  vérification par navigateur automatisé — pas d'accès aux identifiants admin dans cette
+  session).
+
+### 2026-08-22
+
+**[Décision] — Transition 2025-26 → 2026-27 en prod : copier les alignements finaux, pas l'historique complet** (aucun fichier modifié) :
+- David a confirmé l'approche pour la mise en place de la saison 2026-27 en prod : au
+  lieu de terminer la reconstruction historique complète 2025-26 (piste staging
+  uniquement, voir [[project_historique_excel_import]]), pousser directement les
+  alignements finaux 2025-26 dans la nouvelle saison via `adminInitRosterAction`
+  (`/admin/init?tab=rosters` — écrit seulement `pooler_rosters`, sans
+  `roster_change_log`), puis dérouler le flux normal de transition déjà existant :
+  pipeline de données (salaires à jour), `/admin/presaison` (protections recrues
+  expirées → activation/libération, décisions ELC, reset LTIR, ordre de repêchage),
+  puis `/admin/repechage` (repêchage annuel réel). Confirmé par lecture du code
+  (`app/app/admin/presaison/actions.ts`) que cette séquence gère déjà tout ça — aucun
+  nouvel outil requis.
+- Prévu de valider d'abord toute cette séquence en staging (environnement isolé) avant
+  de la refaire en prod.
+- **Clarification en cours de route** : la saison 2025-26 existe déjà en prod (`pool_seasons`,
+  32 `pool_draft_picks`, et surtout **351 lignes `pooler_rosters` réelles** — la saison a
+  été jouée normalement dans l'app, avec de vrais mouvements actif/réserviste/LTIR).
+  Correction d'une fausse piste : `CLAUDE.md`/mémoire donnaient l'impression que
+  `pooler_rosters` 2025-26 était vide en prod (confusion avec le fait que le repêchage
+  recrues 2025 n'avait jamais été *soumis* — `is_used=false` sur les 32 picks). Les deux
+  faits sont distincts : rosters réels présents, mais sans lien vers le repêchage.
+
+**[Data] — Repêchage recrues 2025 relié en prod pour consultation** (nouveau script
+`python_script/push_repechage_2025_to_prod.py`) :
+- Suite à la clarification ci-dessus, David a demandé d'ajouter le repêchage 2025 pour
+  consultation en prod (`/repechage-recrues`, `/admin/repechage`, `/admin/init?tab=choix`
+  y étaient vides faute de picks `is_used`).
+- Script écrit sur le modèle de `sync_staging_to_prod.py` (dry-run par défaut, `--apply`
+  + confirmation "oui"), mais **aucun insert** : les 32 recrues du repêchage 2025
+  existaient déjà comme lignes `pooler_rosters` réelles en prod (`player_type='recrue'`),
+  simplement sans `rookie_type`/`pool_draft_year`/`draft_pick_id` renseignés. Le script
+  a seulement fait un UPDATE des 32 lignes existantes (retrouvées par
+  pooler+joueur, avec mapping `players.id` staging→prod par `nhl_id` puis nom) +
+  `pool_draft_picks.is_used=true` sur les 32 choix — `player_type`, `is_active`,
+  `added_at`/`removed_at` jamais touchés, `current_owner_id` des picks pas écrasé
+  (l'ownership réelle en prod fait foi, pas la reconstruction staging).
+- Accord 32/32 entre le pooler assigné par pick en staging (`current_owner_id`) et le
+  pooler qui détient réellement ce joueur en prod — confirme que la reconstruction
+  staging du repêchage correspond à la réalité prod pour cette partie précise.
+- Dry-run vérifié et présenté à David avant `--apply`. Exécuté et vérifié après coup
+  (32/32 picks `is_used`, 32/32 lignes liées via `draft_pick_id`).
+- Portée volontairement limitée à ce seul repêchage — le reste de l'historique 2025-26
+  (mouvements de saison, transactions) n'est toujours pas reconstruit en prod, et ne le
+  sera pas (voir décision ci-dessus).
+
+### 2026-08-17 (suite)
+
+**[Clarification] — Ordre de repêchage 2026-27 vs classement final 2025-26** (aucun fichier
+modifié) :
+- David s'inquiète que le classement final 2025-26 (en cours de reconstruction manuelle
+  depuis l'abandon de l'import Excel, voir entrée 2026-08-07) ne soit pas identique à la
+  réalité, et se demandait si ce classement dicterait automatiquement l'ordre de repêchage
+  de la saison 2026-27.
+- Confirmé en lisant le code : `/admin/presaison` a un bouton optionnel « Initialiser à
+  partir du classement précédent (inversé) » (`PresaisonManager.tsx:765-770` →
+  `initDraftOrderFromStandingsAction` → `computeReverseStandingsOrder()` dans
+  `app/lib/draftOrder.ts`, qui appelle `buildStandings()` sur la saison précédente et
+  inverse l'ordre). Ce n'est **pas automatique** — un seul clic, à tout moment avant le
+  repêchage — et l'ordre reste réordonnable à la main ensuite via `/admin/repechage` →
+  « Ordre de sélection » (`DraftOrderEditor.tsx`, flèches ▲▼). Même mécanique répétée chaque
+  préseason, jamais un verrou définitif.
+- Donc pas de blocage : si le classement 2025-26 reconstruit s'avère peu fiable, David peut
+  simplement ignorer ce bouton et fixer l'ordre 2026-27 à la main.
+
+### 2026-08-17
+
+**[Feature] — Signer/classer directement un agent libre sur ELC comme recrue, sans passer par `/admin/init`**
+(`app/app/gestion-effectifs/actions.ts`, `app/app/gestion-effectifs/GestionEffectifsManager.tsx`,
+`app/app/admin/transactions/actions.ts`, `app/app/admin/transactions/TransactionBuilder.tsx`) :
+- David a clarifié la répartition voulue entre les deux mécanismes de classement recrue :
+  `/admin/init` → Banque de recrues reste réservé au cas où le joueur a été **repêché par le
+  pool** (pas la LNH) mais n'est **plus** sur son ELC — il faut alors rattacher manuellement
+  `pool_draft_year` pour la fenêtre de protection de 5 saisons, une info que rien d'autre ne
+  peut déduire. Le cas **agent libre encore sur son ELC** (protégé tant que ELC, peu importe
+  `pool_draft_year`) doit pouvoir se faire directement dans le flux normal de signature/
+  changement de statut, sans détour admin.
+- **Éligibilité recrue élargie** (partout où elle est vérifiée pour ce nouveau chemin) :
+  `is_rookie` OU `draft_year` dans la fenêtre 5 saisons OU **statut de contrat `ELC`** —
+  avant, seul `is_rookie`/`draft_year` étaient acceptés, ce qui bloquait un agent libre sur
+  ELC sans historique de repêchage pertinent (ex: universitaire non repêché tout juste signé).
+- **`/gestion-effectifs`** : « Signer agent libre » offre maintenant « Recrue (agent libre sur
+  ELC) » comme destination (en plus d'Actif/Réserviste), et « Changement de statut » vers
+  Recrue fixe automatiquement `rookie_type = 'agent_libre'` quand la ligne n'a jamais été
+  classée (`deactivate()` — remplace l'ancien avertissement « à compléter dans Rosters
+  initiaux »). Le cas repêché par le pool (`rookie_type` déjà posé à `'repeche'` dès le
+  repêchage annuel, voir `admin/repechage/actions.ts`) n'est jamais écrasé — seule une ligne
+  encore non classée bascule vers `agent_libre`.
+- **`/admin/transactions`** : action « Signer » accepte aussi « Recrue » comme nouveau statut,
+  avec la même validation d'éligibilité et le même `rookie_type = 'agent_libre'` posé côté
+  serveur (`submitTransactionAction`).
+- Validé : `npx tsc --noEmit` propre.
+
+### 2026-08-16 (suite 3)
+
+**[Feature] — « Retour LTIR » : le joueur qui fait de la place peut aller sur LTIR au lieu de Réserviste**
+(`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `app/app/gestion-effectifs/actions.ts`) :
+- David a signalé un blocage réel : quand un joueur revient de la LTIR alors que le roster
+  actif est déjà plein (12A/6D/2G), l'action « Retour LTIR » forçait systématiquement à
+  démouvoir l'actif libérant la place vers Réserviste — or ce joueur est parfois lui-même en
+  train de se blesser au même moment, et devrait plutôt aller sur LTIR (ce qui, en prime,
+  sort sa masse salariale du calcul de cap, contrairement à Réserviste qui compte toujours).
+- Ajouté un sélecteur « Ce joueur devient » (Réserviste / LTIR) dans le formulaire Retour
+  LTIR — `deactivateNewType` propagé de `CartItem` → `BatchActionInput` →
+  `deactivate(action.deactivateActifId, action.deactivateNewType ?? 'reserviste')` côté
+  serveur. Défaut `reserviste` inchangé si l'admin ne touche pas au nouveau sélecteur.
+- Le backend `deactivate()` acceptait déjà `'ltir'` comme `toType` (utilisé par l'action
+  simple `LTIR` existante) — aucune nouvelle validation nécessaire, la fonction gère déjà
+  `checkFutureRosterConflict`/journalisation pour ce cas.
+- Validé : `npx tsc --noEmit` propre.
+
+### 2026-08-16 (suite 2)
+
+**[Feature] — Étend le sélecteur de statut aux joueurs LTIR échangés**
+(`app/app/admin/transactions/TransactionBuilder.tsx`) :
+- David a signalé un cas manquant : un pooler avec un joueur en LTIR peut vouloir l'échanger
+  directement (plutôt que le réactiver puis le mettre au ballotage faute de place) ; le
+  receveur doit alors pouvoir choisir son statut d'arrivée.
+- Sélecteur du résumé « Échanges » ([TransactionBuilder.tsx:333](app/app/admin/transactions/TransactionBuilder.tsx#L333)) étendu : `old_player_type === 'ltir'`
+  déclenche maintenant aussi le sélecteur, avec une option LTIR ajoutée en plus
+  d'Actif/Réserviste (le receveur peut aussi le garder en LTIR).
+- Aucun changement backend requis : `submitTransactionAction` (`actions.ts`) accepte déjà
+  n'importe quel `new_player_type` sur la branche `transfer`, et `validateFinalRoster`
+  exclut déjà les LTIR du calcul de cap et des limites de roster.
+- Validé : `npx tsc --noEmit` propre.
+
+### 2026-08-16 (suite)
+
+**[Feature] — Choix du statut Actif/Réserviste pour un joueur reçu dans un échange**
+(`app/app/admin/transactions/TransactionBuilder.tsx`) :
+- David a remarqué que le joueur reçu dans un échange héritait automatiquement du statut
+  qu'il avait chez le pooler donneur (`new_player_type = entry.player_type` dans
+  `addTransferPlayer`), sans possibilité de le recevoir Réserviste plutôt qu'Actif (ou
+  l'inverse) si le roster du receveur est déjà plein sur ce statut.
+- Ajouté un sélecteur Actif/Réserviste directement sur la ligne « Échanges » du résumé de
+  transaction (`updateItemDestType`), visible seulement pour les items `transfer` avec
+  `player_id` dont le statut source est `actif` ou `reserviste` — les recrues et joueurs
+  LTIR continuent d'hériter automatiquement de leur statut (protection recrue, LTIR suit
+  le joueur), comme avant.
+- Validé : `npx tsc --noEmit` propre.
+
+### 2026-08-16
+
+**[Fix] — Retrait du bouton « Ballotage » dans `/admin/transactions`** (`app/app/admin/transactions/TransactionBuilder.tsx`,
+`app/app/admin/transactions/actions.ts`) :
+- David a signalé que le bouton orange « Ballotage » (à côté de « Donner » dans la liste de
+  joueurs d'un pooler) était mélangeant : il assignait automatiquement le joueur au Pooler B
+  sélectionné pour l'échange, alors que le ballotage devrait pouvoir se faire sans désigner
+  de réclamant précis dans cet outil — ce cas passe déjà par le bouton « Libérer joueur »
+  (Ajustements) plus bas.
+- Retiré : bouton Ballotage, fonction `addBallotagePlayer`, section résumé « Ballotage »,
+  et le type `'ballotage'` de `ActionType`/`submitTransactionAction` (fusionné avec la
+  branche `transfer`, logique identique). Confirmé que `admin/transactions/actions.ts`
+  n'est importé que par `TransactionBuilder.tsx` — aucun impact sur les mécanismes de
+  ballotage distincts et toujours actifs dans `/gestion-effectifs` et `/admin/historique`.
+- Validé : `npx tsc --noEmit` propre.
+
+### 2026-08-13 (suite)
+
+**[Feature] — Export CSV du journal complet d'une saison** (`app/app/admin/suivi/export-actions.ts`,
+`app/app/admin/suivi/JournalExport.tsx`, `app/app/admin/pool/page.tsx`) :
+- Demandé par David : une preuve/backup exportable de tous les mouvements d'une saison
+  (alignement + transactions), triée par date effective, pour utilisation dans un tableur
+  externe si l'app venait à ne plus fonctionner.
+- Plutôt qu'une nouvelle page, ajouté un bloc « Journal complet d'une saison » à l'onglet
+  Suivi existant (`/admin/pool?tab=suivi`) — sélecteur de saison + bouton d'export,
+  indépendant du fil d'activité affiché au-dessus (qui reste plafonné à 100/50 lignes
+  récentes, pensé pour un coup d'œil rapide, pas un export complet).
+- **Une seule source suffit** : `roster_change_log` capture déjà tous les mouvements réels
+  peu importe l'outil d'origine (`/gestion-effectifs`, `/admin/historique`,
+  `/admin/transactions` — ce dernier y écrit aussi en plus de `transactions`, voir
+  `CLAUDE.md` section 6) — pas besoin de fusionner deux sources séparées comme le fait le
+  fil d'activité actuel (qui, lui, duplique déjà l'info pour les transactions : une ligne
+  générique "Transaction" en plus des lignes détaillées par joueur).
+- Export CSV point-virgule (délimiteur attendu par Excel en locale française) avec BOM
+  UTF-8 (accents), date effective en premier (`YYYY-MM-DD HH:mm`, fuseau Toronto, format
+  qui reste trié correctement même en texte brut), une ligne par mouvement avec joueur/choix,
+  action, ancien/nouveau statut, et si la date a été forcée manuellement.
+- Requête paginée (dépasse la limite Supabase de 1000 lignes sur une saison complète).
+
+### 2026-08-13
+
+**[Refactor] — Fusion Ajustement/Activation recrue/Retour banque en Changement de statut** — voir commit
+`901b2dc` (déjà fait la veille, documenté ici pour référence croisée avec les échanges de
+cette session qui l'utilisent).
+
+**[Fix] — Joueur parti d'un pooler affiché comme actif dans `/poolers/[id]`, `/classement`
+et le résumé de la page d'accueil** (`app/lib/standings.ts`, `app/app/poolers/[id]/PoolerPageTabs.tsx`,
+`app/app/classement/ClassementTable.tsx`, `app/components/SummaryTable.tsx`) :
+- Repéré par David : après avoir signé Nick Schmaltz chez Paule (1er novembre, via
+  « Changement de statut » + « Libération » combinés dans un même panier — a confirmé que
+  la soumission combinée fonctionne bien, doute initial dissipé après vérification en
+  base : les deux lignes de `roster_change_log` sont créées à la même seconde), Jonathan
+  Marchessault (retiré le même jour) continuait de s'afficher identique à un joueur
+  actif — pas grisé comme un réserviste/LTIR, malgré son départ complet du pooler.
+- **Cause** : `PlayerContrib.playerType` (retourné par `buildStandings()`) reflète le
+  `player_type` de la **dernière ligne `pooler_rosters`** pour ce (pooler, joueur), qui
+  reste `'actif'` même après un retrait complet (`is_active=false`, `removed_at` posé) —
+  rien ne distinguait "encore sur le roster mais pas actif" (réserviste/LTIR/recrue, déjà
+  grisé) de "plus du tout sur le roster" (jamais grisé, car `playerType` vaut quand même
+  `'actif'`).
+- **Correctif** : nouveau champ `PlayerContrib.stillRostered` (`true` seulement si la
+  dernière ligne a `removed_at === null`, donc encore ouverte). Les 3 endroits qui
+  dérivaient un style "actif" de `playerType === 'actif'` seul vérifient maintenant aussi
+  `stillRostered` — grisé + badge **« PARTI »** dans les tableaux de points, exclu du
+  sous-total B/A/V/DP/BL du résumé page d'accueil (le total de points, lui, était déjà
+  correct — calculé période par période, indépendant du statut actuel).
+- Bug systémique (dupliqué dans les 3 fichiers, pas propre à une seule page) — trouvé en
+  cherchant tous les usages de `playerType === 'actif'` après le signalement initial sur
+  `/poolers/[id]`.
+
+**[Fix] — Sélecteur de pooler vide sur `/gestion-effectifs` (page personnelle, pas le hub admin)**
+(`app/app/gestion-effectifs/GestionEffectifsManager.tsx`) :
+- David (admin) ne voyait aucune option dans le menu déroulant « Pooler » sur
+  `/gestion-effectifs` — contrairement à `/admin/effectifs?tab=mouvements`, cette page ne
+  récupère/passe jamais la liste des poolers, mais le sélecteur s'affichait quand même
+  (conditionné sur `isAdmin` seul, pas sur la présence réelle de la liste), vide et inutile.
+- **Décision** : `/gestion-effectifs` doit toujours agir sur son propre pooler, même pour
+  un admin qui teste sa propre page — `/admin/effectifs` couvre déjà le cas "choisir
+  n'importe quel pooler". Sélecteur maintenant conditionné sur `!!poolers && poolers.length
+  > 0` (donc seulement quand le hub admin le fournit) au lieu de `isAdmin`. `poolerName`
+  (ligne de confirmation avant soumission) corrigé en même temps — dépendait aussi de
+  `isAdmin` seul et se serait retrouvé vide dans le même scénario.
+
+### 2026-08-11
+
+**[Fix] — 328/330 lignes `pooler_rosters` mal datées (saisie au lieu du début de saison), staging** :
+- Point de départ : David a signalé un blocage de délai de réactivation sur Sam Rinzel chez
+  Paule après un échange saisi au 11 octobre 2025. Investigation a révélé 3 lignes
+  `roster_change_log` résiduelles datées d'aujourd'hui (tests précédents) — supprimées.
+- En vérifiant le cas voisin (David Jiricek), David a remarqué que sa ligne était datée du
+  9 août 2026 (date réelle de saisie) au lieu du début de saison — question qui a mené à
+  vérifier l'ensemble de la saison plutôt qu'un cas isolé.
+- **Ampleur confirmée** : sur 330 lignes `pooler_rosters` (saison 2025-26), seulement 2
+  étaient correctement datées (le vrai échange du 11 octobre). Les 328 autres portaient la
+  date réelle de saisie (8-9 août 2026) au lieu du 7 octobre 2025 (`saison_start_date`).
+  Même chose pour `roster_change_log` : 298 lignes de bruit sur 302 (seules 4, liées à
+  l'échange, étaient légitimes).
+- **Cause** (`app/app/admin/rosters/RosterManager.tsx:115`) : le bouton « Mode init » —
+  qui force `added_at` au début de saison et n'écrit aucune ligne de journal
+  (`adminInitRosterAction`, conçu "sans validations, sans snapshots") — est un état
+  purement local au navigateur (`useState(false)`), désactivé par défaut et réinitialisé à
+  chaque rechargement de page. Sur une saisie de 8 poolers étalée sur 2 jours avec
+  plusieurs rechargements probables, facile à oublier de réactiver.
+- **Correctifs appliqués (staging)** :
+  1. `pooler_rosters.added_at` ramené à `2025-10-07T12:00:00Z` pour les 328 lignes
+     concernées (`UPDATE ... WHERE added_at LIKE '2026%'`).
+  2. Les 298 lignes `roster_change_log` de bruit supprimées (pas juste redatées — le mode
+     init n'est censé en écrire aucune, donc aligné avec le comportement voulu plutôt que
+     de garder des événements `old_type=null` qui n'auraient pas dû exister).
+  3. `initMode` démarre maintenant à `true` par défaut sur cette page — son seul but est la
+     saisie des rosters de départ, donc plus cohérent que de compter sur un bouton qu'on
+     peut oublier d'activer. Reste basculable au besoin (cas rares hors init).
+- Prod non touchée (aucune donnée saisie là-bas pour cette reconstruction).
+
+**[Fix] — J.J. Peterka à 0 pt malgré un statut actif correct depuis le 7 octobre (staging)** :
+- Repéré par David dans l'alignement de Vincent : `MJ` à « — » et 0 pt alors que la fenêtre
+  active était correcte (contrairement au cas du 328/330 ci-dessus, réglé juste avant).
+- **Cause** : `players.nhl_id` était `null` pour Peterka (id=1343) — sans lui, aucun match
+  ne peut jamais être relié, peu importe la fenêtre `added_at→removed_at`. Pas un problème
+  de diminutif (le nom `John-Jason Peterka` correspond exactement dans l'API NHL,
+  `nhl_id=8482175`) : `backfill_nhl_ids.py` n'avait simplement jamais été relancé depuis
+  qu'il a commencé à jouer pour de vrai cette saison. Particularité pour staging : ce
+  script fait partie du pipeline hebdomadaire automatique (`run_pipeline.py`, lundi 6h UTC)
+  mais **seulement contre prod** — staging ne se met à jour que si on le lance dessus
+  manuellement, donc ce genre de retard y est normal et pourrait resurgir pour d'autres
+  joueurs qui débutent en cours de saison.
+- **Erreur en cours de route** : `backfill_nhl_ids.py` charge `.env` par défaut (pas
+  `.env.staging`, contrairement aux autres scripts one-off utilisés cette session) — mon
+  premier `--dry-run` et la première exécution réelle ont donc tourné contre **PROD** par
+  erreur. Impact vérifié et sans collatéral : une seule ligne modifiée (le `nhl_id` de
+  Peterka, id=1343 dans les deux bases), correction légitime identique des deux côtés.
+  Relancé correctement ensuite avec les variables d'env de staging exportées explicitement.
+- **Gap découvert dans `backfill_regular_game_logs.py`** : une fois le `nhl_id` posé, le
+  rejeu du calendrier n'a récupéré que 4 matchs sur 82 — le script saute les **dates**
+  déjà en base (optimisation normale pour un run de routine), donc les ~187 dates déjà
+  traitées pour d'autres joueurs avant que Peterka ait un `nhl_id` ne sont jamais
+  revisitées pour lui. Pas de flag `--force` existant pour ce cas.
+- **Correctif appliqué** : script one-off (non committé) allant chercher directement le
+  journal de matchs complet de Peterka via l'API NHL par joueur
+  (`/v1/player/{nhl_id}/game-log/...`, 1 seul appel pour toute la saison) plutôt que de
+  rejouer les 197 dates ; heure exacte de chaque match récupérée via boxscore par
+  `gameId` (nécessaire pour `statusAt()`, `standings.ts:261`). 82 lignes upsertées
+  (`on_conflict=player_id,game_date,season,game_type`, donc sans risque de doublon) — 25B
+  22A (47 pts) au total.
+- **Audit de portée** : comparé les 110 joueurs actuellement rosterés en staging *avec* un
+  `nhl_id` déjà valide contre leurs vrais matchs joués (API NHL) — **aucun écart trouvé**.
+  Peterka était un cas isolé ; les ~564 joueurs rosterés/sous contrat sans `nhl_id` restant
+  n'ont légitimement aucun match NHL cette saison (prospects, etc.), déjà tous essayés sans
+  correspondance par `backfill_nhl_ids.py`.
+- Aucun changement de code cette fois — script one-off, pas un bug reproductible du
+  pipeline lui-même (contrairement au bug de scraping du 2026-08-08).
+
+### 2026-08-10
+
+**[Refactor] — Fusion Ajustement / Activation recrue / Retour banque en une seule action « Changement de statut »** (`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `actions.ts`) :
+- David a trouvé les 3 tuiles ajoutées la veille confuses (elles se chevauchaient
+  conceptuellement — toutes des variantes de "changer le statut d'un ou deux joueurs") et a
+  demandé un seul menu où on choisit librement le nouveau statut de chaque joueur impliqué
+  (Actif/Réserviste/Recrue, n'importe quelle combinaison), plutôt que des tuiles
+  pré-configurées par paire de statuts.
+- `ActionType` simplifié : `'swap' | 'activate_rookie' | 'demote_rookie'` remplacés par un
+  seul `'change_status'`, avec `entry1Id`/`newType1` + `entry2Id`/`newType2` optionnel (2e
+  joueur pour un échange en une seule action de panier au lieu de deux distinctes).
+- Chaque transition applique automatiquement la bonne validation selon le **statut cible**
+  plutôt que selon la tuile choisie : délai de réactivation désormais systématique vers
+  `actif` (amélioration incidente — l'ancienne « Activation recrue » ne le vérifiait jamais,
+  ce qui aurait permis de contourner le délai en repassant un joueur par la banque de recrues
+  avant de le réactiver), admissibilité recrue (5 saisons) + avertissement `rookie_type`
+  manquant vers `recrue` (déplacés dans `deactivate()` pour s'appliquer peu importe l'appelant).
+- `deactivate()`/`activate()` (déjà génériques) réutilisés tels quels via un petit wrapper
+  `applyStatus()` — aucune duplication de logique de validation.
+- Aucune donnée persistée ne référençait les anciens noms `ActionType` (valeurs transitoires
+  d'une requête, jamais écrites en base — `roster_change_log.change_type` utilise un
+  vocabulaire distinct et inchangé), donc remplacement propre sans migration nécessaire.
+
+### 2026-08-09
+
+**[Fix] — Doublon Mitch/Mitchell Marner (staging + PROD)** :
+- Repéré par David en saisissant les alignements initiaux : deux fiches pour le même
+  joueur, `Mitch Marner` (`nhl_id` vide, créée début juillet) et `Mitchell Marner`
+  (`nhl_id=8478483`, la fiche canonique déjà utilisée dans les rosters/journal). Cause
+  distincte du bug de scraping ci-dessus (pas de nom corrompu) : PuckPedia affiche le
+  diminutif sur une page et le nom complet sur une autre, et le matching par nom exact de
+  `import_supabase.py` (aucune règle de rapprochement par diminutif) ne les relie jamais.
+  Le dédoublonnage existant du pipeline (cas 1-3 documentés dans `import_supabase.py`,
+  ~ligne 350) ne couvre pas non plus ce cas puisqu'il compare des noms normalisés
+  identiques, pas des variantes.
+- La fiche fantôme avait un contrat 2030-31 (12 M$) absent de la fiche canonique — reporté
+  avant suppression pour ne rien perdre. Vérifié sans référence dans `pooler_rosters`/
+  `roster_change_log`/`transaction_items`/`player_stat_snapshots` dans les deux bases avant
+  suppression.
+- **Pas de correctif de code** cette fois — cas ponctuel plutôt qu'un bug systémique
+  reproductible comme le scraping ; pas exploré de règle générale de rapprochement par
+  diminutif (risque de faux positifs élevé, ex. deux joueurs différents partageant un
+  diminutif). À surveiller si d'autres cas du genre apparaissent pendant la saisie.
+
+**[Jalon] — Alignements initiaux (octobre 2025) saisis au complet en staging** :
+- David a terminé la saisie des 8 rosters de départ via `/admin/init?tab=rosters`.
+- Prochaine étape (annoncée par David, pas encore commencée) : saisir les transactions
+  majeures et quelques mouvements de test via `/admin/historique` (gros du travail) et les
+  outils `/gestion-effectifs`/`/admin/transactions` (test des outils + calcul des points,
+  voir décision du 2026-08-08) pour valider la mécanique de périodes actives et les
+  transferts joueurs/choix.
+
+**[Feature] — Action « Retour banque » ajoutée à Gestion d'effectifs, fusionnée le lendemain (voir 2026-08-10)** (`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `actions.ts`) :
+- David a signalé, en testant les transactions, qu'aucune action ne permettait de renvoyer
+  un joueur actif/réserviste à la banque de recrues — seule la direction inverse
+  (« Activation recrue ») existait.
+- Nouvelle action `demote_rookie`, symétrique à `activate_rookie`, disponible pour tous
+  (pas admin-only) sur `/gestion-effectifs` et `/admin/effectifs?tab=mouvements`.
+- Liste filtrée sur l'admissibilité recrue (`is_rookie` ou `draft_year` dans la fenêtre de
+  protection de 5 saisons — même formule que `getDraftYearCutoff()` dans
+  `admin/rosters/actions.ts`), revalidée côté serveur en plus du filtre client.
+- `rookie_type`/`pool_draft_year` déjà sur la ligne `pooler_rosters` sont conservés tels
+  quels (jamais touchés par un simple changement de `player_type`) ; si absents (joueur
+  jamais passé par la banque sur cette ligne), avertissement non bloquant plutôt que blocage
+  — cohérent avec l'affichage existant de `/admin/init?tab=rosters` qui invite déjà à
+  compléter le type recrue manquant.
+- `deactivate()` (helper interne de `submitBatchAction`) étendu pour accepter `'recrue'`
+  comme type cible, en plus de `'reserviste'`/`'ltir'` — réutilise `checkFutureRosterConflict`
+  et `computeTypeChangeAddedAt` sans dupliquer la logique.
+- **Remplacé le lendemain** par la fusion générique « Changement de statut » (voir
+  2026-08-10) — cette action `demote_rookie` dédiée n'existe plus telle quelle, sa logique de
+  validation a été absorbée dans `deactivate()`.
+
+### 2026-08-08
+
+**[Décision] — Abandon de la reconstruction Excel, repart des rosters d'octobre 2025** :
+- L'écart actif/reserviste non résolu (voir session 2026-08-06/07) a coûté plus cher à
+  déboguer qu'à refaire : David repart des alignements réels d'octobre 2025 (`/admin/init`),
+  saisit manuellement les transactions majeures (agents libres, IR, échanges) via
+  `/admin/historique` (choisi plutôt que `/admin/transactions`/`/gestion-effectifs` pour le
+  gros du travail — seul outil à faire un échange N-contre-M + choix de repêchage en une
+  transaction atomique, avec correction/annulation ligne par ligne), et valide contre de
+  vraies feuilles de match NHL plutôt que des captures marqueur.com.
+- `pooler_rosters`/`roster_change_log` de la saison 2025-26 vidés en staging (386 + 815
+  lignes) pour repartir propre. Prod non touchée.
+- Les outils `/gestion-effectifs`/`/admin/transactions` restent utiles séparément pour
+  tester le fonctionnement réel des outils de saison (validations, notifications, trace
+  `/transactions`) — indépendant du calcul des points, qui exige une date forcée dans la
+  fenêtre déjà jouée (le calendrier réel n'a aucune incidence en staging).
+
+**[Fix] — Choix de repêchage orphelins bloquant `/admin/repechage`** (staging uniquement) :
+- 4 lignes `pool_draft_picks` (rondes 1-4, saison 2025-26) avaient `current_owner_id` et
+  `original_owner_id` tous les deux `null`, faisant planter `DraftBoard.tsx`
+  (`Cannot read properties of null (reading 'id')`).
+- Cause probable : un compte pooler jetable créé/supprimé le 2026-07-30 pour un test
+  Playwright (voir session de cette date) — le trigger `create_picks_for_new_pooler()` lui
+  a créé 4 choix (seule saison existante à ce moment), puis `ON DELETE SET NULL`
+  (`schema.sql`) a vidé les deux colonnes propriétaire à sa suppression. Reste une zone
+  d'ombre : les saisons créées plus tard (2026-PO, 2026-27/27-28/28-29) n'ont pas le même
+  problème alors qu'elles existaient déjà à cette date — pas pu vérifier si le trigger est
+  réellement actif en base (pas d'accès SQL direct).
+- Lignes supprimées (ids 417-420). Les 32 choix restants (8 poolers × 4 rondes) sont intacts.
+- Puisque `pooler_rosters` avait aussi été vidé (décision ci-dessus), le repêchage 2025 déjà
+  complété (32/32) n'affichait plus aucune recrue sur `/poolers` ni `/repechage-recrues`
+  (l'assignation recrue↔pick vit dans `pooler_rosters`, pas `pool_draft_picks`). Choix
+  ramenés à `is_used=false`/`pending_player_id=null` pour refaire le repêchage 2025 pour de
+  vrai via `/admin/repechage` — sert aussi de test de cet outil.
+
+**[Fix] — Recrues disponibles au repêchage non filtrées par année** (`app/app/admin/repechage/page.tsx`) :
+- La requête `players` du tableau de repêchage incluait une fenêtre de 5 années
+  (`draft_year >= poolDraftYear - 4`) au lieu de l'année sélectionnée seule — confusion
+  entre la règle de protection recrue (5 saisons, une fois choisie) et l'éligibilité à
+  l'affichage dans CE repêchage. Filtré strictement sur `draft_year = poolDraftYear`.
+
+**[UI] — Recherche de joueurs remontée en haut sur écran étroit** (`app/app/admin/rosters/RosterManager.tsx`) :
+- Sous le point de rupture `lg`, le bloc "Joueurs disponibles" (colonne de droite en
+  affichage large) passe en premier via `order-first lg:order-none` — évite de défiler
+  jusqu'en bas à chaque ajout de joueur pendant l'initialisation des alignements sur une
+  fenêtre réduite. Aucun changement au-delà de `lg`. Page admin desktop-only donc pas
+  d'obligation responsive, mais amélioration UX demandée par David.
+
+**[Fix] — Bug de scraping dupliquant des joueurs avec un nom corrompu** (`python_script/scrape_puckpedia.py`) :
+- Repéré par David en cherchant Simon Edvinsson dans `/admin/init?tab=rosters` : deux
+  fiches, une correcte et une `EdvinssonDage23cap$894k`.
+- Cause : quand la cellule du nom n'a pas de lien `<a>` (variante de mise en page
+  PuckPedia), le code retombait sur `cells[0].get_text(strip=True)`, qui aspire tout le
+  texte de la cellule (nom + position + âge + cap hit imbriqués) sans séparateur. Le
+  `nhl_id` de ces lignes restant toujours `null`, `import_supabase.py` ne les fait jamais
+  correspondre au joueur existant et en insère un nouveau à chaque run plutôt que de
+  corriger l'existant.
+- **Ampleur réelle, découverte en creusant au-delà du cas signalé** : 16 doublons en
+  staging, **175 en PROD** (accumulés du 16 au 30 juillet sur plusieurs runs, le plus gros
+  lot du 21 juillet). Vérifié avant suppression : aucune référence dans `player_contracts`
+  ni `pooler_rosters` — suppression sans collatéral.
+- Correctif : sur cette cellule, retirer les `<div>`/`<span>` d'info imbriqués (mêmes
+  blocs utilisés plus loin pour position/âge/tir) avant de lire le texte restant.
+- Nettoyage exécuté : 16 lignes supprimées en staging, 175 en PROD (`last_name ILIKE
+  '%cap$%'`, confirmé sans collatéral avant suppression).
+
+### 2026-08-06
+
+**[Fix] — Bug de doublons `pooler_rosters` causé par l'apply du 2026-08-05, repéré par David via `/classement` et `/poolers/[id]`** (`python_script/import_mouvements_excel.py`) :
+- David a repéré des joueurs (ex: Tage Thompson) avec 2 « périodes actives » commençant
+  toutes les deux le 7 octobre dans le popup de points, et le même joueur listé deux fois
+  dans l'onglet Alignement d'un pooler (cap et compte de postes doublés, ex: « Attaquants
+  20/12 » au lieu de 10/12).
+- **Cause confirmée en base (staging)** : l'étape de suppression de l'apply (`--apply`)
+  ne vide `pooler_rosters`/`roster_change_log` que pour `report.players_touched` (les
+  joueurs réellement mentionnés dans l'onglet `Mouvements`, ~155), mais l'étape
+  d'insertion qui suit boucle sur `sim.rows_by_pair` au complet — qui contient aussi les
+  ~320 joueurs préchargés depuis l'onglet `Roster_Initial` (`preload_initial()`), qu'ils
+  aient été touchés ou non. Chaque joueur préchargé mais jamais mentionné dans
+  `Mouvements` s'est donc fait insérer une ligne `pooler_rosters` neuve en plus de sa
+  ligne préexistante jamais supprimée — même bug de fond que celui déjà corrigé le
+  2026-08-05 (suite 2) pour l'affichage du rapport (`compute_final_rosters`), mais jamais
+  appliqué à la vraie boucle d'écriture en base.
+- **Portée confirmée par requête directe sur staging** : 191 joueurs avec 2 lignes
+  `pooler_rosters` ouvertes simultanément. Point rassurant vérifié explicitement :
+  **aucun cas cross-pooler** (0 joueur avec 2 lignes ouvertes chez 2 poolers différents)
+  — la contrainte « un joueur = un seul pooler à la fois » n'est donc pas violée pour de
+  vrai, c'est un doublon de bookkeeping chez le même pooler. Impact réel : points
+  doublés dans `buildStandings()` (Thompson : 81 pts réels affichés 162), cap et compte
+  de postes doublés dans l'onglet Alignement, pour ~191 des ~320 joueurs de la saison.
+- **Correctif appliqué** : la boucle d'insertion (`import_mouvements_excel.py` autour de
+  la ligne 996) ignore maintenant les paires `(pooler, pid)` dont `pid` n'est pas dans
+  `touched_ids`, pour rester alignée avec la boucle de suppression qui précède.
+- **Staging pas encore nettoyé** : les 191 doublons déjà insérés le 2026-08-05 sont
+  toujours en base. David a choisi de prioriser le correctif du script pour l'instant;
+  le nettoyage des lignes déjà dupliquées en staging reste à faire (analyse déjà faite :
+  87 paires parfaitement identiques, 104 paires avec une ligne datée réellement + une
+  ligne parasite datée exactement au début de saison — mécaniquement résolubles —, et 1
+  cas (David Jiricek chez Paule, `actif` vs `reserviste`) qui demande un arbitrage
+  manuel plutôt qu'une règle automatique).
+- Sync vers prod (`sync_staging_to_prod.py`) à ne surtout pas lancer avant ce nettoyage.
+
+**[Data] — Nettoyage des 191 doublons `pooler_rosters` en staging + découverte d'un second gap (métadonnées recrue perdues)** (staging uniquement, script one-off non committé) :
+- En préparant le nettoyage des 191 paires identifiées ci-dessus, découverte d'un
+  problème distinct : l'insertion de l'apply du 2026-08-05
+  (`import_mouvements_excel.py` ~ligne 1002) n'écrit que `pooler_id`/`player_id`/
+  `pool_season_id`/`player_type`/`is_active`/`added_at`/`removed_at` — jamais
+  `rookie_type`/`pool_draft_year`/`draft_pick_id`. Ces champs pilotent la protection
+  recrue (`isProtected()` dans `app/app/poolers/[id]/page.tsx`, fenêtre de 5 saisons) et
+  le lien vers `pool_draft_picks`. Sur les 234 lignes `recrue` ouvertes en staging à ce
+  moment, 126 n'avaient ni l'un ni l'autre — bien plus large que les 191 doublons
+  (touche tout joueur recrue rejoué par l'apply, dupliqué ou non). Effet pratique :
+  `isProtected()` retombe sur `!row.rookie_type → true` (protection par défaut, pas de
+  perte de protection, mais impossible de calculer une date d'expiration correcte).
+- Décidé avec David : traiter en deux temps. D'abord fusionner-puis-dédupliquer les 191
+  paires (récupérer `rookie_type`/`pool_draft_year`/`draft_pick_id` de la ligne
+  supprimée vers la ligne conservée quand elle les avait), reporter le gap plus large
+  (joueurns recrue touchés mais jamais dupliqués) à une session séparée.
+- **Logique de résolution par paire** (script one-off, non committé — vit dans le
+  scratchpad de la session) : pour chaque paire, reconstruit l'état correct à partir des
+  entrées `roster_change_log` `change_type='excel_import'` de la paire (la première
+  transition `old_type IS NULL` donne le vrai `added_at`, la chaîne de transitions
+  rejouée donne le vrai `player_type` final) ; la ligne dont `(added_at, player_type)`
+  correspond à cet état reconstruit est conservée, l'autre est supprimée. Quand les deux
+  lignes correspondent exactement (doublon de valeur pur), conserve l'id le plus bas.
+  Avant chaque suppression, copie `rookie_type`/`pool_draft_year`/`draft_pick_id` de la
+  ligne supprimée vers la ligne conservée si cette dernière ne les a pas déjà.
+  191/191 paires résolues automatiquement (0 cas ambigu nécessitant un arbitrage manuel
+  — y compris les 2 cas repérés avec un vrai changement de statut, ex: Matthew Schaefer
+  recrue→actif le 16 avril, David Jiricek actif→réserviste le 9 octobre : la ligne
+  reconstruite à partir de `roster_change_log` était la bonne dans les deux cas, celle
+  gardée par erreur lors de l'apply était la ligne périmée d'avant le 2026-08-05).
+- **Exécuté** : 105 lignes fusionnées (métadonnées recrue récupérées), 191 lignes en
+  double supprimées. Vérifié après coup : 0 paire dupliquée restante, `pooler_rosters`
+  passe de 577 à 386 lignes. Gap résiduel (recrues touchées par l'apply, jamais
+  dupliquées, toujours sans `rookie_type`/`draft_pick_id`) : 21 lignes sur 128 recrues
+  ouvertes — à traiter séparément.
+- **Reste à faire** : combler le gap résiduel de 21 lignes recrue ; revalider
+  `/classement` en staging (points ne devraient plus être doublés) ; seulement ensuite
+  envisager `sync_staging_to_prod.py`.
+
+**[Investigation] — David signale des joueurs encore actifs en fin de saison qui ne devraient plus l'être (ex: 17 attaquants actifs chez David au lieu de 12) — comparaison avec marqueur.com démarrée, pas terminée** (aucun changement de code, DB pas modifiée) :
+- Après le nettoyage des doublons ci-dessus, David a signalé un problème distinct : sur
+  `/poolers/[id]` (onglet Alignement), David semblait avoir 17 attaquants « actifs »
+  (non grisés) au lieu du maximum légal de 12. Vérification directe en base : le compte
+  réel de lignes `pooler_rosters.player_type='actif'` ouvertes pour David n'est que de 7
+  attaquants — donc le « 17 » observé dans l'app était très probablement un rendu en
+  cache d'avant le nettoyage (ISR/ revalidate), pas un nouveau bug de code.
+- **Mais la vérification a quand même révélé un vrai problème de fond** : le statut
+  final (`actif` vs `réserviste`) issu de la reconstruction Excel du 2026-08-05 est
+  incorrect pour un nombre significatif de joueurs, indépendamment du bug de doublons
+  déjà corrigé. David a fourni 8 captures d'écran (une par pooler) du classement final
+  réel sur marqueur.com, déposées dans `marqueur/` (dossier ajouté au `.gitignore`, même
+  traitement que `excel/` — matériel de référence local, pas du code applicatif) :
+  `marqueur/Alignement_final_{David,Vincent,Jerome,Nicolas,Paule,Sebastien_Fau,Sebastien_Stl,Steve}.jpg`.
+  Sur marqueur.com, les lignes en rouge = joueur inactif en fin de saison (les gardiens
+  ont un bogue connu côté marqueur.com : jamais de ligne rouge pour eux, donc ce signal
+  n'est pas utilisable pour valider les gardiens — se fier à nos propres règles
+  (max 2 gardiens actifs) à la place).
+- **Comparaison ciblée faite (liste `actif` courante en DB vs couleur sur marqueur.com)**,
+  avec un niveau de confiance variable selon le cas (images ~270px de large, pas d'OCR
+  disponible dans cet environnement — lecture visuelle directe, pas de script fiable à
+  100 % pour le nom exact de chaque ligne). Cas confirmés avec bonne confiance :
+  - **David** : Igor Chernyshov et Teuvo Teravainen sont marqués `actif` en DB mais
+    apparaissent en rouge (inactifs) sur marqueur.com. À l'inverse, plusieurs joueurs que
+    marqueur.com montre actifs (ex: Marchenko, Eklund, Blake, Stankoven, Malkin, Savoie,
+    Konecny, McCann) ne sont **pas** actuellement `actif` pour David en DB — Eklund en
+    particulier est actuellement rattaché à un tout autre pooler (Vincent) dans notre DB.
+  - **Sébastien F.** : Ivan Barbashev et Artturi Lehkonen marqués `actif` en DB mais
+    rouges sur marqueur.com.
+  - **Steve** : Artyom Levshunov (défense) semble rouge sur marqueur.com alors que la DB
+    le dit actif — moins confiant que les cas ci-dessus, à revérifier.
+  - Joueurs confirmés **corrects** (DB actif = marqueur.com blanc/actif), pour référence :
+    Connor, Pastrnak, Raymond, Scheifele, Tuch (David) ; Debrincat, Sennecke, Zacha
+    (Sébastien F.) ; O'Reilly, Michkov (Sébastien S.) ; Carlsson, Graf, Malinski (Steve).
+- **Pas encore fait / à reprendre en priorité la prochaine session** :
+  - Comparaison complète et fiable pour les 8 poolers (celle-ci n'a couvert qu'un
+    sous-ensemble ciblé, pas la totalité de chaque alignement — le mismatch touche
+    apparemment ~30-40 % des joueurs actuellement `actif`, pas juste quelques cas isolés).
+  - Décider d'une méthode plus fiable que la lecture visuelle d'image basse résolution :
+    soit David confirme/corrige manuellement les cas ambigus, soit il fournit les données
+    marqueur.com dans un format texte/exportable plutôt qu'en capture d'écran.
+  - Une fois la liste des écarts confirmée, corriger `pooler_rosters` en staging (aucune
+    écriture faite pour cette partie-là — uniquement l'investigation).
+  - Ne toujours pas synchroniser vers prod tant que ce point n'est pas réglé.
+
+### 2026-08-05 (suite 5)
+
+**[Planification] — Réconciliation des choix de repêchage échangés durant 2025-26 (hors scope du script, à faire manuellement)** (aucun changement de code) :
+- Les colonnes de choix de repêchage du fichier Excel (`Choix acquis/cédé`, `Echange
+  Pooler`, `Choix Pooler`) sont volontairement hors scope de
+  `import_mouvements_excel.py` (décidé le 2026-08-03) — jamais rejouées dans
+  `pool_draft_picks`. David veut les ajuster manuellement avant la sync vers prod.
+- Le rapport du script liste 8 lignes brutes concernées (« Lignes avec choix de
+  repêchage, non traitées »). En les pairant (une ligne par côté d'un même échange, même
+  principe que les mouvements de joueurs — voir la mécanique documentée le 2026-08-04),
+  ça se résout en **6 mouvements de choix distincts**, tous saison 2026 :
+
+  | Ronde | Propriétaire original | Nouveau propriétaire |
+  |---|---|---|
+  | 4e | Paule | David |
+  | 2e | David | Vincent |
+  | 4e | Vincent | David |
+  | 2e | Nicolas | Vincent |
+  | 2e | Paule | David |
+  | 3e | David | Steve |
+
+- **Point à vérifier par David avant d'appliquer** : le choix « 2e ronde, original Paule →
+  David » (26 février) correspond à l'échange où David cède Jakob Chychrun à Paule contre
+  un choix — David avait mentionné verbalement une 3e ronde à l'époque (voir entrée du
+  2026-08-04, section Chychrun), mais le fichier Excel indique une 2e ronde. À confirmer
+  laquelle est correcte avant la réassignation.
+- **À faire par David, manuellement** : réassigner ces 6 choix via `/admin/init?tab=choix`
+  (interface existante pour réassigner le propriétaire d'un pick échangé hors-app) — pas
+  couvert par le script d'import.
+
+### 2026-08-05 (suite 4)
+
+**[Data] — `--apply` exécuté : historique 2025-26 reconstruit en staging** (`python_script/import_mouvements_excel.py`, données `pooler_rosters`/`roster_change_log` en staging) :
+- Après une longue session de revue (voir toutes les entrées du 2026-08-03 au 2026-08-05),
+  David a confirmé que le rapport dry-run était propre (0 bootstrap, 0 anomalie, 0 nom non
+  résolu, 0 violation de légalité résiduelle, 0 signalement d'alignement final) et a donné
+  le feu vert pour appliquer.
+- **`--apply` exécuté avec succès** : 383 lignes `pooler_rosters` + 808 lignes
+  `roster_change_log` insérées pour les 155 joueurs touchés par le fichier (remplacement
+  complet — delete + reinsert, les corrections manuelles `/admin/historique` déjà faites
+  pour ces joueurs sont maintenant recalculées, pas dupliquées). `pooler_rosters` passe de
+  336 à 577 lignes pour la saison (528 ouvertes / 49 fermées). Vérifié directement en base :
+  Conor Geekie → David/recrue depuis le 2 février, Trevor Zegras → Sébastien F./réserviste
+  depuis le 6 mars — cohérent avec les corrections validées.
+- **Cible : staging uniquement**, comme prévu depuis le début. Prod pas touchée.
+- **Reste à faire** : valider le classement (`/classement`) en staging avec les nouveaux
+  points calculés, puis synchroniser vers prod via `sync_staging_to_prod.py` une fois
+  l'historique jugé définitif (voir `project_staging_prod_sync.md`). Les colonnes de choix
+  de repêchage du fichier Excel restent hors scope (jamais rejouées dans
+  `pool_draft_picks`) — à traiter séparément si souhaité.
+
+### 2026-08-05 (suite 3)
+
+**[Feat] — Corrections d'alignement final depuis un fichier texte, même principe que les corrections de légalité** (`python_script/import_mouvements_excel.py`) :
+- David voulait pouvoir corriger des erreurs repérées dans la section « Alignements
+  finaux » (ex: statuts finaux erronés) sans éditer `Mouvements` à la main. Décidé de
+  garder ça simple : appliqué à la date de fin de saison (`saison_end_date`), sans demander
+  de date précise par joueur (confirmé avec David — pas besoin de préserver l'attribution
+  fine des points pour ces ajustements de toute fin de saison).
+- `load_final_alignment_corrections()` lit `excel/correction_alignements_finaux.txt` —
+  **même format que la section du rapport** (indentation 2/4/6 espaces : pooler / position /
+  statut+nom) — David copie la section, corrige les lignes fautives, je la relis directement.
+- Nouvelle fonction `compute_final_rosters()` (extraite de la logique d'affichage
+  existante, réutilisée aux deux endroits) pour éviter de dupliquer le calcul combiné
+  simulé+baseline. Applique changement de statut (même pooler) ou vrai transfert (pooler
+  différent) selon le cas. Un joueur absent du fichier n'est **jamais** retiré
+  automatiquement (trop risqué d'inférer une suppression depuis une omission) — seulement
+  signalé pour revue manuelle.
+- Testé avec le fichier que David avait déjà préparé : 5 corrections appliquées sans
+  erreur (Jackson Blake, Matthew Schaefer, Ryker Evans, Brandon Bussi, Scott Wedgewood —
+  tous des passages recrue/réserviste → actif chez le même pooler).
+- Toujours dry-run, `--apply` pas exécuté.
+
+### 2026-08-05 (suite 2)
+
+**[Feat + Fix] — Section « Alignements finaux » étendue à tous les joueurs (pas seulement les touchés), regroupés par position/statut** (`python_script/import_mouvements_excel.py`) :
+- David voulait valider l'alignement complet de chaque pooler (recrues jamais bougées
+  incluses), pas seulement les joueurs touchés par le fichier. Étendu la section pour
+  combiner joueurs simulés (touchés + préchargés via `Roster_Initial`) et joueurs jamais
+  touchés (statut DB actuel, inchangé), regroupés par position (attaquants/défenseurs/
+  gardiens) puis par statut.
+- **Bug trouvé immédiatement en testant** : plusieurs joueurs dupliqués (Kyle Connor, Lucas
+  Raymond, Mark Scheifele, Evan Bouchard, plusieurs recrues). Vérifié d'abord côté base
+  (seul le doublon déjà connu du 2026-08-03 existe, aucun nouveau) — donc bug de script :
+  `Roster_Initial` précharge déjà TOUS les ~320 joueurs dans `sim.rows_by_pair` (pas
+  seulement les touchés), mais la boucle ajoutant les joueurs "non touchés" depuis la DB ne
+  vérifiait que `pid not in all_touched_ids`, sans tenir compte de ce préchargement — un
+  joueur jamais touché par `Mouvements` mais présent dans `Roster_Initial` se faisait donc
+  compter deux fois. Corrigé : exclusion basée sur `(pooler, pid) in sim.rows_by_pair`
+  plutôt que sur l'ensemble des joueurs touchés.
+- Reste à faire : David termine sa relecture des alignements complets avant `--apply`.
+
+### 2026-08-05 (suite)
+
+**[Feat] — Section « Alignements finaux » ajoutée au rapport** (`python_script/import_mouvements_excel.py`) :
+- David voulait valider les alignements complets de chaque pooler au 16 avril (fin de
+  saison), pas seulement les écarts vs la base (le diff de sanité n'affiche que les joueurs
+  qui diffèrent, pas la liste complète). Ajouté une nouvelle section listant, pooler par
+  pooler, tous les joueurs touchés par le fichier encore sous contrat à la fin de la
+  simulation, groupés par statut (actif/réserviste/ltir/recrue).
+- Reste à faire : David termine sa relecture de cette nouvelle section avant `--apply`.
+
+### 2026-08-05
+
+**[Fix] — Mapping pooler incomplet (« Sébastien F. » non reconnu) + statut de banc non naturel pour les corrections de légalité** (`python_script/import_mouvements_excel.py`) :
+- En relisant le diff de sanité en détail, David a repéré plusieurs incohérences : Trevor
+  Zegras encore chez David en fin de saison alors qu'il avait été échangé à Sébastien F.
+  (confirmé le 2026-08-04), Matias Maccelli/Victor Hedman/Jordan Kyrou/Jonathan Marchessault
+  encore listés réservistes alors qu'ils avaient été mis au ballotage, Conor Geekie/Fyodor
+  Svechkov listés réservistes plutôt que recrue.
+- **Cause Zegras (et 2 autres lignes)** : `POOLER_NAME_MAP` reconnaissait `"Sébastien S."`
+  comme variante directe (ajoutée le 2026-08-03) mais pas l'équivalent `"Sébastien F."` —
+  quand la cellule `Echange Pooler` contenait littéralement ce texte (lignes 198-200, le
+  vrai échange Zegras/McMichael/Drysdale contre Reinhart), `map_pooler()` retournait `None`
+  silencieusement, faisant échouer le transfert vers l'autre pooler. Corrigé : ajout de
+  `'sebastien f.': 'Sébastien F.'`.
+- **Effet de bord découvert en corrigeant Zegras** : une ligne 201 dupliquait le retrait de
+  Connor McMichael côté David (sans `Echange Pooler` cette fois, contrairement à la ligne
+  198 qui gère déjà correctement son départ) — un vrai doublon de reconstruction, du même
+  type que les autres déjà nettoyés. Supprimée par David.
+- **Cause Geekie/Svechkov** : leur statut `Recrue` (acquis le 2 février lors de l'échange
+  avec Nicolas, confirmé par David) était correct dans la simulation, mais le mécanisme de
+  correction de légalité les rebasculait systématiquement vers `Réserviste` en les
+  bannissant, sans tenir compte de leur vrai statut de repli. Nouvelle fonction
+  `get_status_before_activation()` : au lieu de toujours bannir vers `reserviste`, résout le
+  statut qui précédait le dernier passage à `actif` (ex: Svechkov promu `recrue`→`actif` le
+  15 avril, banni immédiatement après pour dépassement — redescend maintenant à `recrue`,
+  son vrai statut de repli, pas `reserviste`).
+- **Résultat** : 0 bootstrap, 0 anomalie, 0 violation résiduelle, tous les cas signalés par
+  David désormais cohérents entre simulé et attendu. Toujours dry-run, `--apply` pas encore
+  exécuté — David termine sa relecture du diff de sanité avant de donner le feu vert.
+
+### 2026-08-04 (suite 4)
+
+**[Feat + Fix] — Application automatique des corrections de légalité depuis un fichier texte, 4 bugs de chronologie trouvés en le débogant** (`python_script/import_mouvements_excel.py`) :
+- David a produit `excel/correction_violations_alignements.txt` (47 lignes, même format que
+  la section « Violations de légalité » du rapport — la vraie liste des joueurs actifs à
+  chaque période au lieu de celle simulée), couvrant les 97 violations de la session
+  précédente pour les 6 poolers concernés (pas seulement David/Vincent).
+- Plutôt que de demander à David d'éditer 27 lignes dans `Mouvements` à la main, le script
+  lit maintenant ce fichier directement (`load_legality_corrections()`) et applique les
+  changements de statut lui-même : `pooler_rosters`/`roster_change_log` équivalents générés
+  automatiquement pour chaque joueur à bannir/réactiver, à la bonne date, sans jamais
+  toucher aux points déjà gagnés en dehors de la période corrigée.
+- **4 bugs de chronologie trouvés en creusant pourquoi les corrections ne s'appliquaient pas
+  toutes correctement** (aucun n'était un problème du fichier de David) :
+  1. `get_roster_snapshot` lisait `row['player_type']` (statut **final** de la ligne) au lieu
+     de résoudre le statut à la date demandée — cassé par le déplacement de la vérification
+     de légalité après les corrections (avant, elle tournait immédiatement après chaque
+     date traitée, donc "final" coïncidait avec "à cette date").
+  2. `ts = f"{start}T12:00:00Z"` alors que `start` était déjà un timestamp complet →
+     `"...T12:00:00ZT12:00:00Z"`, cassant silencieusement les comparaisons de chaînes.
+  3. `change_type` décidait qu'un changement était un no-op en comparant au statut **actuel**
+     de la ligne plutôt qu'au statut **au moment visé** — ratait les corrections insérées à
+     une date antérieure à un événement déjà simulé (ex: Jake Neighbours, corrigé au 23
+     octobre après que son vrai déclassement du 11 novembre ait déjà tourné).
+  4. Le suivi interne "déjà banni par une correction" ne voyait pas les vraies réactivations
+     survenues entre-temps via le fichier (Ryan Leonard : banni par correction le 3
+     novembre, réactivé pour de vrai le 13, aurait dû être re-banni le 17 décembre par une
+     2e correction — ratée car le suivi le croyait encore banni). Remplacé par une
+     comparaison toujours basée sur un snapshot frais de l'état réellement simulé, plutôt
+     qu'un suivi de "qui j'ai déjà banni".
+- **Résultat final : 0 violation résiduelle** (parti de 97, en passant par 55 → 25 → 0
+  changements appliqués au fil des corrections de bugs). Toujours dry-run, `--apply` pas
+  exécuté — reste à faire une dernière relecture du rapport avec David avant de lancer.
+
+### 2026-08-04 (suite 3)
+
+**[Fix] — Bug de fuite baseline pour les joueurs à première mention tardive + tri chronologique du rapport** (`python_script/import_mouvements_excel.py`) :
+- David a repéré en lisant le détail (ajouté à la session précédente) que Trevor Zegras
+  apparaissait comme actif chez David dès le 8 octobre, alors qu'il ne l'a acquis que le
+  21 octobre (`Mouvements` ligne 18). Cause : `check_legality` exclut du baseline (état DB
+  actuel) les joueurs "touchés" par le fichier via `report.players_touched`, construit
+  **incrémentalement** pendant la boucle — un joueur dont la première mention est tardive
+  n'est donc pas encore dans cet ensemble pour les dates qui précèdent sa première ligne,
+  et fuit dans le baseline (son statut DB actuel, `actif`) pour ces dates-là.
+- **Corrigé** : calcul d'un `all_touched_ids` complet en un seul passage sur tout le fichier
+  avant la boucle principale (au lieu de l'ensemble incrémental), utilisé pour l'exclusion
+  du baseline. Violations 106 → **97**.
+- David a aussi demandé un tri chronologique du rapport de légalité (au lieu d'un
+  regroupement par pooler/catégorie) pour pouvoir le parcourir dans l'ordre de la saison et
+  construire un fichier de corrections joueur par joueur — fait.
+- **Prochaine étape (David)** : il prépare un fichier listant, pour chaque ligne de
+  violation, la vraie liste des joueurs actifs à ce moment (au lieu de la liste simulée) —
+  je pourrai alors calculer les corrections précises (qui doit être réserviste, et depuis
+  quand) sans risquer de retirer des points à tort.
+- Toujours dry-run, `--apply` pas exécuté.
+
+### 2026-08-04 (suite 2)
+
+**[Fix + Feat] — Vérification de légalité une fois par jour, rapport enrichi avec les noms de joueurs** (`python_script/import_mouvements_excel.py`) :
+- David a validé toutes les corrections restantes du fichier (Moser, trade Zegras/McMichael/
+  Drysdale contre Reinhart, Chychrun, Monahan) — **0 bootstrap, 0 anomalie, 0 nom non résolu**
+  atteint pour la première fois. Chronologie du fichier maintenant entièrement cohérente.
+- David a ensuite demandé à voir les joueurs concernés par les 206 violations de légalité
+  pour décider qui mettre sur le banc — ajouté les noms + regroupement par période stable
+  au rapport (`check_legality` prend maintenant `pindex`, stocke `(date, pooler, bucket,
+  msg, noms)` au lieu de juste `(date, pooler, msg)`).
+- **Bug trouvé par David en examinant le détail** : la même date affichait plusieurs
+  compteurs différents pour le même pooler (ex: Vincent 14 puis 15 attaquants actifs le
+  9 octobre) — la légalité était vérifiée après **chaque ligne individuelle** du fichier,
+  capturant des états transitoires en plein milieu de journée quand plusieurs transactions
+  du même pooler partagent la même date, plutôt que l'état de fin de journée. Corrigé :
+  vérification différée à une fois par `(date, pooler)`, après que toutes les lignes de
+  cette date aient été appliquées (`flush_legality_checks()`). Effet : 206 → **106**
+  violations (~moitié de bruit).
+- **Analyse des noyaux « toujours actifs »** (joueurs présents dans 100% des violations
+  d'un groupe pooler/catégorie, donc jamais rétrogradés une seule fois de la saison) :
+  confirmée stable avant/après le fix du bug de comptage — donc un vrai signal, pas du
+  bruit. David a identifié des candidats pour David et Vincent (attaquants et défenseurs),
+  mais tous sont des joueurs actuellement `actif` toute la saison dans les données (jamais
+  touchés par le fichier Excel) — les marquer réservistes rétroactivement sans date précise
+  leur retirerait des points potentiellement mérités. **Décision en suspens** : attendre que
+  David précise soit des dates approximatives, soit qu'il accepte ces dépassements comme
+  imperfection connue (rappel : la légalité n'affecte jamais le calcul des points).
+- Toujours dry-run, `--apply` pas exécuté.
+
+### 2026-08-04
+
+**[Fix] — Deux bugs de simulation trouvés en creusant les bootstraps restants** (`python_script/import_mouvements_excel.py`) :
+- En cherchant pourquoi Morgan Rielly (Vincent) déclenchait un bootstrap alors que son
+  historique semblait complet, traçage en direct de la simulation (import du module,
+  monkeypatch des méthodes `Simulation` pour logguer chaque appel touchant son `player_id`)
+  a révélé la vraie cause : **`Date tri` désynchronisée de `Date`** sur 5 lignes (ex: ligne
+  41, `Date`=2025-12-23 mais `Date tri` encore à 2025-11-08 — reliquat d'un run antérieur de
+  `sort_mouvements.py`, jamais relancé après une correction de `Date` par David). Le script
+  utilisait `Date tri` en priorité ; la réclamation au ballotage de Rielly par Jérôme était
+  donc traitée 6 semaines trop tôt, fermant la ligne de Vincent avant même ses propres
+  événements (descente en réserve, mise au ballotage) du 17 décembre — d'où le faux
+  bootstrap. **Corrigé** : `Date` (toujours renseignée, vérifié sur les 272 lignes) prime
+  maintenant sur `Date tri`, qui ne sert plus que de repli si `Date` est vide.
+- **2e bug, distinct** : le fichier vient à l'origine de tabs séparés par pooler
+  (`extract_mouvements.py`) — un même échange entre 2 poolers apparaît donc souvent 2 fois
+  (une ligne "acquis" côté receveur, une ligne "cédé" côté donneur, à des dates parfois
+  légèrement différentes). La simulation traitait chaque ligne comme un événement
+  indépendant ; si la ligne "acquis" s'appliquait en premier (transfert réel), la ligne
+  "cédé" jumelle tentait de re-retirer le joueur d'un pooler qui ne l'avait déjà plus,
+  déclenchant un bootstrap fantôme (touchait Jiri Kulich, Liam Greentree, Brady Tkachuk,
+  Jagger Firkus). **Corrigé** dans `process_cede` : si le joueur est déjà chez
+  `Echange Pooler` au moment de traiter la ligne, elle est traitée comme la réaffirmation
+  d'un échange déjà appliqué (simple `change_type`), pas un 2e retrait.
+- Effet combiné : bootstraps 11 → **6** sur 156 joueurs touchés. Nouveau : un vrai contrôle
+  d'anomalie signale maintenant les cas où un "cédé" est déclaré chez un pooler qui, selon
+  la simulation, ne détient déjà plus le joueur (au lieu de bootstraper silencieusement à
+  tort) — 5 cas détectés (Janis Jérôme Moser, Trevor Zegras, Jamie Drysdale, Jakob Chychrun
+  ×2), tous des incohérences chronologiques réelles dans le fichier à faire valider par
+  David plutôt que des bugs de script.
+- **Reste à faire** : revue des 5 anomalies + 6 bootstraps avec David avant `--apply`.
+  Toujours aucune écriture en base.
+
+### 2026-08-03
+
+**[Feat] — Script d'import de l'historique de roster 2025-26 depuis Excel (dry-run livré, `--apply` pas encore lancé)** (`python_script/import_mouvements_excel.py`, nouveau) :
+- Suite de la planification du 2026-07-31 : `excel/Mouvements_consolides.xlsx` (269 lignes,
+  hors dépôt git) n'a jamais été parfaitement nettoyé par David (colonne `Type` toujours à
+  21 libellés incohérents), mais il a demandé d'avancer quand même — dry-run d'abord.
+- **Mécanique retenue, indépendante du texte `Type`** (jugé peu fiable après lecture
+  détaillée du fichier — ex: une ligne "Échange entre pooler" s'est avérée être un simple
+  changement de statut interne) : simulation chronologique par joueur, décidant à partir de
+  l'état simulé courant (pas du texte) si un "Joueur acquis" est un changement de statut
+  interne, un vrai transfert, ou un ajout neuf ; le "Joueur cédé" reste chez le même pooler
+  sauf si son statut est `Ballotage` (départ réel, pool devient "non détenu") ou si la
+  colonne `Echange Pooler` est remplie (transfert réel vers cet autre pooler). Validé en
+  confrontant le résultat simulé aux 2 cas déjà corrigés manuellement et connus comme
+  corrects (Zeev Buium/Sam Rinzel, Jiri Kulich) — la simulation, entièrement indépendante,
+  arrive exactement au même état final que ces corrections déjà validées en juillet.
+- **Hors scope confirmé avec David** : les colonnes de choix de repêchage (Choix
+  acquis/cédé, Choix Pooler) ne sont pas rejouées dans `pool_draft_picks` — seulement
+  listées dans le rapport (9 lignes concernées). Le script ne réinitialise rien avant de
+  tourner : il régénère entièrement l'historique (delete + reinsert) de tout joueur touché
+  par le fichier, donc les corrections manuelles déjà faites (McMichael/Blake/Rinzel/Buium/
+  Kasper/Kulich/Isaac Howard) sont simplement recalculées, pas dupliquées.
+- Résolution des noms via le pattern `unidecode` déjà établi dans ce dossier
+  (`import_supabase.py`, `backfill_nhl_ids.py`) — aucune approximation silencieuse, les
+  noms non résolus vont dans le rapport avec suggestion `difflib` optionnelle.
+- **Résultat du dry-run** (`python_script/logs/import_mouvements_*.log`) : 269/269 lignes
+  traitées, 155 joueurs touchés, 1 seul nom non résolu (`Leon Draisatl`, typo pour
+  Draisaitl), 1 anomalie (statut cédé manquant, ligne 226 — vrai trou dans le fichier). 97
+  "origines déduites" (joueur jamais vu avant sa première mention dans le fichier — statut
+  de départ supposé `actif`, à vérifier au cas par cas si un résultat semble faux). 147
+  violations de légalité listées mais **peu fiables** : le baseline utilisé pour les joueurs
+  jamais touchés vient de l'état DB actuel (pas garanti valide rétroactivement) — noté
+  explicitement dans le rapport pour ne pas les lire comme 147 vrais problèmes distincts.
+  Diff de sanité (simulé final vs DB actuelle) : 96/155 joueurs touchés diffèrent — attendu,
+  puisque la quasi-totalité de cette histoire n'a jamais été saisie dans l'app.
+- Suit le pattern déjà établi par `sync_staging_to_prod.py` (dry-run par défaut, `--apply`
+  + confirmation `oui`, log dupliqué sur fichier via `Tee`).
+- **Reste à faire** : David doit relire le rapport (`Noms non résolus`, `Anomalies`,
+  `Diff de sanité`) avant tout `--apply`. `--apply` n'a **pas** été exécuté cette session —
+  aucune écriture en base. Cible restée staging uniquement, comme prévu.
+
+**[Amélioration] — Onglet `Roster_Initial` pour remplacer le bootstrap heuristique par la vraie donnée** (`python_script/import_mouvements_excel.py`) :
+- Les « origines déduites » (joueur jamais vu avant sa première mention dans le fichier,
+  statut de départ deviné) représentaient 97 des 155 joueurs touchés — trop pour être
+  fiable. David a proposé de fournir l'alignement réel de chaque pooler en tout début de
+  saison ; ajouté lui-même un onglet `Roster_Initial` (Pooler/Joueur/Statut, 320 lignes,
+  alignement complet des 8 poolers) dans `Mouvements_consolides.xlsx`.
+- `Simulation.preload_initial()` charge ces 320 lignes avant de rejouer les mouvements —
+  le bootstrap heuristique (`actif` par défaut) ne s'applique plus qu'en dernier recours,
+  pour un joueur absent à la fois de `Roster_Initial` et de tout mouvement antérieur.
+- Effet sur le dry-run : « origines déduites » 97 → **13** (317/320 lignes de
+  `Roster_Initial` résolues ; 3 problèmes mineurs restants : 2 noms légèrement mal
+  orthographiés — `Axel Sandin-Pellikka` avec trait d'union au lieu d'espace, `Dmitry
+  Simashev` au lieu de `Dmitriy` —, 1 doublon `Matvei Michkov` chez le même pooler). Noms
+  non résolus et anomalies diverses : déjà à 0 (David avait corrigé la typo Draisaitl et le
+  statut manquant de la ligne 226 entre-temps). Violations de légalité 147 → 214 — attendu
+  et pas une régression : l'ancien bootstrap ne posait une ligne qu'à la première mention
+  d'un joueur, donc beaucoup de joueurs touchés étaient invisibles (absents de tout calcul)
+  pendant les premières semaines de saison ; avec l'alignement réel préchargé dès le 7
+  octobre, le calcul de légalité est maintenant plus complet, donc plus de vraies
+  compositions (probablement réellement en dépassement à l'époque) apparaissent.
+- **Reste à faire** : David peut corriger les 3 derniers problèmes `Roster_Initial` dans le
+  fichier (optionnel, faible enjeu). `--apply` toujours pas exécuté.
 
 ### 2026-07-31
 

@@ -105,8 +105,8 @@ function groupAndSort(players: PlayerContrib[]): PlayerContrib[] {
 
 function PlayerRow({ p, onPeriodClick }: { p: PlayerContrib; onPeriodClick?: (p: PlayerContrib) => void }) {
   const isGoalie = p.position === 'G'
-  const isActif = p.playerType === 'actif'
-  const badge = TYPE_BADGE[p.playerType]
+  const isActif = p.playerType === 'actif' && p.stillRostered
+  const badge = !p.stillRostered ? 'PARTI' : TYPE_BADGE[p.playerType]
 
   return (
     <tr className={isActif ? 'hover:bg-gray-50' : 'hover:bg-gray-50 opacity-60'}>
