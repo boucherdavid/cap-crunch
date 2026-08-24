@@ -21,6 +21,33 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-24 (suite 6)
+
+**[Feature] — Panneau "Guide admin" avec checklist de transition de saison**
+(`app/app/admin/layout.tsx`, `app/components/AdminGuidePanel.tsx`) :
+- Contexte : David estime la transition 2025-26 → 2026-27 prête côté prod (voir
+  [[project_historique_excel_import]] pour le plan détaillé confirmé le 2026-08-19/20) et a
+  demandé un panneau consultable dans l'app pour se rappeler les étapes des manipulations
+  admin importantes, plutôt que de rouvrir `SUIVI_PROJET.md`/la mémoire à chaque fois.
+- Choix validés avec David (AskUserQuestion) : contenu limité à la checklist de transition de
+  saison pour l'instant (extensible plus tard), et bouton global accessible depuis n'importe
+  quelle page admin plutôt qu'un onglet dans un hub existant.
+- `app/app/admin/layout.tsx` (nouveau) enveloppe toutes les routes `/admin/*` (hubs à onglets
+  et pages autonomes comme `/admin/repechage`, `/admin/joueurs/[id]`) et injecte
+  `AdminGuidePanel` sans dupliquer la logique d'auth de chaque page (chaque page continue de
+  faire son propre `redirect()` si non-admin — vérifié que ça bloque bien le rendu du panneau
+  pour un visiteur non connecté, testé via `curl` sur `/admin/init` non authentifié → redirect
+  307 vers `/login`, et absence du texte "Guide" sur `/login`).
+- `AdminGuidePanel` : bouton flottant en bas à droite (`📘 Guide`), ouvre un panneau latéral
+  (même pattern visuel que `PlayerSlideOver.tsx` — fond noir semi-transparent + panneau à
+  droite, fermeture Échap/clic backdrop/×). Contenu : les 4 étapes confirmées avec David
+  (report des rosters finaux via `/admin/init?tab=rosters`, pipeline de données, `/admin/init
+  ?tab=presaison`, `/admin/repechage`), chaque étape avec lien direct cliquable vers la route
+  concernée.
+- Validé par `next build` + vérification `curl` (redirect non-authentifié). Pas de test
+  manuel en navigateur connecté cette fois (David peut valider visuellement à l'usage — le
+  bouton `📘 Guide` apparaît en bas à droite sur n'importe quelle page `/admin/*`).
+
 ### 2026-08-24 (suite 5)
 
 **[Fix] — Badge de propriétaire figé dans "Joueurs disponibles" après un submit (`/admin/init?tab=rosters`)**

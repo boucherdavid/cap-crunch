@@ -399,6 +399,8 @@ Exemples :
 | `app/lib/standings.ts` | Logique classement (`buildStandings`) |
 | `app/lib/streaks.ts` | Indicateurs de séquence (badges 🔥✅🧊) |
 | `app/lib/appEnv.ts` | Détection local/staging/prod (nom + icônes PWA distincts) |
+| `app/app/admin/layout.tsx` | Layout partagé `/admin/*` — injecte le panneau Guide admin |
+| `app/components/AdminGuidePanel.tsx` | Panneau Guide admin (bouton flottant, checklist transition de saison) |
 | `app/proxy.ts` | Auth + redirections (remplace middleware.ts) |
 | `python_script/run_pipeline.py` | Point d'entrée pipeline de données |
 | `python_script/sync_staging_to_prod.py` | Synchronise l'historique de roster staging → prod |
