@@ -21,6 +21,20 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-24 (suite)
+
+**[Fix] — Branche `staging` désynchronisée de `main` depuis 3 semaines**
+(aucun fichier applicatif, juste git) :
+- Constat de David : le nouveau logo était visible en prod mais pas en staging. Diagnostic :
+  `staging` n'avait pas reçu de merge depuis `main` depuis le 2026-07-31 (`4f993cb`) — il lui
+  manquait donc ~19 commits, pas seulement l'icône (masquer saison inactive, report atomique
+  au lendemain, panneau d'historique des mouvements, lien repêchage recrues 2025, etc.).
+- Fusionné `origin/main` dans `staging` (merge classique, sans conflit) et poussé
+  (`3dfe43f`) — déclenche le redéploiement Vercel de `cap-crunch-staging`.
+- À surveiller : ce project n'a pas de sync auto `main → staging` ; si l'écart se reproduit,
+  envisager d'automatiser (ex: workflow GitHub Actions sur push `main`) plutôt que de
+  détecter le problème a posteriori via un symptôme visuel.
+
 ### 2026-08-24
 
 **[Design] — Mise à jour de l'icône de l'app avec le nouveau logo**
