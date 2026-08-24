@@ -21,6 +21,45 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-24 (suite 3)
+
+**[Feature] — Icône/nom PWA distincts entre local, staging et prod**
+(`app/lib/appEnv.ts`, `app/app/manifest.ts`, `app/app/layout.tsx`,
+`app/public/icons/local/*`, `app/public/icons/staging/*`) :
+- Contexte : après le rattrapage staging↔main (voir plus haut), David a demandé un moyen de
+  distinguer visuellement les raccourcis PWA installés sur son laptop pour les 3 environnements
+  (prod, staging, local via `npm run dev` — qui pointe toujours vers la base staging mais tourne
+  sur une URL/instance distincte).
+- `getAppEnv()` détecte l'environnement via `process.env.VERCEL` (absent en local) puis
+  `VERCEL_GIT_COMMIT_REF` (`staging` vs `main`) — pas `VERCEL_ENV`, qui vaut `production` dans
+  les deux projets Vercel (chacun a sa propre branche de production) et ne permettrait donc pas
+  de distinguer staging de prod.
+- Régénéré le même pictogramme (recadré depuis `docs/branding/cap-crunch-logo2.jpg`, voir session
+  précédente) en 3 variantes : prod inchangée (`public/icons/`), local et staging avec un badge
+  circulaire ajouté en coin inférieur droit (gris "L" / orange "S"), toutes tailles (16/32/180/
+  192/512 + favicon.ico).
+- `manifest.ts` et `layout.tsx` choisissent le dossier d'icônes et suffixent le nom
+  (` (Local)` / ` (Staging)`) selon `getAppEnv()`. Validé par 3 builds (`next build`) locaux avec
+  les variables d'env simulées (aucune, `VERCEL=1`+`VERCEL_GIT_COMMIT_REF=staging`, `=main`) —
+  le `manifest.webmanifest` généré était correct dans les 3 cas.
+- Pas de changement nécessaire à `favicon.ico` (fichier spécial Next.js, un seul chemin possible)
+  — les `<link rel="icon">` explicites dans `layout.tsx` (16x16/32x32 par env) suffisent pour que
+  les navigateurs modernes affichent la bonne icône d'onglet/raccourci.
+
+### 2026-08-24 (suite)
+
+**[Fix] — Branche `staging` désynchronisée de `main` depuis 3 semaines**
+(aucun fichier applicatif, juste git) :
+- Constat de David : le nouveau logo était visible en prod mais pas en staging. Diagnostic :
+  `staging` n'avait pas reçu de merge depuis `main` depuis le 2026-07-31 (`4f993cb`) — il lui
+  manquait donc ~19 commits, pas seulement l'icône (masquer saison inactive, report atomique
+  au lendemain, panneau d'historique des mouvements, lien repêchage recrues 2025, etc.).
+- Fusionné `origin/main` dans `staging` (merge classique, sans conflit) et poussé
+  (`3dfe43f`) — déclenche le redéploiement Vercel de `cap-crunch-staging`.
+- À surveiller : ce project n'a pas de sync auto `main → staging` ; si l'écart se reproduit,
+  envisager d'automatiser (ex: workflow GitHub Actions sur push `main`) plutôt que de
+  détecter le problème a posteriori via un symptôme visuel.
+
 ### 2026-08-24
 
 **[Design] — Mise à jour de l'icône de l'app avec le nouveau logo**

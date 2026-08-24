@@ -35,6 +35,14 @@ Application web pour gérer un pool de hockey long terme, en remplacement d'un f
   Vercel : `cap-crunch` (prod) et `cap-crunch-staging` (staging), tous deux liés au même repo
   GitHub `boucherdavid/cap-crunch`, `rootDirectory=app`. Repo GitHub renommé `cap-crunch`
   le 2026-07-27 (ex `DB_Hockey_Manager`) pour cohérence avec le nom de l'app.
+- Différenciation visuelle local / staging / prod (raccourcis PWA installés) : `getAppEnv()`
+  (`app/lib/appEnv.ts`) détecte l'environnement via `VERCEL_GIT_COMMIT_REF` (pas `VERCEL_ENV`,
+  qui vaut `production` dans les deux projets Vercel) et pas de `process.env.VERCEL` en local.
+  Utilisé par `manifest.ts` et `layout.tsx` pour ajouter un suffixe au nom (` (Local)` /
+  ` (Staging)`) et pointer vers un jeu d'icônes distinct (`public/icons/local/`,
+  `public/icons/staging/` — même pictogramme que `public/icons/` en prod, avec un badge de
+  couleur "L"/"S" ajouté). Régénérer les 3 jeux d'icônes ensemble si le logo change (script
+  ponctuel, pas de commande dédiée — voir session 2026-08-24 dans `SUIVI_PROJET.md`).
 
 ---
 
@@ -390,6 +398,7 @@ Exemples :
 | `app/lib/supabase/client.ts` | Client Supabase côté client |
 | `app/lib/standings.ts` | Logique classement (`buildStandings`) |
 | `app/lib/streaks.ts` | Indicateurs de séquence (badges 🔥✅🧊) |
+| `app/lib/appEnv.ts` | Détection local/staging/prod (nom + icônes PWA distincts) |
 | `app/proxy.ts` | Auth + redirections (remplace middleware.ts) |
 | `python_script/run_pipeline.py` | Point d'entrée pipeline de données |
 | `python_script/sync_staging_to_prod.py` | Synchronise l'historique de roster staging → prod |
