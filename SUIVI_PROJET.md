@@ -21,6 +21,37 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-24 (suite 9)
+
+**[Design] — Nouveau logo "ampoule + casquette CC" adopté pour l'icône de l'app**
+(`app/public/icons/**`, `app/app/favicon.ico`, `docs/branding/DG_Ampoule.png`,
+`docs/branding/dg-ampoule-simplified.png`) :
+- David a proposé une alternative au logo cerveau-fissuré : une ampoule (idée) avec un "$" au
+  centre au-dessus d'une casquette portée par une rondelle, texte "DG" sur la casquette. Avis
+  donné (traits fins, texture, "DG" sans lien avec le nom de l'app) — David a demandé un essai
+  de simplification.
+- Tentative de filtrage (flou + réduction de couleurs via PIL) pour aplatir l'image source :
+  résultat pire que l'original (bruit/dithering, pas un vrai style plat) — les filtres raster
+  ne remplacent pas un redessin. Reconstruit à la main avec des primitives PIL (ellipses,
+  chord pour la palette de la casquette, polygones) façon vectorielle, badge partagé pour
+  montrer la direction — jugé correct mais plus chargé que le cerveau à petite taille.
+- David a refait lui-même le logo (`docs/branding/DG_Ampoule.png`, remplacé) : casquette en
+  blanc plein (contraste net sur fond navy, contrairement à la 1re version navy-sur-navy),
+  texte "DG" remplacé par "CC" (Cap Crunch), plus de gradients/textures. Confirmé lisible à
+  32-48px (ampoule+$ comme point d'ancrage). Adopté.
+- Le fichier fourni était un carré arrondi avec une marge blanche externe (comme les logos
+  précédents) — recadré au carré exact (bbox 52,52-1202,1202 sur 1254px), puis les 4 coins
+  arrondis (rayon ~262px) repeints en navy via un masque géométrique (distance au centre du
+  rayon, pas un seuil de couleur — plus robuste à l'anti-aliasing) pour obtenir un carré plein
+  cadre sans marge, même traitement que la session du 2026-08-24 (suite 1). Bug initial dans
+  le calcul des 4 rectangles de coin (un des 4 couvrait toute la largeur de l'image, effaçant
+  les yeux) — corrigé avant régénération finale.
+- Régénéré les 3 jeux d'icônes (prod inchangée en structure, `local`/`staging` avec badge
+  couleur L/S) à toutes les tailles. Piège évité : le générateur écrivait par erreur
+  `favicon.ico` dans `public/icons/` au lieu du fichier spécial Next.js `app/app/favicon.ico`
+  pour la variante prod — corrigé avant commit (voir `app/lib/appEnv.ts`/session du
+  2026-08-24 suite 2 pour le contexte des 3 variantes).
+
 ### 2026-08-24 (suite 8)
 
 **[Fix] — Corrige le panneau Guide admin : la transition de saison a déjà un outil dédié**
