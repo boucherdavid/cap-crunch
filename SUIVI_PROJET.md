@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-08-23
+Derniere mise a jour: 2026-08-24
 
 ## Role du fichier
 
@@ -20,6 +20,24 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-08-24
+
+**[Design] — Mise à jour de l'icône de l'app avec le nouveau logo**
+(`app/public/icons/*.png`, `app/app/favicon.ico`, `docs/branding/cap-crunch-logo1.jpg`,
+`docs/branding/cap-crunch-logo2.jpg`) :
+- David a fourni deux variantes du logo "puck + cerveau fissuré" (`cap-crunch-logo1.jpg`,
+  `cap-crunch-logo2.jpg`). Retenu : logo2 — traits plus épais/pleins (cerveau en forme
+  blanche pleine plutôt que fins contours) et fissure plus large, donc plus lisible à petite
+  taille d'icône que logo1.
+- Le pictogramme seul (sans le texte "CAP CRUNCH", illisible en petit format) a été recadré
+  depuis logo2, puis recentré sur un canevas carré avec la couleur de fond du manifest
+  (`#f9fafb`) pour remplir ~82% du cadre (même logique que l'icône précédente, en pleine
+  bordure plutôt qu'avec une grosse marge blanche).
+- Régénéré : `favicon-16x16.png`, `favicon-32x32.png`, `apple-touch-icon.png` (180×180),
+  `icon-192x192.png`, `icon-512x512.png`, `favicon.ico` (multi-résolution 16/32/48/256).
+  Aucun changement de code (`manifest.ts`, `layout.tsx`) — les chemins et tailles référencés
+  n'ont pas changé.
 
 ### 2026-08-23 (suite 2)
 
