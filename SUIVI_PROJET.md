@@ -21,6 +21,37 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-24 (suite 4)
+
+**[Fix] — Clarifie l'affichage des badges de type de recrue dans la Banque de recrues**
+(`app/app/admin/recrues/BanqueRecruesManager.tsx`) :
+- Contexte : David a demandé pourquoi Tyler Boucher (repêché 2021, protégé) et Logan Mailloux
+  (agent libre/ELC, en fin de protection) se comportaient différemment dans
+  `/admin/init?tab=recrues`, alors que les deux badges se ressemblaient visuellement.
+  Investigation (agent dédié) : comportement attendu, pas un bug — `isEntryProtected()`
+  (même fichier, ligne 37-45) applique deux règles distinctes : `repeche` = fenêtre fixe
+  `pool_draft_year + 5 saisons` (ne dépend pas du vrai contrat NHL), `agent_libre` = protégé
+  tant que `players.status === 'ELC'` (champ vivant du pipeline PuckPedia, suit le vrai
+  contrat). Les deux dates de fin peuvent légitimement diverger même pour une même cohorte.
+- Cause de la confusion : le badge vert "Repêché {année}" utilise `pool_draft_year` (année où
+  le joueur a été assigné au repêchage **du pool**), affiché juste à côté d'un texte gris
+  montrant le vrai repêchage NHL (`draft_year`/`draft_round`/`draft_overall`) — sans distinction
+  visuelle quand les deux années coïncident (cas de Boucher).
+- Vérifié en staging (requête directe sur `pooler_rosters` where `rookie_type IS NULL` et
+  `player_type='recrue'` et `is_active=true`) : 1 cas réel — Liam Öhgren (VAN, ELC, repêché NHL
+  2022 R1 #19) dans la banque de Sébastien S., sans aucun badge affiché et traité comme protégé
+  par défaut (`isEntryProtected`, ligne 39) faute de classification.
+- Correctifs (affichage seulement, aucun changement de logique de protection ni de schéma) :
+  badge vert renommé "Repêché du pool {année}" (cohérent avec le libellé déjà utilisé dans
+  `TypePanel`), badge ambre renommé "Agent libre (ELC)", le texte gris de repêchage NHL réel
+  préfixé "NHL" et affiché pour toutes les recrues (plus seulement `repeche`) pour aider à
+  classifier un cas non défini, et nouveau badge rouge "Type à définir" quand `rookie_type`
+  est `null` (au lieu d'aucun badge). Tooltips ajoutés sur les 3 badges expliquant la règle
+  de protection associée.
+- Aucun changement serveur nécessaire : `updateRookieTypeAction` (`admin/rosters/actions.ts`)
+  accepte déjà une transition depuis `rookie_type = null` sans contrainte — le bouton ✎
+  existant (visible au survol de la ligne) suffit pour que l'admin classe Öhgren.
+
 ### 2026-08-24 (suite 3)
 
 **[Feature] — Icône/nom PWA distincts entre local, staging et prod**

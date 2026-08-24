@@ -69,12 +69,14 @@ function BankRow({ entry, onRemove, onEdit, loading, expired = false }: {
   expired?: boolean
 }) {
   const typeLabel = entry.rookie_type === 'repeche'
-    ? <span className="inline-block bg-emerald-50 text-emerald-700 rounded px-1.5 py-0.5 text-xs font-medium">
-        Repêché {entry.pool_draft_year ?? ''}
+    ? <span className="inline-block bg-emerald-50 text-emerald-700 rounded px-1.5 py-0.5 text-xs font-medium" title="Année de repêchage dans le pool — détermine la fin de protection (+5 saisons)">
+        Repêché du pool {entry.pool_draft_year ?? ''}
       </span>
     : entry.rookie_type === 'agent_libre'
-      ? <span className="inline-block bg-amber-50 text-amber-600 rounded px-1.5 py-0.5 text-xs font-medium">Agent libre</span>
-      : null
+      ? <span className="inline-block bg-amber-50 text-amber-600 rounded px-1.5 py-0.5 text-xs font-medium" title="Protégé tant que le contrat NHL réel est un ELC">Agent libre (ELC)</span>
+      : <span className="inline-block bg-red-50 text-red-600 rounded px-1.5 py-0.5 text-xs font-medium" title="Type de protection jamais assigné — cliquer sur ✎ pour le définir">
+          Type à définir
+        </span>
 
   return (
     <div className="flex items-center justify-between py-1.5 px-3 rounded-lg hover:bg-gray-50 group">
@@ -87,8 +89,10 @@ function BankRow({ entry, onRemove, onEdit, loading, expired = false }: {
         </span>
         <span className="text-gray-400 text-xs shrink-0">{entry.players.position ?? DASH}</span>
         {typeLabel}
-        {entry.rookie_type === 'repeche' && draftLabel(entry.players) && (
-          <span className="text-gray-400 text-xs shrink-0">{draftLabel(entry.players)}</span>
+        {draftLabel(entry.players) && (
+          <span className="text-gray-400 text-xs shrink-0" title="Vrai repêchage NHL (indépendant du type de protection dans le pool)">
+            NHL {draftLabel(entry.players)}
+          </span>
         )}
       </div>
       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2 shrink-0">
@@ -407,7 +411,7 @@ export default function BanqueRecruesManager({
                     </span>
                     <span className="text-gray-400 text-xs shrink-0">{rookie.position ?? DASH}</span>
                     {draftLabel(rookie) && (
-                      <span className="text-gray-400 text-xs shrink-0">{draftLabel(rookie)}</span>
+                      <span className="text-gray-400 text-xs shrink-0">NHL {draftLabel(rookie)}</span>
                     )}
                     {rookie.status === 'ELC' && !rookie.draft_year && (
                       <span className="text-amber-500 text-xs shrink-0">ELC</span>
