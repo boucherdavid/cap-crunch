@@ -6,22 +6,27 @@ import InstallBanner from '@/components/InstallBanner'
 import ServiceWorkerProvider from '@/components/ServiceWorkerProvider'
 import PlayerSlideOver from '@/components/PlayerSlideOver'
 import { createClient } from '@/lib/supabase/server'
+import { getAppEnv, getAppNameSuffix, getIconDir } from '@/lib/appEnv'
+
+const appEnv = getAppEnv()
+const iconDir = getIconDir(appEnv)
+const appName = `Cap Crunch${getAppNameSuffix(appEnv)}`
 
 export const metadata: Metadata = {
-  title: 'Cap Crunch',
+  title: appName,
   description: 'Pool de hockey entre amis',
   manifest: '/manifest.webmanifest',
   icons: {
     icon: [
-      { url: '/icons/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/icons/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: `${iconDir}/favicon-16x16.png`, sizes: '16x16', type: 'image/png' },
+      { url: `${iconDir}/favicon-32x32.png`, sizes: '32x32', type: 'image/png' },
     ],
-    apple: '/icons/apple-touch-icon.png',
+    apple: `${iconDir}/apple-touch-icon.png`,
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Cap Crunch',
+    title: appName,
   },
 }
 

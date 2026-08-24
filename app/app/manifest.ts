@@ -1,9 +1,14 @@
 import type { MetadataRoute } from 'next'
+import { getAppEnv, getAppNameSuffix, getIconDir } from '@/lib/appEnv'
 
 export default function manifest(): MetadataRoute.Manifest {
+  const env = getAppEnv()
+  const iconDir = getIconDir(env)
+  const name = `Cap Crunch${getAppNameSuffix(env)}`
+
   return {
-    name: 'Cap Crunch',
-    short_name: 'Cap Crunch',
+    name,
+    short_name: name,
     description: 'Pool de hockey entre amis',
     start_url: '/',
     display: 'standalone',
@@ -12,25 +17,25 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: 'portrait',
     icons: [
       {
-        src: '/icons/icon-192x192.png',
+        src: `${iconDir}/icon-192x192.png`,
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/icons/icon-192x192.png',
+        src: `${iconDir}/icon-192x192.png`,
         sizes: '192x192',
         type: 'image/png',
         purpose: 'maskable',
       },
       {
-        src: '/icons/icon-512x512.png',
+        src: `${iconDir}/icon-512x512.png`,
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/icons/icon-512x512.png',
+        src: `${iconDir}/icon-512x512.png`,
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',
