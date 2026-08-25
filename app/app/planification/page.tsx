@@ -15,6 +15,12 @@ export default async function PlanificationPage() {
 
   const { data: poolers } = await supabase.from('poolers').select('id, name').order('name')
 
+  const { data: settings } = await supabase
+    .from('app_settings')
+    .select('nav_planification_only')
+    .eq('id', 1)
+    .maybeSingle()
+
   const { data: poll } = await supabase
     .from('meeting_polls')
     .select('id, title')
@@ -37,6 +43,7 @@ export default async function PlanificationPage() {
       poll={poll ?? null}
       dates={dates ?? []}
       responses={responses ?? []}
+      navPlanificationOnly={settings?.nav_planification_only ?? false}
     />
   )
 }

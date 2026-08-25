@@ -21,6 +21,40 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-25 (suite)
+
+**[Feature] — Planification ajoutée à la Navbar + toggle "Mode avant-première"**
+(`schema.sql`, `app/app/layout.tsx`, `app/components/Navbar.tsx`,
+`app/app/planification/actions.ts`, `app/app/planification/page.tsx`,
+`app/app/planification/PlanificationManager.tsx`) :
+- David a exécuté la migration `meeting_polls`/`meeting_poll_dates`/`meeting_poll_responses`
+  en staging (erreur transitoire "Could not find the table... in the schema cache" observée —
+  cache PostgREST pas encore rafraîchi juste après le `CREATE TABLE`, pas un vrai problème ;
+  `NOTIFY pgrst, 'reload schema';` documenté dans `schema.sql` si ça se reproduit).
+- Changement d'approche : au lieu d'un lien caché envoyé manuellement, `/planification`
+  devient un lien permanent de la Navbar (réutilisable chaque année), avec un toggle admin
+  "Mode avant-première" qui masque tous les *autres* liens de la Navbar pour tous les poolers
+  (pas juste l'admin) tant que le reste de l'UI du pool n'est pas prêt à être montré — jusqu'à
+  ce que David le désactive une fois la rencontre planifiée.
+- Nouvelle table `app_settings` (une seule ligne, `id=1`) — réglage global, pas par-pooler
+  (contrairement au "Vue pooler" existant qui est un simple `localStorage` côté admin, pour
+  se prévisualiser soi-même). RLS : lecture publique, écriture admin seulement, même patron
+  que les autres tables. **Migration pas encore appliquée** — bloc SQL ajouté dans
+  `schema.sql`, à exécuter manuellement (staging d'abord).
+- `app/app/layout.tsx` lit `app_settings.nav_planification_only` et le passe à `Navbar` ;
+  dégrade proprement à `false` si la table n'existe pas encore (`?? false`, pas de throw côté
+  supabase-js sur une erreur de requête) — vérifié par `curl` contre le serveur dev déjà en
+  marche (aucune table `app_settings` en base à ce moment, page `/login` rendue sans erreur,
+  `navPlanificationOnly:false` bien présent dans le payload RSC).
+- `Navbar.tsx` : quand le flag est actif, tout le cluster de liens desktop/mobile (Pool
+  Saison, Statistiques, Contrats LNH, Repêchage, Calendrier, Pool Séries, Admin) est remplacé
+  par un seul lien Planification ; le menu compte (avatar, Mon compte, Aide, Déconnexion,
+  Vue pooler) reste intact dans les deux modes. `setNavPlanificationOnlyAction` fait
+  `revalidatePath('/', 'layout')` pour propager le changement immédiatement à toutes les
+  pages (la Navbar vient du layout racine, pas d'une page individuelle).
+- Toggle exposé directement sur `/planification` (visible admin seulement) plutôt que dans
+  `/admin/pool?tab=config` — contextuellement plus proche de son usage.
+
 ### 2026-08-25
 
 **[Feature] — Sondage de planification type Doodle (`/planification`)**
