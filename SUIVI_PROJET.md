@@ -21,6 +21,27 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-25 (suite 10)
+
+**[Refactor] — Sépare la gestion admin de `/planification` vers `/admin/planification`**
+(`app/app/admin/planification/page.tsx`, `app/app/admin/planification/AdminPlanificationManager.tsx`,
+`app/app/planification/page.tsx`, `app/app/planification/PlanificationManager.tsx`,
+`app/components/Navbar.tsx`, `CLAUDE.md`) :
+- David a demandé que `/planification` (vue pooler) ne montre plus que ce qui concerne un
+  pooler — ses disponibilités, le résumé, le babillard — et que la gestion (créer/réinitialiser
+  le sondage, dates candidates, toggle "Mode avant-première") déménage dans un vrai menu admin.
+- Nouvelle route `/admin/planification` (à part, pas un onglet d'un des 4 hubs — même patron
+  que `/admin/repechage`), lien ajouté dans le dropdown Admin (desktop + mobile) de la Navbar.
+  Réutilise telles quelles les server actions déjà en place (`createPollAction`,
+  `addCandidateDateAction`, `removeCandidateDateAction`, `resetPollAction`,
+  `setNavPlanificationOnlyAction` — importées via `@/app/planification/actions`, aucune
+  duplication de logique).
+- `/planification` simplifiée : logo + titre, "Mes disponibilités" (si des dates existent),
+  Résumé, Babillard. Les messages "aucun sondage"/"aucune date" pointent maintenant vers
+  `/admin/planification` pour l'admin plutôt que d'afficher les formulaires inline.
+- Comportement inchangé pour le toggle avant-première lui-même (déjà corrigé plus tôt pour
+  ne pas restreindre l'admin) — seul son emplacement dans l'UI a changé.
+
 ### 2026-08-25 (suite 9)
 
 **[Fix] — Icône de notification push blanche/vide (badge Android)**
