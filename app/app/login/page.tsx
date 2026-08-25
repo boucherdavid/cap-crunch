@@ -48,7 +48,8 @@ export default function LoginPage() {
       setLoading(false)
     } else {
       saveAccount(email)
-      window.location.href = '/'
+      const next = new URLSearchParams(window.location.search).get('next')
+      window.location.href = next && next.startsWith('/') && !next.startsWith('//') ? next : '/'
     }
   }
 

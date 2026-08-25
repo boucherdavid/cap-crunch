@@ -26,10 +26,13 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
-  // Non connecté → rediriger vers /login (sauf si déjà sur /login)
+  // Non connecté → rediriger vers /login (sauf si déjà sur /login), en gardant la page
+  // d'origine pour y renvoyer une fois connecté (ex: lien direct partagé par l'admin)
   if (!user && pathname !== '/login') {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    url.search = ''
+    url.searchParams.set('next', pathname + request.nextUrl.search)
     return NextResponse.redirect(url)
   }
 
