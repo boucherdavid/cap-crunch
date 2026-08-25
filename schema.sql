@@ -288,6 +288,43 @@ CREATE TABLE transaction_items (
 -- ALTER TABLE pooler_rosters ADD CONSTRAINT pooler_rosters_player_type_check
 --   CHECK (player_type IN ('actif', 'recrue', 'reserviste'));
 
+-- Migration 2026-08-25 : tables meeting_polls / meeting_poll_dates / meeting_poll_responses
+-- (sondage de planification, /planification) — à exécuter une seule fois dans le SQL Editor
+-- Supabase (staging d'abord, puis prod une fois validé) :
+--
+-- CREATE TABLE meeting_polls (
+--   id SERIAL PRIMARY KEY,
+--   title VARCHAR(200) NOT NULL,
+--   is_active BOOLEAN NOT NULL DEFAULT true,
+--   created_at TIMESTAMPTZ DEFAULT NOW()
+-- );
+-- CREATE TABLE meeting_poll_dates (
+--   id SERIAL PRIMARY KEY,
+--   poll_id INTEGER REFERENCES meeting_polls(id) ON DELETE CASCADE,
+--   candidate_date DATE NOT NULL,
+--   UNIQUE(poll_id, candidate_date)
+-- );
+-- CREATE TABLE meeting_poll_responses (
+--   id SERIAL PRIMARY KEY,
+--   poll_id INTEGER REFERENCES meeting_polls(id) ON DELETE CASCADE,
+--   pooler_id UUID REFERENCES poolers(id) ON DELETE CASCADE,
+--   candidate_date DATE NOT NULL,
+--   created_at TIMESTAMPTZ DEFAULT NOW(),
+--   UNIQUE(poll_id, pooler_id, candidate_date)
+-- );
+-- ALTER TABLE meeting_polls ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE meeting_poll_dates ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE meeting_poll_responses ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Lecture publique meeting_polls" ON meeting_polls FOR SELECT USING (true);
+-- CREATE POLICY "Admin gère meeting_polls" ON meeting_polls FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+-- CREATE POLICY "Lecture publique meeting_poll_dates" ON meeting_poll_dates FOR SELECT USING (true);
+-- CREATE POLICY "Admin gère meeting_poll_dates" ON meeting_poll_dates FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+-- CREATE POLICY "Lecture publique meeting_poll_responses" ON meeting_poll_responses FOR SELECT USING (true);
+-- CREATE POLICY "Pooler gère ses réponses" ON meeting_poll_responses FOR ALL
+--   USING (pooler_id = auth.uid() OR EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
 -- =============================================
 -- DONNÉES INITIALES
 -- =============================================
@@ -424,3 +461,45 @@ CREATE POLICY "Pooler voit son feedback" ON feedback FOR SELECT
 -- Seul l'admin peut tout voir et modifier
 CREATE POLICY "Admin gère feedback" ON feedback FOR ALL
   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- Sondage de planification (ex: rencontre annuelle) — /planification, hors Navbar
+CREATE TABLE meeting_polls (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(200) NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE meeting_poll_dates (
+  id SERIAL PRIMARY KEY,
+  poll_id INTEGER REFERENCES meeting_polls(id) ON DELETE CASCADE,
+  candidate_date DATE NOT NULL,
+  UNIQUE(poll_id, candidate_date)
+);
+
+CREATE TABLE meeting_poll_responses (
+  id SERIAL PRIMARY KEY,
+  poll_id INTEGER REFERENCES meeting_polls(id) ON DELETE CASCADE,
+  pooler_id UUID REFERENCES poolers(id) ON DELETE CASCADE,
+  candidate_date DATE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(poll_id, pooler_id, candidate_date)
+);
+
+ALTER TABLE meeting_polls ENABLE ROW LEVEL SECURITY;
+ALTER TABLE meeting_poll_dates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE meeting_poll_responses ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Lecture publique meeting_polls" ON meeting_polls FOR SELECT USING (true);
+CREATE POLICY "Admin gère meeting_polls" ON meeting_polls FOR ALL
+  USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+CREATE POLICY "Lecture publique meeting_poll_dates" ON meeting_poll_dates FOR SELECT USING (true);
+CREATE POLICY "Admin gère meeting_poll_dates" ON meeting_poll_dates FOR ALL
+  USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- Lecture publique : le tableau récapitulatif (qui est dispo quand) est visible à tous les
+-- poolers, pas juste l'admin — comme un vrai Doodle.
+CREATE POLICY "Lecture publique meeting_poll_responses" ON meeting_poll_responses FOR SELECT USING (true);
+CREATE POLICY "Pooler gère ses réponses" ON meeting_poll_responses FOR ALL
+  USING (pooler_id = auth.uid() OR EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));

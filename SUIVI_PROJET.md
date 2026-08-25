@@ -21,6 +21,43 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-25
+
+**[Feature] — Sondage de planification type Doodle (`/planification`)**
+(`schema.sql`, `app/proxy.ts`, `app/app/login/page.tsx`, `app/app/planification/page.tsx`,
+`app/app/planification/PlanificationManager.tsx`, `app/app/planification/actions.ts`,
+`CLAUDE.md`) :
+- Contexte : David veut planifier la rencontre annuelle du pool via l'app, et voit ça comme
+  une occasion de tester en conditions réelles le login et les notifications push avec les
+  poolers (pas juste en admin). Nouvelle route volontairement **hors Navbar** — lien partagé
+  manuellement, "avant-première" avant d'éventuellement l'exposer plus largement.
+- Format retenu (discuté) : Doodle classique — l'admin propose des dates candidates, chaque
+  pooler coche **toutes** celles qui lui conviennent (pas une seule préférée) — permet de
+  repérer la date avec le plus de disponibilités communes. Résumé (qui est dispo quand)
+  visible à tous les poolers, pas juste à l'admin.
+- 3 nouvelles tables (`meeting_polls`, `meeting_poll_dates`, `meeting_poll_responses`) —
+  RLS suit le patron déjà établi (lecture publique, admin gère les dates/le sondage, chaque
+  pooler gère ses propres réponses via `pooler_id = auth.uid()`). **Migration pas encore
+  appliquée** — bloc SQL ajouté dans `schema.sql` (section migrations), à exécuter
+  manuellement dans le SQL Editor Supabase, staging d'abord.
+- `submitAvailabilityAction` réutilise le patron `sendPushToAdmins(...).catch(() => {})`
+  déjà en place (`app/app/gestion-series/playoff-pool-actions.ts`) — fire-and-forget, exclut
+  l'auteur de la soumission (utile si un admin répond aussi comme pooler).
+- Gap corrigé en passant : `proxy.ts` renvoyait toujours vers `/login` sans retenir la page
+  d'origine, et `/login` renvoyait toujours vers `/` après connexion — un lien direct comme
+  `/planification` perdait donc sa destination. Ajout d'un paramètre `?next=` porté par
+  `proxy.ts` à travers la redirection, lu par `/login` (depuis `window.location.search`,
+  pas `useSearchParams` — évite l'exigence de `Suspense` de Next.js) pour rediriger au bon
+  endroit après connexion. Validé par requête directe contre le serveur dev déjà en marche
+  (`curl /planification` non authentifié → `307` vers `/login?next=%2Fplanification`).
+- Retrait d'une date candidate par l'admin nettoie aussi les réponses déjà soumises pour
+  cette date (`meeting_poll_responses.candidate_date` n'est pas une clé étrangère vers
+  `meeting_poll_dates` — juste une colonne `DATE` parallèle scoping par `poll_id`, pour
+  éviter une jointure ; sans ce nettoyage explicite ces réponses resteraient orphelines).
+- **À faire par David avant que la fonctionnalité soit utilisable** : exécuter le bloc SQL de
+  migration dans Supabase (staging), puis tester le flux (créer le sondage, ajouter des
+  dates, soumettre une réponse depuis un compte pooler non-admin) avant de partager le lien.
+
 ### 2026-08-24 (suite 9)
 
 **[Design] — Nouveau logo "ampoule + casquette CC" adopté pour l'icône de l'app**
