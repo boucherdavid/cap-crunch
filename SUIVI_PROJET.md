@@ -21,6 +21,32 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-25 (suite 7)
+
+**[Fix] — Variables VAPID jamais configurées dans Vercel (staging ET prod)**
+(aucun fichier applicatif — configuration Vercel uniquement) :
+- David ne pouvait pas activer les notifications push sur son téléphone en staging (bouton
+  "Activer les notifications" → erreur générique après clic, PWA installée sur Android donc
+  pas une histoire de permission navigateur). Vérifié directement dans Vercel : le projet
+  `cap-crunch-staging` n'avait **aucune** variable VAPID (seulement les 3 Supabase) — cohérent
+  avec la correction de doc de la session précédente (noms `VAPID_PUBLIC_KEY`/`VAPID_SUBJECT`
+  documentés mais jamais réellement configurés nulle part, dans aucun des deux projets).
+- Généré deux paires de clés VAPID distinctes (`npx web-push generate-vapid-keys`, package
+  déjà installé) — une par projet Vercel, pas de partage entre staging et prod, cohérent avec
+  le reste de l'isolation par environnement du projet (bases Supabase séparées, icônes
+  distinctes). Clés **stockées uniquement dans Vercel** (Environment Variables des deux
+  projets), pas dans ce repo ni dans `credentials/` — la private key ne devrait jamais
+  transiter ailleurs que le champ "Secret" de Vercel.
+  - `cap-crunch-staging` : `NEXT_PUBLIC_VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_MAILTO`,
+    scope "Production" (le projet n'a pas de flux de preview dans ce projet).
+  - `cap-crunch` (prod) : même trio, sa propre paire de clés, scope "Production" seul —
+    "Preview" pas nécessaire, aucune URL de preview Vercel n'est utilisée dans le flux de
+    travail (toujours `main`→prod, `staging`→projet staging séparé).
+- Redéployé les deux projets après ajout (`NEXT_PUBLIC_*` est figé au build, ne suffit pas de
+  juste sauvegarder la variable dans Vercel).
+- **Test de réception réelle pas encore confirmé** au moment d'écrire cette note — David
+  devait retester après redéploiement.
+
 ### 2026-08-25 (suite 6)
 
 **[Docs] — Corrige les noms des variables VAPID documentés (ne correspondaient pas au code)**
