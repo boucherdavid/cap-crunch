@@ -21,6 +21,33 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-25 (suite 2)
+
+**[Design] — Icône de l'app + grand logo sur l'accueil et Planification**
+(`app/public/icons/**`, `app/app/favicon.ico`, `app/public/branding/logo-app.png`,
+`app/app/page.tsx`, `app/app/planification/PlanificationManager.tsx`) :
+- David a fourni deux nouveaux visuels : `docs/branding/Cap_Crunch_Mobile_App_Icon.png`
+  (même mascotte ampoule/casquette que la session précédente, mais sur fond crème plutôt que
+  navy) pour l'icône, et `docs/branding/Cap_Crunch_Logo_App.png` (lockup complet — mascotte +
+  bandeau "CAP CRUNCH" + tagline "Pool entre amis !" sur fond glace) pour un affichage "en
+  gros" limité à l'accueil et `/planification`, pas les autres pages.
+- Icône : même traitement que les sessions précédentes (recadrage carré exact, coins arrondis
+  source repeints en crème via masque géométrique par distance plutôt qu'un seuil de couleur
+  — le delta entre le crème de la carte et le blanc du canevas était trop faible, ~9/255,
+  pour un seuil de couleur simple ; scanlines multiples nécessaires pour bien détecter la
+  bbox). Régénéré les 3 variantes (prod/local/staging badge L/S) à toutes les tailles.
+- Grand logo : copié tel quel dans `app/public/branding/logo-app.png` (pas de retouche —
+  c'est un visuel "hero" déjà composé, pas une icône à aplatir), servi via `next/image`
+  (optimisation à la volée, même pattern que l'icône déjà utilisée). Remplace le petit
+  icône+titre "Cap Crunch" du `Header` de `app/app/page.tsx` (le wordmark étant déjà dans
+  l'image, le `<h1>` texte devenait redondant — retiré). Ajouté en haut de
+  `PlanificationManager.tsx`, au-dessus du titre "Planification".
+- Validé par `next build` + requêtes `curl` directes contre le serveur dev déjà en marche
+  (`/icons/icon-192x192.png`, `/branding/logo-app.png`, `/favicon.ico` tous 200, tailles
+  correspondant aux nouveaux fichiers — ces routes contournent l'auth via le matcher de
+  `proxy.ts`, pas besoin de session pour les tester). Pas de vérification visuelle en
+  navigateur connecté (mêmes limites de credentials que les sessions précédentes).
+
 ### 2026-08-25 (suite)
 
 **[Feature] — Planification ajoutée à la Navbar + toggle "Mode avant-première"**
