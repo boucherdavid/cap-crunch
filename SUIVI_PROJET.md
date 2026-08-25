@@ -21,6 +21,24 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-25 (suite 5)
+
+**[Fix] — Le mode avant-première masquait aussi la Navbar pour l'admin**
+(`app/components/Navbar.tsx`) :
+- David a demandé si l'admin voyait le site complet en tout temps — non : `navPlanificationOnly`
+  masquait le cluster de liens (Pool Saison, Statistiques, Admin, etc.) pour **tout le monde**,
+  admin inclus, contrairement à l'intention (restreindre les poolers pendant la mise en place,
+  pas l'admin qui doit continuer à naviguer le site pour faire son travail).
+- Nouveau calcul `hidePoolNav = navPlanificationOnly && !effectiveIsAdmin` — le cluster complet
+  et le menu mobile ne se masquent que si le mode est actif ET que le viewer n'est pas un admin
+  effectif. Combine naturellement avec le toggle "Vue pooler" déjà existant
+  (`effectiveIsAdmin = isAdmin && !isPoolerView`) : un admin qui active "Vue pooler" voit alors
+  la Navbar restreinte comme un vrai pooler la verrait — utile pour prévisualiser l'effet du
+  mode avant-première sans se couper soi-même l'accès au site.
+- Simplifié les 6 gardes `effectiveIsAdmin && !navPlanificationOnly` du menu mobile (section
+  Admin sous le menu Compte) en simplement `effectiveIsAdmin` — devenu redondant puisque
+  `hidePoolNav` gère déjà la condition en amont pour tout le cluster.
+
 ### 2026-08-25 (suite 4)
 
 **[Feature] — Babillard de commentaires sur `/planification`**

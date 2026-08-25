@@ -120,6 +120,9 @@ export default function Navbar({
   }, [])
 
   const effectiveIsAdmin = isAdmin && !isPoolerView
+  // Le mode avant-première ne restreint que les poolers — un admin (hors "Vue pooler")
+  // garde toujours accès au site complet pour continuer à travailler dessus.
+  const hidePoolNav = navPlanificationOnly && !effectiveIsAdmin
 
   const togglePoolerView = () => {
     const next = !isPoolerView
@@ -185,7 +188,7 @@ export default function Navbar({
             </Link>
 
             <div className="hidden md:flex items-center gap-1">
-            {navPlanificationOnly ? (
+            {hidePoolNav ? (
               <Link href="/planification" className={navBtnClass(isActive('/planification'))}>
                 Planification
               </Link>
@@ -392,7 +395,7 @@ export default function Navbar({
         {/* Menu mobile */}
         {menuOpen && (
           <div className="md:hidden border-t border-pool-navy-light py-2 flex flex-col gap-0.5">
-          {navPlanificationOnly ? (
+          {hidePoolNav ? (
             <Link href="/planification" className={mobileLinkClass('/planification')}>Planification</Link>
           ) : (
           <>
@@ -431,12 +434,12 @@ export default function Navbar({
                 <Link href="/compte"   className={mobileLinkClass('/compte')}>Mon compte</Link>
                 <Link href="/aide"     className={mobileLinkClass('/aide')}>Aide &amp; Règlements</Link>
                 <Link href="/signaler" className={mobileLinkClass('/signaler')}>Signaler un problème</Link>
-                {effectiveIsAdmin && !navPlanificationOnly &&<MobileSection label="Admin" />}
-                {effectiveIsAdmin && !navPlanificationOnly &&<Link href="/admin/pool" className={mobileLinkClass('/admin/pool')}>Gestion du pool</Link>}
-                {effectiveIsAdmin && !navPlanificationOnly &&<Link href="/admin/init"      className={mobileLinkClass('/admin/init')}>Initialisation</Link>}
-                {effectiveIsAdmin && !navPlanificationOnly &&<Link href="/admin/effectifs" className={mobileLinkClass('/admin/effectifs')}>{'Gestion des effectifs'}</Link>}
-                {effectiveIsAdmin && !navPlanificationOnly &&<Link href="/admin/series"       className={mobileLinkClass('/admin/series')}>Pool des séries</Link>}
-                {effectiveIsAdmin && !navPlanificationOnly &&(
+                {effectiveIsAdmin &&<MobileSection label="Admin" />}
+                {effectiveIsAdmin &&<Link href="/admin/pool" className={mobileLinkClass('/admin/pool')}>Gestion du pool</Link>}
+                {effectiveIsAdmin &&<Link href="/admin/init"      className={mobileLinkClass('/admin/init')}>Initialisation</Link>}
+                {effectiveIsAdmin &&<Link href="/admin/effectifs" className={mobileLinkClass('/admin/effectifs')}>{'Gestion des effectifs'}</Link>}
+                {effectiveIsAdmin &&<Link href="/admin/series"       className={mobileLinkClass('/admin/series')}>Pool des séries</Link>}
+                {effectiveIsAdmin &&(
                   <Link href="/admin/pool?tab=communication" className={mobileLinkClass('/admin/pool')}>
                     <span className="flex items-center justify-between">
                       Messages
@@ -444,7 +447,7 @@ export default function Navbar({
                     </span>
                   </Link>
                 )}
-                {effectiveIsAdmin && !navPlanificationOnly &&<Link href="/admin/pool?tab=suivi" className={mobileLinkClass('/admin/pool')}>Suivi</Link>}
+                {effectiveIsAdmin &&<Link href="/admin/pool?tab=suivi" className={mobileLinkClass('/admin/pool')}>Suivi</Link>}
                 {isAdmin && (
                   <button onClick={togglePoolerView}
                     className="block text-left px-3 py-2 rounded text-sm font-medium text-amber-300 hover:bg-pool-navy-light transition-colors">
