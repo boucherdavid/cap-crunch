@@ -21,6 +21,22 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-25 (suite 13)
+
+**[Fix] — Vrai calendrier cliquable pour sélectionner plusieurs dates candidates**
+(`app/app/admin/planification/AdminPlanificationManager.tsx`) :
+- David voulait sélectionner plusieurs dates d'un coup sur `/admin/planification` — pas
+  possible avec `<input type="date">` : c'est une limite du composant natif du navigateur
+  (un seul jour par ouverture du sélecteur), pas un bug de l'implémentation précédente
+  (liste en attente + bouton "Enregistrer N dates" de la session précédente).
+- Remplacé par `CalendarPicker`, une grille de mois maison (navigation ‹ mois précédent /
+  suivant ›, semaines lundi-dimanche) où chaque clic sur un jour bascule directement son
+  appartenance à la liste en attente (bleu = en attente, vert/désactivé = déjà proposée,
+  clic à nouveau pour retirer). La liste de puces "À enregistrer" en dessous reste utile
+  comme résumé compact quand les dates choisies s'étalent sur plusieurs mois (le calendrier
+  n'affiche qu'un mois à la fois). Le bouton "Enregistrer N dates" et
+  `addCandidateDatesAction` (session précédente) n'ont pas changé.
+
 ### 2026-08-25 (suite 12)
 
 **[Feature] — Ajout de plusieurs dates candidates à la fois sur `/admin/planification`**
