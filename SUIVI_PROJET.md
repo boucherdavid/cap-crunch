@@ -21,6 +21,26 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-25 (suite 9)
+
+**[Fix] — Icône de notification push blanche/vide (badge Android)**
+(`app/public/sw.js`, `app/public/icons/badge-192x192.png`) :
+- David a remarqué que l'icône dans la notification push était juste blanche. Cause : `sw.js`
+  utilisait `icon-192x192.png` (icône pleine, opaque, fond crème) à la fois pour `icon`
+  (grande icône couleur, correcte) ET pour `badge` (petite icône de la barre de statut
+  Android). Android traite toujours `badge` comme un pochoir monochrome basé sur le canal
+  alpha de l'image — avec une icône 100% opaque sans transparence, il n'y a aucune forme à
+  découper, donc Android affiche un carré/disque blanc plein.
+- Généré `badge-192x192.png` : silhouette blanche sur fond **transparent**, extraite de
+  l'icône existante par flood-fill depuis les coins (pas un seuil de couleur global — un
+  seuil global confondait le fond crème avec les propres blancs du dessin — casquette,
+  ampoule, sourcils — créant des "trous" dans la silhouette là où c'était blanc sur blanc;
+  le flood-fill ne remplit que la région de fond réellement connectée aux bords, laissant les
+  blancs "enclavés" du motif intacts et opaques).
+- `sw.js` : `badge` pointe maintenant vers ce nouveau fichier, `icon` reste inchangé (déjà
+  correct en couleur pleine). Pas de variante par environnement nécessaire — contrairement
+  aux icônes d'app/PWA, ce badge est toujours monochromé par l'OS de toute façon.
+
 ### 2026-08-25 (suite 8)
 
 **[Fix] — `push_subscriptions` n'existait pas en staging (jamais documentée dans schema.sql)**
