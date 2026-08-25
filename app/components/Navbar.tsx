@@ -52,12 +52,14 @@ export default function Navbar({
   initialUnreadCount = 0,
   initialUnreadNotifCount = 0,
   initialNewPlayoffActive = false,
+  navPlanificationOnly = false,
 }: {
   initialUserName: string | null
   initialIsAdmin: boolean
   initialUnreadCount?: number
   initialUnreadNotifCount?: number
   initialNewPlayoffActive?: boolean
+  navPlanificationOnly?: boolean
 }) {
   const pathname = usePathname()
   const supabase = createClient()
@@ -183,6 +185,12 @@ export default function Navbar({
             </Link>
 
             <div className="hidden md:flex items-center gap-1">
+            {navPlanificationOnly ? (
+              <Link href="/planification" className={navBtnClass(isActive('/planification'))}>
+                Planification
+              </Link>
+            ) : (
+            <>
 
               {/* Pool Saison */}
               <div className="relative">
@@ -250,6 +258,11 @@ export default function Navbar({
                 Calendrier
               </Link>
 
+              {/* Planification */}
+              <Link href="/planification" className={navBtnClass(isActive('/planification'))}>
+                Planification
+              </Link>
+
               {/* Pool Séries — masqué hors saison de séries active */}
               {newPlayoffActive && (
               <div className="relative">
@@ -304,6 +317,8 @@ export default function Navbar({
                 </div>
               )}
 
+            </>
+            )}
             </div>
           </div>
 
@@ -377,6 +392,10 @@ export default function Navbar({
         {/* Menu mobile */}
         {menuOpen && (
           <div className="md:hidden border-t border-pool-navy-light py-2 flex flex-col gap-0.5">
+          {navPlanificationOnly ? (
+            <Link href="/planification" className={mobileLinkClass('/planification')}>Planification</Link>
+          ) : (
+          <>
             <MobileSection label="Pool Saison" />
             {userName && <Link href="/dashboard"           className={mobileLinkClass('/dashboard')}>Mon équipe</Link>}
             <Link href="/poolers"                          className={mobileLinkClass('/poolers')}>Équipes</Link>
@@ -394,6 +413,7 @@ export default function Navbar({
             <Link href="/repechage"  className={mobileLinkClass('/repechage')}>{'Rep\u00eachage LNH'}</Link>
             <Link href="/repechage-recrues" className={mobileLinkClass('/repechage-recrues')}>{'Rep\u00eachage recrues'}</Link>
             <Link href="/calendrier" className={mobileLinkClass('/calendrier')}>Calendrier</Link>
+            <Link href="/planification" className={mobileLinkClass('/planification')}>Planification</Link>
 
             {newPlayoffActive && (<>
             <MobileSection label={'Pool S\u00e9ries'} />
@@ -402,6 +422,8 @@ export default function Navbar({
             <Link href="/resultats" className={mobileLinkClass('/resultats')}>Résultats</Link>
             {effectiveIsAdmin &&<Link href="/admin/series" className={mobileLinkClass('/admin/series')}>{'Gestion/Cr\u00e9ation Pool des s\u00e9ries'}</Link>}
             </>)}
+          </>
+          )}
 
             {userName && (
               <div className="mt-1 pt-1 border-t border-pool-navy-light flex flex-col gap-0.5">
@@ -409,12 +431,12 @@ export default function Navbar({
                 <Link href="/compte"   className={mobileLinkClass('/compte')}>Mon compte</Link>
                 <Link href="/aide"     className={mobileLinkClass('/aide')}>Aide &amp; Règlements</Link>
                 <Link href="/signaler" className={mobileLinkClass('/signaler')}>Signaler un problème</Link>
-                {effectiveIsAdmin &&<MobileSection label="Admin" />}
-                {effectiveIsAdmin &&<Link href="/admin/pool" className={mobileLinkClass('/admin/pool')}>Gestion du pool</Link>}
-                {effectiveIsAdmin &&<Link href="/admin/init"      className={mobileLinkClass('/admin/init')}>Initialisation</Link>}
-                {effectiveIsAdmin &&<Link href="/admin/effectifs" className={mobileLinkClass('/admin/effectifs')}>{'Gestion des effectifs'}</Link>}
-                {effectiveIsAdmin &&<Link href="/admin/series"       className={mobileLinkClass('/admin/series')}>Pool des séries</Link>}
-                {effectiveIsAdmin &&(
+                {effectiveIsAdmin && !navPlanificationOnly &&<MobileSection label="Admin" />}
+                {effectiveIsAdmin && !navPlanificationOnly &&<Link href="/admin/pool" className={mobileLinkClass('/admin/pool')}>Gestion du pool</Link>}
+                {effectiveIsAdmin && !navPlanificationOnly &&<Link href="/admin/init"      className={mobileLinkClass('/admin/init')}>Initialisation</Link>}
+                {effectiveIsAdmin && !navPlanificationOnly &&<Link href="/admin/effectifs" className={mobileLinkClass('/admin/effectifs')}>{'Gestion des effectifs'}</Link>}
+                {effectiveIsAdmin && !navPlanificationOnly &&<Link href="/admin/series"       className={mobileLinkClass('/admin/series')}>Pool des séries</Link>}
+                {effectiveIsAdmin && !navPlanificationOnly &&(
                   <Link href="/admin/pool?tab=communication" className={mobileLinkClass('/admin/pool')}>
                     <span className="flex items-center justify-between">
                       Messages
@@ -422,7 +444,7 @@ export default function Navbar({
                     </span>
                   </Link>
                 )}
-                {effectiveIsAdmin &&<Link href="/admin/pool?tab=suivi" className={mobileLinkClass('/admin/pool')}>Suivi</Link>}
+                {effectiveIsAdmin && !navPlanificationOnly &&<Link href="/admin/pool?tab=suivi" className={mobileLinkClass('/admin/pool')}>Suivi</Link>}
                 {isAdmin && (
                   <button onClick={togglePoolerView}
                     className="block text-left px-3 py-2 rounded text-sm font-medium text-amber-300 hover:bg-pool-navy-light transition-colors">

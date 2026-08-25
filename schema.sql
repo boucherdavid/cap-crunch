@@ -325,6 +325,23 @@ CREATE TABLE transaction_items (
 -- CREATE POLICY "Pooler gère ses réponses" ON meeting_poll_responses FOR ALL
 --   USING (pooler_id = auth.uid() OR EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
 
+-- Migration 2026-08-25 (suite) : table app_settings (toggle Navbar "avant-première
+-- Planification") — à exécuter une seule fois dans le SQL Editor Supabase (staging d'abord) :
+--
+-- CREATE TABLE app_settings (
+--   id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+--   nav_planification_only BOOLEAN NOT NULL DEFAULT false
+-- );
+-- INSERT INTO app_settings (id) VALUES (1);
+-- ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Lecture publique app_settings" ON app_settings FOR SELECT USING (true);
+-- CREATE POLICY "Admin modifie app_settings" ON app_settings FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+--
+-- Si le schema cache de PostgREST ne voit pas les nouvelles tables tout de suite après
+-- exécution (erreur "Could not find the table 'public.xxx' in the schema cache") :
+-- NOTIFY pgrst, 'reload schema';
+
 -- =============================================
 -- DONNÉES INITIALES
 -- =============================================
@@ -503,3 +520,17 @@ CREATE POLICY "Admin gère meeting_poll_dates" ON meeting_poll_dates FOR ALL
 CREATE POLICY "Lecture publique meeting_poll_responses" ON meeting_poll_responses FOR SELECT USING (true);
 CREATE POLICY "Pooler gère ses réponses" ON meeting_poll_responses FOR ALL
   USING (pooler_id = auth.uid() OR EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- Réglages globaux de l'app (une seule ligne, id=1). Sert d'abord à basculer la Navbar en
+-- mode "avant-première Planification" (masque tous les autres liens pour tous les poolers
+-- pendant la mise en place du sondage de rencontre, sans toucher aux permissions RLS).
+CREATE TABLE app_settings (
+  id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  nav_planification_only BOOLEAN NOT NULL DEFAULT false
+);
+INSERT INTO app_settings (id) VALUES (1);
+
+ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Lecture publique app_settings" ON app_settings FOR SELECT USING (true);
+CREATE POLICY "Admin modifie app_settings" ON app_settings FOR ALL
+  USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));

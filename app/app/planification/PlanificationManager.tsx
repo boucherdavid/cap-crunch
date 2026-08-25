@@ -7,6 +7,7 @@ import {
   removeCandidateDateAction,
   resetPollAction,
   submitAvailabilityAction,
+  setNavPlanificationOnlyAction,
 } from './actions'
 
 type Me = { id: string; name: string; isAdmin: boolean }
@@ -27,18 +28,20 @@ function currentSeasonMeetingTitle() {
 }
 
 export default function PlanificationManager({
-  me, poolers, poll, dates, responses,
+  me, poolers, poll, dates, responses, navPlanificationOnly,
 }: {
   me: Me
   poolers: Pooler[]
   poll: Poll
   dates: CandidateDate[]
   responses: Response[]
+  navPlanificationOnly: boolean
 }) {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [newTitle, setNewTitle] = useState(currentSeasonMeetingTitle())
   const [newDate, setNewDate] = useState('')
+  const [navOnly, setNavOnly] = useState(navPlanificationOnly)
 
   const myInitialDates = useMemo(
     () => new Set(responses.filter(r => r.pooler_id === me.id).map(r => r.candidate_date)),
@@ -95,6 +98,16 @@ export default function PlanificationManager({
     if (result.error) showMsg('error', result.error)
   }
 
+  const handleToggleNavOnly = async () => {
+    const next = !navOnly
+    setNavOnly(next)
+    const result = await setNavPlanificationOnlyAction(next)
+    if (result.error) {
+      setNavOnly(!next)
+      showMsg('error', result.error)
+    }
+  }
+
   const handleSubmit = async () => {
     if (!poll) return
     setLoading(true)
@@ -122,6 +135,25 @@ export default function PlanificationManager({
           {poll ? poll.title : 'Trouver une date pour la rencontre annuelle du pool.'}
         </p>
       </div>
+
+      {me.isAdmin && (
+        <div className="bg-white rounded-lg shadow p-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-gray-700">Mode avant-première</p>
+            <p className="text-xs text-gray-400">
+              Masque le reste de la navbar pour tous les poolers — ils ne voient que
+              « Planification ». À désactiver une fois la rencontre planifiée.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleNavOnly}
+            className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors ${navOnly ? 'bg-blue-600' : 'bg-gray-300'}`}
+          >
+            <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${navOnly ? 'translate-x-5' : 'translate-x-0'}`} />
+          </button>
+        </div>
+      )}
 
       {message && (
         <p className={`text-sm font-medium ${message.type === 'success' ? 'text-emerald-600' : 'text-red-600'}`}>

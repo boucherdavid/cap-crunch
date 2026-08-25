@@ -179,8 +179,10 @@ mettre à jour cette section dès qu'une route ou un onglet admin change (voir s
 `/gestion-series` (soumettre ses choix séries) `/classement-series` (classement séries)
 `/gestion-effectifs` `/draft-center` (classement des prospects, vue publique)
 `/dashboard` (redirige vers son propre alignement) `/compte` `/signaler` `/aide` `/offline`
-`/planification` (sondage type Doodle pour une rencontre — pas dans le Navbar, lien partagé
-manuellement par l'admin ; notifie les admins par push à chaque soumission)
+`/planification` (sondage type Doodle pour une rencontre ; notifie les admins par push à
+chaque soumission). Toggle admin "Mode avant-première" (sur `/planification`, table
+`app_settings.nav_planification_only`) masque le reste de la Navbar pour tous les poolers —
+seul le lien Planification reste visible tant qu'il est actif.
 
 **Admin — 4 pages hub avec onglets (`?tab=`), pas de routes à plat :**
 
