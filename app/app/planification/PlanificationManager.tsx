@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Image from 'next/image'
 import {
   createPollAction,
   addCandidateDateAction,
@@ -129,8 +130,16 @@ export default function PlanificationManager({
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800 mb-1">Planification</h1>
+      <div className="text-center">
+        <Image
+          src="/branding/logo-app.png"
+          alt="Cap Crunch — Pool entre amis"
+          width={1536}
+          height={1024}
+          className="w-full max-w-sm mx-auto rounded-xl shadow-sm"
+          priority
+        />
+        <h1 className="text-2xl font-bold text-gray-800 mt-3 mb-1">Planification</h1>
         <p className="text-gray-500 text-sm">
           {poll ? poll.title : 'Trouver une date pour la rencontre annuelle du pool.'}
         </p>
