@@ -9,6 +9,8 @@ import {
   resetPollAction,
   submitAvailabilityAction,
   setNavPlanificationOnlyAction,
+  addCommentAction,
+  deleteCommentAction,
 } from './actions'
 
 type Me = { id: string; name: string; isAdmin: boolean }
@@ -16,10 +18,18 @@ type Pooler = { id: string; name: string }
 type Poll = { id: number; title: string } | null
 type CandidateDate = { id: number; candidate_date: string }
 type Response = { pooler_id: string; candidate_date: string }
+type Comment = { id: number; pooler_id: string; body: string; created_at: string }
 
 function fmtDate(iso: string) {
   return new Date(`${iso}T00:00:00Z`).toLocaleDateString('fr-CA', {
     weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC',
+  })
+}
+
+function fmtDateTime(iso: string) {
+  return new Date(iso).toLocaleString('fr-CA', {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+    timeZone: 'America/Toronto',
   })
 }
 
@@ -29,13 +39,14 @@ function currentSeasonMeetingTitle() {
 }
 
 export default function PlanificationManager({
-  me, poolers, poll, dates, responses, navPlanificationOnly,
+  me, poolers, poll, dates, responses, comments, navPlanificationOnly,
 }: {
   me: Me
   poolers: Pooler[]
   poll: Poll
   dates: CandidateDate[]
   responses: Response[]
+  comments: Comment[]
   navPlanificationOnly: boolean
 }) {
   const [loading, setLoading] = useState(false)
@@ -43,6 +54,13 @@ export default function PlanificationManager({
   const [newTitle, setNewTitle] = useState(currentSeasonMeetingTitle())
   const [newDate, setNewDate] = useState('')
   const [navOnly, setNavOnly] = useState(navPlanificationOnly)
+  const [newComment, setNewComment] = useState('')
+  const [postingComment, setPostingComment] = useState(false)
+
+  const poolerName = useMemo(
+    () => new Map(poolers.map(p => [p.id, p.name])),
+    [poolers],
+  )
 
   const myInitialDates = useMemo(
     () => new Set(responses.filter(r => r.pooler_id === me.id).map(r => r.candidate_date)),
@@ -116,6 +134,20 @@ export default function PlanificationManager({
     setLoading(false)
     if (result.error) showMsg('error', result.error)
     else showMsg('success', 'Tes disponibilités ont été enregistrées.')
+  }
+
+  const handlePostComment = async () => {
+    if (!poll || !newComment.trim()) return
+    setPostingComment(true)
+    const result = await addCommentAction(poll.id, newComment)
+    setPostingComment(false)
+    if (result.error) showMsg('error', result.error)
+    else setNewComment('')
+  }
+
+  const handleDeleteComment = async (commentId: number) => {
+    const result = await deleteCommentAction(commentId)
+    if (result.error) showMsg('error', result.error)
   }
 
   // Compte par date, pour repérer la ou les meilleures dates dans le résumé
@@ -333,6 +365,58 @@ export default function PlanificationManager({
                 </tr>
               </tfoot>
             </table>
+          </div>
+        </div>
+      )}
+
+      {poll && (
+        <div className="bg-white rounded-lg shadow p-5 space-y-4">
+          <h2 className="font-semibold text-gray-700 text-sm">Babillard</h2>
+
+          {comments.length === 0 ? (
+            <p className="text-gray-400 text-sm">Aucun commentaire pour l&apos;instant.</p>
+          ) : (
+            <ul className="space-y-3">
+              {comments.map(c => (
+                <li key={c.id} className="border rounded-lg p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-700">
+                        {poolerName.get(c.pooler_id) ?? 'Un pooler'}
+                        <span className="ml-2 text-xs text-gray-400 font-normal">{fmtDateTime(c.created_at)}</span>
+                      </p>
+                      <p className="text-sm text-gray-600 mt-0.5 whitespace-pre-wrap break-words">{c.body}</p>
+                    </div>
+                    {(c.pooler_id === me.id || me.isAdmin) && (
+                      <button
+                        onClick={() => handleDeleteComment(c.id)}
+                        className="shrink-0 text-gray-300 hover:text-red-500 text-xs"
+                        title="Supprimer"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="flex gap-2">
+            <textarea
+              value={newComment}
+              onChange={e => setNewComment(e.target.value)}
+              placeholder="Écrire un commentaire..."
+              rows={2}
+              className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+            <button
+              onClick={handlePostComment}
+              disabled={postingComment || !newComment.trim()}
+              className="bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40 self-end"
+            >
+              Publier
+            </button>
           </div>
         </div>
       )}

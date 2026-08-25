@@ -27,13 +27,16 @@ export default async function PlanificationPage() {
     .eq('is_active', true)
     .maybeSingle()
 
-  const [{ data: dates }, { data: responses }] = await Promise.all([
+  const [{ data: dates }, { data: responses }, { data: comments }] = await Promise.all([
     poll
       ? supabase.from('meeting_poll_dates').select('id, candidate_date').eq('poll_id', poll.id).order('candidate_date')
       : Promise.resolve({ data: [] as { id: number; candidate_date: string }[] }),
     poll
       ? supabase.from('meeting_poll_responses').select('pooler_id, candidate_date').eq('poll_id', poll.id)
       : Promise.resolve({ data: [] as { pooler_id: string; candidate_date: string }[] }),
+    poll
+      ? supabase.from('meeting_poll_comments').select('id, pooler_id, body, created_at').eq('poll_id', poll.id).order('created_at')
+      : Promise.resolve({ data: [] as { id: number; pooler_id: string; body: string; created_at: string }[] }),
   ])
 
   return (
@@ -43,6 +46,7 @@ export default async function PlanificationPage() {
       poll={poll ?? null}
       dates={dates ?? []}
       responses={responses ?? []}
+      comments={comments ?? []}
       navPlanificationOnly={settings?.nav_planification_only ?? false}
     />
   )

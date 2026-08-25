@@ -21,6 +21,27 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-25 (suite 4)
+
+**[Feature] — Babillard de commentaires sur `/planification`**
+(`schema.sql`, `app/app/planification/actions.ts`, `app/app/planification/page.tsx`,
+`app/app/planification/PlanificationManager.tsx`) :
+- David a demandé un espace pour que les poolers laissent des commentaires libres liés au
+  sondage de planification (ex: contraintes d'horaire, suggestions de lieu), en plus du choix
+  de dates. Nouvelle table `meeting_poll_comments` (poll_id, pooler_id, body, created_at) —
+  patron RLS identique aux autres tables `meeting_poll_*` : lecture publique, auteur peut
+  publier/supprimer son propre commentaire, admin peut tout gérer (modération). **Migration
+  pas encore appliquée** — bloc SQL ajouté dans `schema.sql`, à exécuter manuellement
+  (staging d'abord).
+- `addCommentAction` réutilise le même patron `sendPushToAdmins(...).catch(() => {})` que
+  `submitAvailabilityAction` — notifie les admins (sauf l'auteur si c'est lui-même admin) à
+  chaque nouveau commentaire, avec un extrait tronqué à 120 caractères dans le corps de la
+  notification.
+- UI : simple liste chronologique (nom, horodatage, texte) + zone de texte pour publier,
+  sous la section Résumé. Suppression visible seulement pour l'auteur du commentaire ou un
+  admin — la vérification d'appartenance est refaite côté serveur dans
+  `deleteCommentAction` (pas seulement côté UI), RLS en filet de sécurité supplémentaire.
+
 ### 2026-08-25 (suite 3)
 
 **[Fix] — favicon.ico générique entrait en concurrence avec les icônes badgées local/staging**
