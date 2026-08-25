@@ -179,10 +179,10 @@ mettre à jour cette section dès qu'une route ou un onglet admin change (voir s
 `/gestion-series` (soumettre ses choix séries) `/classement-series` (classement séries)
 `/gestion-effectifs` `/draft-center` (classement des prospects, vue publique)
 `/dashboard` (redirige vers son propre alignement) `/compte` `/signaler` `/aide` `/offline`
-`/planification` (sondage type Doodle pour une rencontre ; notifie les admins par push à
-chaque soumission). Toggle admin "Mode avant-première" (sur `/planification`, table
-`app_settings.nav_planification_only`) masque le reste de la Navbar pour tous les poolers —
-seul le lien Planification reste visible tant qu'il est actif.
+`/planification` (sondage type Doodle pour une rencontre — vue pooler : ses disponibilités,
+le résumé, le babillard ; notifie les admins par push à chaque soumission/commentaire).
+Gestion (créer le sondage, ajouter/retirer des dates, toggle "Mode avant-première") sur
+`/admin/planification`, pas sur `/planification` elle-même.
 
 **Admin — 4 pages hub avec onglets (`?tab=`), pas de routes à plat :**
 
@@ -196,6 +196,11 @@ seul le lien Planification reste visible tant qu'il est actif.
 Repêchage annuel en direct (tableau de sélection) : route à part `/admin/repechage`
 (pas un onglet — lien direct dans la Navbar), distinct de l'onglet `/admin/init?tab=choix`
 qui ne sert qu'à réassigner un pick déjà existant.
+
+`/admin/planification` : route à part (lien dans le dropdown Admin de la Navbar), gère le
+sondage `/planification` — créer/réinitialiser le sondage, ajouter/retirer des dates
+candidates, toggle "Mode avant-première" (table `app_settings.nav_planification_only` —
+masque le reste de la Navbar pour tous les poolers, sauf l'admin lui-même, tant qu'actif).
 
 `/admin/joueurs` et `/admin/draft-center` sont des redirections volontaires vers les onglets
 équivalents de `/admin/pool` (compat liens existants) — pas des pages à part entière.

@@ -307,6 +307,7 @@ export default function Navbar({
                       <Link href="/admin/effectifs" className={dropdownLinkClass('/admin/effectifs')}>{'Gestion des effectifs'}</Link>
                       <div className="border-t my-1" />
                       <Link href="/admin/series" className={dropdownLinkClass('/admin/series')}>Pool des séries</Link>
+                      <Link href="/admin/planification" className={dropdownLinkClass('/admin/planification')}>Planification</Link>
                       <div className="border-t my-1" />
                       <Link href="/admin/pool?tab=communication" className={dropdownLinkClass('/admin/pool')}>
                         <span className="flex items-center justify-between">
@@ -439,6 +440,7 @@ export default function Navbar({
                 {effectiveIsAdmin &&<Link href="/admin/init"      className={mobileLinkClass('/admin/init')}>Initialisation</Link>}
                 {effectiveIsAdmin &&<Link href="/admin/effectifs" className={mobileLinkClass('/admin/effectifs')}>{'Gestion des effectifs'}</Link>}
                 {effectiveIsAdmin &&<Link href="/admin/series"       className={mobileLinkClass('/admin/series')}>Pool des séries</Link>}
+                {effectiveIsAdmin &&<Link href="/admin/planification" className={mobileLinkClass('/admin/planification')}>Planification</Link>}
                 {effectiveIsAdmin &&(
                   <Link href="/admin/pool?tab=communication" className={mobileLinkClass('/admin/pool')}>
                     <span className="flex items-center justify-between">
