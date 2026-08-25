@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import {
   createPollAction,
-  addCandidateDateAction,
+  addCandidateDatesAction,
   removeCandidateDateAction,
   resetPollAction,
   setNavPlanificationOnlyAction,
@@ -35,6 +35,7 @@ export default function AdminPlanificationManager({
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [newTitle, setNewTitle] = useState(currentSeasonMeetingTitle())
   const [newDate, setNewDate] = useState('')
+  const [pendingDates, setPendingDates] = useState<string[]>([])
   const [navOnly, setNavOnly] = useState(navPlanificationOnly)
 
   const showMsg = (type: 'success' | 'error', text: string) => {
@@ -50,14 +51,31 @@ export default function AdminPlanificationManager({
     if (result.error) showMsg('error', result.error)
   }
 
-  const handleAddDate = async (e: React.FormEvent) => {
+  const handleStageDate = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!poll || !newDate) return
+    if (!newDate) return
+    const alreadySaved = dates.some(d => d.candidate_date === newDate)
+    if (!pendingDates.includes(newDate) && !alreadySaved) {
+      setPendingDates(prev => [...prev, newDate].sort())
+    }
+    setNewDate('')
+  }
+
+  const handleUnstageDate = (date: string) => {
+    setPendingDates(prev => prev.filter(d => d !== date))
+  }
+
+  const handleSaveDates = async () => {
+    if (!poll || pendingDates.length === 0) return
     setLoading(true)
-    const result = await addCandidateDateAction(poll.id, newDate)
+    const result = await addCandidateDatesAction(poll.id, pendingDates)
     setLoading(false)
-    if (result.error) showMsg('error', result.error)
-    else setNewDate('')
+    if (result.error) {
+      showMsg('error', result.error)
+    } else {
+      showMsg('success', `${pendingDates.length} date${pendingDates.length > 1 ? 's' : ''} ajoutée${pendingDates.length > 1 ? 's' : ''}.`)
+      setPendingDates([])
+    }
   }
 
   const handleRemoveDate = async (d: CandidateDate) => {
@@ -155,7 +173,7 @@ export default function AdminPlanificationManager({
             </button>
           </div>
 
-          <form onSubmit={handleAddDate} className="flex gap-2">
+          <form onSubmit={handleStageDate} className="flex gap-2">
             <input
               type="date"
               value={newDate}
@@ -165,15 +183,43 @@ export default function AdminPlanificationManager({
             />
             <button
               type="submit"
-              disabled={loading}
-              className="bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40"
+              className="bg-gray-100 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-200"
             >
-              Ajouter
+              + Ajouter à la liste
             </button>
           </form>
 
+          {pendingDates.length > 0 && (
+            <div className="space-y-2 border-t pt-3">
+              <p className="text-xs text-gray-400">À enregistrer :</p>
+              <div className="flex flex-wrap gap-2">
+                {pendingDates.map(date => (
+                  <span key={date} className="inline-flex items-center gap-1.5 bg-blue-50 border border-dashed border-blue-300 rounded-lg px-2.5 py-1 text-xs text-blue-700">
+                    {fmtDate(date)}
+                    <button
+                      onClick={() => handleUnstageDate(date)}
+                      className="text-blue-400 hover:text-red-500"
+                      title="Retirer de la liste"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <button
+                onClick={handleSaveDates}
+                disabled={loading}
+                className="bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40"
+              >
+                Enregistrer {pendingDates.length} date{pendingDates.length > 1 ? 's' : ''}
+              </button>
+            </div>
+          )}
+
           {dates.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="space-y-2 border-t pt-3">
+              <p className="text-xs text-gray-400">Déjà proposées :</p>
+              <div className="flex flex-wrap gap-2">
               {dates.map(d => (
                 <span key={d.id} className="inline-flex items-center gap-1.5 bg-gray-50 border rounded-lg px-2.5 py-1 text-xs text-gray-700">
                   {fmtDate(d.candidate_date)}
@@ -187,6 +233,7 @@ export default function AdminPlanificationManager({
                   </button>
                 </span>
               ))}
+              </div>
             </div>
           ) : (
             <p className="text-gray-400 text-sm">Aucune date proposée pour l&apos;instant.</p>

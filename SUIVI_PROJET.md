@@ -21,6 +21,19 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-25 (suite 12)
+
+**[Feature] — Ajout de plusieurs dates candidates à la fois sur `/admin/planification`**
+(`app/app/planification/actions.ts`, `app/app/admin/planification/AdminPlanificationManager.tsx`) :
+- David gérait ses dates une par une (un aller-retour serveur par date). Nouveau flux : le
+  sélecteur de date ajoute maintenant à une **liste en attente locale** (aucun appel serveur),
+  affichée avec un style pointillé distinct des dates déjà enregistrées ; un seul bouton
+  "Enregistrer N dates" envoie tout le lot d'un coup.
+- `addCandidateDateAction` (singulier) remplacée par `addCandidateDatesAction` (pluriel,
+  `dates: string[]`) — utilise `upsert(..., { onConflict: 'poll_id,candidate_date',
+  ignoreDuplicates: true })` plutôt qu'un `insert` simple, pour qu'un doublon dans le lot (ou
+  avec une date déjà enregistrée) n'échoue pas l'insertion complète.
+
 ### 2026-08-25 (suite 11)
 
 **[Deploy] — Planification déployée en prod, mots de passe des vrais poolers réinitialisés**

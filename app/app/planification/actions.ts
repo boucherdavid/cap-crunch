@@ -26,15 +26,16 @@ export async function createPollAction(title: string): Promise<{ error?: string 
   return {}
 }
 
-export async function addCandidateDateAction(pollId: number, date: string): Promise<{ error?: string }> {
+export async function addCandidateDatesAction(pollId: number, dates: string[]): Promise<{ error?: string }> {
   const check = await requireAdmin()
   if ('error' in check) return check
   const { supabase } = check
 
+  const rows = dates.map(date => ({ poll_id: pollId, candidate_date: date }))
   const { error } = await supabase
     .from('meeting_poll_dates')
-    .insert({ poll_id: pollId, candidate_date: date })
-  if (error && error.code !== '23505') return { error: error.message }
+    .upsert(rows, { onConflict: 'poll_id,candidate_date', ignoreDuplicates: true })
+  if (error) return { error: error.message }
 
   revalidatePath('/planification')
   return {}
