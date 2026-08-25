@@ -21,6 +21,27 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-25 (suite 11)
+
+**[Deploy] — Planification déployée en prod, mots de passe des vrais poolers réinitialisés**
+(aucun fichier applicatif — DB prod + `credentials/poolers-prod.md`, non versionné) :
+- Test complet validé en staging par David (login pooler réel, soumission de disponibilités,
+  babillard, notifications push reçues des deux côtés) — passage en prod autorisé.
+- Code déjà déployé (le push `main` de chaque session précédente s'applique automatiquement à
+  prod) — confirmé via `gh api .../commits/.../status` (déploiement Vercel "success").
+- Vérifié dans prod : `push_subscriptions`/`notification_log` existaient déjà (comme
+  découvert plus tôt), mais `meeting_polls`/`meeting_poll_dates`/`meeting_poll_responses`/
+  `app_settings`/`meeting_poll_comments` manquaient — migration combinée fournie à David pour
+  le SQL Editor prod (même contenu que les migrations staging de cette session).
+- Mots de passe réinitialisés pour les 8 vrais comptes prod (vrais courriels, pas des
+  placeholders comme en staging) via `auth.admin.update_user_by_id`, mêmes principes que la
+  session du reset staging. Écrits dans `credentials/poolers-prod.md` (dossier gitignored,
+  jamais commité). Contrairement à staging, pas de vérification de connexion réelle possible
+  ici — aucune clé anon prod disponible localement dans ce repo (prod ne tourne jamais en
+  local, voir CLAUDE.md section 1).
+- **Reste à faire par David** : exécuter la migration en prod, puis distribuer les
+  identifiants de `credentials/poolers-prod.md` aux vrais poolers.
+
 ### 2026-08-25 (suite 10)
 
 **[Refactor] — Sépare la gestion admin de `/planification` vers `/admin/planification`**
