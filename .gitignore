@@ -21,6 +21,9 @@ python_script/logs/
 .DS_Store
 Thumbs.db
 
+# Identifiants de connexion (mots de passe en clair) — jamais dans le repo
+credentials/
+
 # CCE (code-context-engine)
 # CCE local cache (per-machine, not for version control)
 .cce/
