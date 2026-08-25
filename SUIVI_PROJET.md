@@ -21,6 +21,24 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-25 (suite 3)
+
+**[Fix] — favicon.ico générique entrait en concurrence avec les icônes badgées local/staging**
+(`app/app/favicon.ico` → `app/public/favicon.ico`) :
+- David a signalé ne plus voir le badge gris "L" sur l'icône en local. Vérifié par `curl`
+  contre le serveur dev déjà en marche : le `<head>` contenait **deux** candidats
+  `<link rel="icon">` — le fichier spécial `app/app/favicon.ico` (convention Next.js,
+  identique sur les 3 environnements, jamais badgé puisqu'un seul fichier statique partagé)
+  généré automatiquement par Next.js et injecté *avant* les PNG badgés déclarés
+  explicitement dans `layout.tsx` (`/icons/local/favicon-16x16.png` etc.). Correction de la
+  session du 2026-08-24 ("les `<link rel=icon>` explicites suffisent") invalidée par ce test
+  — certains navigateurs peuvent préférer le premier candidat/le `.ico` générique.
+- Correctif : déplacé `app/app/favicon.ico` vers `app/public/favicon.ico` — reste servi à la
+  même URL `/favicon.ico` (aucun lien cassé, vérifié `200`), mais n'étant plus dans le
+  dossier de convention spéciale de Next.js, il n'est plus auto-injecté comme `<link>` dans
+  le `<head>`. Seuls les PNG badgés par environnement restent déclarés. Vérifié par `curl` :
+  le candidat générique a disparu, seuls les liens `/icons/local/favicon-*.png` demeurent.
+
 ### 2026-08-25 (suite 2)
 
 **[Design] — Icône de l'app + grand logo sur l'accueil et Planification**
