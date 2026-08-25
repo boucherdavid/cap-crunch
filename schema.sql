@@ -337,6 +337,25 @@ CREATE TABLE transaction_items (
 -- CREATE POLICY "Lecture publique app_settings" ON app_settings FOR SELECT USING (true);
 -- CREATE POLICY "Admin modifie app_settings" ON app_settings FOR ALL
 --   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- Migration 2026-08-25 (suite) : table meeting_poll_comments (babillard de la planification)
+-- — à exécuter une seule fois dans le SQL Editor Supabase (staging d'abord) :
+--
+-- CREATE TABLE meeting_poll_comments (
+--   id SERIAL PRIMARY KEY,
+--   poll_id INTEGER REFERENCES meeting_polls(id) ON DELETE CASCADE,
+--   pooler_id UUID REFERENCES poolers(id) ON DELETE CASCADE,
+--   body TEXT NOT NULL,
+--   created_at TIMESTAMPTZ DEFAULT NOW()
+-- );
+-- ALTER TABLE meeting_poll_comments ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Lecture publique meeting_poll_comments" ON meeting_poll_comments FOR SELECT USING (true);
+-- CREATE POLICY "Pooler ajoute ses commentaires" ON meeting_poll_comments FOR INSERT
+--   WITH CHECK (pooler_id = auth.uid());
+-- CREATE POLICY "Auteur supprime son commentaire" ON meeting_poll_comments FOR DELETE
+--   USING (pooler_id = auth.uid());
+-- CREATE POLICY "Admin gère meeting_poll_comments" ON meeting_poll_comments FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
 --
 -- Si le schema cache de PostgREST ne voit pas les nouvelles tables tout de suite après
 -- exécution (erreur "Could not find the table 'public.xxx' in the schema cache") :
@@ -533,4 +552,22 @@ INSERT INTO app_settings (id) VALUES (1);
 ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Lecture publique app_settings" ON app_settings FOR SELECT USING (true);
 CREATE POLICY "Admin modifie app_settings" ON app_settings FOR ALL
+  USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- Babillard de commentaires sur le sondage de planification — /planification
+CREATE TABLE meeting_poll_comments (
+  id SERIAL PRIMARY KEY,
+  poll_id INTEGER REFERENCES meeting_polls(id) ON DELETE CASCADE,
+  pooler_id UUID REFERENCES poolers(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE meeting_poll_comments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Lecture publique meeting_poll_comments" ON meeting_poll_comments FOR SELECT USING (true);
+CREATE POLICY "Pooler ajoute ses commentaires" ON meeting_poll_comments FOR INSERT
+  WITH CHECK (pooler_id = auth.uid());
+CREATE POLICY "Auteur supprime son commentaire" ON meeting_poll_comments FOR DELETE
+  USING (pooler_id = auth.uid());
+CREATE POLICY "Admin gère meeting_poll_comments" ON meeting_poll_comments FOR ALL
   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));

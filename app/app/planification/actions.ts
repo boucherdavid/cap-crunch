@@ -124,3 +124,51 @@ export async function submitAvailabilityAction(
   revalidatePath('/planification')
   return {}
 }
+
+export async function addCommentAction(pollId: number, body: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+
+  const trimmed = body.trim()
+  if (!trimmed) return { error: 'Le commentaire est vide.' }
+
+  const { data: pooler } = await supabase.from('poolers').select('name').eq('id', user.id).single()
+
+  const { error } = await supabase.from('meeting_poll_comments').insert({
+    poll_id: pollId,
+    pooler_id: user.id,
+    body: trimmed,
+  })
+  if (error) return { error: error.message }
+
+  const { sendPushToAdmins } = await import('@/lib/push')
+  sendPushToAdmins({
+    title: 'Planification — Nouveau commentaire',
+    body: `${pooler?.name ?? 'Un pooler'} : ${trimmed.slice(0, 120)}`,
+    url: '/planification',
+  }, user.id).catch(() => {})
+
+  revalidatePath('/planification')
+  return {}
+}
+
+export async function deleteCommentAction(commentId: number): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+
+  const { data: comment } = await supabase.from('meeting_poll_comments').select('pooler_id').eq('id', commentId).single()
+  if (!comment) return { error: 'Commentaire introuvable.' }
+
+  if (comment.pooler_id !== user.id) {
+    const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+    if (!me?.is_admin) return { error: 'Accès refusé.' }
+  }
+
+  const { error } = await supabase.from('meeting_poll_comments').delete().eq('id', commentId)
+  if (error) return { error: error.message }
+
+  revalidatePath('/planification')
+  return {}
+}
