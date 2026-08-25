@@ -338,6 +338,39 @@ CREATE TABLE transaction_items (
 -- CREATE POLICY "Admin modifie app_settings" ON app_settings FOR ALL
 --   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
 
+-- Migration 2026-08-25 (suite) : tables push_subscriptions et notification_log — existaient
+-- déjà en prod (créées directement, jamais documentées) mais absentes en staging, cause de
+-- l'erreur "Could not find the table 'public.push_subscriptions'" en cliquant "Activer les
+-- notifications" sur /compte en staging. À exécuter une seule fois dans le SQL Editor
+-- Supabase — STAGING SEULEMENT, prod les a déjà :
+--
+-- CREATE TABLE push_subscriptions (
+--   id SERIAL PRIMARY KEY,
+--   user_id UUID REFERENCES poolers(id) ON DELETE CASCADE,
+--   endpoint TEXT NOT NULL,
+--   p256dh TEXT NOT NULL,
+--   auth TEXT NOT NULL,
+--   created_at TIMESTAMPTZ DEFAULT NOW(),
+--   UNIQUE(user_id, endpoint)
+-- );
+-- ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Admin gère push_subscriptions" ON push_subscriptions FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+--
+-- notification_log existe déjà en staging (vérifié) — rien à faire pour celle-ci, incluse
+-- ici seulement par souci de complétude du schéma de référence :
+-- CREATE TABLE notification_log (
+--   id SERIAL PRIMARY KEY,
+--   title TEXT NOT NULL,
+--   body TEXT NOT NULL,
+--   url TEXT,
+--   sent_at TIMESTAMPTZ DEFAULT NOW(),
+--   read_at TIMESTAMPTZ
+-- );
+-- ALTER TABLE notification_log ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Admin gère notification_log" ON notification_log FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
 -- Migration 2026-08-25 (suite) : table meeting_poll_comments (babillard de la planification)
 -- — à exécuter une seule fois dans le SQL Editor Supabase (staging d'abord) :
 --
@@ -552,6 +585,41 @@ INSERT INTO app_settings (id) VALUES (1);
 ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Lecture publique app_settings" ON app_settings FOR SELECT USING (true);
 CREATE POLICY "Admin modifie app_settings" ON app_settings FOR ALL
+  USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- Abonnements aux notifications push (un par appareil/navigateur). Créée directement en prod
+-- à un moment donné, jamais ajoutée ici avant le 2026-08-25 — documentée après coup en
+-- reconstruisant la structure depuis le code (app/app/compte/push-actions.ts, app/lib/push.ts).
+-- RLS admin-only : tout accès applicatif passe par le client admin (service role, contourne
+-- RLS) dans les Server Actions, jamais directement par le client anon/authenticated.
+CREATE TABLE push_subscriptions (
+  id SERIAL PRIMARY KEY,
+  user_id UUID REFERENCES poolers(id) ON DELETE CASCADE,
+  endpoint TEXT NOT NULL,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, endpoint)
+);
+
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admin gère push_subscriptions" ON push_subscriptions FOR ALL
+  USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- Journal des notifications push envoyées aux admins (affiché sous Admin → Messages →
+-- Notifications). Même situation que push_subscriptions — jamais documentée avant le
+-- 2026-08-25 malgré une utilisation existante en prod.
+CREATE TABLE notification_log (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  url TEXT,
+  sent_at TIMESTAMPTZ DEFAULT NOW(),
+  read_at TIMESTAMPTZ
+);
+
+ALTER TABLE notification_log ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admin gère notification_log" ON notification_log FOR ALL
   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
 
 -- Babillard de commentaires sur le sondage de planification — /planification

@@ -21,6 +21,23 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-25 (suite 8)
+
+**[Fix] — `push_subscriptions` n'existait pas en staging (jamais documentée dans schema.sql)**
+(`schema.sql`) :
+- Après la config VAPID, David a eu "public.push_subscriptions n'est pas trouvé" en cliquant
+  "Activer les notifications" sur mobile. Vérifié directement dans les deux bases : la table
+  existe en **prod** (2 abonnements réels, créée directement à un moment donné sans jamais
+  être ajoutée à `schema.sql`) mais n'a **jamais existé en staging**. `notification_log`, elle,
+  existe déjà dans les deux (staging vide, prod avec 32 entrées).
+- Structure de `push_subscriptions` reconstruite depuis le code (pas d'accès SQL direct pour
+  inspecter le schéma réel de prod) : `app/app/compte/push-actions.ts` révèle les colonnes
+  (`user_id`, `endpoint`, `p256dh`, `auth`) et la contrainte `UNIQUE(user_id, endpoint)`
+  (`onConflict: 'user_id,endpoint'` dans l'upsert). Les deux tables ajoutées à `schema.sql`
+  (corps principal + bloc migration) pour combler ce trou de documentation historique.
+- **Migration à exécuter en STAGING seulement** (prod a déjà la table) — bloc SQL dans
+  `schema.sql`, section migrations.
+
 ### 2026-08-25 (suite 7)
 
 **[Fix] — Variables VAPID jamais configurées dans Vercel (staging ET prod)**
