@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   createPollAction,
@@ -24,6 +24,96 @@ function currentSeasonMeetingTitle() {
   return `Rencontre annuelle ${year}`
 }
 
+const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+
+function toISO(d: Date) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function buildMonthGrid(year: number, month: number): (Date | null)[] {
+  const first = new Date(year, month, 1)
+  const startWeekday = (first.getDay() + 6) % 7 // lundi = 0
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const cells: (Date | null)[] = []
+  for (let i = 0; i < startWeekday; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d))
+  return cells
+}
+
+function CalendarPicker({
+  savedDates, pendingDates, onToggle,
+}: {
+  savedDates: Set<string>
+  pendingDates: Set<string>
+  onToggle: (iso: string) => void
+}) {
+  const [viewDate, setViewDate] = useState(() => {
+    const d = new Date()
+    d.setDate(1)
+    return d
+  })
+
+  const cells = useMemo(
+    () => buildMonthGrid(viewDate.getFullYear(), viewDate.getMonth()),
+    [viewDate],
+  )
+  const monthLabel = viewDate.toLocaleDateString('fr-CA', { month: 'long', year: 'numeric' })
+
+  return (
+    <div className="border rounded-lg p-3 w-72">
+      <div className="flex items-center justify-between mb-2">
+        <button
+          type="button"
+          onClick={() => setViewDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+          className="text-gray-400 hover:text-gray-700 px-2"
+        >
+          ‹
+        </button>
+        <span className="text-sm font-medium text-gray-700 capitalize">{monthLabel}</span>
+        <button
+          type="button"
+          onClick={() => setViewDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
+          className="text-gray-400 hover:text-gray-700 px-2"
+        >
+          ›
+        </button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-400 mb-1">
+        {WEEKDAYS.map((w, i) => <div key={i}>{w}</div>)}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((date, i) => {
+          if (!date) return <div key={i} />
+          const iso = toISO(date)
+          const isSaved = savedDates.has(iso)
+          const isPending = pendingDates.has(iso)
+          return (
+            <button
+              type="button"
+              key={iso}
+              onClick={() => onToggle(iso)}
+              disabled={isSaved}
+              title={isSaved ? 'Déjà proposée' : undefined}
+              className={`h-8 rounded text-sm transition-colors ${
+                isSaved
+                  ? 'bg-emerald-50 text-emerald-600 cursor-default'
+                  : isPending
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              {date.getDate()}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function AdminPlanificationManager({
   poll, dates, navPlanificationOnly,
 }: {
@@ -34,9 +124,11 @@ export default function AdminPlanificationManager({
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [newTitle, setNewTitle] = useState(currentSeasonMeetingTitle())
-  const [newDate, setNewDate] = useState('')
   const [pendingDates, setPendingDates] = useState<string[]>([])
   const [navOnly, setNavOnly] = useState(navPlanificationOnly)
+
+  const savedDatesSet = useMemo(() => new Set(dates.map(d => d.candidate_date)), [dates])
+  const pendingDatesSet = useMemo(() => new Set(pendingDates), [pendingDates])
 
   const showMsg = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text })
@@ -51,14 +143,10 @@ export default function AdminPlanificationManager({
     if (result.error) showMsg('error', result.error)
   }
 
-  const handleStageDate = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newDate) return
-    const alreadySaved = dates.some(d => d.candidate_date === newDate)
-    if (!pendingDates.includes(newDate) && !alreadySaved) {
-      setPendingDates(prev => [...prev, newDate].sort())
-    }
-    setNewDate('')
+  const handleToggleDate = (iso: string) => {
+    setPendingDates(prev =>
+      prev.includes(iso) ? prev.filter(d => d !== iso) : [...prev, iso].sort(),
+    )
   }
 
   const handleUnstageDate = (date: string) => {
@@ -173,21 +261,16 @@ export default function AdminPlanificationManager({
             </button>
           </div>
 
-          <form onSubmit={handleStageDate} className="flex gap-2">
-            <input
-              type="date"
-              value={newDate}
-              onChange={e => setNewDate(e.target.value)}
-              required
-              className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          <div>
+            <p className="text-xs text-gray-400 mb-2">
+              Clique sur une ou plusieurs dates pour les ajouter à la liste.
+            </p>
+            <CalendarPicker
+              savedDates={savedDatesSet}
+              pendingDates={pendingDatesSet}
+              onToggle={handleToggleDate}
             />
-            <button
-              type="submit"
-              className="bg-gray-100 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-200"
-            >
-              + Ajouter à la liste
-            </button>
-          </form>
+          </div>
 
           {pendingDates.length > 0 && (
             <div className="space-y-2 border-t pt-3">
