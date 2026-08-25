@@ -97,7 +97,12 @@ const result = await Promise.race([
 ## Notifications push
 
 - Table `push_subscriptions` dans Supabase (RLS admin only)
-- Variables d'env requises : `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
+- Variables d'env requises (noms exacts lus par `initVapid()` dans `app/lib/push.ts`) :
+  `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (préfixe requis — aussi lue côté client par
+  `app/app/compte/PushToggle.tsx` pour `pushManager.subscribe()`), `VAPID_PRIVATE_KEY`,
+  `VAPID_MAILTO`. Si l'une des 3 manque, `initVapid()` retourne `false` et l'envoi est
+  silencieusement ignoré (aucune erreur visible) — à vérifier en premier si les push ne
+  partent pas.
 - Package `web-push` installé
 - Pattern : fire-and-forget (`sendPushToAdmins`) — ne pas awaiter dans les Server Actions critiques
 - L'admin doit activer les notifications dans `/compte` sur son appareil

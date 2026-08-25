@@ -21,6 +21,31 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-25 (suite 6)
+
+**[Docs] — Corrige les noms des variables VAPID documentés (ne correspondaient pas au code)**
+(`app/CLAUDE.md`) :
+- David a demandé si les commentaires du babillard apparaissaient dans le suivi admin, et si
+  les notifications fonctionnaient en staging. Recherche par agent : confirmé qu'aucune vue
+  admin n'agrège `meeting_poll_comments`/`meeting_poll_responses` — seule
+  `/planification` les affiche. Par contre, chaque appel `sendPushToAdmins` (soumission de
+  disponibilités, commentaire) insère inconditionnellement une ligne dans `notification_log`
+  (même si l'envoi push réel échoue silencieusement) — donc `Admin → Messages →
+  Notifications` (`/admin/pool?tab=communication`) montre bien un historique indirect de
+  l'activité `/planification`, juste pas une vue dédiée.
+- En vérifiant l'infra push, trouvé que `app/lib/push.ts` (`initVapid()`) lit
+  `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_MAILTO`, alors que
+  `app/CLAUDE.md` et `SUIVI_PROJET.md` (note historique) documentaient
+  `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` — noms différents sur 2 des 3
+  variables. Si la config Vercel avait été faite d'après la doc plutôt que le code, les push
+  échoueraient silencieusement (`initVapid()` retourne `false`, aucune erreur visible).
+  `app/CLAUDE.md` corrigé pour refléter les vrais noms lus par le code.
+- Pas vérifié directement si les variables sont correctement configurées dans le projet
+  Vercel `cap-crunch-staging` (aucun accès Vercel API/CLI dans cette session) — à valider
+  par David via Project Settings → Environment Variables, ou plus simple : bouton "Tester"
+  dans `/compte` (`app/app/compte/PushToggle.tsx`/`testPushAction`) après avoir activé les
+  notifications sur son propre appareil en staging.
+
 ### 2026-08-25 (suite 5)
 
 **[Fix] — Le mode avant-première masquait aussi la Navbar pour l'admin**
