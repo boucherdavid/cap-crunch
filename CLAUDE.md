@@ -415,6 +415,7 @@ Exemples :
 | `python_script/sync_staging_to_prod.py` | Synchronise l'historique de roster staging → prod |
 | `schema.sql` | Schéma de référence BD |
 | `supabase_migrations/` | Migrations SQL historiques |
+| `credentials/` | Identifiants poolers générés (staging/prod) — gitignored, jamais commité |
 
 <!-- cce-block-version: 3 -->
 ## Context Engine (CCE)

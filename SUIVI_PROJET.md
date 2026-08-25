@@ -180,6 +180,24 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   dans `/compte` (`app/app/compte/PushToggle.tsx`/`testPushAction`) après avoir activé les
   notifications sur son propre appareil en staging.
 
+### 2026-08-25 (suite 5b)
+
+**[Chore] — Comptes poolers staging réinitialisés + dossier `credentials/` créé**
+(`.gitignore`, `credentials/poolers-staging.md` — non versionné) :
+- David a réalisé qu'aucun pooler ne s'était jamais réellement connecté (mots de passe
+  temporaires d'origine oubliés). Demandé la requête pour les retrouver — impossible par
+  design (Supabase ne stocke qu'un hash bcrypt, jamais le mot de passe en clair). Proposé la
+  vraie solution : réinitialiser via l'API admin Supabase (`auth.admin.update_user_by_id`).
+- Décision : staging d'abord pour valider le flux, prod ensuite une fois confirmé (fait en
+  suite 11). 8 comptes staging réinitialisés (courriels `@staging.test`, des placeholders —
+  pas les vrais poolers), mots de passe aléatoires générés (`secrets`, 10 caractères,
+  majuscule/minuscule/chiffre garantis). Connexion réelle vérifiée via la clé anon staging
+  (`app/.env.staging.local`) — `sign_in_with_password` réussi, confirmant que le reset
+  fonctionne de bout en bout, pas juste que l'appel admin n'a pas levé d'erreur.
+- Nouveau dossier `credentials/` à la racine, exclu de git (`.gitignore`) — jamais commité,
+  jamais poussé. Sert à consigner les identifiants générés (staging et, plus tard, prod) dans
+  un format lisible pour David, sans jamais les faire transiter par l'historique git.
+
 ### 2026-08-25 (suite 5)
 
 **[Fix] — Le mode avant-première masquait aussi la Navbar pour l'admin**
