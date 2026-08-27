@@ -21,6 +21,27 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-27 (suite 3)
+
+**[Fix] — Avertissement "sans contrat" de la transition incluait les recrues protégées**
+(`app/app/admin/config/actions.ts`, `SeasonsManager.tsx`) :
+- David a rouvert l'aperçu de transition (`previewTransitionAction`) — la liste "27 joueurs
+  sans contrat" incluait des recrues encore protégées (ex: Zharovsky, `recrue`), alors que
+  l'absence de contrat NHL est normale et attendue pour un prospect protégé (5 saisons
+  repêchage ou ELC actif) — contrairement à un vétéran actif/réserviste non resigné, seul
+  cas visé par le mécanisme de cap simulé de la session précédente (suite).
+- Vérifié que le mécanisme lui-même (`checkSigningsAction`, pré-saison, gestion d'effectifs,
+  `/poolers/[id]`) excluait déjà correctement les recrues protégées (filtre `player_type in
+  ('actif','reserviste')` ou `continue` avant calcul de cap) — seul l'aperçu de transition,
+  antérieur à ce chantier et indépendant, ne faisait pas la distinction.
+- `previewTransitionAction` calcule maintenant la même logique de protection que
+  `loadPresaisonDataAction` (repêché : `seasonStartYear - draftYear >= 5` ; agent libre :
+  ELC actif ou non) et exclut les recrues encore protégées de `noContract`. Reste inclus :
+  vétérans non signés, LTIR, et recrues dont la protection est expirée.
+- Texte d'avertissement corrigé ("cap = $0" → cap simulé/estimé, suivi via l'onglet
+  Conformité) — obsolète depuis l'introduction de `getEffectiveCap`.
+- `npx tsc --noEmit` + `npm run build` propres.
+
 ### 2026-08-27 (suite 2)
 
 **[Fix] — Suppression de 2026-PO bloquée à nouveau, 4 tables du pool des séries manquantes**

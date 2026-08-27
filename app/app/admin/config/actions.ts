@@ -171,25 +171,44 @@ export async function previewTransitionAction(
     supabase.from('pool_seasons').select('season').eq('id', toSaisonId).single(),
     supabase
       .from('pooler_rosters')
-      .select(`pooler_id, player_id, player_type, poolers (name), players (first_name, last_name, player_contracts (season, cap_number))`)
+      .select(`pooler_id, player_id, player_type, rookie_type, pool_draft_year, poolers (name), players (first_name, last_name, player_contracts (season, cap_number, is_elc))`)
       .eq('pool_season_id', fromSaisonId)
       .eq('is_active', true),
   ])
 
   if (!toSaison) return { error: 'Saison cible introuvable.' }
 
+  const seasonStartYear = parseInt(toSaison.season.split('-')[0], 10)
   const entries = (rosters ?? []) as any[]
   const noContract: { playerName: string; poolerName: string; playerType: string }[] = []
 
   for (const e of entries) {
-    const hasContract = (e.players?.player_contracts ?? []).some((c: any) => c.season === toSaison.season && c.cap_number > 0)
-    if (!hasContract) {
-      noContract.push({
-        playerName: `${e.players?.last_name}, ${e.players?.first_name}`,
-        poolerName: e.poolers?.name ?? '?',
-        playerType: e.player_type,
-      })
+    const contracts: any[] = e.players?.player_contracts ?? []
+    const currentContract = contracts.find((c: any) => c.season === toSaison.season)
+    const hasContract = contracts.some((c: any) => c.season === toSaison.season && c.cap_number > 0)
+    if (hasContract) continue
+
+    // Recrue encore protégée (5 saisons repêchage, ou ELC actif) : normal de ne pas avoir
+    // de contrat NHL — n'appartient pas au même avertissement que les vétérans non signés.
+    if (e.player_type === 'recrue') {
+      const rookieType: string | null = e.rookie_type ?? null
+      const draftYear: number | null = e.pool_draft_year ?? null
+      let isExpired = false
+      if (rookieType === 'repeche' && draftYear !== null) {
+        isExpired = (seasonStartYear - draftYear) >= 5
+      } else if (rookieType === 'agent_libre') {
+        isExpired = !currentContract?.is_elc
+      } else {
+        isExpired = true
+      }
+      if (!isExpired) continue
     }
+
+    noContract.push({
+      playerName: `${e.players?.last_name}, ${e.players?.first_name}`,
+      poolerName: e.poolers?.name ?? '?',
+      playerType: e.player_type,
+    })
   }
 
   const poolerCount = new Set(entries.map((e: any) => e.pooler_id)).size
