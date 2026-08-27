@@ -21,6 +21,30 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-27 (suite 2)
+
+**[Fix] — Suppression de 2026-PO bloquée à nouveau, 4 tables du pool des séries manquantes**
+(`app/app/admin/config/actions.ts`, `schema.sql`, `CLAUDE.md`) :
+- Après le premier correctif de `deleteSeasonAction` (player_stat_snapshots/
+  roster_change_log), David a réessayé de supprimer 2026-PO — la saison restait affichée
+  malgré le clic. Vérifié en base : `player_stat_snapshots`/`roster_change_log` étaient bien
+  vides pour cette saison (le clic avait donc réussi jusque-là), mais **4 tables du pool des
+  séries** n'étaient toujours pas nettoyées : `playoff_pool_rosters` (123 lignes bloquantes),
+  `playoff_participating_teams` (2 lignes bloquantes), `playoff_eliminations` et
+  `playoff_pool_standings_cache` (vides actuellement, mais pas nettoyées non plus — ajoutées
+  par prudence pour la prochaine saison de séries).
+- Trouvé en cherchant tous les `.from(...)` de `gestion-series/playoff-pool-actions.ts` —
+  même angle mort que la session précédente (tables créées directement, jamais ajoutées à
+  `schema.sql`). Bonus : `CLAUDE.md` citait par erreur `series_round_rosters` (n'existe pas
+  du tout) au lieu de `playoff_pool_rosters` — corrigé.
+- `deleteSeasonAction` nettoie maintenant ces 4 tables (par `pool_season_id`, avant la
+  suppression finale) en plus des 2 déjà gérées. Toujours 100% applicatif, aucune nouvelle
+  migration requise (les 4 tables existent déjà partout) — documentées dans `schema.sql`
+  pour combler le trou historique.
+- Vaut la peine de retenir : ce pool a maintenant sa propre famille de tables `playoff_*`
+  jamais documentée en un seul endroit — si un futur `deleteSeasonAction`-like bloque encore,
+  regarder d'abord du côté de `gestion-series/` avant de chercher ailleurs.
+
 ### 2026-08-27 (suite)
 
 **[Feature] — Cap simulé pour joueurs sans contrat + conformité continue**

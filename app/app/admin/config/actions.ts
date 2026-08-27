@@ -289,6 +289,19 @@ export async function deleteSeasonAction(saisonId: number): Promise<{ error?: st
   const { error: eLog } = await supabase.from('roster_change_log').delete().eq('pool_season_id', saisonId)
   if (eLog) return { error: eLog.message }
 
+  // Tables du pool des séries (app/app/gestion-series/playoff-pool-actions.ts) — même
+  // situation, pool_season_id sans CASCADE. Pertinentes seulement pour une saison is_playoff,
+  // mais nettoyées inconditionnellement par prudence (pas de mal à les viser sur une saison
+  // régulière, elles seront simplement vides).
+  const { error: ePpr } = await supabase.from('playoff_pool_rosters').delete().eq('pool_season_id', saisonId)
+  if (ePpr) return { error: ePpr.message }
+  const { error: ePpt } = await supabase.from('playoff_participating_teams').delete().eq('pool_season_id', saisonId)
+  if (ePpt) return { error: ePpt.message }
+  const { error: ePe } = await supabase.from('playoff_eliminations').delete().eq('pool_season_id', saisonId)
+  if (ePe) return { error: ePe.message }
+  const { error: ePsc } = await supabase.from('playoff_pool_standings_cache').delete().eq('pool_season_id', saisonId)
+  if (ePsc) return { error: ePsc.message }
+
   // Supprimer la saison (cascade: pooler_rosters, pool_draft_picks)
   const { error } = await supabase.from('pool_seasons').delete().eq('id', saisonId)
   if (error) return { error: error.message }

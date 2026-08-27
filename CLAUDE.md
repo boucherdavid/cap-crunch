@@ -159,7 +159,9 @@ Hockey_Pool_App/
 - `scoring_config`
 - `push_subscriptions` (notifications push)
 - `player_stat_snapshots` (snapshots pour classements)
-- `series_round_rosters` (pool des séries)
+- `playoff_pool_rosters`, `playoff_participating_teams`, `playoff_eliminations`,
+  `playoff_pool_standings_cache` (pool des séries — PAS `series_round_rosters`, qui
+  n'existe pas malgré une ancienne mention ici)
 - `cap_signing_watch` (conformité cap continue, voir section 6)
 
 **Conventions :**
