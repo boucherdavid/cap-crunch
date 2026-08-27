@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPushToUser } from '@/lib/push'
 import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/rosterTypeChange'
 import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
+import { getEffectiveCap } from '@/lib/capUtils'
 
 export type PlayerType = 'actif' | 'reserviste' | 'ltir' | 'recrue'
 
@@ -30,6 +31,7 @@ export type RosterEntry = {
   teamCode: string | null
   nhlId: number | null
   capNumber: number | null
+  isEstimatedCap: boolean
   lastDeactivatedAt: string | null  // ISO timestamp de la dernière désactivation (actif→res ou ltir)
   recrueEligible: boolean  // is_rookie, draft_year dans la fenêtre de 5 saisons, ou statut ELC — peut retourner à la banque de recrues
 }
@@ -117,7 +119,7 @@ export async function getPoolerRosterAction(
   // retourner à la banque de recrues.
   const draftYearCutoff = parseInt(season.split('-')[0], 10) + 1 - 5
 
-  const [{ data: rosterData }, { data: deactRows }] = await Promise.all([
+  const [{ data: rosterData }, { data: deactRows }, { data: settings }] = await Promise.all([
     supabase
       .from('pooler_rosters')
       .select(`
@@ -139,7 +141,9 @@ export async function getPoolerRosterAction(
       .eq('pool_season_id', saisonId)
       .in('change_type', ['deactivation', 'ltir'])
       .order('changed_at', { ascending: false }),
+    supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
   ])
+  const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
 
   // most recent deactivation date per player
   const deactMap = new Map<number, string>()
@@ -147,19 +151,23 @@ export async function getPoolerRosterAction(
     if (!deactMap.has(row.player_id)) deactMap.set(row.player_id, row.changed_at)
   }
 
-  const entries: RosterEntry[] = (rosterData ?? []).map((r: any) => ({
-    id: r.id,
-    playerId: r.player_id,
-    playerType: (r.player_type === 'agent_libre' ? 'reserviste' : r.player_type) as PlayerType,
-    firstName: r.players?.first_name ?? '',
-    lastName: r.players?.last_name ?? '',
-    position: r.players?.position ?? null,
-    teamCode: r.players?.teams?.code ?? null,
-    nhlId: r.players?.nhl_id ?? null,
-    capNumber: r.players?.player_contracts?.find((c: any) => c.season === season)?.cap_number ?? null,
-    lastDeactivatedAt: deactMap.get(r.player_id) ?? null,
-    recrueEligible: !!(r.players?.is_rookie || (r.players?.draft_year != null && r.players.draft_year >= draftYearCutoff) || r.players?.status === 'ELC'),
-  }))
+  const entries: RosterEntry[] = (rosterData ?? []).map((r: any) => {
+    const { cap, isEstimated } = getEffectiveCap(r.players?.player_contracts, season, unsignedMultiplier)
+    return {
+      id: r.id,
+      playerId: r.player_id,
+      playerType: (r.player_type === 'agent_libre' ? 'reserviste' : r.player_type) as PlayerType,
+      firstName: r.players?.first_name ?? '',
+      lastName: r.players?.last_name ?? '',
+      position: r.players?.position ?? null,
+      teamCode: r.players?.teams?.code ?? null,
+      nhlId: r.players?.nhl_id ?? null,
+      capNumber: cap || null,
+      isEstimatedCap: isEstimated,
+      lastDeactivatedAt: deactMap.get(r.player_id) ?? null,
+      recrueEligible: !!(r.players?.is_rookie || (r.players?.draft_year != null && r.players.draft_year >= draftYearCutoff) || r.players?.status === 'ELC'),
+    }
+  })
 
   return {
     actifs:      entries.filter(e => e.playerType === 'actif'),

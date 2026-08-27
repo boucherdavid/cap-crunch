@@ -344,6 +344,10 @@ export default function GestionEffectifsManager({
 
   const capUsed  = useMemo(() => projected ? computeCap(projected) : 0, [projected])
   const capOver  = capUsed > poolCap
+  const estimatedCapEntries = useMemo(
+    () => projected ? [...projected.actifs, ...projected.reservistes].filter(e => e.isEstimatedCap) : [],
+    [projected],
+  )
 
   const actifCounts = useMemo(() => {
     if (!projected) return { F: 0, D: 0, G: 0 }
@@ -456,6 +460,7 @@ export default function GestionEffectifsManager({
       teamCode: addNewPlayer!.teamCode,
       nhlId: addNewPlayer!.nhlId,
       capNumber: addNewPlayer!.capNumber,
+      isEstimatedCap: false,
       lastDeactivatedAt: null,
       recrueEligible: false,
     })
@@ -823,6 +828,13 @@ export default function GestionEffectifsManager({
           {!compositionOk && <p className="text-xs text-red-600">La composition des actifs doit être 12 attaquants / 6 défenseurs / 2 gardiens.</p>}
           {!reservistesOk && <p className="text-xs text-red-600">Minimum 2 réservistes requis.</p>}
           {capOver        && <p className="text-xs text-red-600">La masse salariale dépasse le cap du pool ({capFmt(poolCap)}).</p>}
+          {estimatedCapEntries.length > 0 && (
+            <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1.5">
+              ≈ Masse salariale estimée pour {estimatedCapEntries.length} joueur{estimatedCapEntries.length > 1 ? 's' : ''}
+              {' '}sans contrat connu ({estimatedCapEntries.map(e => `${e.lastName}, ${e.firstName}`).join(' · ')}) —
+              le vrai montant peut différer une fois le contrat signé.
+            </p>
+          )}
         </div>
       )}
 

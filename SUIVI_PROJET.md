@@ -21,6 +21,47 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-27 (suite)
+
+**[Feature] — Cap simulé pour joueurs sans contrat + conformité continue**
+(`schema.sql`, `app/lib/capUtils.ts`, `app/app/admin/presaison/actions.ts`,
+`PresaisonManager.tsx`, `types.ts`, `app/app/gestion-effectifs/actions.ts`,
+`GestionEffectifsManager.tsx`, `app/app/poolers/[id]/page.tsx`,
+`app/app/admin/effectifs/cap-watch-actions.ts`, `CapWatchManager.tsx`, `page.tsx`,
+`CLAUDE.md`) :
+- En testant la transition de saison en staging, l'aperçu a montré 27 joueurs actifs sans
+  contrat pour 2026-27 (UFA pas encore resignés) — comptaient 0$ au cap, un avantage caché.
+  David a demandé : cap simulé (% configurable du salaire précédent) avec badge, notification
+  au pooler quand le vrai contrat atterrit (surtout si ça dépasse le plafond), liberté totale
+  de réaction (libérer/échanger/ajuster), et une date limite au-delà de laquelle seul l'admin
+  peut libérer le joueur manuellement (jamais automatique). Décisions prises via
+  AskUserQuestion : vérification manuelle admin (pas de lien pipeline Python→notifications),
+  multiplicateur en réglage global (pas par saison), transition mise en pause jusqu'à ce que
+  le mécanisme existe. Planifié avec `EnterPlanMode` (2 agents Explore en parallèle) avant
+  d'écrire du code, vu l'ampleur (6 sites de calcul de cap trouvés, tous dupliqués
+  indépendamment — aucune fonction centrale n'existait).
+- `app/lib/capUtils.ts` (nouveau) : `getEffectiveCap(contracts, season, multiplier)` —
+  fonction pure, cap réel si un contrat existe pour la saison, sinon contrat de la saison
+  précédente × multiplicateur. Les contrats de toutes les saisons sont déjà chargés partout
+  (pas de requête additionnelle nécessaire) — juste un lookup plus intelligent.
+- Branché dans 3 sites prioritaires (pas les 6 — portée volontairement limitée pour ce
+  chantier, voir plan) : pré-saison (badge "≈ estimé" par joueur), gestion d'effectifs
+  (note récapitulative sur le panier projeté), `/poolers/[id]` (badge par ligne + note sur
+  la masse salariale totale). `RosterManager.tsx`/`TransactionBuilder.tsx`/`poolers/page.tsx`
+  restent sur l'ancien calcul pour l'instant, à étendre si le besoin se confirme.
+- Nouvelle table `cap_signing_watch` (statuts `watching`/`flagged`/`resolved`/
+  `admin_released`) + 2 colonnes `app_settings` (`unsigned_player_cap_multiplier`,
+  `cap_deadline_days`). **Migration pas encore appliquée** — bloc SQL fourni à David pour
+  staging d'abord.
+- Nouvel onglet `/admin/effectifs?tab=conformite` (`CapWatchManager.tsx`, patron de cartes
+  repris de `FeedbackAdminView.tsx`) : réglages (multiplicateur, délai), bouton "Vérifier les
+  signatures" (`checkSigningsAction` — détecte les contrats fraîchement réels, notifie via
+  `sendPushToUser` en réutilisant le patron déjà vu dans `gestion-effectifs/actions.ts`,
+  auto-résout les cas réglés d'eux-mêmes), et un bouton "Libérer ce joueur" par cas en retard
+  de délai (réutilise `submitTransactionAction(..., 'release', ...)` déjà utilisé par
+  `PresaisonManager.handleRelease` — pas de nouvelle logique de libération dupliquée).
+- `npx tsc --noEmit` + `npm run build` propres après chaque lot de fichiers.
+
 ### 2026-08-27
 
 **[Fix] — Suppression d'une saison bloquée par `player_stat_snapshots` (FK sans CASCADE)**

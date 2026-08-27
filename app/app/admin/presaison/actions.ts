@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { computeReverseStandingsOrder } from '@/lib/draftOrder'
+import { getEffectiveCap } from '@/lib/capUtils'
 import type { PoolerCapInfo, ElcDecisionEntry } from './types'
 
 function getPlayerBucket(position: string | null): 'forward' | 'defense' | 'goalie' {
@@ -22,7 +23,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
 }> {
   const supabase = await createClient()
 
-  const [{ data: saison }, { data: poolers }, { data: rosters }] = await Promise.all([
+  const [{ data: saison }, { data: poolers }, { data: rosters }, { data: settings }] = await Promise.all([
     supabase
       .from('pool_seasons')
       .select('season, pool_cap, presaison_draft_order')
@@ -36,9 +37,11 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
           player_contracts (season, cap_number, is_elc))`)
       .eq('pool_season_id', saisonId)
       .eq('is_active', true),
+    supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
   ])
 
   if (!saison) return { error: 'Saison introuvable.' }
+  const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
 
   const poolerMap = new Map<string, PoolerCapInfo>()
   for (const p of (poolers ?? [])) {
@@ -64,7 +67,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
 
     const contracts: any[] = entry.players?.player_contracts ?? []
     const currentContract = contracts.find((c: any) => c.season === saison.season)
-    const capNum = currentContract?.cap_number ?? 0
+    const { cap: capNum, isEstimated: capIsEstimated } = getEffectiveCap(contracts, saison.season, unsignedMultiplier)
     const pos: string | null = entry.players?.position ?? null
     let type: string = entry.player_type
 
@@ -121,6 +124,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
       playerName: `${entry.players?.last_name}, ${entry.players?.first_name}`,
       position: pos,
       cap_number: capNum,
+      isEstimatedCap: capIsEstimated,
     })
 
     if (type === 'actif' || type === 'reserviste') info.capUsed += capNum
