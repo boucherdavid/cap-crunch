@@ -21,6 +21,24 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-27 (suite 4)
+
+**[Fix] — `transitionSeasonAction` échouait : contrainte unique manquante en base**
+(`app/app/admin/config/actions.ts`) :
+- David a cliqué "Confirmer la transition" (2025-26 → 2026-27, staging) — erreur Postgres
+  `there is no unique or exclusion constraint matching the ON CONFLICT specification`.
+- Cause : l'upsert utilisait `onConflict: 'pooler_id,player_id,pool_season_id'`, en supposant
+  la contrainte `UNIQUE(pooler_id, player_id, pool_season_id)` documentée dans `schema.sql`
+  (ligne 80) — absente en réalité sur la base staging (dérive schéma/doc, pas de migration
+  trouvée qui l'aurait supprimée volontairement). Vérifié que la saison cible était restée
+  vide (0 ligne) après l'échec — insertion atomique, rien à nettoyer.
+- Plutôt que de dépendre d'une contrainte dont l'existence réelle n'est pas fiable (et sans
+  accès DDL direct pour la recréer sans passer par David), `transitionSeasonAction` filtre
+  maintenant lui-même les entrées déjà copiées (requête `select` sur la saison cible avant
+  l'insert) puis fait un `insert` simple au lieu d'un `upsert` — idempotent sans dépendre
+  d'`ON CONFLICT`.
+- `npx tsc --noEmit` + `npm run build` propres.
+
 ### 2026-08-27 (suite 3)
 
 **[Fix] — Avertissement "sans contrat" de la transition incluait les recrues protégées**

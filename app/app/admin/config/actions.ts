@@ -236,20 +236,31 @@ export async function transitionSeasonAction(
   const entries = (rosters ?? []) as any[]
   if (entries.length === 0) return { error: 'Aucun roster à copier dans la saison source.' }
 
-  const toInsert = entries.map((e: any) => ({
-    pooler_id: e.pooler_id,
-    player_id: e.player_id,
-    pool_season_id: toSaisonId,
-    // Les joueurs en LTIR reviennent actif au début de la nouvelle saison
-    player_type: e.player_type === 'ltir' ? 'actif' : e.player_type,
-    rookie_type: e.rookie_type ?? null,
-    pool_draft_year: e.pool_draft_year ?? null,
-    is_active: true,
-  }))
-
-  const { error } = await supabase
+  // Pas de contrainte unique (pooler_id, player_id, pool_season_id) fiable en base pour
+  // s'appuyer sur un upsert ON CONFLICT — on filtre nous-mêmes les entrées déjà copiées
+  // (relance après un essai précédent) plutôt que de dépendre d'une contrainte absente.
+  const { data: existing } = await supabase
     .from('pooler_rosters')
-    .upsert(toInsert, { onConflict: 'pooler_id,player_id,pool_season_id', ignoreDuplicates: true })
+    .select('pooler_id, player_id')
+    .eq('pool_season_id', toSaisonId)
+  const existingKeys = new Set((existing ?? []).map((e: any) => `${e.pooler_id}:${e.player_id}`))
+
+  const toInsert = entries
+    .filter((e: any) => !existingKeys.has(`${e.pooler_id}:${e.player_id}`))
+    .map((e: any) => ({
+      pooler_id: e.pooler_id,
+      player_id: e.player_id,
+      pool_season_id: toSaisonId,
+      // Les joueurs en LTIR reviennent actif au début de la nouvelle saison
+      player_type: e.player_type === 'ltir' ? 'actif' : e.player_type,
+      rookie_type: e.rookie_type ?? null,
+      pool_draft_year: e.pool_draft_year ?? null,
+      is_active: true,
+    }))
+
+  if (toInsert.length === 0) return { copied: 0 }
+
+  const { error } = await supabase.from('pooler_rosters').insert(toInsert)
 
   if (error) return { error: error.message }
 
