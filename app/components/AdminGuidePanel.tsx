@@ -26,43 +26,15 @@ const STEPS: Step[] = [
     ),
   },
   {
-    title: 'Transitionner les rosters puis activer la nouvelle saison',
-    route: '/admin/pool',
-    href: '/admin/pool?tab=config',
+    title: 'Suivre la séquence guidée « Nouvelle saison »',
+    route: '/admin/nouvelle-saison',
+    href: '/admin/nouvelle-saison',
     body: (
       <>
-        Onglet <strong>Configuration</strong>, section Saisons. Sur la ligne de la nouvelle
-        saison, cliquer <strong>« Transitionner les rosters → »</strong> — copie les rosters
-        actifs de la saison encore active vers la nouvelle (LTIR redevient actif
-        automatiquement). Un aperçu affiche le nombre de joueurs/poolers concernés et avertit
-        pour les joueurs sans contrat cette saison-là (copiés à cap 0 $, à libérer en
-        pré-saison). Une fois confirmé, cliquer <strong>« Activer »</strong> sur la nouvelle
-        saison — désactive automatiquement l&apos;ancienne.
-      </>
-    ),
-  },
-  {
-    title: 'Passer par la pré-saison',
-    route: '/admin/init',
-    href: '/admin/init?tab=presaison',
-    body: (
-      <>
-        Onglet <strong>Pré-saison</strong>. Détecte automatiquement les protections recrues
-        expirées (5 saisons pour un repêché du pool, expiration ELC pour un agent libre),
-        permet de trancher les décisions ELC (garder actif ou retour à la banque), et signale
-        les poolers non conformes (cap ou alignement, incluant les joueurs sans contrat
-        signalés à l&apos;étape précédente) à ajuster manuellement.
-      </>
-    ),
-  },
-  {
-    title: 'Repêchage annuel',
-    route: '/admin/repechage',
-    href: '/admin/repechage',
-    body: (
-      <>
-        Le repêchage en direct ajoute les recrues de la nouvelle cohorte par-dessus les
-        rosters déjà en place.
+        Transition des rosters → choix de repêchage → repêchage des recrues → banque de
+        recrues → pré-saison (décisions ELC, libérations, repêchage des agents libres) →
+        activation — dans cet ordre, chaque étape se prépare sur la nouvelle saison sans avoir
+        besoin de l&apos;activer avant la toute dernière étape.
       </>
     ),
   },

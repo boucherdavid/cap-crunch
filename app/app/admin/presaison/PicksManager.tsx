@@ -16,12 +16,13 @@ type Props = {
   saisons: Saison[]
   poolers: Pooler[]
   picksBySaison: Record<number, Pick[]>
+  initialSaisonId?: number
 }
 
-export default function PicksManager({ saisons, poolers, picksBySaison }: Props) {
+export default function PicksManager({ saisons, poolers, picksBySaison, initialSaisonId }: Props) {
   const router = useRouter()
   const [selectedId, setSelectedId] = useState<number>(
-    saisons.find(s => s.is_active)?.id ?? saisons[0]?.id ?? 0
+    initialSaisonId ?? saisons.find(s => s.is_active)?.id ?? saisons[0]?.id ?? 0
   )
   const [initializing, setInitializing] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)

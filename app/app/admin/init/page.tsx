@@ -7,6 +7,7 @@ import RosterManager from '../rosters/RosterManager'
 import BanqueRecruesManager from '../recrues/BanqueRecruesManager'
 import PresaisonManager from '../presaison/PresaisonManager'
 import PicksManager from '../presaison/PicksManager'
+import { SaisonSelectNav } from './SaisonSelectNav'
 import { type Pick, type Pooler } from '../config/PicksEditor'
 
 export const dynamic = 'force-dynamic'
@@ -43,7 +44,7 @@ async function fetchAllRookies(
 export default async function AdminInitPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; saisonId?: string }>
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -52,8 +53,9 @@ export default async function AdminInitPage({
   const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
   if (!me?.is_admin) redirect('/')
 
-  const { tab = 'rosters' } = await searchParams
+  const { tab = 'rosters', saisonId } = await searchParams
   const activeTab = TABS.some(t => t.id === tab) ? tab : 'rosters'
+  const parsedSaisonId = saisonId ? parseInt(saisonId, 10) : NaN
 
   // ── Rosters ───────────────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -62,11 +64,21 @@ export default async function AdminInitPage({
   let players: any[] = []
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let saisonRosters: any = null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let saisonsRosters: any[] = []
   let allTakenPlayerIds: number[] = []
   let playerOwnerMap: Record<number, string> = {}
   if (activeTab === 'rosters') {
-    const saisonResult = await supabase.from('pool_seasons').select('*').eq('is_active', true).eq('is_playoff', false).single()
-    saisonRosters = saisonResult.data
+    const { data: allSaisons } = await supabase
+      .from('pool_seasons')
+      .select('id, season, pool_cap, nhl_cap, is_active')
+      .eq('is_playoff', false)
+      .order('season', { ascending: false })
+    saisonsRosters = allSaisons ?? []
+    saisonRosters = (!isNaN(parsedSaisonId) && saisonsRosters.find(s => s.id === parsedSaisonId))
+      || saisonsRosters.find(s => s.is_active)
+      || saisonsRosters[0]
+      || null
     const [pr, pl, tr] = await Promise.all([
       supabase.from('poolers').select('id, name').order('name'),
       fetchAllPages(async (from, to) =>
@@ -97,9 +109,19 @@ export default async function AdminInitPage({
   let rookies: any[] = []
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let saisonRecrues: any = null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let saisonsRecrues: any[] = []
   if (activeTab === 'recrues') {
-    const saisonResult = await supabase.from('pool_seasons').select('id, season').eq('is_active', true).eq('is_playoff', false).single()
-    saisonRecrues = saisonResult.data
+    const { data: allSaisons } = await supabase
+      .from('pool_seasons')
+      .select('id, season, is_active')
+      .eq('is_playoff', false)
+      .order('season', { ascending: false })
+    saisonsRecrues = allSaisons ?? []
+    saisonRecrues = (!isNaN(parsedSaisonId) && saisonsRecrues.find(s => s.id === parsedSaisonId))
+      || saisonsRecrues.find(s => s.is_active)
+      || saisonsRecrues[0]
+      || null
     const saisonFin = saisonRecrues
       ? parseInt(saisonRecrues.season.split('-')[0], 10) + 1
       : new Date().getFullYear()
@@ -119,13 +141,17 @@ export default async function AdminInitPage({
   if (activeTab === 'presaison') {
     const { data } = await supabase.from('pool_seasons').select('id, season, is_active').eq('is_playoff', false).order('season', { ascending: false })
     saisonsPresaison = (data ?? []) as { id: number; season: string; is_active: boolean }[]
-    defaultPresaisonId = saisonsPresaison.find(s => s.is_active)?.id ?? saisonsPresaison[0]?.id ?? null
+    defaultPresaisonId = (!isNaN(parsedSaisonId) && saisonsPresaison.find(s => s.id === parsedSaisonId)?.id)
+      || saisonsPresaison.find(s => s.is_active)?.id
+      || saisonsPresaison[0]?.id
+      || null
   }
 
   // ── Choix de repêchage ────────────────────────────────────────────────────
   let saisonsChoix: { id: number; season: string; is_active: boolean; draft_rounds: number }[] = []
   let poolersChoix: Pooler[] = []
   let picksBySaison: Record<number, Pick[]> = {}
+  let initialChoixSaisonId: number | null = null
   if (activeTab === 'choix') {
     const { data: sc } = await supabase.from('pool_seasons').select('id, season, is_active, draft_rounds').eq('is_playoff', false).order('season', { ascending: false })
     saisonsChoix = (sc ?? []) as { id: number; season: string; is_active: boolean; draft_rounds: number }[]
@@ -150,6 +176,10 @@ export default async function AdminInitPage({
       if (!picksBySaison[p.pool_season_id]) picksBySaison[p.pool_season_id] = []
       picksBySaison[p.pool_season_id].push(pick)
     }
+    initialChoixSaisonId = (!isNaN(parsedSaisonId) && saisonsChoix.find(s => s.id === parsedSaisonId)?.id)
+      || saisonsChoix.find(s => s.is_active)?.id
+      || saisonsChoix[0]?.id
+      || null
   }
 
   return (
@@ -159,7 +189,12 @@ export default async function AdminInitPage({
       {/* ── Rosters ── */}
       {activeTab === 'rosters' && (
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-6">Gestion des alignements</h1>
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">Gestion des alignements</h1>
+            {saisonRosters && (
+              <SaisonSelectNav saisons={saisonsRosters} selectedId={saisonRosters.id} baseHref="/admin/init?tab=rosters" />
+            )}
+          </div>
           <ErrorBoundary>
             <RosterManager
               poolers={poolersRosters}
@@ -175,7 +210,12 @@ export default async function AdminInitPage({
       {/* ── Recrues ── */}
       {activeTab === 'recrues' && (
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-1">Banque de recrues</h1>
+          <div className="flex items-center justify-between mb-1">
+            <h1 className="text-2xl font-bold text-gray-800">Banque de recrues</h1>
+            {saisonRecrues && (
+              <SaisonSelectNav saisons={saisonsRecrues} selectedId={saisonRecrues.id} baseHref="/admin/init?tab=recrues" />
+            )}
+          </div>
           <p className="text-gray-500 text-sm mb-6">
             {'Assigner des recrues à la banque de chaque pooler. La banque ne compte pas dans la masse salariale.'}
           </p>
@@ -193,7 +233,7 @@ export default async function AdminInitPage({
       {activeTab === 'choix' && (
         <div className="max-w-5xl">
           <h1 className="text-2xl font-bold text-gray-800 mb-6">Choix de repêchage</h1>
-          <PicksManager saisons={saisonsChoix} poolers={poolersChoix} picksBySaison={picksBySaison} />
+          <PicksManager saisons={saisonsChoix} poolers={poolersChoix} picksBySaison={picksBySaison} initialSaisonId={initialChoixSaisonId ?? undefined} />
         </div>
       )}
 

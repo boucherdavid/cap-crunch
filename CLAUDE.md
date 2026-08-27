@@ -197,9 +197,26 @@ Gestion (créer le sondage, ajouter/retirer des dates, toggle "Mode avant-premi�
 | `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) · `donnees` Mise à jour données (doc pipeline) |
 | `/admin/series` | pas d'onglets — vue unique (avancement des séries), message si aucune saison séries active |
 
+Les 4 onglets de `/admin/init` acceptent tous un `&saisonId=` (sélecteur `SaisonSelectNav`,
+`app/app/admin/init/SaisonSelectNav.tsx`, même composant que `/admin/repechage`) — pas
+limités à la saison active, pour permettre de préparer une saison à l'avance avant de
+l'activer (`rosters`/`recrues` étaient câblés en dur sur la saison active jusqu'au
+2026-08-27 ; `presaison`/`choix` l'étaient déjà).
+
 Repêchage annuel en direct (tableau de sélection) : route à part `/admin/repechage`
 (pas un onglet — lien direct dans la Navbar), distinct de l'onglet `/admin/init?tab=choix`
 qui ne sert qu'à réassigner un pick déjà existant.
+
+`/admin/nouvelle-saison` : route à part (lien dans le dropdown Admin), hub orchestrateur qui
+séquence dans l'ordre recommandé les étapes de préparation d'une saison à venir — transition
+des rosters (`/admin/pool?tab=config`) → choix de repêchage → repêchage des recrues → banque
+de recrues → pré-saison (ELC, libérations, repêchage des agents libres, tout déjà intégré
+dans `PresaisonManager`) → activation (dernière étape, explicitement distincte de la
+préparation qui précède — `is_active` reste la seule bascule en base, aucun nouveau statut de
+saison). Chaque carte affiche un résumé en lecture seule (compteurs) et un lien qui pré-sélectionne
+la saison choisie via `?saisonId=` sur l'outil existant — aucune logique métier dupliquée,
+juste une orchestration/navigation. Remplace le contenu détaillé du panneau "Guide admin"
+(`AdminGuidePanel.tsx`), qui pointe maintenant simplement vers ce hub.
 
 `/admin/planification` : route à part (lien dans le dropdown Admin de la Navbar), gère le
 sondage `/planification` — créer/réinitialiser le sondage, ajouter/retirer des dates
