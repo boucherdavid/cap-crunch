@@ -390,7 +390,7 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-amber-600 mt-1">Ces joueurs seront quand même copiés (cap = $0). Tu pourras les libérer en pré-saison.</p>
+                <p className="text-xs text-amber-600 mt-1">Ces joueurs seront quand même copiés — cap simulé (≈ estimé) en pré-saison tant que leur vrai contrat n&apos;est pas connu. Suivi via l&apos;onglet Conformité.</p>
               </div>
             )}
 
