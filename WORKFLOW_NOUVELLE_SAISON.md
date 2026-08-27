@@ -3,6 +3,15 @@
 Ce document décrit les étapes à suivre pour initialiser une nouvelle saison de pool,
 que ce soit pour entrer un historique ou démarrer une saison en temps réel.
 
+> 🧭 **Pour une transition saison → saison normale** (le cas courant, pas le bootstrap
+> historique initial), le point d'entrée recommandé est **Admin > Nouvelle saison**
+> (`/admin/nouvelle-saison`) — un hub qui séquence les étapes 1, 3, 6, 5 puis l'activation
+> dans le bon ordre, avec un lien direct vers chaque outil pour la bonne saison déjà
+> sélectionnée. Ce document reste la référence détaillée pour chaque étape, et la seule
+> à suivre pour un bootstrap historique complet (étape 4 ci-dessous). Depuis le
+> 2026-08-27, les 4 onglets d'**Initialisation** acceptent un `?saisonId=` — plus besoin
+> d'activer une saison pour commencer à la préparer.
+
 ---
 
 ## 1. Créer la saison dans la configuration
@@ -42,6 +51,14 @@ que ce soit pour entrer un historique ou démarrer une saison en temps réel.
 ---
 
 ## 4. Rosters initiaux
+
+> ⚠️ **Cette étape sert au bootstrap historique initial (premier lancement de l'app) ou à
+> une reconstruction manuelle complète — pas à une transition saison → saison normale.**
+> Pour reporter les alignements finaux d'une saison à la suivante, utiliser plutôt
+> **« Transitionner les rosters → »** à l'étape 1 (Config > Saisons) : ça copie
+> automatiquement les rosters actifs de la saison active (LTIR redevient actif), sans
+> ressaisie manuelle. Cette étape 4 reste disponible ensuite pour des corrections
+> ponctuelles au besoin.
 
 **Admin > Initialisation > Rosters initiaux**
 
@@ -106,13 +123,19 @@ que ce soit pour entrer un historique ou démarrer une saison en temps réel.
 
 ```
 1. Config > Saisons          → créer la saison (+ 2 suivantes auto)
+                                puis « Transitionner les rosters → » depuis la saison active
 2. Config > Pool Saison      → cap, dates, rondes de repêchage
 3. Init > Choix repêchage    → ajuster picks échangés
-4. Init > Rosters initiaux   → aligner chaque pooler (mode init)
+4. Init > Rosters initiaux   → SEULEMENT si bootstrap historique ou correction manuelle
+                                (transition normale déjà couverte par l'étape 1)
 5. Init > Banque de recrues  → recrues hors-roster
 6. Admin > Repêchage recrues → faire le draft
-7. Admin > Transactions      → entrer l'historique de la saison
+7. Admin > Transactions      → entrer l'historique de la saison (dont pré-saison : ELC,
+                                libérations, repêchage des agents libres — voir Pré-saison)
 ```
+
+Ou, plus simple : suivre **Admin > Nouvelle saison** qui enchaîne 1 → 3 → 6 → 5 → pré-saison
+→ activation avec un lien direct sur chaque étape.
 
 ---
 
