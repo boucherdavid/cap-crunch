@@ -166,6 +166,44 @@ CREATE TABLE player_stat_snapshots (
   goalie_shutouts INTEGER
 );
 
+-- Tables du pool des séries (app/app/gestion-series/playoff-pool-actions.ts). Existent déjà
+-- en staging ET prod, jamais documentées ici avant le 2026-08-27 — même situation que
+-- roster_change_log/player_stat_snapshots. CLAUDE.md mentionnait par erreur
+-- "series_round_rosters", qui n'existe pas — la vraie table est playoff_pool_rosters.
+CREATE TABLE playoff_pool_rosters (
+  id SERIAL PRIMARY KEY,
+  pooler_id UUID REFERENCES poolers(id),
+  player_id INTEGER REFERENCES players(id),
+  pool_season_id INTEGER REFERENCES pool_seasons(id),
+  position_slot VARCHAR(10),
+  is_active BOOLEAN DEFAULT true,
+  added_at TIMESTAMPTZ DEFAULT NOW(),
+  removed_at TIMESTAMPTZ,
+  removal_reason VARCHAR(20)
+);
+
+CREATE TABLE playoff_participating_teams (
+  id SERIAL PRIMARY KEY,
+  pool_season_id INTEGER REFERENCES pool_seasons(id),
+  team_id INTEGER REFERENCES teams(id)
+);
+
+CREATE TABLE playoff_eliminations (
+  id SERIAL PRIMARY KEY,
+  pool_season_id INTEGER REFERENCES pool_seasons(id),
+  team_id INTEGER REFERENCES teams(id)
+);
+
+-- Pas de colonne id — clé primaire composite (pool_season_id, pooler_id), voir l'upsert
+-- onConflict correspondant dans playoff-pool-actions.ts.
+CREATE TABLE playoff_pool_standings_cache (
+  pool_season_id INTEGER REFERENCES pool_seasons(id),
+  pooler_id UUID REFERENCES poolers(id),
+  total_pts NUMERIC(6,1),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (pool_season_id, pooler_id)
+);
+
 -- Configuration du pointage (saison régulière et séries)
 CREATE TABLE scoring_config (
   id              SERIAL PRIMARY KEY,
