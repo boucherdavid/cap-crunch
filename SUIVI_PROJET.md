@@ -21,6 +21,25 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-27 (suite 7)
+
+**[Chore] — Reset de 2026-27 en staging pour retester la transition via le nouveau hub**
+(aucun fichier modifié, script ponctuel) :
+- David veut retester la séquence de transition en repartant de zéro sur 2026-27 (plutôt que
+  d'utiliser 2027-28, encore vierge, que j'avais proposé) — pour valider le nouveau hub
+  `/admin/nouvelle-saison` (suite 6) sur le cas réel déjà expérimenté cette session.
+- Vérifié avant toute suppression ce qui était réellement rattaché à `pool_season_id=4`
+  (2026-27) en staging : `pooler_rosters` 329 lignes (la copie faite en suite 3-4),
+  `pool_draft_picks` 32 lignes (auto-créées à la création de la saison, indépendant du test
+  de transition), `roster_change_log`/`transactions`/`cap_signing_watch` 0 — rien d'autre à
+  préserver ou nettoyer.
+- Reset appliqué directement en base (clé de service, staging) : suppression des 329 lignes
+  `pooler_rosters` de 2026-27, `is_active=false` sur 2026-27, `is_active=true` sur 2025-26.
+  Les 32 `pool_draft_picks` de 2026-27 sont restés intacts (pas liés à la transition testée).
+- **État actuel en staging** : 2025-26 de nouveau active, 2026-27 vide et inactive, prête à
+  être retransitionnée via `/admin/nouvelle-saison` à la prochaine session. 2027-28/2028-29
+  toujours vierges si un test alternatif est préféré.
+
 ### 2026-08-27 (suite 6)
 
 **[Feature] — Hub orchestrateur `/admin/nouvelle-saison` + déblocage de la préparation à l'avance**
