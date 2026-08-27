@@ -21,6 +21,56 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-27 (suite 6)
+
+**[Feature] — Hub orchestrateur `/admin/nouvelle-saison` + déblocage de la préparation à l'avance**
+(`app/app/admin/init/page.tsx`, `app/app/admin/init/SaisonSelectNav.tsx`,
+`app/app/admin/presaison/PicksManager.tsx`, `app/app/admin/repechage/page.tsx`,
+`app/app/admin/nouvelle-saison/page.tsx`, `app/components/AdminGuidePanel.tsx`,
+`app/components/Navbar.tsx`, `CLAUDE.md`) :
+- David a demandé de revoir le UI de la séquence "nouvelle saison" : le flux réel (validé
+  cette session) doit être Transition des rosters → Choix de repêchage → Repêchage des
+  recrues → Banque de recrues → Pré-saison (ELC, libérations, agents libres) → **Activer** en
+  tout dernier, avec l'activation clairement distincte de la préparation. Planifié via
+  `EnterPlanMode` (2 agents Explore en parallèle sur les hubs `/admin/pool?tab=config` et
+  `/admin/init`+`/admin/repechage`+`AdminGuidePanel` avant d'écrire du code.
+- Constat clé de l'exploration : presque tous les outils existaient déjà et fonctionnaient
+  (transition, choix de repêchage, repêchage annuel, pré-saison — y compris un repêchage
+  guidé d'agents libres déjà intégré dans `PresaisonManager`, pas une nouvelle fonctionnalité
+  à construire). Le vrai blocage : **`Rosters initiaux` et `Banque de recrues`** étaient
+  câblés en dur sur `is_active=true` (`admin/init/page.tsx`), donc impossible de préparer une
+  saison avant de l'activer — contraire à l'ordre demandé. `Pré-saison`/`Choix de repêchage`
+  acceptaient déjà n'importe quelle saison. Pas de nouveau statut de saison en base —
+  `is_active` reste la seule bascule, la séparation demandée vient du fait que la préparation
+  est maintenant possible sur une saison encore inactive.
+- `admin/init/page.tsx` : les 4 onglets acceptent maintenant `&saisonId=` (réutilise
+  `SaisonSelectNav`, déjà utilisé par `/admin/repechage` — pas de nouveau composant) ;
+  `rosters`/`recrues` récupèrent désormais toutes les saisons régulières au lieu d'une seule
+  ligne active ; `presaison`/`choix` respectent `saisonId` s'il est fourni (`choix` via un
+  nouveau prop `initialSaisonId` sur `PicksManager`, pour permettre le lien profond depuis le
+  nouveau hub sans changer sa logique interne).
+- Bug trouvé en cours de route (avant déploiement) : `SaisonSelectNav` faisait toujours
+  `${baseHref}&saisonId=...`, cassant si `baseHref` n'a pas déjà de `?` — `/admin/repechage`
+  contournait ça avec un `baseHref="/admin/repechage?saisonId"` (placeholder sans valeur).
+  Corrigé le composant partagé pour détecter le bon séparateur (`?` vs `&`) et retiré le
+  contournement dans `/admin/repechage/page.tsx`.
+- Nouveau `/admin/nouvelle-saison` (route à part, comme `/admin/repechage`/`/admin/planification`
+  — pas un 6e sous-onglet de Configuration) : sélecteur de saison unique en haut, 6 cartes
+  dans l'ordre demandé, chacune avec un résumé en lecture seule (comptages simples, pas de
+  logique métier dupliquée — évite de reproduire la logique de protection recrue déjà
+  dupliquée ailleurs, voir session sur `previewTransitionAction`) et un lien vers l'outil
+  existant avec la saison pré-sélectionnée. La carte "Activer la saison" est visuellement
+  distincte (bordure/bouton émeraude) et en dernière position.
+- `AdminGuidePanel.tsx` : les 3 étapes détaillées (transition/pré-saison/repêchage) remplacées
+  par un seul lien vers `/admin/nouvelle-saison`, pour ne plus maintenir la séquence à deux
+  endroits — cause déjà d'une correction en session précédente (2026-08-24 suite 8).
+- Lien ajouté au dropdown Admin de `Navbar.tsx` (desktop + mobile).
+- Hors scope (mentionné à David, pas fait) : `RookieOverrideManager.tsx`/`PresaisonTabs.tsx`
+  sont du code mort (jamais importés), doublon de `BanqueRecruesManager.tsx` — à supprimer
+  séparément si confirmé. Renommer `/admin/init` en "Démarrage du pool" dans la Navbar —
+  cosmétique, pas fait.
+- `npx tsc --noEmit` + `npm run build` propres après chaque lot de fichiers.
+
 ### 2026-08-27 (suite 5)
 
 **[Validation] — Outil de transition de saison validé de bout en bout (staging)**

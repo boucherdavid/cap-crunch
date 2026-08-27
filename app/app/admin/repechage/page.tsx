@@ -118,7 +118,7 @@ export default async function RepechageAdminPage({
         <SaisonSelectNav
           saisons={saisons}
           selectedId={saison.id}
-          baseHref="/admin/repechage?saisonId"
+          baseHref="/admin/repechage"
         />
       </div>
 

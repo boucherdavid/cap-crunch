@@ -302,6 +302,7 @@ export default function Navbar({
                   {openDropdown === 'admin' && (
                     <div className="absolute left-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
                       <Link href="/admin/pool"      className={dropdownLinkClass('/admin/pool')}>Gestion du pool</Link>
+                      <Link href="/admin/nouvelle-saison" className={dropdownLinkClass('/admin/nouvelle-saison')}>Nouvelle saison</Link>
                       <Link href="/admin/init"      className={dropdownLinkClass('/admin/init')}>Initialisation</Link>
                       <Link href="/admin/repechage" className={dropdownLinkClass('/admin/repechage')}>{'Repêchage recrues'}</Link>
                       <Link href="/admin/effectifs" className={dropdownLinkClass('/admin/effectifs')}>{'Gestion des effectifs'}</Link>
@@ -437,6 +438,7 @@ export default function Navbar({
                 <Link href="/signaler" className={mobileLinkClass('/signaler')}>Signaler un problème</Link>
                 {effectiveIsAdmin &&<MobileSection label="Admin" />}
                 {effectiveIsAdmin &&<Link href="/admin/pool" className={mobileLinkClass('/admin/pool')}>Gestion du pool</Link>}
+                {effectiveIsAdmin &&<Link href="/admin/nouvelle-saison" className={mobileLinkClass('/admin/nouvelle-saison')}>Nouvelle saison</Link>}
                 {effectiveIsAdmin &&<Link href="/admin/init"      className={mobileLinkClass('/admin/init')}>Initialisation</Link>}
                 {effectiveIsAdmin &&<Link href="/admin/effectifs" className={mobileLinkClass('/admin/effectifs')}>{'Gestion des effectifs'}</Link>}
                 {effectiveIsAdmin &&<Link href="/admin/series"       className={mobileLinkClass('/admin/series')}>Pool des séries</Link>}
