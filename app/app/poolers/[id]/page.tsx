@@ -7,6 +7,7 @@ import PlayerLink from '@/components/PlayerLink'
 import { buildStandings } from '@/lib/standings'
 import { fetchStreaks, DEFAULT_INDICATOR_CONFIG } from '@/lib/streaks'
 import type { StreakInfo } from '@/lib/streaks'
+import { getEffectiveCap } from '@/lib/capUtils'
 
 const DASH = '\u2014'
 const STAR = '\u2605'
@@ -149,7 +150,7 @@ const sortByDraftYearAsc = (a: RosterRow, b: RosterRow) => {
     || (a.players?.first_name ?? '').localeCompare(b.players?.first_name ?? '', 'fr-CA')
 }
 
-function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft, saisonFin, splitByPosition }: {
+function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft, saisonFin, splitByPosition, unsignedMultiplier }: {
   rows: RosterRow[]
   title: string
   season?: string
@@ -158,10 +159,15 @@ function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft,
   showDraft?: boolean
   saisonFin?: number
   splitByPosition?: boolean
+  unsignedMultiplier?: number
 }) {
   const renderRows = (rowsToRender: RosterRow[]) => rowsToRender.map((row) => {
     const player = row.players
-    const capNumber = salaryCounts ? getCurrentCap(player, season) : null
+    const effective = salaryCounts && season
+      ? getEffectiveCap(player?.player_contracts, season, unsignedMultiplier ?? 1.20)
+      : null
+    const capNumber = effective?.cap ?? null
+    const isEstimated = effective?.isEstimated ?? false
     const nextCap = getNextCap(player, nextSeason)
     const currentRaw = getCurrentCap(player, season)
     const trend = getTrend(currentRaw, nextCap)
@@ -211,7 +217,17 @@ function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft,
               </td>
             </>
           : <>
-              <td className="px-3 py-2 text-right text-gray-700 w-28 tabular-nums">{formatCap(capNumber)}</td>
+              <td className="px-3 py-2 text-right text-gray-700 w-28 tabular-nums">
+                {formatCap(capNumber)}
+                {isEstimated && (
+                  <span
+                    className="ml-1 text-amber-600 bg-amber-50 rounded px-1 py-0.5 text-[10px] font-medium align-middle"
+                    title="Cap simulé — sans contrat pour cette saison, en attente du vrai contrat."
+                  >
+                    ≈
+                  </span>
+                )}
+              </td>
               <td className="px-3 py-2 text-right text-gray-400 w-28 tabular-nums">{nextCap !== null ? formatCap(nextCap) : DASH}</td>
               <td className="px-3 py-2 text-center w-8">
                 <span className={TREND[trend].cls}>{TREND[trend].symbol}</span>
@@ -310,10 +326,12 @@ export default async function PoolerPage({ params }: { params: Promise<{ id: str
     .eq('is_playoff', false)
     .single()
 
-  const [{ data: pooler }, { data: allPoolers }] = await Promise.all([
+  const [{ data: pooler }, { data: allPoolers }, { data: settings }] = await Promise.all([
     supabase.from('poolers').select('id, name').eq('id', id).single(),
     supabase.from('poolers').select('id, name').order('name'),
+    supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
   ])
+  const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
 
   if (!pooler) notFound()
 
@@ -401,9 +419,13 @@ export default async function PoolerPage({ params }: { params: Promise<{ id: str
     { forward: 0, defense: 0, goalie: 0 } as Record<Bucket, number>,
   )
 
+  const estimatedCapCount = [...actifs, ...reservistes].filter((row) => saison?.season
+    && getEffectiveCap(row.players?.player_contracts, saison.season, unsignedMultiplier).isEstimated).length
+
   const capUtilise = [...actifs, ...reservistes, ...ltir].reduce((sum, row) => {
     if (row.player_type === 'ltir') return sum  // LTIR exclut de la masse salariale
-    return sum + getCurrentCap(row.players, saison?.season)
+    if (!saison?.season) return sum
+    return sum + getEffectiveCap(row.players?.player_contracts, saison.season, unsignedMultiplier).cap
   }, 0)
 
   const capTotal = saison?.pool_cap ?? 0
@@ -440,6 +462,12 @@ export default async function PoolerPage({ params }: { params: Promise<{ id: str
         <p className="text-xs text-gray-400 text-right">
           Disponible: {formatCap(capTotal - capUtilise)}
         </p>
+        {estimatedCapCount > 0 && (
+          <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1.5">
+            ≈ Inclut {estimatedCapCount} joueur{estimatedCapCount > 1 ? 's' : ''} sans contrat
+            connu pour cette saison — cap simulé, à ajuster une fois le vrai contrat signé.
+          </p>
+        )}
         {nextPoolCap !== null && (
           <div className="mt-3 pt-3 border-t border-gray-100">
             <div className="flex justify-between text-sm mb-2">
@@ -511,10 +539,10 @@ export default async function PoolerPage({ params }: { params: Promise<{ id: str
     <>
       {capAndPicksContent}
       <div className="bg-white rounded-lg shadow p-5">
-        <RosterTable rows={actifs.filter(r => getPlayerBucket(r.players?.position ?? null) === 'forward').sort(byCapDesc)} title={`Attaquants (${activeCounts.forward} / 12)`} season={saison?.season} nextSeason={nextSeason} salaryCounts={true} />
-        <RosterTable rows={actifs.filter(r => getPlayerBucket(r.players?.position ?? null) === 'defense').sort(byCapDesc)} title={`Défenseurs (${activeCounts.defense} / 6)`} season={saison?.season} nextSeason={nextSeason} salaryCounts={true} />
-        <RosterTable rows={actifs.filter(r => getPlayerBucket(r.players?.position ?? null) === 'goalie').sort(byCapDesc)} title={`Gardiens (${activeCounts.goalie} / 2)`} season={saison?.season} nextSeason={nextSeason} salaryCounts={true} />
-        <RosterTable rows={reservistes} title="Réservistes" season={saison?.season} nextSeason={nextSeason} salaryCounts={true} />
+        <RosterTable rows={actifs.filter(r => getPlayerBucket(r.players?.position ?? null) === 'forward').sort(byCapDesc)} title={`Attaquants (${activeCounts.forward} / 12)`} season={saison?.season} nextSeason={nextSeason} salaryCounts={true} unsignedMultiplier={unsignedMultiplier} />
+        <RosterTable rows={actifs.filter(r => getPlayerBucket(r.players?.position ?? null) === 'defense').sort(byCapDesc)} title={`Défenseurs (${activeCounts.defense} / 6)`} season={saison?.season} nextSeason={nextSeason} salaryCounts={true} unsignedMultiplier={unsignedMultiplier} />
+        <RosterTable rows={actifs.filter(r => getPlayerBucket(r.players?.position ?? null) === 'goalie').sort(byCapDesc)} title={`Gardiens (${activeCounts.goalie} / 2)`} season={saison?.season} nextSeason={nextSeason} salaryCounts={true} unsignedMultiplier={unsignedMultiplier} />
+        <RosterTable rows={reservistes} title="Réservistes" season={saison?.season} nextSeason={nextSeason} salaryCounts={true} unsignedMultiplier={unsignedMultiplier} />
         {ltir.length > 0 && (
           <RosterTable rows={ltir} title={`Liste de blessés long terme — LTIR (${ltir.length})`} season={saison?.season} nextSeason={nextSeason} salaryCounts={true} />
         )}

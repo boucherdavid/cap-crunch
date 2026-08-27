@@ -7,6 +7,7 @@ export type RosterEntry = {
   playerName: string
   position: string | null
   cap_number: number
+  isEstimatedCap: boolean
 }
 
 export type PoolerCapInfo = {

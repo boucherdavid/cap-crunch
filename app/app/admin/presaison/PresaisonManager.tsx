@@ -113,8 +113,16 @@ function ComplianceCard({
                   />
                 )}
                 <span className="flex-1 text-gray-700">{e.playerName}</span>
-                <span className="text-gray-400 shrink-0">
+                <span className="text-gray-400 shrink-0 flex items-center gap-1">
                   {e.position ?? DASH} · {e.cap_number > 0 ? fmt(e.cap_number) : DASH}
+                  {e.isEstimatedCap && (
+                    <span
+                      className="text-amber-600 bg-amber-50 rounded px-1 py-0.5 text-[10px] font-medium"
+                      title="Cap simulé — joueur sans contrat pour cette saison, en attente du vrai contrat."
+                    >
+                      ≈ estimé
+                    </span>
+                  )}
                 </span>
               </div>
             )

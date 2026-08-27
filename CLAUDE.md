@@ -160,6 +160,7 @@ Hockey_Pool_App/
 - `push_subscriptions` (notifications push)
 - `player_stat_snapshots` (snapshots pour classements)
 - `series_round_rosters` (pool des séries)
+- `cap_signing_watch` (conformité cap continue, voir section 6)
 
 **Conventions :**
 - Statuts joueurs : `ELC`, `RFA`, `UFA`
@@ -191,7 +192,7 @@ Gestion (créer le sondage, ajouter/retirer des dates, toggle "Mode avant-premi�
 |---|---|
 | `/admin/pool` | `poolers` Poolers · `config` Configuration · `communication` Communication (feedback + notifs) · `suivi` Suivi (activité) · `joueurs` Données joueurs (doc pipeline) · `prospects` Classement des prospects |
 | `/admin/init` | `rosters` Rosters initiaux · `recrues` Banque de recrues · `presaison` Pré-saison · `choix` Choix de repêchage (← réassigner le propriétaire d'un pick échangé hors-app) |
-| `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `historique` Historique (saisie historique manuelle) · `donnees` Mise à jour données (doc pipeline) |
+| `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) · `donnees` Mise à jour données (doc pipeline) |
 | `/admin/series` | pas d'onglets — vue unique (avancement des séries), message si aucune saison séries active |
 
 Repêchage annuel en direct (tableau de sélection) : route à part `/admin/repechage`
@@ -291,6 +292,21 @@ masque le reste de la Navbar pour tous les poolers, sauf l'admin lui-même, tant
   `roster_change_log`, avec le même vocabulaire `change_type` que `/gestion-effectifs` et
   `/admin/rosters` (`activation`/`deactivation`/`ajout_reserviste`/`ajout_recrue`/`retrait`/
   `ltir`/`retour_ltir`/`changement_type`).
+
+**Cap simulé pour joueur sans contrat (`app/lib/capUtils.ts`) :**
+- `getEffectiveCap(contracts, season, unsignedMultiplier)` : sans contrat réel pour la
+  saison, simule un cap = contrat de la saison précédente × `app_settings.
+  unsigned_player_cap_multiplier` (défaut 1.20) — évite qu'un joueur non signé compte 0$
+  (avantage caché). Branché dans `/admin/presaison`, `/gestion-effectifs`, `/poolers/[id]`
+  (badge "≈ estimé") — pas encore dans `RosterManager.tsx`/`TransactionBuilder.tsx`/
+  `poolers/page.tsx` (liste), à étendre si le besoin se confirme à l'usage.
+- Suivi de conformité continue : `/admin/effectifs?tab=conformite` — bouton "Vérifier les
+  signatures" (vérification manuelle, pas de lien automatique avec le pipeline Python)
+  détecte quand un joueur surveillé obtient un vrai contrat, notifie le pooler par push
+  s'il dépasse alors le plafond (`app_settings.cap_deadline_days`, défaut 7 jours) via la
+  table `cap_signing_watch`. Le pooler peut réagir comme il veut (libérer, échanger,
+  ajuster) ; passé le délai, seul l'admin peut libérer le joueur manuellement — jamais
+  automatique.
 
 **Next.js 16 :**
 - Utiliser `proxy.ts`, PAS `middleware.ts`

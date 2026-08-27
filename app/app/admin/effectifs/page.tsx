@@ -6,6 +6,8 @@ import GestionEffectifsManager from '@/app/gestion-effectifs/GestionEffectifsMan
 import TransactionBuilder from '../transactions/TransactionBuilder'
 import HistoriqueManager from '../historique/HistoriqueManager'
 import { getHistLogAction } from '../historique/historique-actions'
+import CapWatchManager from './CapWatchManager'
+import { loadCapWatchDataAction } from './cap-watch-actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,6 +15,7 @@ const TABS = [
   { id: 'mouvements',   label: 'Mouvements' },
   { id: 'transactions', label: 'Transactions' },
   { id: 'historique',   label: 'Historique' },
+  { id: 'conformite',   label: 'Conformité cap' },
   { id: 'donnees',      label: 'Mise à jour données' },
 ]
 
@@ -30,6 +33,19 @@ export default async function AdminEffectifsPage({
 
   const { tab = 'mouvements' } = await searchParams
   const activeTab = TABS.some(t => t.id === tab) ? tab : 'mouvements'
+
+  // ── Conformité cap ──────────────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let saisonConformite: any = null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let capWatchData: any = { entries: [], unsignedMultiplier: 1.20, capDeadlineDays: 7 }
+  if (activeTab === 'conformite') {
+    const { data: sr } = await supabase.from('pool_seasons').select('id, season').eq('is_active', true).eq('is_playoff', false).single()
+    saisonConformite = sr
+    if (saisonConformite) {
+      capWatchData = await loadCapWatchDataAction(saisonConformite.id)
+    }
+  }
 
   // ── Mouvements ────────────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -136,6 +152,28 @@ export default async function AdminEffectifsPage({
                 poolers={poolersHist}
                 poolSeasonId={saisonHist.id}
                 initialLog={initialLog}
+              />
+          }
+        </div>
+      )}
+
+      {/* ── Conformité cap ── */}
+      {activeTab === 'conformite' && (
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800 mb-1">Conformité cap</h1>
+          <p className="text-sm text-gray-500 mb-6 max-w-2xl">
+            Un joueur actif sans contrat pour la saison compte un cap simulé (estimé à partir
+            de son salaire précédent) plutôt que 0$. « Vérifier les signatures » détecte les
+            vrais contrats fraîchement importés et notifie le pooler concerné s&apos;il dépasse
+            alors le plafond — passé le délai, seul un clic ici peut libérer le joueur.
+          </p>
+          {!saisonConformite
+            ? <p className="text-gray-500">Aucune saison active.</p>
+            : <CapWatchManager
+                saisonId={saisonConformite.id}
+                initialEntries={capWatchData.entries ?? []}
+                initialMultiplier={capWatchData.unsignedMultiplier ?? 1.20}
+                initialDeadlineDays={capWatchData.capDeadlineDays ?? 7}
               />
           }
         </div>

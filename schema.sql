@@ -413,6 +413,34 @@ CREATE TABLE transaction_items (
 -- CREATE POLICY "Admin gère notification_log" ON notification_log FOR ALL
 --   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
 
+-- Migration 2026-08-27 : conformité cap continue (unsigned_player_cap_multiplier,
+-- cap_deadline_days sur app_settings + table cap_signing_watch) — à exécuter une seule fois
+-- dans le SQL Editor Supabase (staging d'abord) :
+--
+-- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS unsigned_player_cap_multiplier NUMERIC(5,2) NOT NULL DEFAULT 1.20;
+-- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS cap_deadline_days INTEGER NOT NULL DEFAULT 7;
+--
+-- CREATE TABLE cap_signing_watch (
+--   id SERIAL PRIMARY KEY,
+--   pooler_id UUID REFERENCES poolers(id) ON DELETE CASCADE,
+--   player_id INTEGER REFERENCES players(id) ON DELETE CASCADE,
+--   pool_season_id INTEGER REFERENCES pool_seasons(id) ON DELETE CASCADE,
+--   status VARCHAR(20) NOT NULL DEFAULT 'watching'
+--     CHECK (status IN ('watching', 'flagged', 'resolved', 'admin_released')),
+--   estimated_cap NUMERIC(12,2),
+--   real_cap NUMERIC(12,2),
+--   created_at TIMESTAMPTZ DEFAULT NOW(),
+--   flagged_at TIMESTAMPTZ,
+--   deadline_at TIMESTAMPTZ,
+--   resolved_at TIMESTAMPTZ,
+--   released_by UUID REFERENCES poolers(id),
+--   UNIQUE(pooler_id, player_id, pool_season_id)
+-- );
+-- ALTER TABLE cap_signing_watch ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Lecture publique cap_signing_watch" ON cap_signing_watch FOR SELECT USING (true);
+-- CREATE POLICY "Admin gère cap_signing_watch" ON cap_signing_watch FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
 -- Migration 2026-08-25 (suite) : table meeting_poll_comments (babillard de la planification)
 -- — à exécuter une seule fois dans le SQL Editor Supabase (staging d'abord) :
 --
@@ -618,9 +646,12 @@ CREATE POLICY "Pooler gère ses réponses" ON meeting_poll_responses FOR ALL
 -- Réglages globaux de l'app (une seule ligne, id=1). Sert d'abord à basculer la Navbar en
 -- mode "avant-première Planification" (masque tous les autres liens pour tous les poolers
 -- pendant la mise en place du sondage de rencontre, sans toucher aux permissions RLS).
+-- unsigned_player_cap_multiplier/cap_deadline_days : voir "Conformité cap" plus bas.
 CREATE TABLE app_settings (
   id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
-  nav_planification_only BOOLEAN NOT NULL DEFAULT false
+  nav_planification_only BOOLEAN NOT NULL DEFAULT false,
+  unsigned_player_cap_multiplier NUMERIC(5,2) NOT NULL DEFAULT 1.20,
+  cap_deadline_days INTEGER NOT NULL DEFAULT 7
 );
 INSERT INTO app_settings (id) VALUES (1);
 
@@ -662,6 +693,34 @@ CREATE TABLE notification_log (
 
 ALTER TABLE notification_log ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Admin gère notification_log" ON notification_log FOR ALL
+  USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- Conformité cap continue : un joueur actif sans contrat pour la saison affiche un cap simulé
+-- (app_settings.unsigned_player_cap_multiplier × cap de la saison précédente, voir
+-- app/lib/capUtils.ts). Cette table suit chaque (pooler, joueur, saison) surveillé, du moment
+-- où le cap est simulé jusqu'à la résolution une fois le vrai contrat connu — vérification
+-- manuelle admin (bouton "Vérifier les signatures", /admin/effectifs?tab=conformite), jamais
+-- de libération automatique.
+CREATE TABLE cap_signing_watch (
+  id SERIAL PRIMARY KEY,
+  pooler_id UUID REFERENCES poolers(id) ON DELETE CASCADE,
+  player_id INTEGER REFERENCES players(id) ON DELETE CASCADE,
+  pool_season_id INTEGER REFERENCES pool_seasons(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'watching'
+    CHECK (status IN ('watching', 'flagged', 'resolved', 'admin_released')),
+  estimated_cap NUMERIC(12,2),
+  real_cap NUMERIC(12,2),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  flagged_at TIMESTAMPTZ,
+  deadline_at TIMESTAMPTZ,
+  resolved_at TIMESTAMPTZ,
+  released_by UUID REFERENCES poolers(id),
+  UNIQUE(pooler_id, player_id, pool_season_id)
+);
+
+ALTER TABLE cap_signing_watch ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Lecture publique cap_signing_watch" ON cap_signing_watch FOR SELECT USING (true);
+CREATE POLICY "Admin gère cap_signing_watch" ON cap_signing_watch FOR ALL
   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
 
 -- Babillard de commentaires sur le sondage de planification — /planification
