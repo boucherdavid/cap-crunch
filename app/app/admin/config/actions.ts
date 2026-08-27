@@ -281,6 +281,14 @@ export async function deleteSeasonAction(saisonId: number): Promise<{ error?: st
     if (e2) return { error: e2.message }
   }
 
+  // player_stat_snapshots et roster_change_log référencent pool_season_id sans CASCADE —
+  // surtout pertinent pour une saison de séries (snapshots d'activation/désactivation du pool
+  // des séries), mais nettoyé pour les deux types par prudence.
+  const { error: eSnap } = await supabase.from('player_stat_snapshots').delete().eq('pool_season_id', saisonId)
+  if (eSnap) return { error: eSnap.message }
+  const { error: eLog } = await supabase.from('roster_change_log').delete().eq('pool_season_id', saisonId)
+  if (eLog) return { error: eLog.message }
+
   // Supprimer la saison (cascade: pooler_rosters, pool_draft_picks)
   const { error } = await supabase.from('pool_seasons').delete().eq('id', saisonId)
   if (error) return { error: error.message }

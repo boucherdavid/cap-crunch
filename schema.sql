@@ -124,6 +124,48 @@ CREATE TABLE roster_changes (
   changed_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- roster_change_log et player_stat_snapshots existent déjà en staging ET prod, créées
+-- directement à un moment donné, jamais ajoutées ici avant le 2026-08-27 — documentées après
+-- coup en reconstruisant la structure depuis les colonnes observées en base (types/contraintes
+-- exactes non garanties byte-exact, juste ce qui est nécessaire pour comprendre le schéma).
+--
+-- roster_change_log est la vraie table utilisée par statusAt()/buildStandings()
+-- (app/lib/standings.ts) — PAS roster_changes ci-dessus (colonnes différentes,
+-- player_in_id/player_out_id vs player_id/old_type/new_type ; roster_changes a 0 lignes en
+-- staging, semble être une table legacy jamais réellement utilisée). Voir CLAUDE.md section 6
+-- pour la mécanique complète (statusAt, fenêtres actives, changement de type).
+CREATE TABLE roster_change_log (
+  id SERIAL PRIMARY KEY,
+  player_id INTEGER REFERENCES players(id),
+  pooler_id UUID REFERENCES poolers(id),
+  pool_season_id INTEGER REFERENCES pool_seasons(id),
+  change_type VARCHAR(30),
+  old_type VARCHAR(20),
+  new_type VARCHAR(20),
+  changed_by UUID REFERENCES poolers(id),
+  changed_at TIMESTAMPTZ DEFAULT NOW(),
+  is_admin_override BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  pick_id INTEGER REFERENCES pool_draft_picks(id)
+);
+
+-- Snapshots de stats pris à l'activation/désactivation d'un joueur (surtout pool des séries —
+-- app/app/gestion-series/playoff-pool-actions.ts) ; sert de référence pour calculer les points
+-- gagnés durant une fenêtre active sans reparcourir tout l'historique de matchs.
+CREATE TABLE player_stat_snapshots (
+  id SERIAL PRIMARY KEY,
+  player_id INTEGER REFERENCES players(id),
+  pooler_id UUID REFERENCES poolers(id),
+  pool_season_id INTEGER REFERENCES pool_seasons(id),
+  snapshot_type VARCHAR(20),
+  taken_at TIMESTAMPTZ DEFAULT NOW(),
+  goals INTEGER,
+  assists INTEGER,
+  goalie_wins INTEGER,
+  goalie_otl INTEGER,
+  goalie_shutouts INTEGER
+);
+
 -- Configuration du pointage (saison régulière et séries)
 CREATE TABLE scoring_config (
   id              SERIAL PRIMARY KEY,

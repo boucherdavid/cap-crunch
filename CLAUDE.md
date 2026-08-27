@@ -153,7 +153,8 @@ Hockey_Pool_App/
 **Tables principales :**
 - `teams`, `players`, `player_contracts`
 - `pool_seasons`, `poolers`, `pooler_rosters`
-- `roster_changes`, `pool_draft_picks`
+- `roster_change_log` (utilisée par `statusAt()`/`buildStandings()`, voir section 6 — PAS
+  `roster_changes`, table legacy distincte, jamais réellement utilisée), `pool_draft_picks`
 - `transactions`, `transaction_items`
 - `scoring_config`
 - `push_subscriptions` (notifications push)

@@ -21,6 +21,29 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-27
+
+**[Fix] — Suppression d'une saison bloquée par `player_stat_snapshots` (FK sans CASCADE)**
+(`app/app/admin/config/actions.ts`, `schema.sql`) :
+- David a tenté de supprimer la saison de séries 2026-PO en staging (avant de commencer les
+  tests de transition d'alignement) — erreur `violates foreign key constraint
+  "player_stat_snapshots_pool_season_id_fkey"`. `deleteSeasonAction` nettoyait déjà
+  `transactions`/`transaction_items` manuellement (pas de CASCADE sur `pool_season_id`) mais
+  pas `player_stat_snapshots` — 249 lignes bloquantes pour cette saison en staging.
+- Découverte en creusant : **`roster_change_log`** — la vraie table utilisée par
+  `statusAt()`/`buildStandings()` (CLAUDE.md section 6) — et **`player_stat_snapshots`**
+  n'étaient documentées nulle part dans `schema.sql`, malgré une utilisation active en
+  staging et prod (même angle mort que `push_subscriptions`/`notification_log` trouvé le
+  2026-08-25). `roster_changes` (avec un s, déjà dans `schema.sql`) est une table différente,
+  legacy, colonnes différentes (`player_in_id`/`player_out_id` vs `player_id`/`old_type`/
+  `new_type`) et 0 lignes en staging — jamais réellement utilisée, à ne pas confondre.
+  Structure des deux tables ajoutée à `schema.sql` (reconstruite depuis les colonnes
+  observées en base, pas garantie byte-exacte).
+- `deleteSeasonAction` nettoie maintenant aussi `player_stat_snapshots` et
+  `roster_change_log` (scope `pool_season_id`) avant de supprimer la saison — même
+  patron que le nettoyage `transactions`/`transaction_items` déjà en place. Aucune migration
+  requise (les deux tables existent déjà partout) — correctif 100% applicatif.
+
 ### 2026-08-25 (suite 13)
 
 **[Fix] — Vrai calendrier cliquable pour sélectionner plusieurs dates candidates**
