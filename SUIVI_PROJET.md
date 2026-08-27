@@ -21,6 +21,19 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-27 (suite 5)
+
+**[Validation] — Outil de transition de saison validé de bout en bout (staging)**
+(aucun fichier modifié) :
+- Après les fix `previewTransitionAction`/`transitionSeasonAction` de cette session, David a
+  confirmé : "Transitionner les rosters" (2025-26 → 2026-27) puis "Activer" fonctionnent
+  correctement en staging — la bascule de saison active est effective.
+- Séquence complète maintenant validée : aperçu (avertissement sans-contrat correct,
+  recrues protégées exclues) → copie des rosters → activation. Prochaine étape logique :
+  rejouer la même séquence côté **prod** quand David sera prêt (voir décision confirmée le
+  2026-08-24, [[project_historique_excel_import]] — copier les alignements finaux, pas
+  l'historique complet, pour prod).
+
 ### 2026-08-27 (suite 4)
 
 **[Fix] — `transitionSeasonAction` échouait : contrainte unique manquante en base**
