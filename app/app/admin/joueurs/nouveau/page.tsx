@@ -9,5 +9,5 @@ export default async function NouveauJoueurPage() {
   const { data: pooler } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
   if (!pooler?.is_admin) redirect('/')
 
-  redirect('/admin/pool?tab=joueurs')
+  redirect('/admin/donnees?tab=pipeline')
 }

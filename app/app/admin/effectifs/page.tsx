@@ -16,7 +16,6 @@ const TABS = [
   { id: 'transactions', label: 'Transactions' },
   { id: 'historique',   label: 'Historique' },
   { id: 'conformite',   label: 'Conformité cap' },
-  { id: 'donnees',      label: 'Mise à jour données' },
 ]
 
 export default async function AdminEffectifsPage({
@@ -176,47 +175,6 @@ export default async function AdminEffectifsPage({
                 initialDeadlineDays={capWatchData.capDeadlineDays ?? 7}
               />
           }
-        </div>
-      )}
-
-      {/* ── Données ── */}
-      {activeTab === 'donnees' && (
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">{'Mise à jour des données joueurs'}</h1>
-            <p className="text-gray-500 mt-2 max-w-3xl">
-              {'La source de vérité des joueurs et contrats est le pipeline Python basé sur PuckPedia. '}
-              {'Les modifications manuelles dans l\'application ne sont plus le flux recommandé, car elles seraient écrasées au prochain import.'}
-            </p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-gray-800">Flux officiel</h2>
-            <ol className="list-decimal pl-5 space-y-2 text-sm text-gray-700">
-              <li>{'Lancer le scraping PuckPedia pour générer ou rafraîchir les fichiers CSV.'}</li>
-              <li>{'Importer ensuite ces données vers Supabase.'}</li>
-              <li>{'Recharger l\'application et valider les changements sur les pages joueurs et alignements.'}</li>
-            </ol>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-gray-800">{'Commandes à exécuter'}</h2>
-            <p className="text-sm text-gray-600">Depuis le dossier <code>python_script</code> :</p>
-            <pre className="bg-slate-950 text-slate-100 rounded-lg p-4 overflow-x-auto text-sm"><code>{`cd C:\\Projet_Dev\\Hockey_Pool_App\\python_script
-.\\venv\\Scripts\\python.exe .\\scrape_puckpedia.py
-.\\venv\\Scripts\\python.exe .\\import_supabase.py`}</code></pre>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6 space-y-3 text-sm text-gray-700">
-            <h2 className="text-lg font-semibold text-gray-800">Ce que fait chaque script</h2>
-            <p><strong>scrape_puckpedia.py</strong>{' télécharge les pages d\'équipes PuckPedia et produit les CSV consolidés comme '}<code>PuckPedia_update.csv</code>.</p>
-            <p><strong>import_supabase.py</strong>{' lit le CSV consolidé, fusionne les doublons complexes, puis met à jour les tables '}<code>players</code>{' et '}<code>player_contracts</code>{' dans Supabase.'}</p>
-          </div>
-
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-5 space-y-2">
-            <h2 className="text-sm font-semibold text-amber-900">Important</h2>
-            <p className="text-sm text-amber-800">{'Les routes de création et de modification manuelle des joueurs sont désormais désactivées pour éviter les incohérences avec le pipeline d\'import.'}</p>
-          </div>
         </div>
       )}
     </div>

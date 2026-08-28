@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminTabBar } from '@/components/AdminTabBar'
+import { AdminHubBackLink } from '@/components/AdminHubBackLink'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { fetchAllPages } from '@/lib/supabase/fetch-all'
 import RosterManager from '../rosters/RosterManager'
@@ -12,12 +13,15 @@ import { type Pick, type Pooler } from '../config/PicksEditor'
 
 export const dynamic = 'force-dynamic'
 
+// Réglages one-shot déjà en place pour la saison courante — affichés comme onglets.
 const TABS = [
   { id: 'rosters',   label: 'Rosters initiaux' },
   { id: 'recrues',   label: 'Banque de recrues' },
-  { id: 'presaison', label: 'Pré-saison' },
   { id: 'choix',     label: 'Choix de repêchage' },
 ]
+// Pré-saison reste une étape valide (accédée depuis /admin/nouvelle-saison) mais
+// n'apparaît plus comme onglet cliquable ici — ce n'est plus un réglage "déjà fait".
+const VALID_TABS = [...TABS.map(t => t.id), 'presaison']
 
 async function fetchAllRookies(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -54,8 +58,9 @@ export default async function AdminInitPage({
   if (!me?.is_admin) redirect('/')
 
   const { tab = 'rosters', saisonId } = await searchParams
-  const activeTab = TABS.some(t => t.id === tab) ? tab : 'rosters'
+  const activeTab = VALID_TABS.includes(tab) ? tab : 'rosters'
   const parsedSaisonId = saisonId ? parseInt(saisonId, 10) : NaN
+  const cameFromHub = !isNaN(parsedSaisonId)
 
   // ── Rosters ───────────────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -184,6 +189,7 @@ export default async function AdminInitPage({
 
   return (
     <div>
+      {cameFromHub && <AdminHubBackLink saisonId={parsedSaisonId} />}
       <AdminTabBar tabs={TABS} activeTab={activeTab} basePath="/admin/init" />
 
       {/* ── Rosters ── */}

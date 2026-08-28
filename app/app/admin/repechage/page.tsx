@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import DraftBoard from './DraftBoard'
 import DraftOrderEditor from './DraftOrderEditor'
 import { SaisonSelectNav } from '../init/SaisonSelectNav'
+import { AdminHubBackLink } from '@/components/AdminHubBackLink'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,6 +20,8 @@ export default async function RepechageAdminPage({
   if (!pooler?.is_admin) redirect('/')
 
   const { saisonId } = await searchParams
+  const parsedSaisonIdRaw = saisonId ? parseInt(saisonId, 10) : NaN
+  const cameFromHub = !isNaN(parsedSaisonIdRaw)
 
   const { data: allSaisons } = await supabase
     .from('pool_seasons')
@@ -110,6 +113,7 @@ export default async function RepechageAdminPage({
 
   return (
     <div>
+      {cameFromHub && <AdminHubBackLink saisonId={saison.id} />}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Repêchage des recrues</h1>

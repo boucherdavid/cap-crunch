@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-08-24
+Derniere mise a jour: 2026-08-28
 
 ## Role du fichier
 
@@ -20,6 +20,75 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-08-28
+
+**[Refactor] — Réorganisation du menu Admin : moins d'entrées, section Mise à jour de données,
+Pool des séries retiré**
+(`components/Navbar.tsx`, `components/AdminHubBackLink.tsx` [nouveau],
+`app/admin/pool/page.tsx`, `app/admin/effectifs/page.tsx`, `app/admin/init/page.tsx`,
+`app/admin/repechage/page.tsx`, `app/admin/donnees/page.tsx` [nouveau],
+`app/admin/planification/page.tsx`, `app/admin/joueurs/page.tsx`,
+`app/admin/joueurs/[id]/page.tsx`, `app/admin/joueurs/nouveau/page.tsx`,
+`app/admin/draft-center/page.tsx`, `app/admin/draft-center/[id]/page.tsx`,
+`app/admin/draft-center/AdminDraftYearSelect.tsx`, `app/admin/page.tsx`,
+`app/planification/PlanificationManager.tsx`, `CLAUDE.md`) :
+- Discussion en deux temps avec David : d'abord un sitemap visuel (Artifact, arbre du menu
+  Admin actuel vs proposé) pour itérer sur le regroupement avant de toucher au code, puis
+  deux ajustements décidés en cours de route (retrait de Pool des séries, regroupement de
+  Planification avec Communication/Suivi).
+- **Dropdown Admin** simplifié de 9 à 6 entrées : Gestion du pool, Nouvelle saison,
+  Initialisation, Repêchage recrues, Gestion des effectifs, Mise à jour de données.
+- **`/admin/pool`** : les onglets Joueurs (doc pipeline) et Prospects sortent (→ nouvelle
+  page `/admin/donnees`) ; Communication et Suivi perdent leur raccourci séparé dans le
+  dropdown (ils restaient déjà des onglets de cette page — juste le raccourci en moins) ;
+  Planification y entre comme nouvel onglet (données déplacées depuis l'ancienne page
+  `/admin/planification`, composant `AdminPlanificationManager` réutilisé tel quel).
+- **Nouvelle page `/admin/donnees`** ("Mise à jour de données") : 2 onglets — `pipeline`
+  (fusion du contenu quasi identique qui existait en double dans l'onglet Joueurs de
+  `/admin/pool` et l'onglet Données de `/admin/effectifs`, augmenté d'un paragraphe sur
+  `import_drafts.py`) et `prospects` (Classement des prospects, déplacé tel quel).
+- **`/admin/effectifs`** : onglet Données retiré (contenu dupliqué, voir ci-dessus).
+- **`/admin/init`** : l'onglet Pré-saison n'apparaît plus dans la barre d'onglets (ce n'est
+  plus un réglage "déjà fait" pour la saison courante) mais reste un `tab` valide, accessible
+  uniquement via le lien fourni par `/admin/nouvelle-saison?...&tab=presaison`.
+- **Mécanisme "retour au hub"** : nouveau composant `AdminHubBackLink` — affiche un lien
+  "← Retour à Nouvelle saison" en haut de `/admin/init` et `/admin/repechage` quand la page
+  est ouverte avec un `saisonId` valide (donc depuis le hub `/admin/nouvelle-saison`), pour
+  naviguer d'étape en étape sans repasser par le menu Admin.
+- **Pool des séries** : retiré du dropdown Admin (David : ne servait qu'aux tests, le pool ne
+  fait habituellement pas de séries) — route `/admin/series` et code entièrement conservés,
+  toujours atteignable par URL directe et toujours listé dans le sous-menu "Pool Séries"
+  côté pooler (`newPlayoffActive`) quand une saison séries est active.
+- Redirections mises à jour en cascade pour rester cohérentes : `/admin/joueurs`,
+  `/admin/joueurs/[id]`, `/admin/joueurs/nouveau` → `/admin/donnees?tab=pipeline` ;
+  `/admin/draft-center`, lien retour dans `/admin/draft-center/[id]`, sélecteur d'année →
+  `/admin/donnees?tab=prospects` ; `/admin/planification` → `/admin/pool?tab=planification` ;
+  liens admin dans `PlanificationManager.tsx` (vue pooler) mis à jour vers la nouvelle URL
+  directe plutôt que de passer par la redirection.
+- `CLAUDE.md` section 5 (routes) mise à jour pour refléter la nouvelle structure.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès, `/admin/donnees` présent
+  dans la liste des routes générées) — pas de test manuel dans le navigateur cette session.
+- Commit : `0a4d8b5`
+
+### 2026-08-27 (suite 7)
+
+**[Chore] — Reset de 2026-27 en staging pour retester la transition via le nouveau hub**
+(aucun fichier modifié, script ponctuel) :
+- David veut retester la séquence de transition en repartant de zéro sur 2026-27 (plutôt que
+  d'utiliser 2027-28, encore vierge, que j'avais proposé) — pour valider le nouveau hub
+  `/admin/nouvelle-saison` (suite 6) sur le cas réel déjà expérimenté cette session.
+- Vérifié avant toute suppression ce qui était réellement rattaché à `pool_season_id=4`
+  (2026-27) en staging : `pooler_rosters` 329 lignes (la copie faite en suite 3-4),
+  `pool_draft_picks` 32 lignes (auto-créées à la création de la saison, indépendant du test
+  de transition), `roster_change_log`/`transactions`/`cap_signing_watch` 0 — rien d'autre à
+  préserver ou nettoyer.
+- Reset appliqué directement en base (clé de service, staging) : suppression des 329 lignes
+  `pooler_rosters` de 2026-27, `is_active=false` sur 2026-27, `is_active=true` sur 2025-26.
+  Les 32 `pool_draft_picks` de 2026-27 sont restés intacts (pas liés à la transition testée).
+- **État actuel en staging** : 2025-26 de nouveau active, 2026-27 vide et inactive, prête à
+  être retransitionnée via `/admin/nouvelle-saison` à la prochaine session. 2027-28/2028-29
+  toujours vierges si un test alternatif est préféré.
 
 ### 2026-08-27 (suite 6)
 

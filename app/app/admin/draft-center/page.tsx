@@ -6,5 +6,5 @@ export default async function AdminDraftCenterPage({
   searchParams: Promise<{ year?: string }>
 }) {
   const { year } = await searchParams
-  redirect(`/admin/pool?tab=prospects${year ? `&year=${year}` : ''}`)
+  redirect(`/admin/donnees?tab=prospects${year ? `&year=${year}` : ''}`)
 }
