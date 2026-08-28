@@ -397,6 +397,13 @@ Pages de consultation : `/`, `/joueurs`, `/statistiques`, `/repechage`,
 
 ## 10. Workflow Git (automatique)
 
+**Règle de branche : toujours `staging` avant `main`.** `main` déploie directement en
+prod (`cap-crunch.vercel.app`) — jamais `staging` en second. Sauf exception déjà
+documentée (le pipeline CSV, section 2, qui pousse directement sur `main` par convention
+distincte propre aux données), tout changement de code atterrit d'abord sur `staging`.
+Règle ajoutée le 2026-08-28 après un déploiement direct sur `main` par erreur (voir
+`SUIVI_PROJET.md`).
+
 Après chaque tâche complétée, exécuter **sans demander confirmation** :
 
 ```bash
@@ -405,8 +412,20 @@ Après chaque tâche complétée, exécuter **sans demander confirmation** :
 git add -A
 # 3. Committer avec message conventionnel
 git commit -m "type(scope): description en français"
-# 4. Pousser
-git push
+# 4. Pousser sur staging (jamais directement sur main)
+git checkout staging   # si pas déjà dessus
+git push origin staging
+```
+
+**Promotion vers prod (`main`)** : seulement après validation explicite de David sur
+staging (« c'est bon », « ça marche », etc.) — jamais automatique, jamais juste parce que
+le build/typecheck passe. Une fois confirmé :
+
+```bash
+git checkout main
+git merge staging --no-edit
+git push origin main
+git checkout staging   # revenir sur staging pour la suite du travail
 ```
 
 **Format des commits :**
