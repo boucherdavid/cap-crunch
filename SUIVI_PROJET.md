@@ -71,6 +71,27 @@ Pool des séries retiré**
   dans la liste des routes générées) — pas de test manuel dans le navigateur cette session.
 - Commit : `0a4d8b5`
 
+### 2026-08-28 (suite)
+
+**[Process] — Déploiement direct sur `main` par erreur → nouvelle règle "staging avant main"**
+(`CLAUDE.md`) :
+- La réorg du menu Admin ci-dessus a été poussée directement sur `main`, qui déploie
+  automatiquement en prod (`cap-crunch.vercel.app`). David est allé tester sur staging
+  (son réflexe habituel) et n'y a rien vu, puisque `staging` est une branche séparée,
+  synchronisée depuis `main` seulement par merges ponctuels — le changement était donc déjà
+  en prod, non validé, avant même d'être visible en staging. Ordre inverse de ce qui était
+  voulu.
+- Corrigé dans l'immédiat : `git checkout staging && git merge main && git push` (commit
+  `6625ae6`) pour que staging reflète enfin le changement.
+- Nouvelle règle ajoutée dans `CLAUDE.md` section 10 : tout changement de code passe
+  désormais par `staging` en premier (push automatique, sans confirmation, comme avant) ;
+  la fusion vers `main`/prod attend une validation explicite de David sur staging — plus
+  jamais automatique. Exception inchangée : le pipeline CSV (section 2) continue de pousser
+  directement sur `main`, convention distincte propre aux données.
+- Commit de la règle elle-même poussé sur `staging` d'abord (`8029ea8`), en application
+  immédiate de ce qu'elle dit — pas encore fusionné vers `main`, en attente de validation.
+- Commit : `8029ea8`
+
 ### 2026-08-27 (suite 7)
 
 **[Chore] — Reset de 2026-27 en staging pour retester la transition via le nouveau hub**
