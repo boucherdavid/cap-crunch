@@ -69,7 +69,7 @@ Pool des séries retiré**
 - `CLAUDE.md` section 5 (routes) mise à jour pour refléter la nouvelle structure.
 - Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès, `/admin/donnees` présent
   dans la liste des routes générées) — pas de test manuel dans le navigateur cette session.
-- Commit : `[à venir]`
+- Commit : `0a4d8b5`
 
 ### 2026-08-27 (suite 7)
 
