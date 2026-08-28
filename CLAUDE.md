@@ -188,20 +188,34 @@ le résumé, le babillard ; notifie les admins par push à chaque soumission/com
 Gestion (créer le sondage, ajouter/retirer des dates, toggle "Mode avant-première") sur
 `/admin/planification`, pas sur `/planification` elle-même.
 
-**Admin — 4 pages hub avec onglets (`?tab=`), pas de routes à plat :**
+**Admin — pages hub avec onglets (`?tab=`), pas de routes à plat :**
 
 | Hub | Onglets (`?tab=id` → label) |
 |---|---|
-| `/admin/pool` | `poolers` Poolers · `config` Configuration · `communication` Communication (feedback + notifs) · `suivi` Suivi (activité) · `joueurs` Données joueurs (doc pipeline) · `prospects` Classement des prospects |
-| `/admin/init` | `rosters` Rosters initiaux · `recrues` Banque de recrues · `presaison` Pré-saison · `choix` Choix de repêchage (← réassigner le propriétaire d'un pick échangé hors-app) |
-| `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) · `donnees` Mise à jour données (doc pipeline) |
-| `/admin/series` | pas d'onglets — vue unique (avancement des séries), message si aucune saison séries active |
+| `/admin/pool` | `poolers` Poolers · `config` Configuration · `communication` Communication (feedback + notifs) · `suivi` Suivi (activité) · `planification` Planification (sondage type Doodle, admin) |
+| `/admin/init` | `rosters` Rosters initiaux · `recrues` Banque de recrues · `choix` Choix de repêchage (← réassigner le propriétaire d'un pick échangé hors-app) — réglages one-shot déjà en place pour la saison courante |
+| `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) |
+| `/admin/donnees` | `pipeline` Pipeline salaires/contrats/repêchages (doc, `PlayerMerge`) · `prospects` Classement des prospects |
+| `/admin/series` | pas d'onglets — vue unique (avancement des séries), message si aucune saison séries active. Retiré du dropdown Admin le 2026-08-28 (ne servait qu'aux tests, pas d'usage normal du pool des séries) — route et code conservés, toujours atteignable directement par URL, et toujours listé dans le sous-menu "Pool Séries" côté pooler (`newPlayoffActive`) quand une saison séries est active |
 
-Les 4 onglets de `/admin/init` acceptent tous un `&saisonId=` (sélecteur `SaisonSelectNav`,
-`app/app/admin/init/SaisonSelectNav.tsx`, même composant que `/admin/repechage`) — pas
-limités à la saison active, pour permettre de préparer une saison à l'avance avant de
-l'activer (`rosters`/`recrues` étaient câblés en dur sur la saison active jusqu'au
-2026-08-27 ; `presaison`/`choix` l'étaient déjà).
+`/admin/init` a un 4ᵉ onglet valide non affiché dans sa barre d'onglets : `presaison`
+(Pré-saison — ELC, libérations, repêchage des agents libres). Ce n'est plus un réglage
+"déjà fait" pour la saison courante mais une étape récurrente à chaque transition — reste
+accessible uniquement via `/admin/init?tab=presaison&saisonId=...`, lien fourni par le hub
+`/admin/nouvelle-saison`.
+
+Les onglets de `/admin/init` (y compris `presaison`) acceptent tous un `&saisonId=`
+(sélecteur `SaisonSelectNav`, `app/app/admin/init/SaisonSelectNav.tsx`, même composant que
+`/admin/repechage`) — pas limités à la saison active, pour permettre de préparer une saison
+à l'avance avant de l'activer. Quand `/admin/init` ou `/admin/repechage` sont ouverts avec un
+`saisonId` valide (donc depuis le hub), un lien "← Retour à Nouvelle saison"
+(`app/components/AdminHubBackLink.tsx`) s'affiche en haut de page pour revenir choisir
+l'étape suivante sans repasser par le menu Admin.
+
+`/admin/planification` (gestion du sondage — créer/réinitialiser, dates candidates, toggle
+"Mode avant-première") est depuis le 2026-08-28 une redirection volontaire vers
+`/admin/pool?tab=planification`, même pattern que `/admin/joueurs` et `/admin/draft-center`
+ci-dessous — la page publique `/planification` (vue pooler) n'est pas affectée.
 
 Repêchage annuel en direct (tableau de sélection) : route à part `/admin/repechage`
 (pas un onglet — lien direct dans la Navbar), distinct de l'onglet `/admin/init?tab=choix`
@@ -218,13 +232,15 @@ la saison choisie via `?saisonId=` sur l'outil existant — aucune logique méti
 juste une orchestration/navigation. Remplace le contenu détaillé du panneau "Guide admin"
 (`AdminGuidePanel.tsx`), qui pointe maintenant simplement vers ce hub.
 
-`/admin/planification` : route à part (lien dans le dropdown Admin de la Navbar), gère le
-sondage `/planification` — créer/réinitialiser le sondage, ajouter/retirer des dates
-candidates, toggle "Mode avant-première" (table `app_settings.nav_planification_only` —
-masque le reste de la Navbar pour tous les poolers, sauf l'admin lui-même, tant qu'actif).
+`/admin/pool?tab=planification` gère le sondage `/planification` — créer/réinitialiser le
+sondage, ajouter/retirer des dates candidates, toggle "Mode avant-première" (table
+`app_settings.nav_planification_only` — masque le reste de la Navbar pour tous les poolers,
+sauf l'admin lui-même, tant qu'actif). Route à part jusqu'au 2026-08-28 (voir
+`/admin/planification` ci-dessus, désormais une redirection).
 
-`/admin/joueurs` et `/admin/draft-center` sont des redirections volontaires vers les onglets
-équivalents de `/admin/pool` (compat liens existants) — pas des pages à part entière.
+`/admin/joueurs`, `/admin/draft-center` et `/admin/planification` sont des redirections
+volontaires vers les onglets équivalents de `/admin/pool` ou `/admin/donnees` (compat liens
+existants) — pas des pages à part entière.
 
 ---
 

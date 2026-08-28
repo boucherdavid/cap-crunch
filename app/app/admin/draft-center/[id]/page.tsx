@@ -22,7 +22,7 @@ export default async function EditDraftProspectPage({ params }: { params: Promis
 
   return (
     <div>
-      <Link href="/admin/pool?tab=prospects" className="text-sm text-gray-400 hover:text-gray-600">{'← Classement des prospects'}</Link>
+      <Link href="/admin/donnees?tab=prospects" className="text-sm text-gray-400 hover:text-gray-600">{'← Classement des prospects'}</Link>
       <h1 className="text-2xl font-bold text-gray-800 mt-1 mb-6">{prospect.first_name} {prospect.last_name}</h1>
       <EditProspectForm prospect={prospect} />
     </div>

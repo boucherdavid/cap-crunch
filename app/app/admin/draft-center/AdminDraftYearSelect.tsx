@@ -13,7 +13,7 @@ export default function AdminDraftYearSelect({
   return (
     <select
       value={selectedYear}
-      onChange={e => router.push(`/admin/pool?tab=prospects&year=${e.target.value}`)}
+      onChange={e => router.push(`/admin/donnees?tab=prospects&year=${e.target.value}`)}
       className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500"
     >
       {years.map(y => (

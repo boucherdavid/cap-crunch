@@ -301,22 +301,17 @@ export default function Navbar({
                   </button>
                   {openDropdown === 'admin' && (
                     <div className="absolute left-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
-                      <Link href="/admin/pool"      className={dropdownLinkClass('/admin/pool')}>Gestion du pool</Link>
+                      <Link href="/admin/pool"      className={dropdownLinkClass('/admin/pool')}>
+                        <span className="flex items-center justify-between">
+                          Gestion du pool
+                          {unreadCount > 0 && <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{unreadCount}</span>}
+                        </span>
+                      </Link>
                       <Link href="/admin/nouvelle-saison" className={dropdownLinkClass('/admin/nouvelle-saison')}>Nouvelle saison</Link>
                       <Link href="/admin/init"      className={dropdownLinkClass('/admin/init')}>Initialisation</Link>
                       <Link href="/admin/repechage" className={dropdownLinkClass('/admin/repechage')}>{'Repêchage recrues'}</Link>
                       <Link href="/admin/effectifs" className={dropdownLinkClass('/admin/effectifs')}>{'Gestion des effectifs'}</Link>
-                      <div className="border-t my-1" />
-                      <Link href="/admin/series" className={dropdownLinkClass('/admin/series')}>Pool des séries</Link>
-                      <Link href="/admin/planification" className={dropdownLinkClass('/admin/planification')}>Planification</Link>
-                      <div className="border-t my-1" />
-                      <Link href="/admin/pool?tab=communication" className={dropdownLinkClass('/admin/pool')}>
-                        <span className="flex items-center justify-between">
-                          Messages
-                          {unreadCount > 0 && <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{unreadCount}</span>}
-                        </span>
-                      </Link>
-                      <Link href="/admin/pool?tab=suivi" className={dropdownLinkClass('/admin/pool')}>Suivi</Link>
+                      <Link href="/admin/donnees"    className={dropdownLinkClass('/admin/donnees')}>{'Mise à jour de données'}</Link>
                     </div>
                   )}
                 </div>
@@ -437,21 +432,18 @@ export default function Navbar({
                 <Link href="/aide"     className={mobileLinkClass('/aide')}>Aide &amp; Règlements</Link>
                 <Link href="/signaler" className={mobileLinkClass('/signaler')}>Signaler un problème</Link>
                 {effectiveIsAdmin &&<MobileSection label="Admin" />}
-                {effectiveIsAdmin &&<Link href="/admin/pool" className={mobileLinkClass('/admin/pool')}>Gestion du pool</Link>}
-                {effectiveIsAdmin &&<Link href="/admin/nouvelle-saison" className={mobileLinkClass('/admin/nouvelle-saison')}>Nouvelle saison</Link>}
-                {effectiveIsAdmin &&<Link href="/admin/init"      className={mobileLinkClass('/admin/init')}>Initialisation</Link>}
-                {effectiveIsAdmin &&<Link href="/admin/effectifs" className={mobileLinkClass('/admin/effectifs')}>{'Gestion des effectifs'}</Link>}
-                {effectiveIsAdmin &&<Link href="/admin/series"       className={mobileLinkClass('/admin/series')}>Pool des séries</Link>}
-                {effectiveIsAdmin &&<Link href="/admin/planification" className={mobileLinkClass('/admin/planification')}>Planification</Link>}
                 {effectiveIsAdmin &&(
-                  <Link href="/admin/pool?tab=communication" className={mobileLinkClass('/admin/pool')}>
+                  <Link href="/admin/pool" className={mobileLinkClass('/admin/pool')}>
                     <span className="flex items-center justify-between">
-                      Messages
+                      Gestion du pool
                       {unreadCount > 0 && <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{unreadCount}</span>}
                     </span>
                   </Link>
                 )}
-                {effectiveIsAdmin &&<Link href="/admin/pool?tab=suivi" className={mobileLinkClass('/admin/pool')}>Suivi</Link>}
+                {effectiveIsAdmin &&<Link href="/admin/nouvelle-saison" className={mobileLinkClass('/admin/nouvelle-saison')}>Nouvelle saison</Link>}
+                {effectiveIsAdmin &&<Link href="/admin/init"      className={mobileLinkClass('/admin/init')}>Initialisation</Link>}
+                {effectiveIsAdmin &&<Link href="/admin/effectifs" className={mobileLinkClass('/admin/effectifs')}>{'Gestion des effectifs'}</Link>}
+                {effectiveIsAdmin &&<Link href="/admin/donnees"   className={mobileLinkClass('/admin/donnees')}>{'Mise à jour de données'}</Link>}
                 {isAdmin && (
                   <button onClick={togglePoolerView}
                     className="block text-left px-3 py-2 rounded text-sm font-medium text-amber-300 hover:bg-pool-navy-light transition-colors">
