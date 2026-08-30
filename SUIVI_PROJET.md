@@ -21,6 +21,22 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-30 (suite)
+
+**[Feature] — Plage de dates personnalisée dans Suivi de l'activité**
+(`app/app/admin/suivi/SuiviTable.tsx`) :
+- David testait les mécaniques d'échange via `/admin/effectifs?tab=historique` sur la saison
+  active 2025-26 (staging) et voulait consulter le journal (`/admin/pool?tab=suivi`) sur une
+  période en dehors des presets existants (7j/30j/Tout) — ses entrées de test sont datées à
+  travers toute la saison, pas dans les 30 derniers jours.
+- Ajout d'une option "Plage personnalisée…" au filtre date existant — affiche deux champs
+  `<input type="date">` (du/au) quand sélectionnée. Filtrage 100% client (les événements sont
+  déjà tous chargés côté client, pas de nouveau fetch).
+- Note pour plus tard : la requête qui alimente ce tableau (`admin/pool/page.tsx`) n'est pas
+  filtrée par saison et limitée à 100 `roster_change_log` / 50 `transactions` les plus
+  récents (toutes saisons confondues) — pas un problème avec le volume actuel (75+5 pour
+  2025-26), à surveiller si le volume grossit.
+
 ### 2026-08-30
 
 **[Refactor] — Réorganisation du menu pooler : Alignements, Classement, LNH, Repêchage,

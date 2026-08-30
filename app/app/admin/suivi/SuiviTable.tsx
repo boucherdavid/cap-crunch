@@ -21,7 +21,7 @@ const CATEGORY_DOT: Record<string, string> = {
 }
 
 type CategoryFilter = 'all' | 'roster' | 'transaction'
-type DateFilter = '7' | '30' | 'all'
+type DateFilter = '7' | '30' | 'all' | 'custom'
 
 const CATEGORY_TABS: { key: CategoryFilter; label: string }[] = [
   { key: 'all',         label: 'Tous' },
@@ -30,9 +30,10 @@ const CATEGORY_TABS: { key: CategoryFilter; label: string }[] = [
 ]
 
 const DATE_OPTIONS: { key: DateFilter; label: string }[] = [
-  { key: '7',   label: '7 derniers jours' },
-  { key: '30',  label: '30 derniers jours' },
-  { key: 'all', label: 'Tout' },
+  { key: '7',      label: '7 derniers jours' },
+  { key: '30',     label: '30 derniers jours' },
+  { key: 'all',    label: 'Tout' },
+  { key: 'custom', label: 'Plage personnalisée…' },
 ]
 
 function fmtDate(iso: string) {
@@ -46,6 +47,8 @@ export default function SuiviTable({ events: initialEvents }: { events: Event[] 
   const router = useRouter()
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
   const [dateFilter, setDateFilter] = useState<DateFilter>('30')
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
   const [deleted, setDeleted] = useState<Set<string>>(new Set())
   const [isPending, startTransition] = useTransition()
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -53,14 +56,22 @@ export default function SuiviTable({ events: initialEvents }: { events: Event[] 
   const events = useMemo(() => initialEvents.filter(e => !deleted.has(e.id)), [initialEvents, deleted])
 
   const filtered = useMemo(() => {
-    const now = Date.now()
-    const cutoff = dateFilter === 'all' ? null : now - parseInt(dateFilter) * 24 * 60 * 60 * 1000
+    let cutoffFrom: number | null = null
+    let cutoffTo: number | null = null
+    if (dateFilter === 'custom') {
+      cutoffFrom = customFrom ? new Date(`${customFrom}T00:00:00`).getTime() : null
+      cutoffTo   = customTo   ? new Date(`${customTo}T23:59:59.999`).getTime() : null
+    } else if (dateFilter !== 'all') {
+      cutoffFrom = Date.now() - parseInt(dateFilter) * 24 * 60 * 60 * 1000
+    }
     return events.filter(e => {
       if (categoryFilter !== 'all' && e.category !== categoryFilter) return false
-      if (cutoff && new Date(e.at).getTime() < cutoff) return false
+      const at = new Date(e.at).getTime()
+      if (cutoffFrom !== null && at < cutoffFrom) return false
+      if (cutoffTo !== null && at > cutoffTo) return false
       return true
     })
-  }, [events, categoryFilter, dateFilter])
+  }, [events, categoryFilter, dateFilter, customFrom, customTo])
 
   const countFor = (cat: CategoryFilter) =>
     cat === 'all' ? events.length : events.filter(e => e.category === cat).length
@@ -101,10 +112,21 @@ export default function SuiviTable({ events: initialEvents }: { events: Event[] 
           ))}
         </div>
 
-        <select value={dateFilter} onChange={e => setDateFilter(e.target.value as DateFilter)}
-          className="ml-auto border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-          {DATE_OPTIONS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
-        </select>
+        <div className="ml-auto flex items-center gap-2">
+          {dateFilter === 'custom' && (
+            <>
+              <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
+                className="border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <span className="text-sm text-gray-400">au</span>
+              <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
+                className="border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </>
+          )}
+          <select value={dateFilter} onChange={e => setDateFilter(e.target.value as DateFilter)}
+            className="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            {DATE_OPTIONS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+          </select>
+        </div>
       </div>
 
       {errorMsg && (
