@@ -55,13 +55,11 @@ export default async function RootLayout({
 
   let unreadCount = 0
   let unreadNotifCount = 0
-  let newPlayoffActive = false
 
-  const [feedbackResult, playoffResult, notifResult, settingsResult] = await Promise.all([
+  const [feedbackResult, notifResult, settingsResult] = await Promise.all([
     isAdmin
       ? supabase.from('feedback').select('*', { count: 'exact', head: true }).eq('status', 'nouveau')
       : Promise.resolve({ count: 0 }),
-    supabase.from('pool_seasons').select('id', { count: 'exact', head: true }).eq('is_active', true).eq('is_playoff', true),
     isAdmin
       ? supabase.from('notification_log').select('*', { count: 'exact', head: true }).is('read_at', null)
       : Promise.resolve({ count: 0 }),
@@ -70,7 +68,6 @@ export default async function RootLayout({
 
   unreadCount = feedbackResult.count ?? 0
   unreadNotifCount = notifResult.count ?? 0
-  newPlayoffActive = (playoffResult.count ?? 0) > 0
   const navPlanificationOnly = settingsResult.data?.nav_planification_only ?? false
 
   return (
@@ -86,7 +83,7 @@ export default async function RootLayout({
       </head>
       <body className="bg-gray-50 min-h-screen">
         <ServiceWorkerProvider />
-        <Navbar initialUserName={userName} initialIsAdmin={isAdmin} initialUnreadCount={unreadCount} initialUnreadNotifCount={unreadNotifCount} initialNewPlayoffActive={newPlayoffActive} navPlanificationOnly={navPlanificationOnly} />
+        <Navbar initialUserName={userName} initialIsAdmin={isAdmin} initialUnreadCount={unreadCount} initialUnreadNotifCount={unreadNotifCount} navPlanificationOnly={navPlanificationOnly} />
         <InstallBanner />
         <main className="max-w-7xl mx-auto px-4 py-6">
           {children}

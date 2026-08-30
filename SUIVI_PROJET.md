@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-08-28
+Derniere mise a jour: 2026-08-30
 
 ## Role du fichier
 
@@ -20,6 +20,44 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-08-30
+
+**[Refactor] — Réorganisation du menu pooler : Alignements, Classement, LNH, Repêchage,
+Ressources, Pool Séries retiré**
+(`app/components/Navbar.tsx`, `app/app/layout.tsx`, `CLAUDE.md`) :
+- Même exercice que la réorg du menu Admin du 2026-08-28 : sitemap visuel (Artifact, actuel vs
+  proposé) itéré avec David sur plusieurs tours avant de toucher au code.
+- **Pool Saison → Alignements** : ne garde plus que Mon équipe, Équipes, Transactions, Gestion
+  d'effectifs — Classement en est sorti. Nom choisi par David (terme hockey déjà utilisé dans
+  le projet — « Alignement par pooler et par saison »).
+- **Classement** promu en dropdown de premier niveau (Saison complète, Hebdomadaire/Mensuel à
+  venir) — sortait auparavant en bas d'un dropdown déjà chargé.
+- **LNH** (nouveau) : fusion de Statistiques + Calendrier + Contrats LNH (ex-item à plat), en
+  3 sections dans un seul dropdown.
+- **Repêchage** : inchangé.
+- **Ressources** (nouveau) : Planification (déplacée telle quelle) + Aide & Règlements
+  (déplacé du menu Compte/avatar, qui ne garde plus que Mon compte/Signaler/Déconnexion).
+  Nom choisi par David. Babillard (aujourd'hui propre au sondage de planification, pourrait
+  devenir global) et une vraie documentation des outils/guide d'utilisateur ont été identifiés
+  comme candidats naturels pour cette section, mais ce sont des chantiers de contenu/fonctionnalité
+  séparés — pas construits dans cette passe, juste prévus dans le sitemap.
+- **Pool Séries retiré de la nav pooler** (David : le pool ne fait habituellement pas de
+  séries) — routes et code entièrement conservés (`/gestion-series`, `/classement-series`,
+  `/resultats`), plus atteignables que par URL directe, même traitement que `/admin/series`
+  le 2026-08-28. La prop `newPlayoffActive`/`initialNewPlayoffActive` (calculée dans
+  `layout.tsx` via une requête sur `pool_seasons.is_playoff`) a été supprimée avec le bloc de
+  nav qui l'utilisait — plus aucun usage ailleurs dans le code.
+- Menu mobile restructuré en parallèle avec les mêmes sections (`MobileSection`).
+- `CLAUDE.md` section 5 mise à jour : nouvelle table du menu pooler, note sur `/admin/series`
+  qui n'a désormais plus aucun point d'entrée dans la nav (accessible par URL directe
+  seulement, comme documenté depuis le 2026-08-28 côté admin).
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès, toutes les routes
+  existantes présentes dans la liste générée, y compris `/admin/series`, `/gestion-series`,
+  `/classement-series`, `/resultats`, `/aide`, `/planification`) — pas de test manuel dans le
+  navigateur cette session.
+- Sitemap de travail (Artifact) mis à jour en fin de session pour refléter l'implémentation
+  finale : https://claude.ai/code/artifact/9da045f1-e649-4948-a3fe-b782470d196f
 
 ### 2026-08-28
 

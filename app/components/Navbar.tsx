@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import Link from 'next/link'
 import Image from 'next/image'
@@ -44,21 +44,19 @@ function Avatar({ name }: { name: string }) {
   )
 }
 
-type DropdownKey = 'pool-saison' | 'statistiques' | 'repechage' | 'series' | 'admin' | 'profile' | null
+type DropdownKey = 'alignements' | 'classement' | 'lnh' | 'repechage' | 'ressources' | 'admin' | 'profile' | null
 
 export default function Navbar({
   initialUserName,
   initialIsAdmin,
   initialUnreadCount = 0,
   initialUnreadNotifCount = 0,
-  initialNewPlayoffActive = false,
   navPlanificationOnly = false,
 }: {
   initialUserName: string | null
   initialIsAdmin: boolean
   initialUnreadCount?: number
   initialUnreadNotifCount?: number
-  initialNewPlayoffActive?: boolean
   navPlanificationOnly?: boolean
 }) {
   const pathname = usePathname()
@@ -69,7 +67,6 @@ export default function Navbar({
   const [isPoolerView, setIsPoolerView] = useState(false)
   const [unreadCount] = useState(initialUnreadCount)
   const [unreadNotifCount] = useState(initialUnreadNotifCount)
-  const newPlayoffActive = initialNewPlayoffActive
   const [menuOpen, setMenuOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<DropdownKey>(null)
   const [installPrompt, setInstallPrompt] = useState<Event | null>(null)
@@ -195,20 +192,30 @@ export default function Navbar({
             ) : (
             <>
 
-              {/* Pool Saison */}
+              {/* Alignements */}
               <div className="relative">
-                <button onClick={() => toggle('pool-saison')}
-                  className={navBtnClass(isActive('/dashboard', '/transactions', '/classement', '/poolers', '/gestion-effectifs'))}>
-                  Pool Saison <Chevron open={openDropdown === 'pool-saison'} />
+                <button onClick={() => toggle('alignements')}
+                  className={navBtnClass(isActive('/dashboard', '/transactions', '/poolers', '/gestion-effectifs'))}>
+                  Alignements <Chevron open={openDropdown === 'alignements'} />
                 </button>
-                {openDropdown === 'pool-saison' && (
+                {openDropdown === 'alignements' && (
                   <div className="absolute left-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
                     {userName && <Link href="/dashboard"            className={dropdownLinkClass('/dashboard')}>Mon équipe</Link>}
                     <Link href="/poolers"                          className={dropdownLinkClass('/poolers')}>Équipes</Link>
                     <Link href="/transactions"                     className={dropdownLinkClass('/transactions')}>Transactions</Link>
                     {userName && <Link href="/gestion-effectifs"  className={dropdownLinkClass('/gestion-effectifs')}>Gestion d&apos;effectifs</Link>}
-                    <div className="border-t my-1" />
-                    <div className="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Classement</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Classement */}
+              <div className="relative">
+                <button onClick={() => toggle('classement')}
+                  className={navBtnClass(isActive('/classement'))}>
+                  Classement <Chevron open={openDropdown === 'classement'} />
+                </button>
+                {openDropdown === 'classement' && (
+                  <div className="absolute left-0 top-full mt-1 w-44 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
                     <Link href="/classement" className={dropdownLinkClass('/classement')}>Saison complète</Link>
                     <span className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 cursor-default">
                       Hebdomadaire <span className="text-xs bg-gray-100 text-gray-500 rounded px-1.5 py-0.5">À venir</span>
@@ -220,26 +227,28 @@ export default function Navbar({
                 )}
               </div>
 
-              {/* Statistiques */}
+              {/* LNH */}
               <div className="relative">
-                <button onClick={() => toggle('statistiques')}
-                  className={navBtnClass(isActive('/statistiques'))}>
-                  Statistiques <Chevron open={openDropdown === 'statistiques'} />
+                <button onClick={() => toggle('lnh')}
+                  className={navBtnClass(isActive('/statistiques', '/calendrier', '/joueurs'))}>
+                  LNH <Chevron open={openDropdown === 'lnh'} />
                 </button>
-                {openDropdown === 'statistiques' && (
-                  <div className="absolute left-0 top-full mt-1 w-44 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
+                {openDropdown === 'lnh' && (
+                  <div className="absolute left-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
+                    <div className="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Statistiques</div>
                     <Link href="/statistiques" className={dropdownLinkClass('/statistiques')}>LNH</Link>
                     <span className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 cursor-default">
                       AHL <span className="text-xs bg-gray-100 text-gray-500 rounded px-1.5 py-0.5">À venir</span>
                     </span>
+                    <div className="border-t my-1" />
+                    <div className="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Calendrier</div>
+                    <Link href="/calendrier" className={dropdownLinkClass('/calendrier')}>Calendrier</Link>
+                    <div className="border-t my-1" />
+                    <div className="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Contrats</div>
+                    <Link href="/joueurs" className={dropdownLinkClass('/joueurs')}>Contrats LNH</Link>
                   </div>
                 )}
               </div>
-
-              {/* Contrats LNH */}
-              <Link href="/joueurs" className={navBtnClass(isActive('/joueurs'))}>
-                Contrats LNH
-              </Link>
 
               {/* Repêchage */}
               <div className="relative">
@@ -256,34 +265,19 @@ export default function Navbar({
                 )}
               </div>
 
-              {/* Calendrier */}
-              <Link href="/calendrier" className={navBtnClass(isActive('/calendrier'))}>
-                Calendrier
-              </Link>
-
-              {/* Planification */}
-              <Link href="/planification" className={navBtnClass(isActive('/planification'))}>
-                Planification
-              </Link>
-
-              {/* Pool Séries — masqué hors saison de séries active */}
-              {newPlayoffActive && (
+              {/* Ressources */}
               <div className="relative">
-                <button onClick={() => toggle('series')}
-                  className={navBtnClass(isActive('/gestion-series', '/classement-series'))}>
-                  {'Pool S\u00e9ries'} <Chevron open={openDropdown === 'series'} />
+                <button onClick={() => toggle('ressources')}
+                  className={navBtnClass(isActive('/planification', '/aide'))}>
+                  Ressources <Chevron open={openDropdown === 'ressources'} />
                 </button>
-                {openDropdown === 'series' && (
-                  <div className="absolute left-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
-                    {userName && <Link href="/gestion-series" className={dropdownLinkClass('/gestion-series')}>Choix des joueurs</Link>}
-                    <Link href="/classement-series" className={dropdownLinkClass('/classement-series')}>Classement</Link>
-                    <Link href="/resultats" className={dropdownLinkClass('/resultats')}>Résultats</Link>
-                    {effectiveIsAdmin &&<div className="border-t my-1" />}
-                    {effectiveIsAdmin &&<Link href="/admin/series" className={dropdownLinkClass('/admin/series')}>Gestion/Création Pool des séries</Link>}
+                {openDropdown === 'ressources' && (
+                  <div className="absolute left-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
+                    <Link href="/planification" className={dropdownLinkClass('/planification')}>Planification</Link>
+                    <Link href="/aide" className={dropdownLinkClass('/aide')}>{'Aide & Règlements'}</Link>
                   </div>
                 )}
               </div>
-              )}
 
               {/* Admin */}
               {effectiveIsAdmin &&(
@@ -349,7 +343,6 @@ export default function Navbar({
                     </div>
                     <div className="py-1">
                       <Link href="/compte"   className={dropdownLinkClass('/compte')}>Mon compte</Link>
-                      <Link href="/aide"     className={dropdownLinkClass('/aide')}>Aide &amp; Règlements</Link>
                       <Link href="/signaler" className={dropdownLinkClass('/signaler')}>Signaler un problème</Link>
                     </div>
                     {isAdmin && (
@@ -366,7 +359,7 @@ export default function Navbar({
                     <div className="py-1 border-t">
                       <button onClick={handleLogout}
                         className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                        {'D\u00e9connexion'}
+                        {'Déconnexion'}
                       </button>
                     </div>
                   </div>
@@ -396,32 +389,31 @@ export default function Navbar({
             <Link href="/planification" className={mobileLinkClass('/planification')}>Planification</Link>
           ) : (
           <>
-            <MobileSection label="Pool Saison" />
+            <MobileSection label="Alignements" />
             {userName && <Link href="/dashboard"           className={mobileLinkClass('/dashboard')}>Mon équipe</Link>}
             <Link href="/poolers"                          className={mobileLinkClass('/poolers')}>Équipes</Link>
             <Link href="/transactions"                     className={mobileLinkClass('/transactions')}>Transactions</Link>
             {userName && <Link href="/gestion-effectifs"  className={mobileLinkClass('/gestion-effectifs')}>Gestion d&apos;effectifs</Link>}
-            <Link href="/classement"                       className={mobileLinkClass('/classement')}>Classement</Link>
 
-            <MobileSection label="Statistiques" />
-            <Link href="/statistiques" className={mobileLinkClass('/statistiques')}>LNH</Link>
-            <span className="px-3 py-2 text-sm text-pool-silver opacity-50">AHL (à venir)</span>
+            <MobileSection label="Classement" />
+            <Link href="/classement" className={mobileLinkClass('/classement')}>Saison complète</Link>
+            <span className="px-3 py-2 text-sm text-pool-silver opacity-50">Hebdomadaire (à venir)</span>
+            <span className="px-3 py-2 text-sm text-pool-silver opacity-50">Mensuel (à venir)</span>
 
-            <MobileSection label="Autre" />
-            <Link href="/joueurs"    className={mobileLinkClass('/joueurs')}>Contrats LNH</Link>
-            <Link href="/draft-center" className={mobileLinkClass('/draft-center')}>{'Classement des prospects'}</Link>
-            <Link href="/repechage"  className={mobileLinkClass('/repechage')}>{'Rep\u00eachage LNH'}</Link>
-            <Link href="/repechage-recrues" className={mobileLinkClass('/repechage-recrues')}>{'Rep\u00eachage recrues'}</Link>
+            <MobileSection label="LNH" />
+            <Link href="/statistiques" className={mobileLinkClass('/statistiques')}>Statistiques LNH</Link>
+            <span className="px-3 py-2 text-sm text-pool-silver opacity-50">Statistiques AHL (à venir)</span>
             <Link href="/calendrier" className={mobileLinkClass('/calendrier')}>Calendrier</Link>
-            <Link href="/planification" className={mobileLinkClass('/planification')}>Planification</Link>
+            <Link href="/joueurs"    className={mobileLinkClass('/joueurs')}>Contrats LNH</Link>
 
-            {newPlayoffActive && (<>
-            <MobileSection label={'Pool S\u00e9ries'} />
-            {userName && <Link href="/gestion-series" className={mobileLinkClass('/gestion-series')}>Choix des joueurs</Link>}
-            <Link href="/classement-series" className={mobileLinkClass('/classement-series')}>Classement</Link>
-            <Link href="/resultats" className={mobileLinkClass('/resultats')}>Résultats</Link>
-            {effectiveIsAdmin &&<Link href="/admin/series" className={mobileLinkClass('/admin/series')}>{'Gestion/Cr\u00e9ation Pool des s\u00e9ries'}</Link>}
-            </>)}
+            <MobileSection label={'Repêchage'} />
+            <Link href="/draft-center" className={mobileLinkClass('/draft-center')}>{'Classement des prospects'}</Link>
+            <Link href="/repechage"  className={mobileLinkClass('/repechage')}>{'Repêchage LNH'}</Link>
+            <Link href="/repechage-recrues" className={mobileLinkClass('/repechage-recrues')}>{'Repêchage recrues'}</Link>
+
+            <MobileSection label="Ressources" />
+            <Link href="/planification" className={mobileLinkClass('/planification')}>Planification</Link>
+            <Link href="/aide" className={mobileLinkClass('/aide')}>{'Aide & Règlements'}</Link>
           </>
           )}
 
@@ -429,7 +421,6 @@ export default function Navbar({
               <div className="mt-1 pt-1 border-t border-pool-navy-light flex flex-col gap-0.5">
                 <MobileSection label="Compte" />
                 <Link href="/compte"   className={mobileLinkClass('/compte')}>Mon compte</Link>
-                <Link href="/aide"     className={mobileLinkClass('/aide')}>Aide &amp; Règlements</Link>
                 <Link href="/signaler" className={mobileLinkClass('/signaler')}>Signaler un problème</Link>
                 {effectiveIsAdmin &&<MobileSection label="Admin" />}
                 {effectiveIsAdmin &&(
@@ -452,7 +443,7 @@ export default function Navbar({
                 )}
                 <button onClick={handleLogout}
                   className="block text-left px-3 py-2 rounded text-sm font-medium text-red-400 hover:bg-pool-navy-light hover:text-red-300 transition-colors">
-                  {'D\u00e9connexion'}
+                  {'Déconnexion'}
                 </button>
                 <div className="px-3 py-1 text-pool-silver text-xs">{userName}</div>
               </div>

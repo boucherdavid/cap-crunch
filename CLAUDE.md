@@ -188,6 +188,25 @@ le résumé, le babillard ; notifie les admins par push à chaque soumission/com
 Gestion (créer le sondage, ajouter/retirer des dates, toggle "Mode avant-première") sur
 `/admin/planification`, pas sur `/planification` elle-même.
 
+**Menu pooler (`Navbar.tsx`) — réorganisé le 2026-08-30 :**
+
+| Dropdown | Contenu |
+|---|---|
+| Alignements (ex-Pool Saison) | Mon équipe · Équipes · Transactions · Gestion d'effectifs |
+| Classement | Saison complète · Hebdomadaire (à venir) · Mensuel (à venir) — sorti d'Alignements pour son propre menu |
+| LNH | 3 sections : Statistiques (LNH, AHL à venir) · Calendrier · Contrats (ex-"Contrats LNH", ex-item à plat) |
+| Repêchage | Classement des prospects · Repêchage LNH · Repêchage recrues — inchangé |
+| Ressources (nouveau) | Planification · Aide & Règlements (déplacé du menu Compte/avatar) |
+
+Pool Séries (`/gestion-series`, `/classement-series`, `/resultats`) retiré de la nav pooler le
+même jour — route et code conservés, plus atteignable que par URL directe (le pool ne fait
+habituellement pas de séries, même traitement que `/admin/series` le 2026-08-28). La prop
+`newPlayoffActive`/`initialNewPlayoffActive` (calculée dans `layout.tsx` à partir de
+`pool_seasons.is_playoff`) a été supprimée avec le bloc de nav qui l'utilisait.
+Ressources est pensé comme un point de départ — le babillard (aujourd'hui propre au sondage
+de planification) et une vraie documentation des outils/guide d'utilisateur pourraient s'y
+ajouter plus tard, mais ce sont des chantiers de contenu séparés, pas encore construits.
+
 **Admin — pages hub avec onglets (`?tab=`), pas de routes à plat :**
 
 | Hub | Onglets (`?tab=id` → label) |
@@ -196,7 +215,7 @@ Gestion (créer le sondage, ajouter/retirer des dates, toggle "Mode avant-premi�
 | `/admin/init` | `rosters` Rosters initiaux · `recrues` Banque de recrues · `choix` Choix de repêchage (← réassigner le propriétaire d'un pick échangé hors-app) — réglages one-shot déjà en place pour la saison courante |
 | `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) |
 | `/admin/donnees` | `pipeline` Pipeline salaires/contrats/repêchages (doc, `PlayerMerge`) · `prospects` Classement des prospects |
-| `/admin/series` | pas d'onglets — vue unique (avancement des séries), message si aucune saison séries active. Retiré du dropdown Admin le 2026-08-28 (ne servait qu'aux tests, pas d'usage normal du pool des séries) — route et code conservés, toujours atteignable directement par URL, et toujours listé dans le sous-menu "Pool Séries" côté pooler (`newPlayoffActive`) quand une saison séries est active |
+| `/admin/series` | pas d'onglets — vue unique (avancement des séries), message si aucune saison séries active. Retiré du dropdown Admin le 2026-08-28 (ne servait qu'aux tests, pas d'usage normal du pool des séries) — route et code conservés, toujours atteignable directement par URL. Depuis le 2026-08-30, également retiré du sous-menu "Pool Séries" côté pooler (voir ci-dessous) — plus aucun point d'entrée dans la nav, seulement l'URL directe |
 
 `/admin/init` a un 4ᵉ onglet valide non affiché dans sa barre d'onglets : `presaison`
 (Pré-saison — ELC, libérations, repêchage des agents libres). Ce n'est plus un réglage
