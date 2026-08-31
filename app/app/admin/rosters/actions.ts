@@ -2,6 +2,15 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { revalidatePath } from 'next/cache'
+
+function revalidateRosterPages() {
+  revalidatePath('/admin/init')
+  revalidatePath('/poolers')
+  revalidatePath('/poolers/[id]', 'page')
+  revalidatePath('/classement')
+  revalidatePath('/dashboard')
+}
 
 const ACTIVE_LIMITS = { forward: 12, defense: 6, goalie: 2 } as const
 type Bucket = keyof typeof ACTIVE_LIMITS
@@ -164,6 +173,7 @@ export async function addPlayerAction(
   const changeType = detectChangeType(null, playerType)
   await logChange(supabase, playerId, poolerId, saisonId, changeType, null, playerType)
 
+  revalidateRosterPages()
   return { id: rosterId }
 }
 
@@ -180,7 +190,9 @@ export async function updateRookieTypeAction(
       pool_draft_year: rookieType === 'repeche' ? (poolDraftYear ?? null) : null,
     })
     .eq('id', rosterId)
-  return error ? { error: error.message } : {}
+  if (error) return { error: error.message }
+  revalidateRosterPages()
+  return {}
 }
 
 export async function removePlayerAction(rosterId: number): Promise<{ error?: string }> {
@@ -218,7 +230,9 @@ export async function removePlayerAction(rosterId: number): Promise<{ error?: st
     .update({ is_active: false, removed_at: new Date().toISOString() })
     .eq('id', rosterId)
 
-  return error ? { error: error.message } : {}
+  if (error) return { error: error.message }
+  revalidateRosterPages()
+  return {}
 }
 
 type AddEntry = {
@@ -307,6 +321,7 @@ export async function adminInitRosterAction(
     if (insertErr) return { error: insertErr.message }
   }
 
+  revalidateRosterPages()
   return {}
 }
 
@@ -324,6 +339,7 @@ export async function viderRostersAction(saisonId: number): Promise<{ error?: st
     .eq('pool_season_id', saisonId)
 
   if (error) return { error: error.message }
+  revalidateRosterPages()
   return { deleted: count ?? 0 }
 }
 
@@ -470,5 +486,6 @@ export async function submitRosterAction(
     await logChange(supabase, entry.player_id, poolerId, saisonId, changeType, null, entry.player_type)
   }
 
+  revalidateRosterPages()
   return {}
 }

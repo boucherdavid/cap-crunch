@@ -678,6 +678,8 @@ export async function updateHistLogDateAction(
   revalidatePath('/admin/effectifs')
   revalidatePath('/classement')
   revalidatePath('/poolers')
+  revalidatePath('/poolers/[id]', 'page')
+  revalidatePath('/dashboard')
   return {}
 }
 
@@ -791,5 +793,7 @@ export async function deleteHistLogAction(ids: number[]): Promise<{ error?: stri
   revalidatePath('/admin/effectifs')
   revalidatePath('/classement')
   revalidatePath('/poolers')
+  revalidatePath('/poolers/[id]', 'page')
+  revalidatePath('/dashboard')
   return {}
 }

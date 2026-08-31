@@ -21,6 +21,29 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-31 (suite 7)
+
+**[Fix] — « Mon équipe » ne se mettait pas à jour après un changement dans Initialisation**
+(`app/app/admin/rosters/actions.ts`, `app/app/admin/historique/historique-actions.ts`) :
+- David a remarqué que les changements faits dans Rosters initiaux / Banque de recrues
+  n'apparaissaient pas sur `/poolers/[id]` (« Mon équipe ») sans rechargement complet (F5).
+- Cause confirmée : `app/app/admin/rosters/actions.ts` (`addPlayerAction`,
+  `updateRookieTypeAction`, `removePlayerAction`, `adminInitRosterAction`,
+  `viderRostersAction`, `submitRosterAction` — utilisées par Rosters initiaux **et** Banque
+  de recrues, qui partagent ces mêmes fonctions) n'appelait jamais `revalidatePath` après
+  une mutation. Le cache de navigation client de Next.js gardait donc l'ancienne version des
+  autres pages déjà visitées (`/poolers/[id]`, `/classement`, etc.) jusqu'à expiration ou
+  rechargement complet. `/admin/historique` avait déjà ce pattern correctement en place,
+  servant de référence.
+- Ajout d'un helper `revalidateRosterPages()` (`/admin/init`, `/poolers`,
+  `/poolers/[id]` via `revalidatePath('/poolers/[id]', 'page')` — nécessaire pour les routes
+  dynamiques, `/poolers` seul ne suffit pas —, `/classement`, `/dashboard`), appelé après
+  chaque mutation réussie dans les 6 fonctions ci-dessus.
+- Repéré au passage le même angle mort dans `historique-actions.ts` : `revalidatePath('/poolers')`
+  sans jamais revalider `/poolers/[id]` (route dynamique) — corrigé aux deux endroits
+  concernés (ajout de `revalidatePath('/poolers/[id]', 'page')` et `/dashboard`).
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
+
 ### 2026-08-31 (suite 6)
 
 **[Process] — Promotion staging → prod validée par David**
