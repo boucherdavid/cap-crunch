@@ -107,9 +107,8 @@ export async function searchFreeAgentsAction(saisonId: number, query: string): P
   const q = query.trim()
 
   let dbQuery = supabase
-    .from('players')
+    .rpc('search_players_unaccent', { search_term: q })
     .select(`id, first_name, last_name, position, status, teams (code), player_contracts (season, cap_number)`)
-    .or(`last_name.ilike.%${q}%,first_name.ilike.%${q}%`)
     .limit(15)
 
   if (takenIds.length > 0) {

@@ -21,6 +21,29 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-31 (suite 5)
+
+**[Feature] — Recherche insensible aux accents côté serveur (extension `unaccent`)**
+(`supabase_migrations/unaccent_search.sql` [nouveau], `app/app/admin/joueurs/merge-actions.ts`,
+`app/app/admin/transactions/actions.ts`) :
+- Complète le fix client-side de la suite précédente pour les deux recherches qui passaient
+  par `ILIKE` Postgres brut (pas insensible aux accents) : `searchFreeAgentsAction` (signer un
+  agent libre, `/admin/transactions`) et `searchPlayersAction` (outil de fusion de doublons,
+  `/admin/donnees?tab=pipeline`).
+- Migration : `CREATE EXTENSION IF NOT EXISTS unaccent` + fonction
+  `search_players_unaccent(search_term text) RETURNS SETOF players` (compare
+  `unaccent(first_name)`/`unaccent(last_name)` à `unaccent(search_term)` via `ILIKE`). Les
+  deux actions appellent maintenant `.rpc('search_players_unaccent', { search_term })` au
+  lieu de `.from('players').or('...ilike...')` — PostgREST résout l'embedding
+  (`teams(code)`, `player_contracts(...)`) normalement puisque la fonction retourne
+  `SETOF players`.
+- Je n'ai pas d'accès Postgres direct (seulement `SUPABASE_URL`/`SUPABASE_SERVICE_KEY`, pas de
+  connection string) donc impossible d'appliquer une migration DDL moi-même — David a roulé le
+  SQL manuellement via l'éditeur SQL Supabase, **en staging et en prod** les deux en même
+  temps (avant même que le code soit poussé). Le code suit quand même la règle staging
+  d'abord habituelle.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
+
 ### 2026-08-31 (suite 4)
 
 **[Feature] — Recherche de joueurs insensible aux accents partout dans l'app**

@@ -20,11 +20,10 @@ export async function searchPlayersAction(query: string): Promise<PlayerSearchRe
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
-  const q = query.trim().toLowerCase()
+  const q = query.trim()
   const { data } = await supabase
-    .from('players')
+    .rpc('search_players_unaccent', { search_term: q })
     .select('id, first_name, last_name, position, nhl_id, is_rookie, teams(code), player_contracts(season, cap_number)')
-    .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`)
     .order('last_name')
     .limit(20)
 
