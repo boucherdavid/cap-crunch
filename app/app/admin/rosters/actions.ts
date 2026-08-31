@@ -101,7 +101,7 @@ export async function addPlayerAction(
   playerType: PlayerType,
   rookieType?: 'repeche' | 'agent_libre',
   poolDraftYear?: number,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; id?: number }> {
   const supabase = await createClient()
 
   if (playerType === 'recrue') {
@@ -140,28 +140,31 @@ export async function addPlayerAction(
     .eq('pool_season_id', saisonId)
     .maybeSingle()
 
+  let rosterId: number
   if (existing) {
     const { error } = await supabase
       .from('pooler_rosters')
       .update({ is_active: true, player_type: playerType, removed_at: null, ...rookieFields })
       .eq('id', existing.id)
     if (error) return { error: error.message }
+    rosterId = existing.id
   } else {
-    const { error } = await supabase.from('pooler_rosters').insert({
+    const { data: inserted, error } = await supabase.from('pooler_rosters').insert({
       pooler_id:      poolerId,
       player_id:      playerId,
       pool_season_id: saisonId,
       player_type:    playerType,
       is_active:      true,
       ...rookieFields,
-    })
+    }).select('id').single()
     if (error) return { error: error.message }
+    rosterId = inserted.id
   }
 
   const changeType = detectChangeType(null, playerType)
   await logChange(supabase, playerId, poolerId, saisonId, changeType, null, playerType)
 
-  return {}
+  return { id: rosterId }
 }
 
 export async function updateRookieTypeAction(

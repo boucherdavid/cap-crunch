@@ -244,11 +244,11 @@ export default function BanqueRecruesManager({
     setLoading(true)
     const poolDraftYear = type === 'repeche' ? (pendingRookie.draft_year ?? undefined) : undefined
     const result = await addPlayerAction(selectedPooler, pendingRookie.id, saison.id, 'recrue', type, poolDraftYear)
-    if (result.error) {
-      setMessage(`Erreur: ${result.error}`)
+    if (result.error || result.id == null) {
+      setMessage(`Erreur: ${result.error ?? 'id manquant'}`)
     } else {
       const newEntry: BankEntry = {
-        id: Date.now(),
+        id: result.id,
         player_id: pendingRookie.id,
         rookie_type: type,
         pool_draft_year: poolDraftYear ?? null,

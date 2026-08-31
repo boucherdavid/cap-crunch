@@ -21,6 +21,25 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-31 (suite)
+
+**[Fix] — Id temporaire (`Date.now()`) utilisé comme id de ligne dans la Banque de recrues**
+(`app/app/admin/rosters/actions.ts`, `app/app/admin/recrues/BanqueRecruesManager.tsx`) :
+- Bug trouvé par David : erreur Postgres `value "1788178653454" is out of range for type
+  integer` en essayant de changer le type de protection de Jiri Kulich (déjà dans la banque)
+  de "Agent libre" à "Repêché du pool".
+- Cause : `addPlayerAction` (`app/app/admin/rosters/actions.ts`) ne retournait jamais l'id réel
+  de la ligne `pooler_rosters` insérée. `BanqueRecruesManager.tsx` (`confirmAdd`) comblait le
+  trou avec `id: Date.now()` pour la mise à jour optimiste locale — un timestamp epoch en
+  millisecondes (13 chiffres), largement hors de portée d'un `integer` Postgres (max
+  ~2,1 milliards). Tant que la page n'était pas rechargée, toute édition/suppression
+  ultérieure de cette entrée dans la même session utilisait ce faux id et échouait.
+  Fonctionne dès qu'on recharge la page (le fetch serveur renvoie le vrai id).
+- Fix : `addPlayerAction` retourne maintenant `{ id }` (via `.select('id').single()` sur
+  l'insert, ou l'id existant en cas de réactivation) ; `confirmAdd` utilise `result.id` au
+  lieu de `Date.now()`. Seul appelant de `addPlayerAction` dans le code.
+- Validé avec `tsc --noEmit` (0 erreur).
+
 ### 2026-08-31
 
 **[Chore] — Reset complet de la saison active 2025-26 en staging + masquage config Séries**
