@@ -5,6 +5,7 @@ import type { PlayerContract, PlayerRow } from './page'
 import { teamColor } from '@/lib/nhl-colors'
 import TeamBadge from '@/components/TeamBadge'
 import PlayerLink from '@/components/PlayerLink'
+import { normalizeSearch } from '@/lib/normalizeSearch'
 
 const CURRENT_SEASON = '2025-26'
 const SEASONS = ['2025-26', '2026-27', '2027-28', '2028-29', '2029-30']
@@ -102,15 +103,15 @@ export default function JoueursTable({ players }: { players: PlayerRow[] }) {
   }, [lnhPlayers])
 
   const filteredPlayers = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase()
+    const normalizedSearch = normalizeSearch(search.trim())
     const minValue = salaryMin === '' ? null : Number(salaryMin)
     const maxValue = salaryMax === '' ? null : Number(salaryMax)
 
     return [...lnhPlayers]
       .filter((player) => {
         const teamCode = player.teams?.code ?? ''
-        const fullName = `${player.first_name} ${player.last_name}`.toLowerCase()
-        const reverseName = `${player.last_name} ${player.first_name}`.toLowerCase()
+        const fullName = normalizeSearch(`${player.first_name} ${player.last_name}`)
+        const reverseName = normalizeSearch(`${player.last_name} ${player.first_name}`)
         const currentCap = getSeasonCap(player.player_contracts, CURRENT_SEASON)
         const isElc = player.status === 'ELC'
 
@@ -119,7 +120,7 @@ export default function JoueursTable({ players }: { players: PlayerRow[] }) {
         if (normalizedSearch !== '' && !(
           fullName.includes(normalizedSearch)
           || reverseName.includes(normalizedSearch)
-          || teamCode.toLowerCase().includes(normalizedSearch)
+          || normalizeSearch(teamCode).includes(normalizedSearch)
         )) {
           return false
         }

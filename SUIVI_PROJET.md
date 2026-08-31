@@ -21,6 +21,36 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-31 (suite 4)
+
+**[Feature] — Recherche de joueurs insensible aux accents partout dans l'app**
+(`app/lib/normalizeSearch.ts` [nouveau], `app/app/admin/repechage/RookieSelect.tsx`,
+`app/app/statistiques/StatsTable.tsx`, `app/app/joueurs/JoueursTable.tsx`,
+`app/app/repechage/RepechageTable.tsx`, `app/app/gestion-series/GestionSeriesManager.tsx`,
+`app/app/admin/recrues/BanqueRecruesManager.tsx`, `app/app/admin/rosters/RosterManager.tsx`) :
+- David a demandé de retirer les accents des noms de joueurs pour faciliter la recherche
+  (plusieurs joueurs européens ont des accents peu communs). Deux options discutées : (A)
+  retirer les accents du nom stocké en base — rejeté, le pipeline PuckPedia réimporte chaque
+  semaine et écraserait le fix, il aurait fallu aussi modifier `import_supabase.py` et perdre
+  l'orthographe correcte partout à l'affichage ; (B) garder les noms corrects et rendre la
+  **recherche** insensible aux accents. Option B choisie par David.
+- Trouvé qu'un fix identique existait déjà en isolation dans `RookieSelect.tsx` (fonction
+  locale `normalize`, `toLowerCase().normalize('NFD').replace(...)`) sans jamais avoir été
+  extrait ni réutilisé ailleurs — d'où le problème signalé.
+- Extrait dans `app/lib/normalizeSearch.ts` (`normalizeSearch()`) et appliqué à tous les
+  filtres de recherche de joueurs **côté client** trouvés dans l'app (7 fichiers) — la requête
+  tapée et le texte comparé (nom, nom inversé, équipe, position) passent tous les deux par
+  cette fonction avant `.includes()`.
+- **Non traité cette session** — deux recherches **côté serveur** utilisent `ILIKE` Postgres
+  brut (pas insensible aux accents sans l'extension `unaccent`) :
+  `searchFreeAgentsAction` (`app/app/admin/transactions/actions.ts`) et `searchPlayersAction`
+  (`app/app/admin/joueurs/merge-actions.ts`, outil de fusion de doublons). Nécessiterait une
+  migration Supabase (`CREATE EXTENSION unaccent`) — exception CLAUDE.md qui demande
+  confirmation avant de committer un changement de schéma ; pas encore proposé à David.
+- Repéré au passage : 32 lignes `players` avec `"undefined"` littéral comme prénom/nom (voir
+  session précédente) — toujours pas traité, sans lien avec ce chantier.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
+
 ### 2026-08-31 (suite 3)
 
 **[Chore] — Fusion de 8 joueurs en double dans `players` (staging)**

@@ -7,6 +7,7 @@ import TeamBadge from '@/components/TeamBadge'
 import PlayerLink from '@/components/PlayerLink'
 import type { StreakInfo, GoalieBadgeType } from '@/lib/streaks'
 import StreakLegend from '@/components/StreakLegend'
+import { normalizeSearch } from '@/lib/normalizeSearch'
 
 const BADGE_META: Record<NonNullable<StreakInfo['badge']>, { emoji: string; label: string }> = {
   en_feu:    { emoji: '🔥', label: 'En feu'    },
@@ -136,7 +137,7 @@ export default function StatsTable({
   }, [skaters, goalies])
 
   const filteredSkaters = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = normalizeSearch(search.trim())
     return skaters
       .filter(s => {
         if (availOnly && !isAvailable(s.firstName, s.lastName)) return false
@@ -144,9 +145,9 @@ export default function StatsTable({
         if (positionFilter === 'defense' && s.position !== 'D') return false
         if (positionFilter === 'forward' && s.position === 'D') return false
         if (q) {
-          const name = `${s.firstName} ${s.lastName}`.toLowerCase()
-          const rev = `${s.lastName} ${s.firstName}`.toLowerCase()
-          if (!name.includes(q) && !rev.includes(q) && !s.teamAbbrev.toLowerCase().includes(q)) return false
+          const name = normalizeSearch(`${s.firstName} ${s.lastName}`)
+          const rev = normalizeSearch(`${s.lastName} ${s.firstName}`)
+          if (!name.includes(q) && !rev.includes(q) && !normalizeSearch(s.teamAbbrev).includes(q)) return false
         }
         return true
       })
@@ -155,15 +156,15 @@ export default function StatsTable({
   }, [skaters, search, selectedTeam, availOnly, positionFilter, takenSet])
 
   const filteredGoalies = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = normalizeSearch(search.trim())
     return goalies
       .filter(g => {
         if (availOnly && !isAvailable(g.firstName, g.lastName)) return false
         if (selectedTeam && g.teamAbbrev !== selectedTeam) return false
         if (q) {
-          const name = `${g.firstName} ${g.lastName}`.toLowerCase()
-          const rev = `${g.lastName} ${g.firstName}`.toLowerCase()
-          if (!name.includes(q) && !rev.includes(q) && !g.teamAbbrev.toLowerCase().includes(q)) return false
+          const name = normalizeSearch(`${g.firstName} ${g.lastName}`)
+          const rev = normalizeSearch(`${g.lastName} ${g.firstName}`)
+          if (!name.includes(q) && !rev.includes(q) && !normalizeSearch(g.teamAbbrev).includes(q)) return false
         }
         return true
       })

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { normalizeSearch } from '@/lib/normalizeSearch'
 import { addPlayerAction, removePlayerAction, updateRookieTypeAction } from '../rosters/actions'
 
 const DASH = '\u2014'
@@ -218,15 +219,15 @@ export default function BanqueRecruesManager({
   )
 
   const availableRookies = useMemo(() => {
-    const s = search.trim().toLowerCase()
+    const s = normalizeSearch(search.trim())
     return rookies
       .filter((r) => !allTakenIds.has(r.id))
       .filter((r) => {
         if (selectedTeam && (r.teams?.code ?? '') !== selectedTeam) return false
         if (!s) return true
-        const name = `${r.first_name} ${r.last_name}`.toLowerCase()
-        const rev = `${r.last_name} ${r.first_name}`.toLowerCase()
-        return name.includes(s) || rev.includes(s) || (r.teams?.code ?? '').toLowerCase().includes(s)
+        const name = normalizeSearch(`${r.first_name} ${r.last_name}`)
+        const rev = normalizeSearch(`${r.last_name} ${r.first_name}`)
+        return name.includes(s) || rev.includes(s) || normalizeSearch(r.teams?.code ?? '').includes(s)
       })
       .sort(sortRookies)
   }, [rookies, allTakenIds, search, selectedTeam])

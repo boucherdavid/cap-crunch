@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { normalizeSearch } from '@/lib/normalizeSearch'
 
 const DASH = '—'
 
@@ -19,9 +20,6 @@ function formatLabel(r: RookieOption) {
   const draftInfo = `R${r.draft_round ?? '?'} #${r.draft_overall ?? '?'}`
   return `${r.last_name}, ${r.first_name} ${r.position ?? ''} ${r.teams?.code ?? DASH} — ${draftInfo}`
 }
-
-const normalize = (s: string) =>
-  s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 
 export default function RookieSelect({
   rookies,
@@ -74,7 +72,7 @@ export default function RookieSelect({
 
   const available = rookies.filter(r => r.id === value || !excludeIds.has(r.id))
   const filtered = query
-    ? available.filter(r => normalize(`${r.last_name} ${r.first_name}`).includes(normalize(query)))
+    ? available.filter(r => normalizeSearch(`${r.last_name} ${r.first_name}`).includes(normalizeSearch(query)))
     : available
 
   return (

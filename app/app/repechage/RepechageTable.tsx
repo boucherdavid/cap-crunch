@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import TeamBadge from '@/components/TeamBadge'
+import { normalizeSearch } from '@/lib/normalizeSearch'
 
 const DASH = '\u2014'
 
@@ -39,13 +40,13 @@ export default function RepechageTable({ picks }: { picks: DraftPick[] }) {
 
   const matchesSearch = (p: DraftPick, s: string) => {
     if (!s) return true
-    const name = `${p.first_name} ${p.last_name}`.toLowerCase()
-    const rev = `${p.last_name} ${p.first_name}`.toLowerCase()
+    const name = normalizeSearch(`${p.first_name} ${p.last_name}`)
+    const rev = normalizeSearch(`${p.last_name} ${p.first_name}`)
     return (
       name.includes(s) ||
       rev.includes(s) ||
-      (p.team_code ?? '').toLowerCase().includes(s) ||
-      (p.pooler_name ?? '').toLowerCase().includes(s)
+      normalizeSearch(p.team_code ?? '').includes(s) ||
+      normalizeSearch(p.pooler_name ?? '').includes(s)
     )
   }
 
@@ -56,7 +57,7 @@ export default function RepechageTable({ picks }: { picks: DraftPick[] }) {
   }
 
   const filteredWithDraft = useMemo(() => {
-    const s = search.trim().toLowerCase()
+    const s = normalizeSearch(search.trim())
     return withDraft.filter((p) => {
       if (selectedYear !== 'all' && p.draft_year !== selectedYear) return false
       if (selectedRound !== 'all' && p.draft_round !== selectedRound) return false
@@ -65,7 +66,7 @@ export default function RepechageTable({ picks }: { picks: DraftPick[] }) {
   }, [withDraft, selectedYear, selectedRound, filterPooler, search])
 
   const filteredWithoutDraft = useMemo(() => {
-    const s = search.trim().toLowerCase()
+    const s = normalizeSearch(search.trim())
     // Les filtres par année/ronde ne s'appliquent pas aux joueurs sans info de repêchage
     if (selectedYear !== 'all' || selectedRound !== 'all') return []
     return withoutDraft.filter((p) => matchesFilters(p, s))

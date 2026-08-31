@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useTransition, useMemo } from 'react'
+import { normalizeSearch } from '@/lib/normalizeSearch'
 import {
   getPlayoffPoolRosterAction,
   getPlayoffChangeCountsAction,
@@ -169,8 +170,8 @@ function PlayerPicker({
       if (posGroup(p.position) !== activeSlot) return false
       if (teamFilter && p.teamCode !== teamFilter) return false
       if (nameFilter.trim()) {
-        const q = nameFilter.trim().toLowerCase()
-        if (!`${p.firstName} ${p.lastName}`.toLowerCase().includes(q)) return false
+        const q = normalizeSearch(nameFilter.trim())
+        if (!normalizeSearch(`${p.firstName} ${p.lastName}`).includes(q)) return false
       }
       return true
     }),

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { submitRosterAction, adminInitRosterAction, updateRookieTypeAction, viderRostersAction } from './actions'
 import TeamBadge from '@/components/TeamBadge'
+import { normalizeSearch } from '@/lib/normalizeSearch'
 
 type Pooler = { id: string; name: string }
 type Player = {
@@ -168,7 +169,7 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
   }, [players])
 
   const filteredPlayers = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase()
+    const normalizedSearch = normalizeSearch(search.trim())
     return players
       .filter((player) => {
         if (rosterPlayerIds.has(player.id)) return false
@@ -177,9 +178,9 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
         const teamCode = player.teams?.code ?? ''
         if (selectedTeam !== '' && teamCode !== selectedTeam) return false
         if (normalizedSearch === '') return selectedTeam !== ''
-        const fullName = `${player.first_name} ${player.last_name}`.toLowerCase()
-        const reverseName = `${player.last_name} ${player.first_name}`.toLowerCase()
-        const position = (player.position ?? '').toLowerCase()
+        const fullName = normalizeSearch(`${player.first_name} ${player.last_name}`)
+        const reverseName = normalizeSearch(`${player.last_name} ${player.first_name}`)
+        const position = normalizeSearch(player.position ?? '')
         return fullName.includes(normalizedSearch) || reverseName.includes(normalizedSearch) || position.includes(normalizedSearch)
       })
       .sort(sortPlayersByTeamAndName)
