@@ -21,6 +21,37 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-31 (suite 3)
+
+**[Chore] — Fusion de 8 joueurs en double dans `players` (staging)**
+(script ponctuel, aucun fichier applicatif modifié) :
+- David a repéré deux doublons en consultant les alignements (Mitch/Mitchell Marner sur VGK,
+  Matt/Matthew Savoie sur BUF/EDM) — même joueur importé deux fois avec un prénom différent
+  (diminutif vs prénom complet), probablement une désynchronisation entre deux passes du
+  pipeline PuckPedia qui n'ont pas matché sur `nhl_id`.
+- Scan complet de la table `players` (2553 lignes, staging) par similarité nom de
+  famille + prénom (diminutifs courants type Matt/Matthew, Mitch/Mitchell). 8 paires trouvées
+  au total, toutes confirmées doublons par David : Murray (Matt/Matthew), Marner
+  (Mitchell/Mitch), Savoie (Matthew/Matt), Simashev (Dmitri/Dmitriy), Maggio (Matt/Matthew),
+  Ilyin (Mikhail Ye./Mikhail), Weiermair (Alex/Alexander), Wanner (Max/Maximus).
+- Repéré au passage un bug distinct et non lié : 32 lignes `players` avec `first_name`/
+  `last_name` littéralement égal à la chaîne `"undefined"` (une par équipe, `nhl_id` vide) —
+  probablement un pick de repêchage "à déterminer" mal sérialisé par le pipeline. Pas touché
+  cette session, à investiguer dans `python_script/import_drafts.py` si ça revient.
+- Fusion appliquée (script ponctuel reproduisant exactement `mergePlayersAction` de
+  `app/app/admin/joueurs/merge-actions.ts` — contrats, `pooler_rosters`, `player_game_logs`,
+  `player_stat_snapshots`, `roster_change_log`, enrichissement des champs manquants du
+  doublon vers le joueur gardé) — bloqué une première fois par le classificateur du mode
+  auto (suppression de données), roulé directement par David ensuite.
+- Règle de choix "à garder" : le record avec les vraies données de contrat (masse salariale)
+  plutôt que celui avec seulement l'info de repêchage — la fusion enrichit automatiquement le
+  gardé avec `draft_year`/`draft_round`/`draft_overall`/`nhl_id` manquants pris sur le doublon.
+- Vérifié après coup : les 8 doublons ont disparu, les 8 joueurs gardés portent bien les
+  champs de repêchage enrichis.
+- À garder en tête : l'outil `PlayerMerge` existe déjà en UI (`/admin/donnees?tab=pipeline`)
+  pour ce genre de cas au cas par cas — utile si David retrouve d'autres doublons isolés
+  plus tard, plus rapide qu'un script pour un seul cas.
+
 ### 2026-08-31 (suite 2)
 
 **[Chore] — Trou trouvé dans le reset 2025-26 : `pool_draft_picks` pas réinitialisé**
