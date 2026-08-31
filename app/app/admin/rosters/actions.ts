@@ -268,11 +268,14 @@ export async function adminInitRosterAction(
     ? `${saisonConfig.saison_start_date}T12:00:00Z`
     : new Date().toISOString()
 
-  // Retraits
+  // Retraits — suppression complète (pas de désactivation) : Mode init ne journalise rien
+  // dans roster_change_log, donc une ligne désactivée sans trace ne serait qu'un résidu
+  // fantôme (affiché comme "PARTI" dans l'historique de buildStandings sans explication —
+  // bug trouvé par David le 2026-08-31).
   if (toRemove.length > 0) {
     const { error } = await supabase
       .from('pooler_rosters')
-      .update({ is_active: false, removed_at: new Date().toISOString() })
+      .delete()
       .in('id', toRemove)
     if (error) return { error: error.message }
   }
@@ -288,10 +291,11 @@ export async function adminInitRosterAction(
 
   // Ajouts
   for (const entry of toAdd) {
-    // Retire le joueur des autres rosters actifs pour cette saison
+    // Retire le joueur des autres rosters actifs pour cette saison — suppression complète,
+    // même raison que pour les retraits ci-dessus.
     await supabase
       .from('pooler_rosters')
-      .update({ is_active: false, removed_at: new Date().toISOString() })
+      .delete()
       .eq('player_id', entry.player_id)
       .eq('pool_season_id', saisonId)
       .eq('is_active', true)

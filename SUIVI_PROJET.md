@@ -21,6 +21,36 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-31 (suite 8)
+
+**[Fix] — Résidus « PARTI » fantômes laissés par Mode init (Rosters initiaux)**
+(`app/app/admin/rosters/actions.ts`, script ponctuel) :
+- David a remarqué que Mon équipe (`/poolers/[id]`) montrait Marchand, Matthews et Shabanov
+  avec le badge « PARTI » alors qu'ils n'apparaissaient nulle part dans Gestion d'effectifs.
+- Cause : `adminInitRosterAction` (Mode init, `/admin/init?tab=rosters`) désactivait
+  (`is_active=false`, `removed_at=maintenant`) au lieu de supprimer, dans deux chemins : le
+  retrait explicite (`toRemove`) et la réassignation automatique quand un joueur est ajouté à
+  un autre pooler (« retire le joueur des autres rosters actifs »). Comme Mode init ne
+  journalise jamais dans `roster_change_log` (délibéré), ces lignes désactivées restaient sans
+  aucune trace — `buildStandings()` (utilisé par Mon équipe/Classement, montre l'historique
+  complet de la saison) les affichait quand même comme « PARTI » sans explication, alors que
+  Gestion d'effectifs (qui ne montre que le roster actif) ne les montrait pas. D'où le
+  désaccord entre les deux vues.
+- Vérifié en staging : Marchand/Matthews/Shabanov avaient bien été réassignés de David vers
+  Vincent le jour même, laissant 3 lignes fantômes côté David sans `roster_change_log`
+  associé (0 entrée chacun) — confirmé le mécanisme.
+- Fix : les deux chemins de `adminInitRosterAction` utilisent maintenant `.delete()` au lieu
+  de `.update({ is_active: false, ... })` — cohérent avec la philosophie déjà en place de
+  Mode init (« sans historique »), et avec le chemin d'ajout qui supprime déjà l'entrée
+  existante avant de réinsérer.
+- Nettoyage en staging : les 3 lignes fantômes (`#1762`, `#1763`, `#1787`) supprimées.
+- Repéré au passage 13 autres lignes `is_active=false` pour 2025-26 (toutes côté David) —
+  mais celles-là ont chacune 2 `roster_change_log` (ajout + retrait), donc viennent de la
+  Banque de recrues (`addPlayerAction`/`removePlayerAction`, qui journalisent correctement) —
+  pas le même bug, comportement normal. Proposé à David de les nettoyer aussi si un vrai
+  départ à zéro est souhaité ; pas encore de réponse.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
+
 ### 2026-08-31 (suite 7)
 
 **[Fix] — « Mon équipe » ne se mettait pas à jour après un changement dans Initialisation**
