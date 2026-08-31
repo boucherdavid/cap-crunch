@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { previewConformityAction, demarrerSaisonAction } from './actions'
 import type { ConformityIssue } from '@/lib/seasonConformity'
 
@@ -98,10 +99,15 @@ export default function DemarrerSaisonCard({
                   {totalPoolers - issues.length}/{totalPoolers} poolers conformes
                 </p>
                 {issues.map(issue => (
-                  <div key={issue.poolerId} className="text-xs bg-red-50 border border-red-200 rounded px-2.5 py-1.5">
+                  <Link
+                    key={issue.poolerId}
+                    href={`/admin/init?tab=presaison&saisonId=${saisonId}&poolerId=${issue.poolerId}`}
+                    className="block text-xs bg-red-50 border border-red-200 rounded px-2.5 py-1.5 hover:bg-red-100 transition-colors"
+                  >
                     <span className="font-medium text-red-800">{issue.poolerName}</span>
                     <span className="text-red-700"> — {issue.reasons.join(' · ')}</span>
-                  </div>
+                    <span className="text-red-400"> → corriger</span>
+                  </Link>
                 ))}
               </div>
             )

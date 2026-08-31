@@ -48,7 +48,7 @@ async function fetchAllRookies(
 export default async function AdminInitPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; saisonId?: string }>
+  searchParams: Promise<{ tab?: string; saisonId?: string; poolerId?: string }>
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -57,7 +57,7 @@ export default async function AdminInitPage({
   const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
   if (!me?.is_admin) redirect('/')
 
-  const { tab = 'rosters', saisonId } = await searchParams
+  const { tab = 'rosters', saisonId, poolerId } = await searchParams
   const activeTab = VALID_TABS.includes(tab) ? tab : 'rosters'
   const parsedSaisonId = saisonId ? parseInt(saisonId, 10) : NaN
   const cameFromHub = !isNaN(parsedSaisonId)
@@ -195,11 +195,17 @@ export default async function AdminInitPage({
       {/* ── Rosters ── */}
       {activeTab === 'rosters' && (
         <div>
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold text-gray-800">Gestion des alignements</h1>
             {saisonRosters && (
               <SaisonSelectNav saisons={saisonsRosters} selectedId={saisonRosters.id} baseHref="/admin/init?tab=rosters" />
             )}
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 text-sm text-amber-800 mb-6">
+            Pensé pour la mise en place initiale de l&apos;alignement (juste après la transition des
+            rosters) — aucune vérification (budget de signatures, joueur déjà pris ailleurs, etc.).
+            Pour un ajustement ponctuel après cette étape (libération, signature, échange), utilise
+            plutôt Pré-saison ou Transactions, qui ont ces protections.
           </div>
           <ErrorBoundary>
             <RosterManager
@@ -249,7 +255,7 @@ export default async function AdminInitPage({
           <h1 className="text-2xl font-bold text-gray-800 mb-6">{'Repêchage pré-saison'}</h1>
           {!defaultPresaisonId
             ? <p className="text-gray-500">Aucune saison disponible.</p>
-            : <PresaisonManager saisons={saisonsPresaison} defaultSaisonId={defaultPresaisonId} />
+            : <PresaisonManager saisons={saisonsPresaison} defaultSaisonId={defaultPresaisonId} highlightPoolerId={poolerId} />
           }
         </div>
       )}

@@ -24,14 +24,15 @@ function posBucket(position: string | null): 'forward' | 'defense' | 'goalie' {
 }
 
 function ComplianceCard({
-  pooler, saisonId, onRefresh, isCurrentDrafter,
+  pooler, saisonId, onRefresh, isCurrentDrafter, startExpanded,
 }: {
   pooler: PoolerCapInfo
   saisonId: number
   onRefresh: () => Promise<void>
   isCurrentDrafter: boolean
+  startExpanded?: boolean
 }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(!!startExpanded)
   const [releaseMode, setReleaseMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [showTypeChange, setShowTypeChange] = useState(false)
@@ -133,7 +134,7 @@ function ComplianceCard({
   }
 
   return (
-    <div className={`border rounded-lg border-gray-200 ${isCurrentDrafter ? 'ring-2 ring-blue-500' : ''}`}>
+    <div id={`pooler-card-${pooler.id}`} className={`border rounded-lg border-gray-200 ${isCurrentDrafter ? 'ring-2 ring-blue-500' : ''} ${startExpanded ? 'ring-2 ring-amber-400' : ''}`}>
       <button
         type="button"
         className="w-full flex items-center justify-between px-4 py-3 text-left bg-white rounded-lg"
@@ -472,9 +473,11 @@ type Data = {
 export default function PresaisonManager({
   saisons,
   defaultSaisonId,
+  highlightPoolerId,
 }: {
   saisons: Saison[]
   defaultSaisonId: number
+  highlightPoolerId?: string
 }) {
   const [saisonId, setSaisonId] = useState(defaultSaisonId)
   const [data, setData] = useState<Data | null>(null)
@@ -544,6 +547,13 @@ export default function PresaisonManager({
     setQueue([])
     loadAll(saisonId)
   }, [saisonId, loadAll])
+
+  // Arrivée depuis "Démarrer la saison" (carte de conformité) avec un pooler à corriger —
+  // fait défiler jusqu'à sa carte, déjà dépliée via startExpanded.
+  useEffect(() => {
+    if (!data || !highlightPoolerId) return
+    document.getElementById(`pooler-card-${highlightPoolerId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [data, highlightPoolerId])
 
   // Auto-end draft when queue empties
   useEffect(() => {
@@ -757,6 +767,7 @@ export default function PresaisonManager({
               saisonId={saisonId}
               onRefresh={async () => { await refreshData() }}
               isCurrentDrafter={p.id === currentPoolerId}
+              startExpanded={p.id === highlightPoolerId}
             />
           ))}
         </div>

@@ -21,6 +21,36 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-31 (suite 11)
+
+**[Feature] — Réduit les allers-retours entre outils pré-saison**
+(`app/app/admin/presaison/PresaisonManager.tsx`, `app/app/admin/init/page.tsx`,
+`app/app/admin/nouvelle-saison/DemarrerSaisonCard.tsx`) :
+- David a trouvé confus que le même genre de changement soit possible à plusieurs endroits
+  (Rosters initiaux, Banque de recrues, Pré-saison, Transactions). Clarifié la distinction
+  réelle : Rosters initiaux/Banque de recrues = édition brute sans garde-fou, pensée pour la
+  mise en place initiale ; Pré-saison/Transactions = édition guidée avec vraies protections
+  (joueur déjà pris ailleurs, budget de signatures, admissibilité recrue) — partagent le même
+  moteur (`submitTransactionAction`), Pré-saison n'étant qu'une UI simplifiée d'un sous-
+  ensemble de ce que Transactions peut faire, plus les outils ELC/LTIR/repêchage qui lui sont
+  propres.
+- Un verrou technique séparé ("verrouiller la mise en place initiale", distinct de
+  `season_started`) a été envisagé puis écarté — complexité additionnelle pour un problème de
+  discipline d'usage plus que de risque réel (admin unique). Choix : un avertissement dans
+  l'UI plutôt qu'un nouveau verrou.
+- **Avertissement ajouté** dans l'onglet Rosters initiaux (`/admin/init?tab=rosters`) :
+  rappelle que l'outil n'a aucune vérification et recommande Pré-saison/Transactions pour les
+  ajustements ponctuels après la mise en place.
+- **Point de friction identifié** : la nouvelle carte "Démarrer la saison" détecte un pooler
+  non conforme mais n'indiquait pas où aller corriger — obligeait à deviner puis à naviguer
+  manuellement jusqu'à Pré-saison. Corrigé : chaque ligne de non-conformité dans
+  `DemarrerSaisonCard.tsx` est maintenant un lien direct vers
+  `/admin/init?tab=presaison&saisonId=...&poolerId=...`. `PresaisonManager` accepte un nouveau
+  prop `highlightPoolerId` — déplie automatiquement (`startExpanded`) la carte du pooler
+  concerné (`ComplianceCard`, nouvel `id={pooler-card-${pooler.id}}` pour l'ancrage) et fait
+  défiler la page jusqu'à elle au chargement, avec un contour ambre pour la repérer.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
+
 ### 2026-08-31 (suite 10)
 
 **[Feature] — Nouveau cycle de vie pré-saison / saison active : "Démarrer la saison"**
