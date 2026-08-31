@@ -207,6 +207,13 @@ Ressources est pensé comme un point de départ — le babillard (aujourd'hui pr
 de planification) et une vraie documentation des outils/guide d'utilisateur pourraient s'y
 ajouter plus tard, mais ce sont des chantiers de contenu séparés, pas encore construits.
 
+Dans la même veine, les onglets `Pool Séries` et `Pointage Séries` de
+`/admin/pool?tab=config` (`ConfigTabsClient.tsx`) sont masqués depuis le 2026-08-31 —
+formulaires (`PlayoffConfigForm`, `ScoringConfigSeries`) et logique conservés dans le code,
+simplement retirés de la liste `TABS` affichée. Pas de route séparée ici (état local du
+composant, pas de `?subtab=`), donc pas d'accès par URL directe comme pour `/admin/series` —
+à réintroduire dans `TABS` le jour où une saison séries est de nouveau préparée.
+
 **Admin — pages hub avec onglets (`?tab=`), pas de routes à plat :**
 
 | Hub | Onglets (`?tab=id` → label) |

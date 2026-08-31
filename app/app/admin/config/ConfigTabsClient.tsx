@@ -51,12 +51,14 @@ type Props = {
 
 type Tab = 'saisons' | 'pool-saison' | 'pool-series' | 'pointage-saison' | 'pointage-series'
 
+// Pool Séries / Pointage Séries retirés des onglets visibles (David, 2026-08-31) — cohérent
+// avec le retrait de Pool Séries de la nav admin et pooler (voir CLAUDE.md section 5).
+// Code et logique conservés (PlayoffConfigForm, ScoringConfigSeries) ; simplement plus
+// atteignables via ces onglets tant qu'aucune saison séries n'est en préparation.
 const TABS: { id: Tab; label: string }[] = [
   { id: 'saisons',          label: 'Saisons' },
   { id: 'pool-saison',      label: 'Pool Saison' },
-  { id: 'pool-series',      label: 'Pool Séries' },
   { id: 'pointage-saison',  label: 'Pointage Saison' },
-  { id: 'pointage-series',  label: 'Pointage Séries' },
 ]
 
 export default function ConfigTabsClient({ saisons, activeRegSaison, activePlayoffSaison, scoringRows }: Props) {

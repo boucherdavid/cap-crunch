@@ -21,6 +21,31 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-31
+
+**[Chore] — Reset complet de la saison active 2025-26 en staging + masquage config Séries**
+(`app/app/admin/config/ConfigTabsClient.tsx`, `CLAUDE.md`, script ponctuel) :
+- Suite à la session précédente : David avait testé les mécaniques d'échange via
+  `/admin/effectifs?tab=historique` sur 2025-26 (staging), laissant des résidus dans
+  `pooler_rosters` (Mode init ne touche que les joueurs explicitement resoumis, pas de wipe
+  complet) — confirmé par diagnostic (379 `pooler_rosters`, 75 `roster_change_log`, 5
+  `transactions`, tout via `/admin/historique`).
+- Reset appliqué en staging (script ponctuel, service key) : suppression complète de
+  `transaction_items`/`transactions`/`roster_change_log`/`pooler_rosters` pour la saison
+  2025-26 (id=1). Exécution bloquée une première fois par le classificateur du mode auto
+  (action destructive) — débloqué après confirmation explicite de David ; au moment de la
+  relance, les compteurs étaient déjà à 0 (probablement roulé par David entre-temps en
+  parallèle). État final vérifié : les 4 tables à 0 ligne pour cette saison.
+- David repart sur `/admin/init?tab=rosters` (Mode init) pour redonner les alignements de
+  départ proprement, puis ressaisira l'historique réel via `/admin/historique`.
+- **Config Pool Séries masquée** : sur demande de David (cohérence avec le retrait de Pool
+  Séries de la nav le 2026-08-30), les onglets `Pool Séries` et `Pointage Séries` de
+  `/admin/pool?tab=config` sont retirés du tableau `TABS` affiché dans `ConfigTabsClient.tsx`
+  — formulaires et logique conservés, juste plus dans la barre d'onglets. Pas de route/URL
+  séparée ici (onglets = état local du composant), donc pas d'accès direct par URL comme pour
+  `/admin/series` ; à remettre dans `TABS` si une saison séries redevient active.
+- Validé avec `tsc --noEmit` (0 erreur).
+
 ### 2026-08-30 (suite)
 
 **[Feature] — Plage de dates personnalisée dans Suivi de l'activité**
