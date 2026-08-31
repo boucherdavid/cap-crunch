@@ -21,6 +21,24 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-31 (suite 12)
+
+**[Fix] — Pastille de notification Admin sans contexte**
+(`app/components/Navbar.tsx`, `app/app/admin/pool/page.tsx`) :
+- David ne comprenait plus à quoi correspondait le chiffre sur la pastille Admin/Gestion du
+  pool. Cause : la pastille combine deux compteurs différents (`unreadCount` = feedback des
+  poolers, `unreadNotifCount` = notifications push) en un seul chiffre opaque — et les deux
+  n'étaient même pas cohérents entre elles : la pastille "Admin" combinait les deux, celle de
+  "Gestion du pool" ne montrait que le feedback, celle de l'onglet Communication (une fois sur
+  la page) aussi. Trois pastilles, deux formules différentes.
+- Uniformisé les trois sur `unreadCount + unreadNotifCount` (Navbar desktop + mobile, badge
+  d'onglet dans `admin/pool/page.tsx`).
+- Ajouté une infobulle (`title`) sur les pastilles desktop expliquant la répartition (ex:
+  "2 messages non lus (Communication) · 1 notification non lue") — une fois sur la page
+  Communication elle-même, les deux sections ("Boîte de réception" / "Notifications") ont déjà
+  leurs propres compteurs clairs, donc pas besoin d'infobulle là.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
+
 ### 2026-08-31 (suite 11)
 
 **[Feature] — Réduit les allers-retours entre outils pré-saison**

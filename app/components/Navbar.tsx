@@ -67,6 +67,13 @@ export default function Navbar({
   const [isPoolerView, setIsPoolerView] = useState(false)
   const [unreadCount] = useState(initialUnreadCount)
   const [unreadNotifCount] = useState(initialUnreadNotifCount)
+  // Pastille Admin/Gestion du pool : deux compteurs distincts (feedback des poolers,
+  // notifications push) combinés en un seul chiffre — infobulle pour clarifier ce que ça
+  // représente sans dédoubler la pastille dans un espace de nav déjà serré (David, 2026-08-31).
+  const adminBadgeTitle = [
+    unreadCount > 0 ? `${unreadCount} message${unreadCount > 1 ? 's' : ''} non lu${unreadCount > 1 ? 's' : ''} (Communication)` : null,
+    unreadNotifCount > 0 ? `${unreadNotifCount} notification${unreadNotifCount > 1 ? 's' : ''} non lue${unreadNotifCount > 1 ? 's' : ''}` : null,
+  ].filter(Boolean).join(' · ')
   const [menuOpen, setMenuOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<DropdownKey>(null)
   const [installPrompt, setInstallPrompt] = useState<Event | null>(null)
@@ -287,7 +294,10 @@ export default function Navbar({
                     <span className="text-xs bg-blue-500 text-white rounded px-1 py-0.5 mr-1">A</span>
                     Admin
                     {(unreadCount > 0 || unreadNotifCount > 0) && (
-                      <span className="ml-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                      <span
+                        className="ml-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full"
+                        title={adminBadgeTitle}
+                      >
                         {unreadCount + unreadNotifCount}
                       </span>
                     )}
@@ -298,7 +308,14 @@ export default function Navbar({
                       <Link href="/admin/pool"      className={dropdownLinkClass('/admin/pool')}>
                         <span className="flex items-center justify-between">
                           Gestion du pool
-                          {unreadCount > 0 && <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{unreadCount}</span>}
+                          {(unreadCount > 0 || unreadNotifCount > 0) && (
+                            <span
+                              className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full"
+                              title={adminBadgeTitle}
+                            >
+                              {unreadCount + unreadNotifCount}
+                            </span>
+                          )}
                         </span>
                       </Link>
                       <Link href="/admin/nouvelle-saison" className={dropdownLinkClass('/admin/nouvelle-saison')}>Nouvelle saison</Link>
@@ -427,7 +444,9 @@ export default function Navbar({
                   <Link href="/admin/pool" className={mobileLinkClass('/admin/pool')}>
                     <span className="flex items-center justify-between">
                       Gestion du pool
-                      {unreadCount > 0 && <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{unreadCount}</span>}
+                      {(unreadCount > 0 || unreadNotifCount > 0) && (
+                        <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{unreadCount + unreadNotifCount}</span>
+                      )}
                     </span>
                   </Link>
                 )}

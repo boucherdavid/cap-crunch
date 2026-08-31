@@ -180,8 +180,9 @@ export default async function AdminPoolPage({
     planifDates = dates ?? []
   }
 
+  const communicationBadge = feedbackCounts.nouveau + unreadNotifs
   const tabsWithBadges = TABS.map(t =>
-    t.id === 'communication' ? { ...t, badge: feedbackCounts.nouveau > 0 ? feedbackCounts.nouveau : undefined } : t
+    t.id === 'communication' ? { ...t, badge: communicationBadge > 0 ? communicationBadge : undefined } : t
   )
 
   return (
