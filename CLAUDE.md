@@ -249,14 +249,28 @@ qui ne sert qu'à réassigner un pick déjà existant.
 
 `/admin/nouvelle-saison` : route à part (lien dans le dropdown Admin), hub orchestrateur qui
 séquence dans l'ordre recommandé les étapes de préparation d'une saison à venir — transition
-des rosters (`/admin/pool?tab=config`) → choix de repêchage → repêchage des recrues → banque
-de recrues → pré-saison (ELC, libérations, repêchage des agents libres, tout déjà intégré
-dans `PresaisonManager`) → activation (dernière étape, explicitement distincte de la
-préparation qui précède — `is_active` reste la seule bascule en base, aucun nouveau statut de
-saison). Chaque carte affiche un résumé en lecture seule (compteurs) et un lien qui pré-sélectionne
-la saison choisie via `?saisonId=` sur l'outil existant — aucune logique métier dupliquée,
-juste une orchestration/navigation. Remplace le contenu détaillé du panneau "Guide admin"
-(`AdminGuidePanel.tsx`), qui pointe maintenant simplement vers ce hub.
+des rosters (`/admin/pool?tab=config`) → **activer la saison** → choix de repêchage →
+repêchage des recrues → banque de recrues → pré-saison (ELC, libérations, repêchage des
+agents libres, tout déjà intégré dans `PresaisonManager`) → **démarrer la saison** (dernière
+étape). Chaque carte affiche un résumé en lecture seule (compteurs) et un lien qui
+pré-sélectionne la saison choisie via `?saisonId=` sur l'outil existant — aucune logique
+métier dupliquée, juste une orchestration/navigation, sauf la dernière carte (voir ci-dessous).
+Remplace le contenu détaillé du panneau "Guide admin" (`AdminGuidePanel.tsx`), qui pointe
+maintenant simplement vers ce hub.
+
+**Activer vs démarrer — deux bascules distinctes** (David, 2026-08-31, voir aussi section 6) :
+`is_active` (`activateSeasonAction`, `admin/config/actions.ts`) rend la saison consultable par
+tous les poolers (alignements, classement, calendrier, banque de recrues) — déplacé tôt dans
+la séquence pour que ce soit possible pendant que l'admin finit la pré-saison.
+`pool_seasons.season_started` (nouvelle colonne) ne bascule qu'au clic sur "Démarrer la
+saison" (dernière carte du hub, `DemarrerSaisonCard.tsx` + `nouvelle-saison/actions.ts` →
+`demarrerSaisonAction`) — bloque si un pooler n'est pas conforme (12/6/2 actifs exactement,
+min. 2 réservistes, cap — `app/lib/seasonConformity.ts`), sinon assigne `added_at` = date
+réelle de début de saison à tous les actifs d'un coup et bascule `season_started=true`. Tant
+que `season_started=false` : `/gestion-effectifs` reste fermé aux poolers (admins non
+affectés), et les mutations pré-saison (`submitTransactionAction`, `PresaisonManager`) ne
+valident ni ne journalisent rien — même philosophie "sans historique" que Mode init/Banque de
+recrues (voir section 6).
 
 `/admin/pool?tab=planification` gère le sondage `/planification` — créer/réinitialiser le
 sondage, ajouter/retirer des dates candidates, toggle "Mode avant-première" (table
@@ -359,8 +373,9 @@ existants) — pas des pages à part entière.
   saison, simule un cap = contrat de la saison précédente × `app_settings.
   unsigned_player_cap_multiplier` (défaut 1.20) — évite qu'un joueur non signé compte 0$
   (avantage caché). Branché dans `/admin/presaison`, `/gestion-effectifs`, `/poolers/[id]`
-  (badge "≈ estimé") — pas encore dans `RosterManager.tsx`/`TransactionBuilder.tsx`/
-  `poolers/page.tsx` (liste), à étendre si le besoin se confirme à l'usage.
+  (badge "≈ estimé"), et depuis le 2026-08-31 aussi dans `submitRosterAction`
+  (`admin/rosters/actions.ts`) et `submitTransactionAction` (`admin/transactions/actions.ts`,
+  via `app/lib/rosterLimits.ts` — voir plus bas) — pas encore dans `poolers/page.tsx` (liste).
 - Suivi de conformité continue : `/admin/effectifs?tab=conformite` — bouton "Vérifier les
   signatures" (vérification manuelle, pas de lien automatique avec le pipeline Python)
   détecte quand un joueur surveillé obtient un vrai contrat, notifie le pooler par push
@@ -368,6 +383,30 @@ existants) — pas des pages à part entière.
   table `cap_signing_watch`. Le pooler peut réagir comme il veut (libérer, échanger,
   ajuster) ; passé le délai, seul l'admin peut libérer le joueur manuellement — jamais
   automatique.
+
+**Règles d'alignement consolidées (`app/lib/rosterLimits.ts`) — David, 2026-08-31 :**
+- `validateRosterLimits(entries, poolCap)` : 12 attaquants / 6 défenseurs / 2 gardiens actifs
+  **maximum** (pas exactement — un pooler peut être en sous-effectif temporaire en cours de
+  saison), minimum 2 réservistes, masse salariale ≤ cap du pool. Fonction pure, `capNumber`
+  toujours pré-résolu par l'appelant via `getEffectiveCap()` (jamais un `cap_number` brut —
+  corrige un bug où `submitTransactionAction` comptait un joueur non signé comme 0$).
+- Utilisée par `submitTransactionAction` (admin/transactions), `submitRosterAction`
+  (admin/rosters, Mode init désactivé) et `submitBatchAction` (`gestion-effectifs/actions.ts`
+  — self-service pooler, qui n'avait *aucune* validation de ce genre avant cette date).
+  `submitBatchAction` simule l'état final du roster **avant** d'écrire quoi que ce soit
+  (le lot s'applique action par action en écriture directe, contrairement à `submitRosterAction`
+  qui construit déjà un état virtuel) — voir le bloc "Validation de l'état final" en tête de
+  la fonction. Sautée entièrement quand l'appelant est admin (override délibéré), et de toute
+  façon inatteignable pour un pooler avant que `season_started=true` (voir ci-dessus).
+- `app/lib/seasonConformity.ts` (`checkSeasonConformity`) est un validateur **distinct**, plus
+  strict (== 12/6/2 exactement) — utilisé uniquement par "Démarrer la saison" comme condition
+  de blocage un moment donné, pas une contrainte permanente comme `validateRosterLimits`.
+- Contextes "override" intentionnels, sans validation ni journal, vérifiés et laissés tels
+  quels : Mode init/Banque de recrues (`admin/rosters/actions.ts`, voir plus haut — bloqués
+  depuis le 2026-08-31 dès que `season_started=true`, garde-fou séparé), `presaison/actions.ts`
+  (ELC, retour LTIR), `submitTransactionAction` tant que `season_started=false`,
+  `/admin/historique` (reconstruction d'un historique passé, règles potentiellement différentes
+  à l'époque).
 
 **Next.js 16 :**
 - Utiliser `proxy.ts`, PAS `middleware.ts`

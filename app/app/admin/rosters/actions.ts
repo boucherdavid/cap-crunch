@@ -3,6 +3,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { validateRosterLimits } from '@/lib/rosterLimits'
+import { getEffectiveCap } from '@/lib/capUtils'
 
 function revalidateRosterPages() {
   revalidatePath('/admin/init')
@@ -10,6 +12,21 @@ function revalidateRosterPages() {
   revalidatePath('/poolers/[id]', 'page')
   revalidatePath('/classement')
   revalidatePath('/dashboard')
+}
+
+// Mode init / Banque de recrues sont "sans historique" par design (voir plus bas), mais
+// seulement avant que la saison soit vraiment démarrée (/admin/nouvelle-saison → "Démarrer
+// la saison"). Après ce point, les utiliser corromprait silencieusement le classement (aucune
+// trace, aucun avertissement) — on bloque plutôt que de laisser faire.
+async function assertSeasonNotStarted(
+  supabase: ReturnType<typeof createAdminClient> | Awaited<ReturnType<typeof createClient>>,
+  saisonId: number,
+): Promise<{ error?: string }> {
+  const { data: saison } = await supabase.from('pool_seasons').select('season_started').eq('id', saisonId).single()
+  if (saison?.season_started) {
+    return { error: 'Saison déjà démarrée — utiliser les outils de gestion normaux (Transactions, Gestion d\'effectifs).' }
+  }
+  return {}
 }
 
 const ACTIVE_LIMITS = { forward: 12, defense: 6, goalie: 2 } as const
@@ -119,6 +136,9 @@ export async function addPlayerAction(
 ): Promise<{ error?: string; id?: number }> {
   const supabase = await createClient()
 
+  const seasonGuard = await assertSeasonNotStarted(supabase, saisonId)
+  if (seasonGuard.error) return seasonGuard
+
   if (playerType === 'recrue') {
     const [{ data: player }, draftYearCutoff] = await Promise.all([
       supabase.from('players').select('is_rookie, draft_year').eq('id', playerId).single(),
@@ -186,6 +206,12 @@ export async function updateRookieTypeAction(
   poolDraftYear?: number,
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
+
+  const { data: row } = await supabase.from('pooler_rosters').select('pool_season_id').eq('id', rosterId).single()
+  if (!row) return { error: 'Entrée introuvable.' }
+  const seasonGuard = await assertSeasonNotStarted(supabase, row.pool_season_id)
+  if (seasonGuard.error) return seasonGuard
+
   const { error } = await supabase
     .from('pooler_rosters')
     .update({
@@ -206,6 +232,10 @@ export async function removePlayerAction(rosterId: number): Promise<{ error?: st
     .select('player_id, player_type, pooler_id, pool_season_id')
     .eq('id', rosterId)
     .single()
+
+  if (!entry) return { error: 'Entrée introuvable.' }
+  const seasonGuard = await assertSeasonNotStarted(supabase, entry.pool_season_id)
+  if (seasonGuard.error) return seasonGuard
 
   if (entry?.player_type === 'reserviste') {
     const { count } = await supabase
@@ -256,9 +286,13 @@ export async function adminInitRosterAction(
 
   const { data: saisonConfig } = await supabase
     .from('pool_seasons')
-    .select('saison_start_date')
+    .select('saison_start_date, season_started')
     .eq('id', saisonId)
     .single()
+
+  if (saisonConfig?.season_started) {
+    return { error: 'Saison déjà démarrée — utiliser les outils de gestion normaux (Transactions, Gestion d\'effectifs).' }
+  }
 
   const initAddedAt = saisonConfig?.saison_start_date
     ? `${saisonConfig.saison_start_date}T12:00:00Z`
@@ -333,6 +367,10 @@ export async function viderRostersAction(saisonId: number): Promise<{ error?: st
   if (!me?.is_admin) return { error: 'Accès refusé.' }
 
   const supabase = createAdminClient()
+
+  const seasonGuard = await assertSeasonNotStarted(supabase, saisonId)
+  if (seasonGuard.error) return seasonGuard
+
   const { error, count } = await supabase
     .from('pooler_rosters')
     .delete({ count: 'exact' })
@@ -352,13 +390,19 @@ export async function submitRosterAction(
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
 
-  // Récupérer le roster courant pour validation et détection des types
-  const { data: current } = await supabase
-    .from('pooler_rosters')
-    .select('id, player_id, player_type, players(position, is_rookie, draft_year, nhl_id)')
-    .eq('pooler_id', poolerId)
-    .eq('pool_season_id', saisonId)
-    .eq('is_active', true)
+  const [{ data: current }, { data: saison }, { data: settings }] = await Promise.all([
+    // Récupérer le roster courant pour validation et détection des types
+    supabase
+      .from('pooler_rosters')
+      .select('id, player_id, player_type, players(position, is_rookie, draft_year, nhl_id, player_contracts(season, cap_number))')
+      .eq('pooler_id', poolerId)
+      .eq('pool_season_id', saisonId)
+      .eq('is_active', true),
+    supabase.from('pool_seasons').select('season, pool_cap').eq('id', saisonId).single(),
+    supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
+  ])
+  if (!saison) return { error: 'Saison introuvable.' }
+  const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
 
   const currentMap = new Map(
     (current ?? []).map((r: any) => [r.id, r]),
@@ -367,7 +411,7 @@ export async function submitRosterAction(
   const removeSet = new Set(toRemove)
   const changeMap = new Map(toChangeType.map(c => [c.entryId, c.newType]))
 
-  type FinalEntry = { player_type: string; position: string | null; is_rookie: boolean }
+  type FinalEntry = { player_type: string; position: string | null; is_rookie: boolean; capNumber: number }
   const finalEntries: FinalEntry[] = []
 
   const draftYearCutoff = await getDraftYearCutoff(supabase, saisonId)
@@ -385,11 +429,12 @@ export async function submitRosterAction(
       player_type: newType,
       position:    row.players?.position ?? null,
       is_rookie:   row.players?.is_rookie ?? false,
+      capNumber:   getEffectiveCap(row.players?.player_contracts, saison.season, unsignedMultiplier).cap,
     })
   }
 
   for (const entry of toAdd) {
-    const { data: player } = await supabase.from('players').select('position, is_rookie, draft_year').eq('id', entry.player_id).single()
+    const { data: player } = await supabase.from('players').select('position, is_rookie, draft_year, player_contracts(season, cap_number)').eq('id', entry.player_id).single()
     const isEligible = player?.is_rookie || (player?.draft_year != null && player.draft_year >= draftYearCutoff)
     if (entry.player_type === 'recrue' && !isEligible) {
       return { error: `Seuls les joueurs recrues peuvent aller dans la banque de recrues.` }
@@ -398,27 +443,13 @@ export async function submitRosterAction(
       player_type: entry.player_type,
       position:    player?.position ?? null,
       is_rookie:   player?.is_rookie ?? false,
+      capNumber:   getEffectiveCap(player?.player_contracts, saison.season, unsignedMultiplier).cap,
     })
   }
 
-  // Validation de l'état final
-  const actifs = finalEntries.filter(e => e.player_type === 'actif')
-  const reservistes = finalEntries.filter(e => e.player_type === 'reserviste')
-
-  const counts = actifs.reduce(
-    (acc, e) => { acc[getPlayerBucket(e.position)] += 1; return acc },
-    { forward: 0, defense: 0, goalie: 0 } as Record<Bucket, number>,
-  )
-
-  for (const bucket of (['forward', 'defense', 'goalie'] as Bucket[])) {
-    if (counts[bucket] > ACTIVE_LIMITS[bucket]) {
-      return { error: `Limite dépassée pour les ${BUCKET_LABELS[bucket]} (${ACTIVE_LIMITS[bucket]} max).` }
-    }
-  }
-
-  if (reservistes.length < 2) {
-    return { error: `Un minimum de 2 réservistes est requis (${reservistes.length} dans cet alignement).` }
-  }
+  // Validation de l'état final — mêmes règles que submitTransactionAction/submitBatchAction
+  const validationError = validateRosterLimits(finalEntries, saison.pool_cap)
+  if (validationError) return { error: validationError }
 
   // Application — retraits
   for (const rosterId of toRemove) {

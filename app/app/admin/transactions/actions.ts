@@ -3,6 +3,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/rosterTypeChange'
 import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
+import { validateRosterLimits } from '@/lib/rosterLimits'
+import { getEffectiveCap } from '@/lib/capUtils'
 
 export type ActionType = 'transfer' | 'promote' | 'sign' | 'reactivate' | 'release' | 'type_change'
 
@@ -26,13 +28,6 @@ type VEntry = {
 }
 
 
-function getPlayerBucket(position: string | null): 'forward' | 'defense' | 'goalie' {
-  const pos = (position ?? '').toUpperCase()
-  if (pos.includes('G')) return 'goalie'
-  if (pos.includes('D')) return 'defense'
-  return 'forward'
-}
-
 // Choix du change_type roster_change_log — mêmes libellés que /gestion-effectifs et
 // /admin/rosters (CHANGE_LABEL dans admin/pool/page.tsx et poolers/[id]/PoolerPageTabs.tsx)
 // pour que le journal (Suivi) reste cohérent peu importe l'interface d'origine.
@@ -48,28 +43,6 @@ function pickChangeType(oldType: string | null, newType: string | null): string 
   if (oldType === 'actif') return 'deactivation'
   if (newType === 'ltir') return 'ltir'
   return 'changement_type'
-}
-
-const ACTIVE_LIMITS = { forward: 12, defense: 6, goalie: 2 }
-
-function validateFinalRoster(entries: VEntry[], poolCap: number): string | null {
-  const actifs = entries.filter(e => e.player_type === 'actif')
-  const reservistes = entries.filter(e => e.player_type === 'reserviste')
-
-  const counts = actifs.reduce((acc, e) => {
-    acc[getPlayerBucket(e.position)] += 1
-    return acc
-  }, { forward: 0, defense: 0, goalie: 0 })
-
-  if (counts.forward > ACTIVE_LIMITS.forward) return `Trop d'attaquants actifs (${counts.forward} / ${ACTIVE_LIMITS.forward})`
-  if (counts.defense > ACTIVE_LIMITS.defense) return `Trop de défenseurs actifs (${counts.defense} / ${ACTIVE_LIMITS.defense})`
-  if (counts.goalie > ACTIVE_LIMITS.goalie) return `Trop de gardiens actifs (${counts.goalie} / ${ACTIVE_LIMITS.goalie})`
-  if (reservistes.length < 2) return `Minimum 2 réservistes requis (${reservistes.length})`
-
-  const cap = [...actifs, ...reservistes].reduce((sum, e) => sum + e.cap_number, 0)
-  if (cap > poolCap) return `Cap dépassé (${new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(cap)} / ${new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(poolCap)})`
-
-  return null
 }
 
 export async function loadRosterAction(poolerId: string, saisonId: number) {
@@ -133,8 +106,16 @@ export async function submitTransactionAction(
   if (!me?.is_admin) return { error: 'Accès refusé.' }
   if (items.length === 0) return { error: 'La transaction est vide.' }
 
-  const { data: saison } = await supabase.from('pool_seasons').select('season, pool_cap').eq('id', saisonId).single()
+  const [{ data: saison }, { data: settings }] = await Promise.all([
+    supabase.from('pool_seasons').select('season, pool_cap, season_started').eq('id', saisonId).single(),
+    supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
+  ])
   if (!saison) return { error: 'Saison introuvable.' }
+  const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
+
+  // Pré-saison (saison active mais pas encore démarrée via /admin/nouvelle-saison) : ni
+  // validation ni journalisation — voir CLAUDE.md section 6 / SUIVI_PROJET.md 2026-08-31.
+  const skipEnforcement = !saison.season_started
 
   // Fenêtre de protection recrue (5 saisons) — même formule que gestion-effectifs/actions.ts
   // et admin/rosters/actions.ts.
@@ -160,7 +141,7 @@ export async function submitTransactionAction(
   for (const id of affectedIds) virtual.set(id, [])
 
   for (const entry of (allRosters ?? []) as any[]) {
-    const cap = entry.players?.player_contracts?.find((c: any) => c.season === saison.season)?.cap_number ?? 0
+    const cap = getEffectiveCap(entry.players?.player_contracts, saison.season, unsignedMultiplier).cap
     virtual.get(entry.pooler_id)!.push({
       roster_id: entry.id,
       player_id: entry.player_id,
@@ -242,7 +223,7 @@ export async function submitTransactionAction(
         const eligible = !!(p.is_rookie || (p.draft_year != null && p.draft_year >= draftYearCutoff) || p.status === 'ELC')
         if (!eligible) return { error: `${p.last_name}, ${p.first_name} n'est pas admissible à la banque de recrues (protection recrue expirée et pas sur ELC).` }
       }
-      const cap = p.player_contracts?.find((c: any) => c.season === saison.season)?.cap_number ?? 0
+      const cap = getEffectiveCap(p.player_contracts, saison.season, unsignedMultiplier).cap
       virtual.get(to_pooler_id!)!.push({ roster_id: -1, player_id: player_id!, player_type: new_player_type!, position: p.position, cap_number: cap, nhl_id: p.nhl_id ?? null })
       continue
     }
@@ -272,12 +253,17 @@ export async function submitTransactionAction(
     }
   }
 
-  // Valider état final
-  for (const [poolerId, entries] of virtual) {
-    const err = validateFinalRoster(entries, saison.pool_cap)
-    if (err) {
-      const { data: p } = await supabase.from('poolers').select('name').eq('id', poolerId).single()
-      return { error: `${p?.name ?? poolerId}: ${err}` }
+  // Valider état final — sauté en pré-saison (voir skipEnforcement plus haut)
+  if (!skipEnforcement) {
+    for (const [poolerId, entries] of virtual) {
+      const err = validateRosterLimits(
+        entries.map(e => ({ player_type: e.player_type, position: e.position, capNumber: e.cap_number })),
+        saison.pool_cap,
+      )
+      if (err) {
+        const { data: p } = await supabase.from('poolers').select('name').eq('id', poolerId).single()
+        return { error: `${p?.name ?? poolerId}: ${err}` }
+      }
     }
   }
 
@@ -328,6 +314,7 @@ export async function submitTransactionAction(
   // (app/lib/standings.ts) ne voit jamais ces transitions et retombe sur le player_type
   // courant pour toute la fenêtre added_at→removed_at, faussant les points en rétroactif.
   async function log(playerId: number, poolerId: string, oldType: string | null, newType: string | null) {
+    if (skipEnforcement) return
     await supabase.from('roster_change_log').insert({
       player_id: playerId, pooler_id: poolerId, pool_season_id: saisonId,
       change_type: pickChangeType(oldType, newType), old_type: oldType, new_type: newType,

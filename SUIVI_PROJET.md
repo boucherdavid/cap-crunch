@@ -21,6 +21,72 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-31 (suite 10)
+
+**[Feature] — Nouveau cycle de vie pré-saison / saison active : "Démarrer la saison"**
+(`supabase_migrations/season_started.sql` [nouveau], `app/lib/rosterLimits.ts` [nouveau],
+`app/lib/seasonConformity.ts` [nouveau], `app/app/admin/transactions/actions.ts`,
+`app/app/admin/rosters/actions.ts`, `app/app/gestion-effectifs/actions.ts`,
+`app/app/gestion-effectifs/page.tsx`, `app/app/admin/nouvelle-saison/page.tsx`,
+`app/app/admin/nouvelle-saison/actions.ts` [nouveau],
+`app/app/admin/nouvelle-saison/DemarrerSaisonCard.tsx` [nouveau], `CLAUDE.md`) :
+- David a proposé de découpler "la saison est consultable" de "la saison est vraiment
+  démarrée" : activer `is_active` tôt (dès la transition des rosters) pour que les poolers
+  puissent tout consulter pendant la pré-saison, sans pouvoir s'auto-gérer avant qu'un
+  nouveau bouton "Démarrer la saison" ne soit cliqué — planifié en détail avec `EnterPlanMode`
+  (3 agents Explore en parallèle + 1 agent Plan) avant d'écrire du code, plan sauvegardé dans
+  `C:\Users\david\.claude\plans\frolicking-nibbling-platypus.md`.
+- **Nouvelle colonne `pool_seasons.season_started`** (migration manuelle, je n'ai pas d'accès
+  Postgres direct) — backfill `true` sur les saisons existantes avant de changer le défaut à
+  `false`, sinon la saison en cours perdrait instantanément toute validation/journalisation
+  au déploiement.
+- **`submitTransactionAction`** (admin/transactions) : saute `validateFinalRoster`/journal
+  quand `season_started=false` — n'affecte pas les inserts `transactions`/`transaction_items`
+  (audit admin, dont dépend `resetPresaisonDraftAction`).
+- **`gestion-effectifs/actions.ts` (`submitBatchAction`)** : nouveau verrou dur pour les
+  poolers non-admin — `season_started=false` bloque tout self-service (message distinct de
+  l'ancien `gestion_effectifs_ouvert`, gel indépendant toujours actif en parallèle). L'ancien
+  pattern `isPreseason` basé sur `saison_start_date` (comparaison de date, pas piloté par
+  l'admin) est remplacé par `!season_started` pour n'avoir qu'une seule définition de
+  "on est encore en préparation".
+- **David, en creusant sur cette dernière étape** : « il doit y avoir les mêmes règles
+  partout, mis à part quand l'admin override ». Audit complet (lecture de tous les
+  `actions.ts` hors `/admin`) : un seul chemin de mutation pooler-accessible existe pour la
+  saison régulière, `submitBatchAction`, qui ne validait **aucune** des règles d'alignement
+  (12/6/2, réservistes, cap) — trou confirmé et corrigé. Au passage, trouvé que
+  `submitTransactionAction` sous-évaluait les joueurs non signés à 0$ (pas `getEffectiveCap`)
+  et que `submitRosterAction` ne vérifiait le cap nulle part. **Consolidé les trois** dans un
+  validateur partagé (`app/lib/rosterLimits.ts`, `validateRosterLimits`) — corrige les deux
+  bugs au passage. `submitBatchAction` a dû être restructuré pour simuler l'état final du
+  roster (les actions du lot s'appliquaient une par une en écriture directe, pas d'état
+  virtuel construit d'abord contrairement à `submitRosterAction`) et valider **avant**
+  d'écrire quoi que ce soit.
+- **`app/lib/seasonConformity.ts`** (`checkSeasonConformity`) : validateur distinct et plus
+  strict (== 12/6/2 exactement, pas "au plus") utilisé uniquement comme condition de blocage
+  de "Démarrer la saison" — même forme de requête que `loadPresaisonDataAction`
+  (`presaison/actions.ts`, y compris la reclassification recrue-expirée→actif), mais pas
+  réutilisable tel quel (règles différentes).
+- **`demarrerSaisonAction`** (`admin/nouvelle-saison/actions.ts`) : bloque si
+  `saison_start_date` est vide (pas de fallback `now()` — doit être une date réelle et
+  délibérée) ou si des poolers ne sont pas conformes (liste détaillée retournée à l'UI) ;
+  sinon nettoie les `roster_change_log` antérieurs à la nouvelle date (protège
+  `buildStandings()` — un vieux log avant `added_at` peut faire ignorer silencieusement tout
+  un segment de points, confirmé en lisant `app/lib/standings.ts`), assigne `added_at` en bloc
+  à tous les actifs, et bascule `season_started=true`.
+- **Hub `/admin/nouvelle-saison` réorganisé** : "Activer la saison" déplacé de la dernière
+  position à la 2ᵉ (juste après transition des rosters) ; nouvelle carte interactive
+  "Démarrer la saison" en dernière position (`DemarrerSaisonCard.tsx` — aperçu de conformité
+  en direct, bouton désactivé tant qu'un pooler n'est pas conforme).
+- **Durcissement additionnel** (recommandé par moi, approuvé dans le plan) : Mode init/Banque
+  de recrues (`adminInitRosterAction`, `addPlayerAction`, `removePlayerAction`,
+  `updateRookieTypeAction`, `viderRostersAction`) refusent maintenant toute action dès que
+  `season_started=true` — sans ça, les utiliser par erreur après le vrai démarrage
+  corromprait silencieusement le classement sans aucune trace.
+- Migration **pas encore appliquée** en staging/prod au moment d'écrire ceci — David doit la
+  rouler manuellement avant que le code ne soit poussé (sinon toutes les requêtes
+  `season_started` échoueraient en production).
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
+
 ### 2026-08-31 (suite 9)
 
 **[Fix] — Banque de recrues alignée sur la philosophie "sans historique" de Mode init**

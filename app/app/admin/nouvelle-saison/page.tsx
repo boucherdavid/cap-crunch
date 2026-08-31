@@ -1,10 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { SaisonSelectNav } from '../init/SaisonSelectNav'
+import DemarrerSaisonCard from './DemarrerSaisonCard'
 
 export const dynamic = 'force-dynamic'
 
-type Saison = { id: number; season: string; is_active: boolean; pool_cap: number }
+type Saison = {
+  id: number; season: string; is_active: boolean; pool_cap: number
+  season_started: boolean; saison_start_date: string | null
+}
 
 type Step = {
   n: number
@@ -31,7 +35,7 @@ export default async function NouvelleSaisonPage({
 
   const { data: allSaisons } = await supabase
     .from('pool_seasons')
-    .select('id, season, is_active, pool_cap')
+    .select('id, season, is_active, pool_cap, season_started, saison_start_date')
     .eq('is_playoff', false)
     .order('season', { ascending: true })
 
@@ -75,39 +79,38 @@ export default async function NouvelleSaisonPage({
     },
     {
       n: 2,
+      title: 'Activer la saison',
+      description: "Rend la saison consultable par tous les poolers (alignements, classement, calendrier, banque de recrues) pendant que tu termines la préparation. Personne ne peut modifier son alignement avant l'étape 7.",
+      href: () => `/admin/pool?tab=config`,
+      status: saison.is_active ? 'Déjà active' : (activeSaison ? `Actuellement active : ${activeSaison.season}` : null),
+    },
+    {
+      n: 3,
       title: 'Choix de repêchage',
       description: 'Ajuster les picks échangés hors-app avant le repêchage des recrues.',
       href: id => `/admin/init?tab=choix&saisonId=${id}`,
       status: pickTotal ? `${pickTotal} choix créés` : 'Choix pas encore initialisés',
     },
     {
-      n: 3,
+      n: 4,
       title: 'Repêchage des recrues',
       description: 'Repêchage annuel en direct — assigne la nouvelle cohorte de recrues.',
       href: id => `/admin/repechage?saisonId=${id}`,
       status: pickTotal ? `${pickUsed ?? 0}/${pickTotal} sélections faites` : null,
     },
     {
-      n: 4,
+      n: 5,
       title: 'Banque de recrues',
       description: "Assigner les recrues pas encore activées à la banque de chaque pooler.",
       href: id => `/admin/init?tab=recrues&saisonId=${id}`,
       status: `${recrueCount ?? 0} recrue(s) en banque`,
     },
     {
-      n: 5,
+      n: 6,
       title: 'Pré-saison',
       description: 'Décisions ELC, libérations/ajustements, et repêchage guidé des agents libres.',
       href: id => `/admin/init?tab=presaison&saisonId=${id}`,
       status: null,
-    },
-    {
-      n: 6,
-      title: 'Activer la saison',
-      description: "Dernière étape, une fois toute la préparation ci-dessus terminée — bascule tout le monde (poolers, cap, règles de signature) sur cette saison.",
-      href: () => `/admin/pool?tab=config`,
-      status: saison.is_active ? 'Déjà active' : (activeSaison ? `Actuellement active : ${activeSaison.season}` : null),
-      emphasize: true,
     },
   ]
 
@@ -154,6 +157,11 @@ export default async function NouvelleSaisonPage({
             </div>
           </li>
         ))}
+        <DemarrerSaisonCard
+          saisonId={saison.id}
+          seasonStarted={saison.season_started}
+          saisonStartDate={saison.saison_start_date}
+        />
       </ol>
     </div>
   )

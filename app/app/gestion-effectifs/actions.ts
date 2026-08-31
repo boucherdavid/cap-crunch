@@ -7,6 +7,7 @@ import { sendPushToUser } from '@/lib/push'
 import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/rosterTypeChange'
 import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
 import { getEffectiveCap } from '@/lib/capUtils'
+import { validateRosterLimits } from '@/lib/rosterLimits'
 
 export type PlayerType = 'actif' | 'reserviste' | 'ltir' | 'recrue'
 
@@ -61,6 +62,7 @@ export type SaisonInfo = {
   maxSignaturesAl: number
   maxSignaturesLtir: number
   gestionEffectifsOuvert: boolean
+  seasonStarted: boolean
   isPlayoff: boolean
 }
 
@@ -90,7 +92,7 @@ export async function getActiveSaisonAction(): Promise<SaisonInfo | null> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('pool_seasons')
-    .select('id, season, pool_cap, delai_reactivation_jours, max_signatures_al, max_signatures_ltir, gestion_effectifs_ouvert, is_playoff')
+    .select('id, season, pool_cap, delai_reactivation_jours, max_signatures_al, max_signatures_ltir, gestion_effectifs_ouvert, season_started, is_playoff')
     .eq('is_active', true)
     .eq('is_playoff', false)
     .single()
@@ -103,6 +105,7 @@ export async function getActiveSaisonAction(): Promise<SaisonInfo | null> {
     maxSignaturesAl: data.max_signatures_al ?? 10,
     maxSignaturesLtir: data.max_signatures_ltir ?? 2,
     gestionEffectifsOuvert: data.gestion_effectifs_ouvert ?? true,
+    seasonStarted: data.season_started ?? true,
     isPlayoff: data.is_playoff ?? false,
   }
 }
@@ -244,9 +247,18 @@ export async function submitBatchAction(input: {
   // Fetch config
   const { data: saisonConfig } = await db
     .from('pool_seasons')
-    .select('delai_reactivation_jours, max_signatures_al, max_signatures_ltir, saison_start_date, season')
+    .select('delai_reactivation_jours, max_signatures_al, max_signatures_ltir, saison_start_date, season, season_started, pool_cap, gestion_effectifs_ouvert')
     .eq('id', input.saisonId)
     .single()
+
+  // Verrou pooler : self-service fermé tant que la saison n'est pas démarrée
+  // (/admin/nouvelle-saison → "Démarrer la saison"), et indépendamment tant que
+  // gestion_effectifs_ouvert=false (gel ponctuel, ex: date limite de transaction). Les
+  // admins contournent les deux, comme avant.
+  if (!isAdmin) {
+    if (!saisonConfig?.season_started) return { error: "La saison n'a pas encore démarré." }
+    if (!(saisonConfig.gestion_effectifs_ouvert ?? true)) return { error: "L'outil est temporairement fermé." }
+  }
 
   // Fenêtre de protection recrue (5 saisons) — même formule que getPoolerRosterAction()
   // et admin/rosters/actions.ts, revalidée ici côté serveur pour 'demote_rookie'.
@@ -258,9 +270,10 @@ export async function submitBatchAction(input: {
   const maxAl         = saisonConfig?.max_signatures_al ?? 10
   const maxLtir       = saisonConfig?.max_signatures_ltir ?? 2
 
-  // Pré-saison : si une date de début est définie et qu'on est avant cette date
-  const startDate = saisonConfig?.saison_start_date ? new Date(saisonConfig.saison_start_date) : null
-  const isPreseason = startDate !== null && new Date() < startDate
+  // Pré-saison (saison active mais pas encore démarrée) : ni validation ni journalisation,
+  // date effective forcée à la date de début — même flag que le verrou ci-dessus, pour ne
+  // pas avoir deux définitions de "on est encore en préparation" qui pourraient diverger.
+  const isPreseason = !saisonConfig?.season_started
   const isAdminOverride = !isPreseason && !!input.forcedDate && isAdmin
 
   // Joueurs touchés par le lot (des deux côtés — celui qui sort, celui qui entre) pour la
@@ -473,6 +486,112 @@ export async function submitBatchAction(input: {
     }
 
     await log(playerId, logType, null, playerType)
+  }
+
+  // ─── Validation de l'état final (poolers seulement — override admin délibéré) ─────────────
+  // Simule l'effet du lot sur le roster actif du pooler AVANT d'écrire quoi que ce soit, pour
+  // ne jamais laisser un état non conforme (12/6/2, réservistes, cap) atteindre la base —
+  // mêmes règles que submitTransactionAction/submitRosterAction (app/lib/rosterLimits.ts).
+  // Ne devient de toute façon atteignable qu'après "Démarrer la saison" (verrou plus haut).
+  if (!isAdmin) {
+    const [{ data: currentRows }, { data: settingsRow }] = await Promise.all([
+      db
+        .from('pooler_rosters')
+        .select('id, player_type, players (position, player_contracts (season, cap_number))')
+        .eq('pooler_id', input.poolerId)
+        .eq('pool_season_id', input.saisonId)
+        .eq('is_active', true),
+      db.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
+    ])
+    const unsignedMultiplier = settingsRow?.unsigned_player_cap_multiplier ?? 1.20
+    const season = saisonConfig?.season ?? ''
+
+    type VirtualEntry = { player_type: string; position: string | null; capNumber: number }
+    const virtual = new Map<number, VirtualEntry>()
+    for (const row of (currentRows ?? []) as any[]) {
+      virtual.set(row.id, {
+        player_type: row.player_type,
+        position: row.players?.position ?? null,
+        capNumber: getEffectiveCap(row.players?.player_contracts, season, unsignedMultiplier).cap,
+      })
+    }
+
+    // Nouveaux joueurs (sign/ballotage/ltir_sign)
+    const newPlayerIds = input.actions.filter(a => a.newPlayerId).map(a => a.newPlayerId!)
+    const newPlayerMap = new Map<number, any>()
+    if (newPlayerIds.length > 0) {
+      const { data: newPlayers } = await db.from('players').select('id, position, player_contracts (season, cap_number)').in('id', newPlayerIds)
+      for (const p of (newPlayers ?? [])) newPlayerMap.set(p.id, p)
+    }
+
+    let nextTempId = -1
+    for (const action of input.actions) {
+      switch (action.type) {
+        case 'change_status': {
+          if (action.entry1Id && action.newType1) {
+            const e = virtual.get(action.entry1Id)
+            if (e) e.player_type = action.newType1
+          }
+          if (action.entry2Id && action.newType2) {
+            const e = virtual.get(action.entry2Id)
+            if (e) e.player_type = action.newType2
+          }
+          break
+        }
+        case 'ltir': {
+          if (action.ltirEntryId) {
+            const e = virtual.get(action.ltirEntryId)
+            if (e) e.player_type = 'ltir'
+          }
+          break
+        }
+        case 'return_ltir': {
+          if (action.deactivateActifId) {
+            const e = virtual.get(action.deactivateActifId)
+            if (e) e.player_type = action.deactivateNewType ?? 'reserviste'
+          }
+          if (action.returnLtirEntryId) {
+            const e = virtual.get(action.returnLtirEntryId)
+            if (e) e.player_type = 'actif'
+          }
+          break
+        }
+        case 'ltir_sign': {
+          if (action.ltirEntryId) {
+            const e = virtual.get(action.ltirEntryId)
+            if (e) e.player_type = 'ltir'
+          }
+          if (action.newPlayerId) {
+            const p = newPlayerMap.get(action.newPlayerId)
+            virtual.set(nextTempId--, {
+              player_type: 'actif',
+              position: p?.position ?? null,
+              capNumber: getEffectiveCap(p?.player_contracts, season, unsignedMultiplier).cap,
+            })
+          }
+          break
+        }
+        case 'sign':
+        case 'ballotage': {
+          if (action.newPlayerId && action.newPlayerType) {
+            const p = newPlayerMap.get(action.newPlayerId)
+            virtual.set(nextTempId--, {
+              player_type: action.newPlayerType,
+              position: p?.position ?? null,
+              capNumber: getEffectiveCap(p?.player_contracts, season, unsignedMultiplier).cap,
+            })
+          }
+          break
+        }
+        case 'release': {
+          if (action.releaseEntryId) virtual.delete(action.releaseEntryId)
+          break
+        }
+      }
+    }
+
+    const limitError = validateRosterLimits(Array.from(virtual.values()), saisonConfig?.pool_cap ?? 0)
+    if (limitError) return { error: limitError }
   }
 
   // ─── Process actions ────────────────────────────────────────────────────────
