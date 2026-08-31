@@ -103,6 +103,12 @@ async function logChange(
   })
 }
 
+// addPlayerAction / updateRookieTypeAction / removePlayerAction sont utilisées exclusivement
+// par la Banque de recrues (Initialisation, `/admin/init?tab=recrues`) — même philosophie
+// "sans historique" que adminInitRosterAction : aucune écriture dans roster_change_log, et
+// un retrait supprime la ligne au lieu de la désactiver (David, 2026-08-31 — même bug que
+// Mode init : des lignes désactivées sans trace s'affichaient comme "PARTI" dans Mon équipe).
+
 export async function addPlayerAction(
   poolerId: string,
   playerId: number,
@@ -170,9 +176,6 @@ export async function addPlayerAction(
     rosterId = inserted.id
   }
 
-  const changeType = detectChangeType(null, playerType)
-  await logChange(supabase, playerId, poolerId, saisonId, changeType, null, playerType)
-
   revalidateRosterPages()
   return { id: rosterId }
 }
@@ -218,16 +221,9 @@ export async function removePlayerAction(rosterId: number): Promise<{ error?: st
     }
   }
 
-  if (entry) {
-    const oldType = entry.player_type as PlayerType
-    const changeType = detectChangeType(oldType, oldType, true)
-    await logChange(supabase, entry.player_id, entry.pooler_id, entry.pool_season_id, changeType, oldType, null)
-
-  }
-
   const { error } = await supabase
     .from('pooler_rosters')
-    .update({ is_active: false, removed_at: new Date().toISOString() })
+    .delete()
     .eq('id', rosterId)
 
   if (error) return { error: error.message }

@@ -21,6 +21,33 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-31 (suite 9)
+
+**[Fix] — Banque de recrues alignée sur la philosophie "sans historique" de Mode init**
+(`app/app/admin/rosters/actions.ts`, script ponctuel) :
+- David a confirmé le principe : tout ce qui se fait dans Initialisation (Rosters initiaux
+  **et** Banque de recrues) ne devrait laisser aucune trace, puisque ce n'est pas de l'
+  historique réel — juste de la mise en place.
+- `addPlayerAction`/`removePlayerAction` (utilisées exclusivement par la Banque de recrues,
+  confirmé — aucun autre appelant dans le code) journalisaient encore dans
+  `roster_change_log`, et `removePlayerAction` désactivait (`is_active=false`) au lieu de
+  supprimer — même défaut que le bug de `adminInitRosterAction` corrigé plus tôt. Retiré les
+  appels à `logChange`, `removePlayerAction` fait maintenant un `.delete()` complet.
+  `updateRookieTypeAction` ne journalisait déjà rien — inchangé.
+- Nettoyage en staging : les 13 lignes fantômes trouvées la fois précédente (recrues ajoutées
+  puis retirées de la banque) supprimées, ainsi que leurs 26 entrées `roster_change_log`
+  associées. Confirmé après coup : 0 ligne `is_active=false` restante pour 2025-26.
+- David a aussi demandé si un outil existe pour corriger/annuler des erreurs une fois la
+  saison réellement commencée (pas juste Initialisation) — répondu que ça existe déjà :
+  le Journal de `/admin/historique` a un `deleteHistLogAction` qui ne fait pas que supprimer
+  la ligne de log, il **annule aussi l'effet réel sur `pooler_rosters`** (restaure le type
+  précédent, réinsère/retire la ligne roster, gère même le transfert de pick) — avec
+  vérifications de cohérence qui refusent la suppression si l'état a divergé depuis. Déjà
+  câblé dans l'UI (sélection multiple + bouton, confirm "Supprimer et annuler leur effet sur
+  les alignements ?"). Contrairement au bouton ✕ de `/admin/pool?tab=suivi` qui, lui, ne
+  supprime que la ligne de log sans rien annuler côté roster — distinction à garder en tête.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
+
 ### 2026-08-31 (suite 8)
 
 **[Fix] — Résidus « PARTI » fantômes laissés par Mode init (Rosters initiaux)**
