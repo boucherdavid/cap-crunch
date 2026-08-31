@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-08-30
+Derniere mise a jour: 2026-08-31
 
 ## Role du fichier
 
@@ -20,6 +20,21 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-08-31 (suite 6)
+
+**[Process] — Promotion staging → prod validée par David**
+(aucun fichier applicatif modifié) :
+- David a confirmé « ça fonctionne » après avoir testé la recherche insensible aux accents
+  côté serveur sur staging — signal explicite de promotion selon la règle `CLAUDE.md`
+  section 10.
+- `git checkout main && git merge staging --no-edit && git push origin main` : fast-forward
+  propre (`f2a713d..6b1d875`, 18 fichiers). Contenu promu : réorg du menu pooler
+  (Alignements/Classement/LNH/Ressources, Pool Séries retiré de la nav), filtre de plage de
+  dates dans Suivi de l'activité, masquage des onglets config Pool Séries/Pointage Séries,
+  fix de l'id temporaire `Date.now()` dans la Banque de recrues, recherche insensible aux
+  accents (client + serveur via extension `unaccent`).
+- Retour sur `staging` ensuite pour la suite du travail.
 
 ### 2026-08-31 (suite 5)
 
