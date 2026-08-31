@@ -21,6 +21,30 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-08-31 (suite 2)
+
+**[Chore] — Trou trouvé dans le reset 2025-26 : `pool_draft_picks` pas réinitialisé**
+(script ponctuel) :
+- David a signalé que le reset de la session précédente rendait le repêchage recrues 2025-26
+  invalide : les 32 `pool_draft_picks` de la saison restaient marqués `is_used=true` (picks
+  "consommés" par le repêchage de test) alors que les lignes `pooler_rosters` correspondantes
+  avaient été supprimées — `submitDraftAction` (`app/app/admin/repechage/actions.ts`) marque
+  `is_used=true` en plus de créer la ligne roster, et mon reset n'avait touché que
+  `pooler_rosters`/`roster_change_log`/`transactions`, pas cette table.
+- Vérifié en staging : 32/32 picks `is_used=true`, 0 `pooler_rosters` avec `draft_pick_id` —
+  confirmé l'incohérence.
+- Recommandé à David de refaire le repêchage via `/admin/repechage` plutôt que d'entrer les
+  recrues manuellement dans la Banque de recrues (Initialisation) — cette dernière option
+  aurait laissé les picks coincés à `is_used=true` sans lien vers un roster, incohérence
+  permanente sans passer par `submitDraftAction`.
+- Reset appliqué en staging (script ponctuel, service key) : `pool_draft_picks.is_used = false`
+  et `pending_player_id = null` pour les 32 picks de la saison 2025-26 (id=1). Vérifié
+  après coup : 0/32 encore marqués utilisés.
+- À garder en tête pour un futur reset de saison similaire : la liste complète des tables
+  liées à une "saison de test" à vider est `pooler_rosters`, `roster_change_log`,
+  `transactions`/`transaction_items`, **et `pool_draft_picks`** (`is_used`/`pending_player_id`)
+  si un repêchage recrues a été testé.
+
 ### 2026-08-31 (suite)
 
 **[Fix] — Id temporaire (`Date.now()`) utilisé comme id de ligne dans la Banque de recrues**
