@@ -21,6 +21,20 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-01 (suite 2)
+
+**[Process] — Promotion staging → prod validée par David**
+(aucun fichier applicatif modifié) :
+- David a confirmé « C'est bon » après avoir testé la réorg des menus et le renommage
+  Journal des transactions sur staging.
+- `git checkout main && git merge staging --no-edit && git push origin main` : fast-forward
+  propre (`6b1d875..fe4e5b3`, 26 fichiers). Contenu promu : nouveau cycle de vie pré-saison/
+  saison active ("Démarrer la saison", `season_started`, consolidation des règles
+  d'alignement), liens directs Démarrer la saison → Pré-saison, pastille de notification
+  Admin uniformisée, découpage Gestion du pool/Communauté, réorg de l'ordre des menus
+  (consultation vs action) et renommage `/transactions` → `/journal-transactions`.
+- Retour sur `staging` ensuite pour la suite du travail.
+
 ### 2026-09-01 (suite)
 
 **[Refactor] — Réorganisation de l'ordre des menus (consultation vs action) + renommage Transactions**
