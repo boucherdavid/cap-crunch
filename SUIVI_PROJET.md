@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-08-31
+Derniere mise a jour: 2026-09-01
 
 ## Role du fichier
 
@@ -20,6 +20,36 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-09-01
+
+**[Refactor] — Découpage de Gestion du pool en deux hubs : Gestion du pool + Communauté**
+(`app/app/admin/pool/page.tsx`, `app/app/admin/communaute/page.tsx` [nouveau],
+`app/app/admin/config/ConfigTabsClient.tsx`, `app/components/Navbar.tsx`,
+`app/app/admin/page.tsx`, `app/app/admin/planification/page.tsx`,
+`app/app/planification/PlanificationManager.tsx`, `app/app/signaler/actions.ts`,
+`app/lib/rosterTypeChange.ts`, `CLAUDE.md`) :
+- David a trouvé que le hub `/admin/pool` (5 onglets : Poolers, Configuration, Communication,
+  Suivi, Planification) n'avait plus de logique de regroupement — juste de l'historique.
+  Discuté avec un sitemap visuel (Artifact, actuel vs proposé, même exercice que les
+  précédents), itéré sur le nom du nouveau hub (Communauté, retenu même si David n'était pas
+  100% convaincu) et le nom du sous-onglet renommé (Général, retenu — Configuration → Général
+  évite la redondance de "Paramètres" sous "Configuration").
+- **`/admin/pool`** recentré : ne garde que Poolers + Configuration (sous-onglets Saisons /
+  **Général** [ex-"Pool Saison"] / Pointage Saison).
+- **Nouveau `/admin/communaute`** : Communication (boîte de réception + notifications),
+  Suivi, Planification — code et données déplacés tels quels depuis `admin/pool/page.tsx`,
+  aucune logique changée.
+- **Dropdown Admin** : remonte de 6 à 7 entrées (nouvelle entrée "Communauté", avec la
+  pastille de notification qui la suit — elle ne concerne plus "Gestion du pool"). Compromis
+  accepté délibérément, à l'inverse de la consolidation du 2026-08-28 — jugé que la cohérence
+  du regroupement prime sur le nombre brut d'entrées.
+- Tous les liens croisés mis à jour : `/admin/planification` (redirection),
+  `PlanificationManager.tsx` (liens admin côté vue pooler), la notification push de
+  `/signaler`, le panneau `/admin` (nouvelle carte Communauté), un commentaire dans
+  `rosterTypeChange.ts`.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès, `/admin/communaute`
+  présent dans la liste des routes générées).
 
 ### 2026-08-31 (suite 12)
 

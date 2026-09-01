@@ -305,9 +305,10 @@ export default function Navbar({
                   </button>
                   {openDropdown === 'admin' && (
                     <div className="absolute left-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
-                      <Link href="/admin/pool"      className={dropdownLinkClass('/admin/pool')}>
+                      <Link href="/admin/pool"      className={dropdownLinkClass('/admin/pool')}>Gestion du pool</Link>
+                      <Link href="/admin/communaute" className={dropdownLinkClass('/admin/communaute')}>
                         <span className="flex items-center justify-between">
-                          Gestion du pool
+                          Communauté
                           {(unreadCount > 0 || unreadNotifCount > 0) && (
                             <span
                               className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full"
@@ -440,10 +441,11 @@ export default function Navbar({
                 <Link href="/compte"   className={mobileLinkClass('/compte')}>Mon compte</Link>
                 <Link href="/signaler" className={mobileLinkClass('/signaler')}>Signaler un problème</Link>
                 {effectiveIsAdmin &&<MobileSection label="Admin" />}
+                {effectiveIsAdmin &&<Link href="/admin/pool" className={mobileLinkClass('/admin/pool')}>Gestion du pool</Link>}
                 {effectiveIsAdmin &&(
-                  <Link href="/admin/pool" className={mobileLinkClass('/admin/pool')}>
+                  <Link href="/admin/communaute" className={mobileLinkClass('/admin/communaute')}>
                     <span className="flex items-center justify-between">
-                      Gestion du pool
+                      Communauté
                       {(unreadCount > 0 || unreadNotifCount > 0) && (
                         <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{unreadCount + unreadNotifCount}</span>
                       )}

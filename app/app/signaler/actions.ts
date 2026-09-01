@@ -28,7 +28,7 @@ export async function submitFeedbackAction(
   sendPushToAdmins({
     title: `Cap Crunch — ${TYPE_LABEL[type] ?? 'Retour'}`,
     body:  `${pooler?.name ?? 'Un pooler'} a soumis un retour : ${description.trim().slice(0, 80)}${description.length > 80 ? '…' : ''}`,
-    url:   '/admin/pool?tab=communication',
+    url:   '/admin/communaute?tab=communication',
   }).catch(() => {})
 
   return {}

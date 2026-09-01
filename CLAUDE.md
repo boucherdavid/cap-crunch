@@ -218,11 +218,20 @@ composant, pas de `?subtab=`), donc pas d'accès par URL directe comme pour `/ad
 
 | Hub | Onglets (`?tab=id` → label) |
 |---|---|
-| `/admin/pool` | `poolers` Poolers · `config` Configuration · `communication` Communication (feedback + notifs) · `suivi` Suivi (activité) · `planification` Planification (sondage type Doodle, admin) |
+| `/admin/pool` | `poolers` Poolers · `config` Configuration (sous-onglets `Saisons` / `Général` / `Pointage Saison` — `Général` = ex-"Pool Saison", renommé le 2026-09-01) |
+| `/admin/communaute` | `communication` Communication (feedback + notifs) · `suivi` Suivi (activité) · `planification` Planification (sondage type Doodle, admin) |
 | `/admin/init` | `rosters` Rosters initiaux · `recrues` Banque de recrues · `choix` Choix de repêchage (← réassigner le propriétaire d'un pick échangé hors-app) — réglages one-shot déjà en place pour la saison courante |
 | `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) |
 | `/admin/donnees` | `pipeline` Pipeline salaires/contrats/repêchages (doc, `PlayerMerge`) · `prospects` Classement des prospects |
 | `/admin/series` | pas d'onglets — vue unique (avancement des séries), message si aucune saison séries active. Retiré du dropdown Admin le 2026-08-28 (ne servait qu'aux tests, pas d'usage normal du pool des séries) — route et code conservés, toujours atteignable directement par URL. Depuis le 2026-08-30, également retiré du sous-menu "Pool Séries" côté pooler (voir ci-dessous) — plus aucun point d'entrée dans la nav, seulement l'URL directe |
+
+`/admin/pool` et `/admin/communaute` (2026-09-01) : `/admin/pool` regroupait auparavant les 5
+onglets Poolers/Configuration/Communication/Suivi/Planification, mais les deux premiers
+(structurel — qui est dans le pool, les règles) et les trois derniers (opérationnel — parler
+aux poolers, suivre l'activité) n'avaient plus de logique commune, juste de l'historique.
+Séparés en deux hubs (David) — le dropdown Admin remonte de 6 à 7 entrées, compromis accepté
+délibérément (à l'inverse de la consolidation du 2026-08-28, jugée moins importante ici que la
+cohérence du regroupement). Contenu de chaque onglet inchangé, juste déplacé.
 
 `/admin/init` a un 4ᵉ onglet valide non affiché dans sa barre d'onglets : `presaison`
 (Pré-saison — ELC, libérations, repêchage des agents libres). Ce n'est plus un réglage
@@ -240,8 +249,9 @@ l'étape suivante sans repasser par le menu Admin.
 
 `/admin/planification` (gestion du sondage — créer/réinitialiser, dates candidates, toggle
 "Mode avant-première") est depuis le 2026-08-28 une redirection volontaire vers
-`/admin/pool?tab=planification`, même pattern que `/admin/joueurs` et `/admin/draft-center`
-ci-dessous — la page publique `/planification` (vue pooler) n'est pas affectée.
+`/admin/communaute?tab=planification` (mise à jour le 2026-09-01, voir ci-dessus), même
+pattern que `/admin/joueurs` et `/admin/draft-center` ci-dessous — la page publique
+`/planification` (vue pooler) n'est pas affectée.
 
 Repêchage annuel en direct (tableau de sélection) : route à part `/admin/repechage`
 (pas un onglet — lien direct dans la Navbar), distinct de l'onglet `/admin/init?tab=choix`

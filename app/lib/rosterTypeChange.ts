@@ -31,7 +31,7 @@ export function computeTypeChangeAddedAt(
 // fausse "Période 2" dans le popup /classement, /poolers/[id]).
 // Volontairement bloquant plutôt qu'auto-nettoyant : impossible de distinguer ici un artefact
 // obsolète (sûr à supprimer) d'un véritable événement futur réel (ex: un vrai retrait déjà
-// survenu) sans risquer d'effacer une donnée réelle. L'admin tranche via /admin/pool?tab=suivi.
+// survenu) sans risquer d'effacer une donnée réelle. L'admin tranche via /admin/communaute?tab=suivi.
 export async function checkFutureRosterConflict(
   db: SupabaseClient,
   poolerId: string,

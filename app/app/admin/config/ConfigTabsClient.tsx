@@ -57,7 +57,7 @@ type Tab = 'saisons' | 'pool-saison' | 'pool-series' | 'pointage-saison' | 'poin
 // atteignables via ces onglets tant qu'aucune saison séries n'est en préparation.
 const TABS: { id: Tab; label: string }[] = [
   { id: 'saisons',          label: 'Saisons' },
-  { id: 'pool-saison',      label: 'Pool Saison' },
+  { id: 'pool-saison',      label: 'Général' },
   { id: 'pointage-saison',  label: 'Pointage Saison' },
 ]
 

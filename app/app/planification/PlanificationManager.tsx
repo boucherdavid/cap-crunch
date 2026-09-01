@@ -131,7 +131,7 @@ export default function PlanificationManager({
           {me.isAdmin && (
             <>
               {' '}
-              <Link href="/admin/pool?tab=planification" className="text-blue-600 hover:text-blue-800">
+              <Link href="/admin/communaute?tab=planification" className="text-blue-600 hover:text-blue-800">
                 Créer un sondage →
               </Link>
             </>
@@ -145,7 +145,7 @@ export default function PlanificationManager({
           {me.isAdmin && (
             <>
               {' '}
-              <Link href="/admin/pool?tab=planification" className="text-blue-600 hover:text-blue-800">
+              <Link href="/admin/communaute?tab=planification" className="text-blue-600 hover:text-blue-800">
                 Gérer les dates →
               </Link>
             </>

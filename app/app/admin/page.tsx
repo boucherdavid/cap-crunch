@@ -33,8 +33,15 @@ export default async function AdminPage() {
     {
       href: '/admin/pool',
       label: 'Gestion du pool',
-      desc: 'Poolers, configuration des saisons, paramètres de scoring, boîte de réception',
+      desc: 'Poolers, configuration des saisons, paramètres de scoring',
       color: 'border-blue-500',
+      badge: null,
+    },
+    {
+      href: '/admin/communaute',
+      label: 'Communauté',
+      desc: 'Boîte de réception, notifications, suivi de l\'activité, planification',
+      color: 'border-pink-500',
       badge: (nbNouveaux ?? 0) > 0 ? nbNouveaux : null,
     },
     {
