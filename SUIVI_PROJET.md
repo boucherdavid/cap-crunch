@@ -21,6 +21,40 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-01 (suite)
+
+**[Refactor] — Réorganisation de l'ordre des menus (consultation vs action) + renommage Transactions**
+(`app/components/Navbar.tsx`, `app/app/journal-transactions/` [renommé depuis
+`app/app/transactions/`], `CLAUDE.md`) :
+- Suite au découpage Gestion du pool/Communauté, David a demandé de revoir l'ordre de tous
+  les menus (poolers + Admin) et de séparer consultation vs action — exemple donné : dans
+  Alignements, "Mon équipe"/"Équipes" sont informatifs alors que "Gestion d'effectifs" est
+  une action. Discuté via sitemap visuel (Artifact, grille de cartes actuel/proposé par menu,
+  6 menus passés en revue).
+- **Alignements** : séparateur ajouté avant "Gestion d'effectifs" (les 3 items du dessus sont
+  consultation). Ordre inchangé sinon.
+- **Repêchage** : réordonné — Repêchage recrues (le repêchage du pool, directement pertinent)
+  remonté en premier, devant Classement des prospects et Repêchage LNH (référence externe).
+- **Classement, LNH, Ressources** : jugés déjà cohérents, aucun changement.
+- **Dropdown Admin** : regroupé en deux sections — "Opérations courantes" (Gestion des
+  effectifs, Communauté, Gestion du pool, Mise à jour de données) et "Mise en place
+  saisonnière" (Nouvelle saison, Initialisation, Repêchage recrues). Repéré et corrigé au
+  passage : le lien `/admin/repechage` (Repêchage recrues) manquait complètement du menu
+  mobile — ajouté.
+- **`/transactions` renommé `/journal-transactions`** : David a demandé de clarifier que
+  cette page est un historique en **lecture seule** (`TransactionsClient.tsx` ne fait
+  qu'afficher `transactions`/`transaction_items`, aucune action de soumission) — le nom
+  "Transactions" était réservé pour un futur outil où les poolers proposeraient eux-mêmes des
+  transactions avec approbation admin (pas encore construit). Dossier déplacé
+  (`git mv`), tous les liens internes mis à jour (Navbar desktop + mobile,
+  `router.push` dans `TransactionsClient.tsx`), titres de page renommés "Journal des
+  transactions". Distinct de `/admin/transactions` (outil admin existant, inchangé) — à garder
+  en tête si l'outil pooler-facing est construit un jour : il ne pourra pas non plus s'appeler
+  `/admin/transactions`.
+- Validé avec `tsc --noEmit` (0 erreur après un `rm -rf .next` pour vider le cache de route
+  périmé) et `npm run build` (succès, `/journal-transactions` présent, `/transactions` absent
+  de la liste des routes générées).
+
 ### 2026-09-01
 
 **[Refactor] — Découpage de Gestion du pool en deux hubs : Gestion du pool + Communauté**

@@ -179,7 +179,9 @@ mettre à jour cette section dès qu'une route ou un onglet admin change (voir s
 
 **Utilisateur :**
 `/` `/login` `/joueurs` `/statistiques` `/repechage` `/repechage-recrues` `/calendrier`
-`/poolers` `/poolers/[id]` `/transactions` `/classement` `/resultats` (récap veille)
+`/poolers` `/poolers/[id]` `/journal-transactions` (historique en lecture seule — pas de
+saisie pooler ; distinct de `/admin/transactions`, l'outil admin) `/classement` `/resultats`
+(récap veille)
 `/gestion-series` (soumettre ses choix séries) `/classement-series` (classement séries)
 `/gestion-effectifs` `/draft-center` (classement des prospects, vue publique)
 `/dashboard` (redirige vers son propre alignement) `/compte` `/signaler` `/aide` `/offline`
@@ -188,15 +190,21 @@ le résumé, le babillard ; notifie les admins par push à chaque soumission/com
 Gestion (créer le sondage, ajouter/retirer des dates, toggle "Mode avant-première") sur
 `/admin/planification`, pas sur `/planification` elle-même.
 
-**Menu pooler (`Navbar.tsx`) — réorganisé le 2026-08-30 :**
+**Menu pooler (`Navbar.tsx`) — réorganisé le 2026-08-30, ordre/regroupement affinés le
+2026-09-01 :**
 
 | Dropdown | Contenu |
 |---|---|
-| Alignements (ex-Pool Saison) | Mon équipe · Équipes · Transactions · Gestion d'effectifs |
+| Alignements (ex-Pool Saison) | Mon équipe · Équipes · Journal des transactions — puis séparateur — Gestion d'effectifs (les 3 premiers = consultation, le dernier = action) |
 | Classement | Saison complète · Hebdomadaire (à venir) · Mensuel (à venir) — sorti d'Alignements pour son propre menu |
 | LNH | 3 sections : Statistiques (LNH, AHL à venir) · Calendrier · Contrats (ex-"Contrats LNH", ex-item à plat) |
-| Repêchage | Classement des prospects · Repêchage LNH · Repêchage recrues — inchangé |
+| Repêchage | Repêchage recrues · Classement des prospects · Repêchage LNH — réordonné le 2026-09-01 (le repêchage du pool lui-même, plus pertinent au quotidien, remonté en premier — même principe que "Mon équipe" en tête d'Alignements) |
 | Ressources (nouveau) | Planification · Aide & Règlements (déplacé du menu Compte/avatar) |
+
+**`/transactions` renommé `/journal-transactions` le 2026-09-01** (David) : c'est un historique
+en lecture seule (aucune saisie pooler), et le nom "Transactions" était réservé pour un futur
+outil où les poolers proposeraient eux-mêmes des transactions (avec approbation admin) — pas
+encore construit. Distinct de `/admin/transactions` (outil admin, inchangé).
 
 Pool Séries (`/gestion-series`, `/classement-series`, `/resultats`) retiré de la nav pooler le
 même jour — route et code conservés, plus atteignable que par URL directe (le pool ne fait
@@ -232,6 +240,12 @@ aux poolers, suivre l'activité) n'avaient plus de logique commune, juste de l'h
 Séparés en deux hubs (David) — le dropdown Admin remonte de 6 à 7 entrées, compromis accepté
 délibérément (à l'inverse de la consolidation du 2026-08-28, jugée moins importante ici que la
 cohérence du regroupement). Contenu de chaque onglet inchangé, juste déplacé.
+
+**Dropdown Admin réordonné le 2026-09-01** en deux sections (`Navbar.tsx`) : "Opérations
+courantes" (Gestion des effectifs · Communauté · Gestion du pool · Mise à jour de données,
+utilisés en continu) puis "Mise en place saisonnière" (Nouvelle saison · Initialisation ·
+Repêchage recrues, utilisés seulement lors d'une transition). Même principe que le
+regroupement consultation/action côté pooler (Alignements).
 
 `/admin/init` a un 4ᵉ onglet valide non affiché dans sa barre d'onglets : `presaison`
 (Pré-saison — ELC, libérations, repêchage des agents libres). Ce n'est plus un réglage
@@ -454,7 +468,7 @@ Règle : quand on touche une page de consultation, on la rend responsive en mêm
 - Pas de layout en colonnes côte à côte sur mobile (`flex-wrap` ou `grid-cols-1`)
 
 Pages de consultation : `/`, `/joueurs`, `/statistiques`, `/repechage`,
-`/poolers`, `/poolers/[id]`, `/transactions`, `/gestion-series`, `/classement-series`, `/aide`
+`/poolers`, `/poolers/[id]`, `/journal-transactions`, `/gestion-series`, `/classement-series`, `/aide`
 
 ---
 

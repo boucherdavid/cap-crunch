@@ -117,13 +117,13 @@ export default function TransactionsClient({
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Transactions</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Journal des transactions</h1>
           <p className="text-gray-500 text-sm">Saison {saison.season}</p>
         </div>
         {saisons.length > 1 && (
           <select
             value={saison.season}
-            onChange={e => router.push(`/transactions?saison=${e.target.value}`)}
+            onChange={e => router.push(`/journal-transactions?saison=${e.target.value}`)}
             className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 bg-white"
           >
             {saisons.map((s: any) => (

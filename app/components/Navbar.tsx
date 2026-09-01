@@ -202,14 +202,15 @@ export default function Navbar({
               {/* Alignements */}
               <div className="relative">
                 <button onClick={() => toggle('alignements')}
-                  className={navBtnClass(isActive('/dashboard', '/transactions', '/poolers', '/gestion-effectifs'))}>
+                  className={navBtnClass(isActive('/dashboard', '/journal-transactions', '/poolers', '/gestion-effectifs'))}>
                   Alignements <Chevron open={openDropdown === 'alignements'} />
                 </button>
                 {openDropdown === 'alignements' && (
                   <div className="absolute left-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
                     {userName && <Link href="/dashboard"            className={dropdownLinkClass('/dashboard')}>Mon équipe</Link>}
                     <Link href="/poolers"                          className={dropdownLinkClass('/poolers')}>Équipes</Link>
-                    <Link href="/transactions"                     className={dropdownLinkClass('/transactions')}>Transactions</Link>
+                    <Link href="/journal-transactions"             className={dropdownLinkClass('/journal-transactions')}>{'Journal des transactions'}</Link>
+                    {userName && <div className="border-t my-1" />}
                     {userName && <Link href="/gestion-effectifs"  className={dropdownLinkClass('/gestion-effectifs')}>Gestion d&apos;effectifs</Link>}
                   </div>
                 )}
@@ -265,9 +266,9 @@ export default function Navbar({
                 </button>
                 {openDropdown === 'repechage' && (
                   <div className="absolute left-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
+                    <Link href="/repechage-recrues" className={dropdownLinkClass('/repechage-recrues')}>{'Repêchage recrues'}</Link>
                     <Link href="/draft-center" className={dropdownLinkClass('/draft-center')}>{'Classement des prospects'}</Link>
                     <Link href="/repechage" className={dropdownLinkClass('/repechage')}>{'Repêchage LNH'}</Link>
-                    <Link href="/repechage-recrues" className={dropdownLinkClass('/repechage-recrues')}>{'Repêchage recrues'}</Link>
                   </div>
                 )}
               </div>
@@ -304,8 +305,9 @@ export default function Navbar({
                     <Chevron open={openDropdown === 'admin'} />
                   </button>
                   {openDropdown === 'admin' && (
-                    <div className="absolute left-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
-                      <Link href="/admin/pool"      className={dropdownLinkClass('/admin/pool')}>Gestion du pool</Link>
+                    <div className="absolute left-0 top-full mt-1 w-60 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
+                      <div className="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Opérations courantes</div>
+                      <Link href="/admin/effectifs" className={dropdownLinkClass('/admin/effectifs')}>{'Gestion des effectifs'}</Link>
                       <Link href="/admin/communaute" className={dropdownLinkClass('/admin/communaute')}>
                         <span className="flex items-center justify-between">
                           Communauté
@@ -319,11 +321,13 @@ export default function Navbar({
                           )}
                         </span>
                       </Link>
+                      <Link href="/admin/pool"      className={dropdownLinkClass('/admin/pool')}>Gestion du pool</Link>
+                      <Link href="/admin/donnees"    className={dropdownLinkClass('/admin/donnees')}>{'Mise à jour de données'}</Link>
+                      <div className="border-t my-1" />
+                      <div className="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Mise en place saisonnière</div>
                       <Link href="/admin/nouvelle-saison" className={dropdownLinkClass('/admin/nouvelle-saison')}>Nouvelle saison</Link>
                       <Link href="/admin/init"      className={dropdownLinkClass('/admin/init')}>Initialisation</Link>
                       <Link href="/admin/repechage" className={dropdownLinkClass('/admin/repechage')}>{'Repêchage recrues'}</Link>
-                      <Link href="/admin/effectifs" className={dropdownLinkClass('/admin/effectifs')}>{'Gestion des effectifs'}</Link>
-                      <Link href="/admin/donnees"    className={dropdownLinkClass('/admin/donnees')}>{'Mise à jour de données'}</Link>
                     </div>
                   )}
                 </div>
@@ -410,7 +414,7 @@ export default function Navbar({
             <MobileSection label="Alignements" />
             {userName && <Link href="/dashboard"           className={mobileLinkClass('/dashboard')}>Mon équipe</Link>}
             <Link href="/poolers"                          className={mobileLinkClass('/poolers')}>Équipes</Link>
-            <Link href="/transactions"                     className={mobileLinkClass('/transactions')}>Transactions</Link>
+            <Link href="/journal-transactions"             className={mobileLinkClass('/journal-transactions')}>{'Journal des transactions'}</Link>
             {userName && <Link href="/gestion-effectifs"  className={mobileLinkClass('/gestion-effectifs')}>Gestion d&apos;effectifs</Link>}
 
             <MobileSection label="Classement" />
@@ -425,9 +429,9 @@ export default function Navbar({
             <Link href="/joueurs"    className={mobileLinkClass('/joueurs')}>Contrats LNH</Link>
 
             <MobileSection label={'Repêchage'} />
+            <Link href="/repechage-recrues" className={mobileLinkClass('/repechage-recrues')}>{'Repêchage recrues'}</Link>
             <Link href="/draft-center" className={mobileLinkClass('/draft-center')}>{'Classement des prospects'}</Link>
             <Link href="/repechage"  className={mobileLinkClass('/repechage')}>{'Repêchage LNH'}</Link>
-            <Link href="/repechage-recrues" className={mobileLinkClass('/repechage-recrues')}>{'Repêchage recrues'}</Link>
 
             <MobileSection label="Ressources" />
             <Link href="/planification" className={mobileLinkClass('/planification')}>Planification</Link>
@@ -440,8 +444,8 @@ export default function Navbar({
                 <MobileSection label="Compte" />
                 <Link href="/compte"   className={mobileLinkClass('/compte')}>Mon compte</Link>
                 <Link href="/signaler" className={mobileLinkClass('/signaler')}>Signaler un problème</Link>
-                {effectiveIsAdmin &&<MobileSection label="Admin" />}
-                {effectiveIsAdmin &&<Link href="/admin/pool" className={mobileLinkClass('/admin/pool')}>Gestion du pool</Link>}
+                {effectiveIsAdmin &&<MobileSection label="Admin — opérations courantes" />}
+                {effectiveIsAdmin &&<Link href="/admin/effectifs" className={mobileLinkClass('/admin/effectifs')}>{'Gestion des effectifs'}</Link>}
                 {effectiveIsAdmin &&(
                   <Link href="/admin/communaute" className={mobileLinkClass('/admin/communaute')}>
                     <span className="flex items-center justify-between">
@@ -452,10 +456,12 @@ export default function Navbar({
                     </span>
                   </Link>
                 )}
+                {effectiveIsAdmin &&<Link href="/admin/pool" className={mobileLinkClass('/admin/pool')}>Gestion du pool</Link>}
+                {effectiveIsAdmin &&<Link href="/admin/donnees"   className={mobileLinkClass('/admin/donnees')}>{'Mise à jour de données'}</Link>}
+                {effectiveIsAdmin &&<MobileSection label="Admin — mise en place saisonnière" />}
                 {effectiveIsAdmin &&<Link href="/admin/nouvelle-saison" className={mobileLinkClass('/admin/nouvelle-saison')}>Nouvelle saison</Link>}
                 {effectiveIsAdmin &&<Link href="/admin/init"      className={mobileLinkClass('/admin/init')}>Initialisation</Link>}
-                {effectiveIsAdmin &&<Link href="/admin/effectifs" className={mobileLinkClass('/admin/effectifs')}>{'Gestion des effectifs'}</Link>}
-                {effectiveIsAdmin &&<Link href="/admin/donnees"   className={mobileLinkClass('/admin/donnees')}>{'Mise à jour de données'}</Link>}
+                {effectiveIsAdmin &&<Link href="/admin/repechage" className={mobileLinkClass('/admin/repechage')}>{'Repêchage recrues'}</Link>}
                 {isAdmin && (
                   <button onClick={togglePoolerView}
                     className="block text-left px-3 py-2 rounded text-sm font-medium text-amber-300 hover:bg-pool-navy-light transition-colors">

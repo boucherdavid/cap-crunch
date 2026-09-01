@@ -22,7 +22,7 @@ export default async function TransactionsPage({
   if (!saisons || saisons.length === 0) {
     return (
       <div>
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Transactions</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-4">Journal des transactions</h1>
         <p className="text-gray-400">Aucune saison disponible.</p>
       </div>
     )
