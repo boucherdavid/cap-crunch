@@ -462,14 +462,15 @@ export async function submitBatchAction(input: {
       .from('pooler_rosters').select('id')
       .eq('pooler_id', input.poolerId).eq('player_id', playerId)
       .eq('pool_season_id', input.saisonId).maybeSingle()
+    // Pas de date tant que la saison n'est pas démarrée pour de vrai (David, 2026-09-02).
     if (existing) {
       await db.from('pooler_rosters')
-        .update({ is_active: true, player_type: playerType, removed_at: null, added_at: changedAt, ...rookieFields }).eq('id', existing.id)
+        .update({ is_active: true, player_type: playerType, removed_at: null, added_at: isPreseason ? null : changedAt, ...rookieFields }).eq('id', existing.id)
     } else {
       await db.from('pooler_rosters').insert({
         pooler_id: input.poolerId, player_id: playerId,
         pool_season_id: input.saisonId, player_type: playerType, is_active: true,
-        added_at: changedAt, ...rookieFields,
+        added_at: isPreseason ? null : changedAt, ...rookieFields,
       })
     }
 

@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-02
+Derniere mise a jour: 2026-09-02 (suite 2)
 
 ## Role du fichier
 
@@ -43,6 +43,39 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   touche jamais `is_active`/`season_started` (hors de sa portée délibérée). Donc : activer
   2026-27 en prod d'abord → rouler le sync → cliquer "Démarrer la saison" **séparément en
   prod aussi** une fois prêt (le script ne le fait pas automatiquement).
+
+### 2026-09-02 (suite 2)
+
+**[Fix] — `added_at` ne doit plus recevoir la date de préparation pré-saison**
+(`app/app/admin/config/actions.ts`, `app/app/admin/rosters/actions.ts`,
+`app/app/admin/transactions/actions.ts`, `app/app/gestion-effectifs/actions.ts`) :
+- David a testé la transition de saison en staging puis remarqué (popup "↩" sur la fiche d'un
+  joueur) que `pooler_rosters.added_at` recevait la date réelle de la manipulation admin (ex:
+  "actif depuis 2 sept., 08 h 53") au lieu de rester vide tant que la saison n'est pas
+  démarrée pour de vrai. Rappel de sa demande : « il ne devrait pas y avoir de date [pendant
+  la préparation] et la date devrait apparaître lorsque je démarre la saison. De plus, la date
+  des joueurs lorsqu'on démarre la saison devrait être celle du début de saison. »
+- Vérifié avant de coder que rien d'autre n'avait besoin de changer : `buildStandings()`
+  (`app/lib/standings.ts`) saute déjà proprement toute ligne avec `added_at` `null`
+  (`if (!addedAt) continue`), `computeTypeChangeAddedAt()` (`app/lib/rosterTypeChange.ts`) ne
+  fait rien quand `added_at` courant est déjà `null`, et `demarrerSaisonAction`
+  (construit plus tôt dans le chantier "Démarrer la saison") assigne déjà `saison_start_date`
+  en bloc à `added_at` au démarrage — donc le second point de la demande était déjà satisfait
+  sans changement, et le repli proposé par David ("date officielle NHL automatique" vs saisie
+  manuelle) n'a pas eu besoin d'être tranché : c'est déjà la saisie manuelle existante.
+- 4 points d'écriture corrigés pour ne plus écrire de date réelle tant que
+  `season_started === false` : `transitionSeasonAction` (`toInsert`, désormais `added_at:
+  null` explicite), `adminInitRosterAction`/`addPlayerAction` (Mode init + Banque de recrues,
+  désormais `added_at: null` inconditionnel — ces chemins sont "sans historique" toute
+  l'année, pas seulement en pré-saison), `submitTransactionAction` (4 sites d'écriture,
+  `added_at: skipEnforcement ? null : txTs`, réutilise le flag déjà en place), `addNewPlayer`
+  dans `gestion-effectifs/actions.ts` (2 sites, `added_at: isPreseason ? null : changedAt`,
+  idem).
+- Staging nettoyé après coup (script ponctuel, scratchpad) : `added_at` remis à `null` sur les
+  326 lignes actives de la saison 2026-27 déjà créées par le test de transition de David, pour
+  que la suite de son test reflète le nouveau comportement sans attendre un nouveau cycle
+  complet.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
 
 ### 2026-09-02 (suite)
 

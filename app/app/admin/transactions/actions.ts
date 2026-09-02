@@ -356,11 +356,12 @@ export async function submitTransactionAction(
 
       // Ajouter au roster dest
       const { data: existingDest } = await supabase.from('pooler_rosters').select('id').eq('pooler_id', to_pooler_id!).eq('player_id', player_id).eq('pool_season_id', saisonId).maybeSingle()
+      // Pas de date tant que la saison n'est pas démarrée pour de vrai (David, 2026-09-02).
       if (existingDest) {
-        const { error: e2 } = await supabase.from('pooler_rosters').update({ is_active: true, player_type: destType, removed_at: null, added_at: txTs }).eq('id', existingDest.id)
+        const { error: e2 } = await supabase.from('pooler_rosters').update({ is_active: true, player_type: destType, removed_at: null, added_at: skipEnforcement ? null : txTs }).eq('id', existingDest.id)
         if (e2) return { error: e2.message }
       } else {
-        const { error: e2 } = await supabase.from('pooler_rosters').insert({ pooler_id: to_pooler_id, player_id, pool_season_id: saisonId, player_type: destType, is_active: true, added_at: txTs })
+        const { error: e2 } = await supabase.from('pooler_rosters').insert({ pooler_id: to_pooler_id, player_id, pool_season_id: saisonId, player_type: destType, is_active: true, added_at: skipEnforcement ? null : txTs })
         if (e2) return { error: e2.message }
       }
       await log(player_id, to_pooler_id!, null, destType)
@@ -404,12 +405,13 @@ export async function submitTransactionAction(
       // ELC (protection 5 saisons, pool_draft_year requis, non déductible ici).
       const rookieFields = new_player_type === 'recrue' ? { rookie_type: 'agent_libre' } : {}
 
+      // Pas de date tant que la saison n'est pas démarrée pour de vrai (David, 2026-09-02).
       const { data: existing } = await supabase.from('pooler_rosters').select('id').eq('pooler_id', to_pooler_id!).eq('player_id', player_id!).eq('pool_season_id', saisonId).maybeSingle()
       if (existing) {
-        const { error } = await supabase.from('pooler_rosters').update({ is_active: true, player_type: new_player_type!, removed_at: null, added_at: txTs, ...rookieFields }).eq('id', existing.id)
+        const { error } = await supabase.from('pooler_rosters').update({ is_active: true, player_type: new_player_type!, removed_at: null, added_at: skipEnforcement ? null : txTs, ...rookieFields }).eq('id', existing.id)
         if (error) return { error: error.message }
       } else {
-        const { error } = await supabase.from('pooler_rosters').insert({ pooler_id: to_pooler_id, player_id, pool_season_id: saisonId, player_type: new_player_type, is_active: true, added_at: txTs, ...rookieFields })
+        const { error } = await supabase.from('pooler_rosters').insert({ pooler_id: to_pooler_id, player_id, pool_season_id: saisonId, player_type: new_player_type, is_active: true, added_at: skipEnforcement ? null : txTs, ...rookieFields })
         if (error) return { error: error.message }
       }
       await log(player_id!, to_pooler_id!, null, new_player_type!)

@@ -279,6 +279,13 @@ export async function transitionSeasonAction(
         rookie_type: e.rookie_type ?? null,
         pool_draft_year: e.pool_draft_year ?? null,
         is_active: true,
+        // Pas de date tant que la saison n'est pas démarrée pour de vrai — "Démarrer la
+        // saison" (nouvelle-saison/actions.ts) assigne la vraie date de début en bloc à ce
+        // moment-là. buildStandings() gère déjà added_at=null proprement (ligne ignorée,
+        // 0 période) — évite d'afficher une fausse période "actif depuis [date de la
+        // transition]" aux poolers qui consultent leur équipe pendant la pré-saison
+        // (David, 2026-09-02).
+        added_at: null,
       }
     })
 

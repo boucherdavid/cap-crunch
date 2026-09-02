@@ -184,12 +184,15 @@ export async function addPlayerAction(
     if (error) return { error: error.message }
     rosterId = existing.id
   } else {
+    // Pas de date tant que la saison n'est pas démarrée pour de vrai (même raison que
+    // adminInitRosterAction, David 2026-09-02).
     const { data: inserted, error } = await supabase.from('pooler_rosters').insert({
       pooler_id:      poolerId,
       player_id:      playerId,
       pool_season_id: saisonId,
       player_type:    playerType,
       is_active:      true,
+      added_at:       null,
       ...rookieFields,
     }).select('id').single()
     if (error) return { error: error.message }
@@ -286,17 +289,13 @@ export async function adminInitRosterAction(
 
   const { data: saisonConfig } = await supabase
     .from('pool_seasons')
-    .select('saison_start_date, season_started')
+    .select('season_started')
     .eq('id', saisonId)
     .single()
 
   if (saisonConfig?.season_started) {
     return { error: 'Saison déjà démarrée — utiliser les outils de gestion normaux (Transactions, Gestion d\'effectifs).' }
   }
-
-  const initAddedAt = saisonConfig?.saison_start_date
-    ? `${saisonConfig.saison_start_date}T12:00:00Z`
-    : new Date().toISOString()
 
   // Retraits — suppression complète (pas de désactivation) : Mode init ne journalise rien
   // dans roster_change_log, donc une ligne désactivée sans trace ne serait qu'un résidu
@@ -343,13 +342,15 @@ export async function adminInitRosterAction(
       .eq('player_id', entry.player_id)
       .eq('pool_season_id', saisonId)
 
+    // Pas de date tant que la saison n'est pas démarrée pour de vrai — "Démarrer la saison"
+    // assigne la vraie date de début en bloc à ce moment-là (David, 2026-09-02).
     const { error: insertErr } = await supabase.from('pooler_rosters').insert({
       pooler_id:      poolerId,
       player_id:      entry.player_id,
       pool_season_id: saisonId,
       player_type:    entry.player_type,
       is_active:      true,
-      added_at:       initAddedAt,
+      added_at:       null,
       ...rookieFields,
     })
     if (insertErr) return { error: insertErr.message }
