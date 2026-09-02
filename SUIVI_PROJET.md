@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-02 (suite 6)
+Derniere mise a jour: 2026-09-02 (suite 7)
 
 ## Role du fichier
 
@@ -43,6 +43,20 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   touche jamais `is_active`/`season_started` (hors de sa portée délibérée). Donc : activer
   2026-27 en prod d'abord → rouler le sync → cliquer "Démarrer la saison" **séparément en
   prod aussi** une fois prêt (le script ne le fait pas automatiquement).
+
+### 2026-09-02 (suite 7)
+
+**[Process] — Promotion staging → prod validée par David**
+(aucun fichier applicatif modifié) :
+- David a confirmé « C'est bon » après avoir testé le babillard global en staging (post
+  « Test » publié et affiché correctement, voir "suite 6").
+- `git checkout main && git merge staging --no-edit && git push origin main` : fast-forward
+  propre (`fe4e5b3..754b3c1`, 19 fichiers). Contenu promu : `added_at` null pendant la
+  pré-saison, auto-bascule des recrues expirées en réserviste à la transition, retrait complet
+  du Mode avant-première (code + colonne `app_settings.nav_planification_only`), babillard
+  global (`bulletin_posts`/`bulletin_comments`, `/babillard`,
+  `/admin/communaute?tab=babillard`).
+- Retour sur `staging` ensuite pour la suite du travail.
 
 ### 2026-09-02 (suite 6)
 
