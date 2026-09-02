@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-02 (suite 4)
+Derniere mise a jour: 2026-09-02 (suite 5)
 
 ## Role du fichier
 
@@ -43,6 +43,19 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   touche jamais `is_active`/`season_started` (hors de sa portée délibérée). Donc : activer
   2026-27 en prod d'abord → rouler le sync → cliquer "Démarrer la saison" **séparément en
   prod aussi** une fois prêt (le script ne le fait pas automatiquement).
+
+### 2026-09-02 (suite 5)
+
+**[Chore] — Colonne `app_settings.nav_planification_only` supprimée (staging + prod)**
+(`schema.sql`) :
+- Suite au retrait du code (voir "suite 4"), David a roulé manuellement
+  `ALTER TABLE app_settings DROP COLUMN nav_planification_only;` dans le SQL Editor Supabase,
+  staging puis prod — confirmé par requête REST (colonne absente dans les deux, erreur
+  Postgres `42703` attendue).
+- `schema.sql` mis à jour : colonne retirée du `CREATE TABLE app_settings` (table ne garde
+  que `unsigned_player_cap_multiplier`/`cap_deadline_days`), commentaire de table simplifié,
+  bloc de migration historique (2026-08-25) laissé intact pour la traçabilité, nouveau bloc
+  de migration daté ajouté juste après documentant le `DROP COLUMN`.
 
 ### 2026-09-02 (suite 4)
 

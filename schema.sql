@@ -418,6 +418,11 @@ CREATE TABLE transaction_items (
 -- CREATE POLICY "Admin modifie app_settings" ON app_settings FOR ALL
 --   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
 
+-- Migration 2026-09-02 : retrait du "Mode avant-première" (toggle Navbar, code retiré) —
+-- exécutée dans le SQL Editor Supabase (staging puis prod) :
+--
+-- ALTER TABLE app_settings DROP COLUMN nav_planification_only;
+
 -- Migration 2026-08-25 (suite) : tables push_subscriptions et notification_log — existaient
 -- déjà en prod (créées directement, jamais documentées) mais absentes en staging, cause de
 -- l'erreur "Could not find the table 'public.push_subscriptions'" en cliquant "Activer les
@@ -681,13 +686,10 @@ CREATE POLICY "Lecture publique meeting_poll_responses" ON meeting_poll_response
 CREATE POLICY "Pooler gère ses réponses" ON meeting_poll_responses FOR ALL
   USING (pooler_id = auth.uid() OR EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
 
--- Réglages globaux de l'app (une seule ligne, id=1). Sert d'abord à basculer la Navbar en
--- mode "avant-première Planification" (masque tous les autres liens pour tous les poolers
--- pendant la mise en place du sondage de rencontre, sans toucher aux permissions RLS).
+-- Réglages globaux de l'app (une seule ligne, id=1).
 -- unsigned_player_cap_multiplier/cap_deadline_days : voir "Conformité cap" plus bas.
 CREATE TABLE app_settings (
   id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
-  nav_planification_only BOOLEAN NOT NULL DEFAULT false,
   unsigned_player_cap_multiplier NUMERIC(5,2) NOT NULL DEFAULT 1.20,
   cap_deadline_days INTEGER NOT NULL DEFAULT 7
 );
