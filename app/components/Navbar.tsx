@@ -51,13 +51,11 @@ export default function Navbar({
   initialIsAdmin,
   initialUnreadCount = 0,
   initialUnreadNotifCount = 0,
-  navPlanificationOnly = false,
 }: {
   initialUserName: string | null
   initialIsAdmin: boolean
   initialUnreadCount?: number
   initialUnreadNotifCount?: number
-  navPlanificationOnly?: boolean
 }) {
   const pathname = usePathname()
   const supabase = createClient()
@@ -124,9 +122,6 @@ export default function Navbar({
   }, [])
 
   const effectiveIsAdmin = isAdmin && !isPoolerView
-  // Le mode avant-première ne restreint que les poolers — un admin (hors "Vue pooler")
-  // garde toujours accès au site complet pour continuer à travailler dessus.
-  const hidePoolNav = navPlanificationOnly && !effectiveIsAdmin
 
   const togglePoolerView = () => {
     const next = !isPoolerView
@@ -192,12 +187,6 @@ export default function Navbar({
             </Link>
 
             <div className="hidden md:flex items-center gap-1">
-            {hidePoolNav ? (
-              <Link href="/planification" className={navBtnClass(isActive('/planification'))}>
-                Planification
-              </Link>
-            ) : (
-            <>
 
               {/* Alignements */}
               <div className="relative">
@@ -333,8 +322,6 @@ export default function Navbar({
                 </div>
               )}
 
-            </>
-            )}
             </div>
           </div>
 
@@ -407,10 +394,6 @@ export default function Navbar({
         {/* Menu mobile */}
         {menuOpen && (
           <div className="md:hidden border-t border-pool-navy-light py-2 flex flex-col gap-0.5">
-          {hidePoolNav ? (
-            <Link href="/planification" className={mobileLinkClass('/planification')}>Planification</Link>
-          ) : (
-          <>
             <MobileSection label="Alignements" />
             {userName && <Link href="/dashboard"           className={mobileLinkClass('/dashboard')}>Mon équipe</Link>}
             <Link href="/poolers"                          className={mobileLinkClass('/poolers')}>Équipes</Link>
@@ -436,8 +419,6 @@ export default function Navbar({
             <MobileSection label="Ressources" />
             <Link href="/planification" className={mobileLinkClass('/planification')}>Planification</Link>
             <Link href="/aide" className={mobileLinkClass('/aide')}>{'Aide & Règlements'}</Link>
-          </>
-          )}
 
             {userName && (
               <div className="mt-1 pt-1 border-t border-pool-navy-light flex flex-col gap-0.5">

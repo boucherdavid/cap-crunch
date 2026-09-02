@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-02 (suite 3)
+Derniere mise a jour: 2026-09-02 (suite 4)
 
 ## Role du fichier
 
@@ -43,6 +43,35 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   touche jamais `is_active`/`season_started` (hors de sa portée délibérée). Donc : activer
   2026-27 en prod d'abord → rouler le sync → cliquer "Démarrer la saison" **séparément en
   prod aussi** une fois prêt (le script ne le fait pas automatiquement).
+
+### 2026-09-02 (suite 4)
+
+**[Refactor] — Retrait complet du "Mode avant-première"**
+(`app/app/layout.tsx`, `app/components/Navbar.tsx`, `app/app/planification/actions.ts`,
+`app/app/admin/planification/AdminPlanificationManager.tsx`,
+`app/app/admin/communaute/page.tsx`) :
+- Après avoir désactivé le toggle (voir "suite 3" ci-dessous), David a précisé qu'il ne s'en
+  resservira plus et a demandé de retirer complètement la fonctionnalité — pas juste laisser
+  le flag à `false`.
+- Retiré : le toggle "Mode avant-première" et son action (`setNavPlanificationOnlyAction`,
+  `app/app/planification/actions.ts`) dans l'admin ; la lecture de
+  `app_settings.nav_planification_only` (`layout.tsx`, `admin/communaute/page.tsx`) ; le prop
+  `navPlanificationOnly`/`hidePoolNav` et les deux branches conditionnelles de repli
+  (desktop + mobile, un seul lien "Planification" au lieu de toute la Navbar) dans
+  `Navbar.tsx` — la Navbar complète s'affiche maintenant inconditionnellement pour tout
+  utilisateur connecté, poolers compris.
+- Précision demandée par David en même temps : "même comportement en prod qu'en staging,
+  les outils de gestion ne doivent pas être utilisables avant que je le permette" — déjà
+  garanti indépendamment de ce retrait : `gestion-effectifs/page.tsx` bloque les non-admins
+  tant que `pool_seasons.season_started=false`, un mécanisme par saison (pas par
+  environnement) inchangé par ce refactor. Rien à modifier de ce côté — prod (`2025-26`,
+  `season_started=true`) garde sa gestion normale ouverte (saison réelle déjà démarrée),
+  staging (`2026-27`, `season_started=false`) reste fermée pendant le test de transition.
+- Colonne `app_settings.nav_planification_only` **laissée en base** (staging + prod) — plus
+  lue ni écrite nulle part dans le code, mais un `DROP COLUMN` nécessiterait une migration
+  manuelle séparée ; pas fait, à faire plus tard si souhaité (colonne inoffensive en l'état).
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès, toutes les routes
+  générées normalement).
 
 ### 2026-09-02 (suite 3)
 

@@ -116,13 +116,8 @@ export default async function AdminCommunautePage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let planifPoll: any = null
   let planifDates: { id: number; candidate_date: string }[] = []
-  let planifNavOnly = false
   if (activeTab === 'planification') {
-    const [{ data: settings }, { data: poll }] = await Promise.all([
-      supabase.from('app_settings').select('nav_planification_only').eq('id', 1).maybeSingle(),
-      supabase.from('meeting_polls').select('id, title').eq('is_active', true).maybeSingle(),
-    ])
-    planifNavOnly = settings?.nav_planification_only ?? false
+    const { data: poll } = await supabase.from('meeting_polls').select('id, title').eq('is_active', true).maybeSingle()
     planifPoll = poll ?? null
     const { data: dates } = planifPoll
       ? await supabase.from('meeting_poll_dates').select('id, candidate_date').eq('poll_id', planifPoll.id).order('candidate_date')
@@ -204,7 +199,6 @@ export default async function AdminCommunautePage({
         <AdminPlanificationManager
           poll={planifPoll}
           dates={planifDates}
-          navPlanificationOnly={planifNavOnly}
         />
       )}
     </div>

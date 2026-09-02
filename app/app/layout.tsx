@@ -56,19 +56,17 @@ export default async function RootLayout({
   let unreadCount = 0
   let unreadNotifCount = 0
 
-  const [feedbackResult, notifResult, settingsResult] = await Promise.all([
+  const [feedbackResult, notifResult] = await Promise.all([
     isAdmin
       ? supabase.from('feedback').select('*', { count: 'exact', head: true }).eq('status', 'nouveau')
       : Promise.resolve({ count: 0 }),
     isAdmin
       ? supabase.from('notification_log').select('*', { count: 'exact', head: true }).is('read_at', null)
       : Promise.resolve({ count: 0 }),
-    supabase.from('app_settings').select('nav_planification_only').eq('id', 1).maybeSingle(),
   ])
 
   unreadCount = feedbackResult.count ?? 0
   unreadNotifCount = notifResult.count ?? 0
-  const navPlanificationOnly = settingsResult.data?.nav_planification_only ?? false
 
   return (
     <html lang="fr">
@@ -83,7 +81,7 @@ export default async function RootLayout({
       </head>
       <body className="bg-gray-50 min-h-screen">
         <ServiceWorkerProvider />
-        <Navbar initialUserName={userName} initialIsAdmin={isAdmin} initialUnreadCount={unreadCount} initialUnreadNotifCount={unreadNotifCount} navPlanificationOnly={navPlanificationOnly} />
+        <Navbar initialUserName={userName} initialIsAdmin={isAdmin} initialUnreadCount={unreadCount} initialUnreadNotifCount={unreadNotifCount} />
         <InstallBanner />
         <main className="max-w-7xl mx-auto px-4 py-6">
           {children}

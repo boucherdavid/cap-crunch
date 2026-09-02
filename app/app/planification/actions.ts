@@ -73,22 +73,6 @@ export async function resetPollAction(pollId: number): Promise<{ error?: string 
   return {}
 }
 
-export async function setNavPlanificationOnlyAction(enabled: boolean): Promise<{ error?: string }> {
-  const check = await requireAdmin()
-  if ('error' in check) return check
-  const { supabase } = check
-
-  const { error } = await supabase
-    .from('app_settings')
-    .update({ nav_planification_only: enabled })
-    .eq('id', 1)
-  if (error) return { error: error.message }
-
-  // Affecte la Navbar sur tout le site (elle vient du layout racine), pas juste /planification
-  revalidatePath('/', 'layout')
-  return {}
-}
-
 export async function submitAvailabilityAction(
   pollId: number,
   selectedDates: string[],
