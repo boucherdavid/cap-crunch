@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-01
+Derniere mise a jour: 2026-09-02
 
 ## Role du fichier
 
@@ -20,6 +20,56 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-09-02
+
+**[Chore] — Création de 2026-27/2027-28/2028-29 en prod, préparation du transfert staging → prod**
+(scripts ponctuels, aucun fichier applicatif modifié) :
+- David compte tester la transition de saison en staging puis transférer les alignements
+  validés vers prod via `sync_staging_to_prod.py` avant d'activer 2026-27 pour les poolers.
+- **Piège trouvé en vérifiant les deux bases (lecture seule)** : la migration `season_started`
+  (session précédente) avait backfillé `true` sur *toutes* les saisons déjà en base en
+  staging, y compris 2026-27/2027-28/2028-29 — un reliquat, pas une vraie saison démarrée.
+  Sans correction, tester la transition n'aurait pas exercé le nouveau comportement
+  pré-saison (sans validation/journal). Corrigé : `season_started` remis à `false` sur
+  2026-27 en staging (script ponctuel).
+- **Prod n'avait aucune ligne 2026-27** (seulement 2025-26). Créées en prod : 2026-27,
+  2027-28, 2028-29 (script reproduisant exactement `createSeasonAction`,
+  `admin/config/actions.ts` — mêmes paramètres qu'en staging : cap NHL 104M$, facteur 1,24 →
+  cap du pool 129M$, 32 choix de repêchage par saison). Aucune activée, `2025-26` reste la
+  saison active en prod.
+- **Séquence confirmée pour la suite** (documentée pour référence) : `sync_staging_to_prod.py`
+  exige que la saison **active** porte le même nom des deux côtés (sinon abandon), et ne
+  touche jamais `is_active`/`season_started` (hors de sa portée délibérée). Donc : activer
+  2026-27 en prod d'abord → rouler le sync → cliquer "Démarrer la saison" **séparément en
+  prod aussi** une fois prêt (le script ne le fait pas automatiquement).
+
+### 2026-09-02 (suite)
+
+**[Feature] — Recrues à protection expirée basculées automatiquement en réserviste à la transition**
+(`app/lib/rookieProtection.ts` [nouveau], `app/app/admin/config/actions.ts`,
+`app/app/admin/config/SeasonsManager.tsx`) :
+- David a remarqué (via la modale de transition) que des recrues sans contrat pour la saison
+  cible sont en fait des recrues dont la protection est expirée (5 saisons depuis le
+  repêchage, ou fin d'ELC pour un agent libre) — confirmé en lisant `previewTransitionAction`.
+  Comme elles devront de toute façon devenir actives ou réservistes si le pooler les garde,
+  demandé de les basculer automatiquement en réserviste à la transition plutôt que de les
+  laisser invisibles dans la banque de recrues, avec un avertissement affiché avant de
+  confirmer (pas de geste manuel séparé après coup).
+- Extrait la logique d'expiration (dupliquée dans `previewTransitionAction`,
+  `loadPresaisonDataAction` et `checkSeasonConformity`) en fonction partagée
+  `isRookieProtectionExpired()` (`app/lib/rookieProtection.ts`) — utilisée dans
+  `previewTransitionAction`/`transitionSeasonAction` pour que l'aperçu affiché corresponde
+  exactement à ce qui se passe à la confirmation. **Pas** rétrofitée dans
+  `loadPresaisonDataAction`/`checkSeasonConformity` cette passe — ces deux-là traitent le cas
+  `rookie_type` indéfini différemment (protégée par défaut plutôt qu'expirée), une
+  divergence préexistante non liée à cette demande, à trancher séparément si ça devient un
+  problème réel.
+- `transitionSeasonAction` bascule maintenant `player_type: 'recrue'` → `'reserviste'` pour
+  toute recrue expirée copiée (garde `rookie_type`/`pool_draft_year` intacts pour l'historique).
+  La modale de confirmation affiche le compte et l'explication avant que David clique
+  "Confirmer la transition" ; le message de succès inclut le nombre basculé.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
 
 ### 2026-09-01 (suite 2)
 

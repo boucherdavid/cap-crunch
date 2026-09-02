@@ -34,6 +34,7 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
     playerCount: number
     poolerCount: number
     noContract: { playerName: string; poolerName: string; playerType: string }[]
+    willBumpToReserviste: number
   }
   const [transitioning, setTransitioning] = useState<number | null>(null)
   const [preview, setPreview] = useState<{ toId: number; data: TransitionPreview } | null>(null)
@@ -89,7 +90,7 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
     if (result.error) {
       showMsg('error', result.error)
     } else {
-      showMsg('success', `${result.copied} entrées copiées vers la nouvelle saison.`)
+      showMsg('success', `${result.copied} entrées copiées vers la nouvelle saison.${result.bumped ? ` ${result.bumped} recrue${result.bumped > 1 ? 's' : ''} à protection expirée basculée${result.bumped > 1 ? 's' : ''} en réserviste.` : ''}`)
       router.refresh()
     }
   }
@@ -391,6 +392,13 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
                   ))}
                 </div>
                 <p className="text-xs text-amber-600 mt-1">Ces joueurs seront quand même copiés — cap simulé (≈ estimé) en pré-saison tant que leur vrai contrat n&apos;est pas connu. Suivi via l&apos;onglet Conformité.</p>
+                {preview.data.willBumpToReserviste > 0 && (
+                  <p className="text-xs text-amber-700 font-medium mt-1.5 bg-amber-100 rounded px-2 py-1.5">
+                    {preview.data.willBumpToReserviste} de ces recrue{preview.data.willBumpToReserviste > 1 ? 's ont' : ' a'} une protection expirée pour cette saison —
+                    {preview.data.willBumpToReserviste > 1 ? ' elles seront' : ' elle sera'} automatiquement basculée{preview.data.willBumpToReserviste > 1 ? 's' : ''} en réserviste
+                    plutôt que de rester invisible dans la banque de recrues.
+                  </p>
+                )}
               </div>
             )}
 
