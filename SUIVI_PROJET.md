@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-02 (suite 2)
+Derniere mise a jour: 2026-09-02 (suite 3)
 
 ## Role du fichier
 
@@ -43,6 +43,28 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   touche jamais `is_active`/`season_started` (hors de sa portée délibérée). Donc : activer
   2026-27 en prod d'abord → rouler le sync → cliquer "Démarrer la saison" **séparément en
   prod aussi** une fois prêt (le script ne le fait pas automatiquement).
+
+### 2026-09-02 (suite 3)
+
+**[Chore] — Désactivation de "Mode avant-première" (staging + prod)**
+(aucun fichier applicatif modifié, `app_settings.nav_planification_only`) :
+- David a rapporté que les poolers semblaient avoir "perdu l'accès" — en fait l'inverse :
+  `nav_planification_only` était resté à `true` dans les deux bases depuis la création du
+  sondage de planification le 2026-08-25, masquant tout le reste de la Navbar pour les
+  poolers (ils ne voyaient que le lien "Planification", comportement voulu à l'époque, mais
+  jamais désactivé une fois la rencontre planifiée comme prévu). Pas une régression du
+  chantier de réorg des menus de cette session — vérifié que l'outil de bascule
+  (`/admin/communaute?tab=planification`, ex-`/admin/planification`) fonctionne toujours
+  normalement après le déménagement du 2026-09-01.
+- Basculé `false` dans les deux environnements (script ponctuel, scratchpad) : les poolers
+  voient de nouveau la Navbar complète (consultation : alignements, classement, LNH,
+  repêchage, ressources).
+- Vérifié avant de toucher au flag que `gestion-effectifs/page.tsx` bloque déjà les non-admins
+  tant que `season_started=false` (gate serveur indépendant du toggle de nav) — demande
+  explicite de David : rendre le site consultable à tous sans rouvrir la gestion d'effectifs
+  self-service. Confirmé : prod (`2025-26`, `season_started=true`) a déjà la gestion normale
+  ouverte comme avant ; staging (`2026-27`, `season_started=false`, saison de test en cours de
+  transition) reste correctement fermée aux poolers non-admin.
 
 ### 2026-09-02 (suite 2)
 
