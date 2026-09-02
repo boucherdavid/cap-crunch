@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-02 (suite 5)
+Derniere mise a jour: 2026-09-02 (suite 6)
 
 ## Role du fichier
 
@@ -43,6 +43,40 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   touche jamais `is_active`/`season_started` (hors de sa portée délibérée). Donc : activer
   2026-27 en prod d'abord → rouler le sync → cliquer "Démarrer la saison" **séparément en
   prod aussi** une fois prêt (le script ne le fait pas automatiquement).
+
+### 2026-09-02 (suite 6)
+
+**[Feature] — Babillard global (communications admin → poolers)**
+(`schema.sql` ; nouveaux : `app/app/babillard/page.tsx`, `BabillardManager.tsx`, `actions.ts`,
+`app/app/admin/communaute/AdminBabillardManager.tsx` ; modifiés :
+`app/app/admin/communaute/page.tsx`, `app/components/Navbar.tsx`, `app/app/aide/AideTabs.tsx`) :
+- David a demandé un babillard global dans Ressources, distinct de celui de Planification
+  (conservé tel quel — propre au sondage de rencontre) : lui peut écrire des communications à
+  tout le pool, les poolers les consultent et peuvent commenter, avec notification push pour
+  ceux qui les ont activées. Clarifié par question : commentaires activés (comme
+  Planification), format titre + message.
+- Nouvelles tables `bulletin_posts`/`bulletin_comments` (RLS identique au patron
+  `meeting_polls`/`meeting_poll_comments` : lecture publique, écriture de post admin
+  seulement, commentaire par tout pooler authentifié, suppression par l'auteur du commentaire
+  ou un admin) — migration roulée manuellement par David en staging puis prod, confirmée par
+  requête REST.
+- Même séparation lecture/gestion déjà établie pour Planification : `/babillard` (nouvelle
+  route pooler, liste des communications + fil de commentaires, pas de création de post) vs
+  nouvel onglet `/admin/communaute?tab=babillard` (formulaire de publication + liste avec
+  suppression, `AdminBabillardManager.tsx`) — actions colocalisées dans
+  `app/app/babillard/actions.ts` (`createPostAction`/`deletePostAction` admin,
+  `addCommentAction`/`deleteCommentAction` pooler), même patron que
+  `app/app/planification/actions.ts`.
+- Notifications : `createPostAction` appelle `sendPushToAll` (déjà existant, `app/lib/push.ts`)
+  — atteint tout pooler ayant activé les notifications push dans `/compte`, sans nouveau
+  toggle dédié (le mécanisme d'opt-in générique suffisait). Un commentaire pooler notifie les
+  admins via `sendPushToAdmins`, symétrique au comportement déjà en place sur le babillard de
+  Planification.
+- Lien "Babillard" ajouté dans le dropdown Ressources (desktop + mobile), avant
+  "Planification". Entrée ajoutée au Guide d'utilisation de `/aide`.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès, route `/babillard`
+  générée) avant la migration ; tables vérifiées présentes en staging et prod après coup
+  (requête REST, 0 ligne dans les deux — normal, aucune communication publiée encore).
 
 ### 2026-09-02 (suite 5)
 

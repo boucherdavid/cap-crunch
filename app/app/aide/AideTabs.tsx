@@ -181,6 +181,25 @@ const SECTIONS: Section[] = [
     ),
   },
   {
+    id: 'guide-babillard',
+    tab: 'guide',
+    title: 'Babillard',
+    keywords: 'babillard communication annonce admin commentaire notification ressources',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Accédez au babillard via <strong>Ressources → Babillard</strong>.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• L&apos;administrateur y publie des communications pour l&apos;ensemble du pool.</li>
+          <li>• Chaque communication peut être commentée par les poolers.</li>
+          <li>• Si vous avez activé les notifications push (Mon compte), vous êtes avisé lors d&apos;une nouvelle communication.</li>
+        </ul>
+        <p className="text-xs text-gray-400 mt-3 italic">Distinct du babillard de la page Planification, propre au sondage de rencontre.</p>
+      </div>
+    ),
+  },
+  {
     id: 'guide-calendrier',
     tab: 'guide',
     title: 'Calendrier LNH',

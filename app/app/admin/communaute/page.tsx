@@ -8,12 +8,14 @@ import SuiviTable from '../suivi/SuiviTable'
 import type { Event } from '../suivi/SuiviTable'
 import JournalExport from '../suivi/JournalExport'
 import AdminPlanificationManager from '../planification/AdminPlanificationManager'
+import AdminBabillardManager from './AdminBabillardManager'
 import { CHANGE_LABEL, CHANGE_COLOR } from '@/lib/rosterChangeLabels'
 
 export const dynamic = 'force-dynamic'
 
 const TABS = [
   { id: 'communication', label: 'Communication' },
+  { id: 'babillard',     label: 'Babillard' },
   { id: 'suivi',         label: 'Suivi' },
   { id: 'planification', label: 'Planification' },
 ]
@@ -61,6 +63,17 @@ export default async function AdminCommunautePage({
     }
     notifications = nr.data ?? []
     unreadNotifs = notifications.filter(n => !n.read_at).length
+  }
+
+  // ── Babillard ─────────────────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let babillardPosts: any[] = []
+  if (activeTab === 'babillard') {
+    const { data } = await supabase
+      .from('bulletin_posts')
+      .select('id, author_id, title, body, created_at')
+      .order('created_at', { ascending: false })
+    babillardPosts = data ?? []
   }
 
   // ── Suivi ─────────────────────────────────────────────────────────────────
@@ -192,6 +205,11 @@ export default async function AdminCommunautePage({
           <JournalExport seasons={suiviSeasons} defaultSeasonId={suiviDefaultSeasonId} />
           <SuiviTable events={events} />
         </div>
+      )}
+
+      {/* ── Babillard ── */}
+      {activeTab === 'babillard' && (
+        <AdminBabillardManager posts={babillardPosts} />
       )}
 
       {/* ── Planification ── */}

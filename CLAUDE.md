@@ -163,6 +163,11 @@ Hockey_Pool_App/
   `playoff_pool_standings_cache` (pool des séries — PAS `series_round_rosters`, qui
   n'existe pas malgré une ancienne mention ici)
 - `cap_signing_watch` (conformité cap continue, voir section 6)
+- `meeting_polls`, `meeting_poll_dates`, `meeting_poll_responses`, `meeting_poll_comments`
+  (sondage de planification, `/planification` — le babillard `meeting_poll_comments` est
+  propre à ce sondage, distinct de `bulletin_posts`/`bulletin_comments` ci-dessous)
+- `bulletin_posts`, `bulletin_comments` (babillard global, `/babillard` — communications de
+  l'admin à tout le pool, commentables par les poolers)
 
 **Conventions :**
 - Statuts joueurs : `ELC`, `RFA`, `UFA`
@@ -186,9 +191,13 @@ saisie pooler ; distinct de `/admin/transactions`, l'outil admin) `/classement` 
 `/gestion-effectifs` `/draft-center` (classement des prospects, vue publique)
 `/dashboard` (redirige vers son propre alignement) `/compte` `/signaler` `/aide` `/offline`
 `/planification` (sondage type Doodle pour une rencontre — vue pooler : ses disponibilités,
-le résumé, le babillard ; notifie les admins par push à chaque soumission/commentaire).
-Gestion (créer le sondage, ajouter/retirer des dates, toggle "Mode avant-première") sur
+le résumé, le babillard propre au sondage ; notifie les admins par push à chaque
+soumission/commentaire). Gestion (créer le sondage, ajouter/retirer des dates) sur
 `/admin/planification`, pas sur `/planification` elle-même.
+`/babillard` (babillard **global** — communications publiées par l'admin pour tout le pool,
+commentables par les poolers ; notifie les poolers abonnés aux push à chaque nouvelle
+communication, et les admins à chaque commentaire — distinct du babillard de `/planification`
+ci-dessus). Publication réservée à l'admin, sur `/admin/communaute?tab=babillard`.
 
 **Menu pooler (`Navbar.tsx`) — réorganisé le 2026-08-30, ordre/regroupement affinés le
 2026-09-01 :**
@@ -199,7 +208,7 @@ Gestion (créer le sondage, ajouter/retirer des dates, toggle "Mode avant-premi�
 | Classement | Saison complète · Hebdomadaire (à venir) · Mensuel (à venir) — sorti d'Alignements pour son propre menu |
 | LNH | 3 sections : Statistiques (LNH, AHL à venir) · Calendrier · Contrats (ex-"Contrats LNH", ex-item à plat) |
 | Repêchage | Repêchage recrues · Classement des prospects · Repêchage LNH — réordonné le 2026-09-01 (le repêchage du pool lui-même, plus pertinent au quotidien, remonté en premier — même principe que "Mon équipe" en tête d'Alignements) |
-| Ressources (nouveau) | Planification · Aide & Règlements (déplacé du menu Compte/avatar) |
+| Ressources | Babillard (global, ajouté le 2026-09-02) · Planification · Aide & Règlements (déplacé du menu Compte/avatar) |
 
 **`/transactions` renommé `/journal-transactions` le 2026-09-01** (David) : c'est un historique
 en lecture seule (aucune saisie pooler), et le nom "Transactions" était réservé pour un futur
@@ -211,9 +220,10 @@ même jour — route et code conservés, plus atteignable que par URL directe (l
 habituellement pas de séries, même traitement que `/admin/series` le 2026-08-28). La prop
 `newPlayoffActive`/`initialNewPlayoffActive` (calculée dans `layout.tsx` à partir de
 `pool_seasons.is_playoff`) a été supprimée avec le bloc de nav qui l'utilisait.
-Ressources est pensé comme un point de départ — le babillard (aujourd'hui propre au sondage
-de planification) et une vraie documentation des outils/guide d'utilisateur pourraient s'y
-ajouter plus tard, mais ce sont des chantiers de contenu séparés, pas encore construits.
+Ressources était pensé comme un point de départ ; le babillard global (`/babillard`, section 4
+et ci-dessous) y a été ajouté le 2026-09-02. Une vraie documentation des outils/guide
+d'utilisateur pourrait encore s'y ajouter plus tard — chantier de contenu séparé, pas encore
+construit.
 
 Dans la même veine, les onglets `Pool Séries` et `Pointage Séries` de
 `/admin/pool?tab=config` (`ConfigTabsClient.tsx`) sont masqués depuis le 2026-08-31 —
@@ -227,7 +237,7 @@ composant, pas de `?subtab=`), donc pas d'accès par URL directe comme pour `/ad
 | Hub | Onglets (`?tab=id` → label) |
 |---|---|
 | `/admin/pool` | `poolers` Poolers · `config` Configuration (sous-onglets `Saisons` / `Général` / `Pointage Saison` — `Général` = ex-"Pool Saison", renommé le 2026-09-01) |
-| `/admin/communaute` | `communication` Communication (feedback + notifs) · `suivi` Suivi (activité) · `planification` Planification (sondage type Doodle, admin) |
+| `/admin/communaute` | `communication` Communication (feedback + notifs) · `babillard` Babillard (publier/supprimer des communications, ajouté le 2026-09-02) · `suivi` Suivi (activité) · `planification` Planification (sondage type Doodle, admin) |
 | `/admin/init` | `rosters` Rosters initiaux · `recrues` Banque de recrues · `choix` Choix de repêchage (← réassigner le propriétaire d'un pick échangé hors-app) — réglages one-shot déjà en place pour la saison courante |
 | `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) |
 | `/admin/donnees` | `pipeline` Pipeline salaires/contrats/repêchages (doc, `PlayerMerge`) · `prospects` Classement des prospects |
@@ -261,11 +271,10 @@ Les onglets de `/admin/init` (y compris `presaison`) acceptent tous un `&saisonI
 (`app/components/AdminHubBackLink.tsx`) s'affiche en haut de page pour revenir choisir
 l'étape suivante sans repasser par le menu Admin.
 
-`/admin/planification` (gestion du sondage — créer/réinitialiser, dates candidates, toggle
-"Mode avant-première") est depuis le 2026-08-28 une redirection volontaire vers
-`/admin/communaute?tab=planification` (mise à jour le 2026-09-01, voir ci-dessus), même
-pattern que `/admin/joueurs` et `/admin/draft-center` ci-dessous — la page publique
-`/planification` (vue pooler) n'est pas affectée.
+`/admin/planification` (gestion du sondage — créer/réinitialiser, dates candidates) est depuis
+le 2026-08-28 une redirection volontaire vers `/admin/communaute?tab=planification` (mise à
+jour le 2026-09-01, voir ci-dessus), même pattern que `/admin/joueurs` et `/admin/draft-center`
+ci-dessous — la page publique `/planification` (vue pooler) n'est pas affectée.
 
 Repêchage annuel en direct (tableau de sélection) : route à part `/admin/repechage`
 (pas un onglet — lien direct dans la Navbar), distinct de l'onglet `/admin/init?tab=choix`
@@ -296,11 +305,12 @@ affectés), et les mutations pré-saison (`submitTransactionAction`, `PresaisonM
 valident ni ne journalisent rien — même philosophie "sans historique" que Mode init/Banque de
 recrues (voir section 6).
 
-`/admin/pool?tab=planification` gère le sondage `/planification` — créer/réinitialiser le
-sondage, ajouter/retirer des dates candidates, toggle "Mode avant-première" (table
-`app_settings.nav_planification_only` — masque le reste de la Navbar pour tous les poolers,
-sauf l'admin lui-même, tant qu'actif). Route à part jusqu'au 2026-08-28 (voir
-`/admin/planification` ci-dessus, désormais une redirection).
+`/admin/communaute?tab=planification` gère le sondage `/planification` — créer/réinitialiser
+le sondage, ajouter/retirer des dates candidates. Le toggle "Mode avant-première" qui s'y
+trouvait (masquait le reste de la Navbar pour les poolers avant que la rencontre soit
+planifiée) a été retiré du code le 2026-09-02, David ayant confirmé ne plus s'en servir —
+`app_settings.nav_planification_only` n'existe plus (colonne supprimée). Route à part jusqu'au
+2026-08-28 (voir `/admin/planification` ci-dessus, désormais une redirection).
 
 `/admin/joueurs`, `/admin/draft-center` et `/admin/planification` sont des redirections
 volontaires vers les onglets équivalents de `/admin/pool` ou `/admin/donnees` (compat liens

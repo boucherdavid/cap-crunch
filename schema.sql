@@ -423,6 +423,37 @@ CREATE TABLE transaction_items (
 --
 -- ALTER TABLE app_settings DROP COLUMN nav_planification_only;
 
+-- Migration 2026-09-02 (suite) : babillard global (communications admin → poolers) —
+-- distinct du babillard de /planification (meeting_poll_comments, propre au sondage de
+-- rencontre) — exécutée dans le SQL Editor Supabase (staging puis prod) :
+--
+-- CREATE TABLE bulletin_posts (
+--   id BIGSERIAL PRIMARY KEY,
+--   author_id UUID NOT NULL REFERENCES poolers(id),
+--   title TEXT NOT NULL,
+--   body TEXT NOT NULL,
+--   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+-- );
+-- CREATE TABLE bulletin_comments (
+--   id BIGSERIAL PRIMARY KEY,
+--   post_id BIGINT NOT NULL REFERENCES bulletin_posts(id) ON DELETE CASCADE,
+--   pooler_id UUID NOT NULL REFERENCES poolers(id),
+--   body TEXT NOT NULL,
+--   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+-- );
+-- ALTER TABLE bulletin_posts ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE bulletin_comments ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Lecture publique bulletin_posts" ON bulletin_posts FOR SELECT USING (true);
+-- CREATE POLICY "Admin gère bulletin_posts" ON bulletin_posts FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+-- CREATE POLICY "Lecture publique bulletin_comments" ON bulletin_comments FOR SELECT USING (true);
+-- CREATE POLICY "Pooler ajoute ses commentaires" ON bulletin_comments FOR INSERT
+--   WITH CHECK (pooler_id = auth.uid());
+-- CREATE POLICY "Auteur supprime son commentaire" ON bulletin_comments FOR DELETE
+--   USING (pooler_id = auth.uid());
+-- CREATE POLICY "Admin gère bulletin_comments" ON bulletin_comments FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
 -- Migration 2026-08-25 (suite) : tables push_subscriptions et notification_log — existaient
 -- déjà en prod (créées directement, jamais documentées) mais absentes en staging, cause de
 -- l'erreur "Could not find the table 'public.push_subscriptions'" en cliquant "Activer les
@@ -779,4 +810,37 @@ CREATE POLICY "Pooler ajoute ses commentaires" ON meeting_poll_comments FOR INSE
 CREATE POLICY "Auteur supprime son commentaire" ON meeting_poll_comments FOR DELETE
   USING (pooler_id = auth.uid());
 CREATE POLICY "Admin gère meeting_poll_comments" ON meeting_poll_comments FOR ALL
+  USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- Babillard global — communications de l'admin à tout le pool, commentables par les
+-- poolers. Distinct du babillard ci-dessus (propre au sondage de planification). /babillard
+CREATE TABLE bulletin_posts (
+  id BIGSERIAL PRIMARY KEY,
+  author_id UUID NOT NULL REFERENCES poolers(id),
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE bulletin_comments (
+  id BIGSERIAL PRIMARY KEY,
+  post_id BIGINT NOT NULL REFERENCES bulletin_posts(id) ON DELETE CASCADE,
+  pooler_id UUID NOT NULL REFERENCES poolers(id),
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE bulletin_posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bulletin_comments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Lecture publique bulletin_posts" ON bulletin_posts FOR SELECT USING (true);
+CREATE POLICY "Admin gère bulletin_posts" ON bulletin_posts FOR ALL
+  USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+CREATE POLICY "Lecture publique bulletin_comments" ON bulletin_comments FOR SELECT USING (true);
+CREATE POLICY "Pooler ajoute ses commentaires" ON bulletin_comments FOR INSERT
+  WITH CHECK (pooler_id = auth.uid());
+CREATE POLICY "Auteur supprime son commentaire" ON bulletin_comments FOR DELETE
+  USING (pooler_id = auth.uid());
+CREATE POLICY "Admin gère bulletin_comments" ON bulletin_comments FOR ALL
   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
