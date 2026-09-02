@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-02 (suite 7)
+Derniere mise a jour: 2026-09-02 (suite 8)
 
 ## Role du fichier
 
@@ -43,6 +43,27 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   touche jamais `is_active`/`season_started` (hors de sa portée délibérée). Donc : activer
   2026-27 en prod d'abord → rouler le sync → cliquer "Démarrer la saison" **séparément en
   prod aussi** une fois prêt (le script ne le fait pas automatiquement).
+
+### 2026-09-02 (suite 8)
+
+**[Fix] — Le hub "Nouvelle saison" pointait sur la mauvaise saison après activation**
+(`app/app/admin/nouvelle-saison/page.tsx`) :
+- David a activé 2026-27 en staging (étape 2 du hub), puis remarqué que "Choix de
+  repêchage" (étape 3) affichait 2027-28 par défaut au lieu de 2026-27.
+- Cause : `defaultTarget = saisons[activeIndex + 1] ?? ...` — correct **avant** l'activation
+  (la saison active est encore l'ancienne, on veut préparer la suivante), mais dès qu'on
+  active, la saison active devient celle en préparation elle-même — `activeIndex + 1` dérive
+  alors vers la saison d'après (2027-28), et ce mauvais `saisonId` se propage dans les liens
+  des étapes 3 à 6.
+- Corrigé : si la saison active existe et n'est pas encore démarrée
+  (`season_started=false`), c'est elle la cible par défaut ; sinon on retombe sur l'ancienne
+  logique (`activeIndex + 1`, cas avant activation).
+- En creusant, trouvé un reliquat lié à la même colonne : en staging, `2027-28` et `2028-29`
+  avaient encore `season_started=true` (backfill de la migration du début de session — seule
+  `2026-27` avait été remise à `false` à l'époque, ces deux saisons n'étaient pas le focus du
+  test alors). Remis à `false` (script ponctuel) pour matcher l'état propre de prod (ces
+  saisons y ont été créées après la bascule du défaut, donc jamais affectées par le backfill).
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
 
 ### 2026-09-02 (suite 7)
 

@@ -52,7 +52,16 @@ export default async function NouvelleSaisonPage({
 
   const activeSaison = saisons.find(s => s.is_active) ?? null
   const activeIndex = activeSaison ? saisons.findIndex(s => s.id === activeSaison.id) : -1
-  const defaultTarget = saisons[activeIndex + 1] ?? saisons.find(s => !s.is_active) ?? activeSaison ?? saisons[saisons.length - 1]
+  // Avant l'étape 2 (Activer) : la saison en préparation est celle qui suit l'active (encore
+  // l'ancienne saison, season_started=true). Après : elle EST l'active, mais pas encore
+  // démarrée (season_started=false) — sans ce cas, activeIndex + 1 dérive vers la saison
+  // suivante dès qu'on active, et les étapes 3-6 pointent sur la mauvaise saison.
+  const defaultTarget =
+    (activeSaison && !activeSaison.season_started ? activeSaison : null)
+    ?? saisons[activeIndex + 1]
+    ?? saisons.find(s => !s.is_active)
+    ?? activeSaison
+    ?? saisons[saisons.length - 1]
 
   const parsedId = saisonId ? parseInt(saisonId, 10) : NaN
   const saison = (!isNaN(parsedId) && saisons.find(s => s.id === parsedId)) || defaultTarget
