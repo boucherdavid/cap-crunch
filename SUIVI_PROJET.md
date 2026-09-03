@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-03 (suite 9)
+Derniere mise a jour: 2026-09-03 (suite 10)
 
 ## Role du fichier
 
@@ -43,6 +43,39 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   touche jamais `is_active`/`season_started` (hors de sa portée délibérée). Donc : activer
   2026-27 en prod d'abord → rouler le sync → cliquer "Démarrer la saison" **séparément en
   prod aussi** une fois prêt (le script ne le fait pas automatiquement).
+
+### 2026-09-03 (suite 10)
+
+**[Décision] — À implémenter : seuil de participation corrigé + indicateur de préparation au repêchage AL**
+(rien codé cette session — décision prise, à construire à une prochaine session ; David a dû
+fermer la session) :
+- En regardant "Aperçu des rosters" (`/admin/init?tab=presaison`), David a précisé que le fait
+  que tous les poolers dépassent largement le cap est normal (montée des salaires d'une saison
+  à l'autre) — c'est exactement le rôle du ménage pré-repêchage AL (libérations, décisions
+  ELC/activation) de les ramener sous le seuil avant que le repêchage commence.
+- Deux besoins distincts identifiés (David a confirmé garder les deux séparés, pas une fusion) :
+  - **A. Seuil de participation au tour de repêchage** (`FREE_AGENT_THRESHOLD`,
+    `admin/presaison/types.ts`, actuellement 500 000 $ arbitraire) — à corriger vers le vrai
+    **salaire minimum LNH : 850 000 $**. Reste une vérification simple ("as-tu au moins
+    850k$ de libre pour signer un joueur de plus ?"), utilisée par `eligibleQueueIds()`
+    (`admin/presaison/actions.ts`) pour savoir qui reste dans la file `presaison_draft_state`
+    pendant le repêchage lui-même — ne doit PAS devenir le calcul complet B ci-dessous, sinon
+    un pooler avec plusieurs postes à combler mais assez d'espace pour seulement 1-2
+    signatures se ferait exclure entièrement de la file au lieu de pouvoir progresser.
+  - **B. Nouvel indicateur de préparation** (pas un blocage, informationnel) — espace cap
+    minimum réel pour qu'un pooler puisse compléter légalement son alignement =
+    (nombre de postes manquants pour atteindre 12 attaquants / 6 défenseurs / 2 gardiens
+    actifs + 2 réservistes minimum) × 850 000 $. À afficher sur `ComplianceCard`
+    (`admin/presaison/PresaisonManager.tsx`, outil de ménage admin) et sur le panneau "Mon
+    alignement" du pooler dans `/repechage-agents-libres` (`AgentsLibresDashboard.tsx`),
+    pour que chaque pooler voie lui-même s'il est prêt sans avoir à te le confirmer
+    verbalement. Comparer à `capSpace` existant sur `PoolerCapInfo` — un simple
+    `poolCap - capUsed` insuffisant ne veut pas dire "non conforme" si les postes manquants
+    coûtent moins cher que ça une fois au salaire minimum ; c'est l'inverse qui compte ici :
+    `capSpace >= slotsManquants × 850 000 $`.
+- Salaire minimum LNH (850 000 $) à stocker comme réglage configurable dans `app_settings`
+  (même patron que `unsigned_player_cap_multiplier`), pas codé en dur — change chaque année
+  de convention collective.
 
 ### 2026-09-03 (suite 9)
 
