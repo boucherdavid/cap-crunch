@@ -118,9 +118,19 @@ export default function DraftBoard({
       .map(([pickId, playerId]) => ({ pick_id: Number(pickId), player_id: playerId as number })),
   [selections, submittedPickIds])
 
+  const remainingPicks = useMemo(() =>
+    picks.filter(p => !submittedPickIds.has(p.id)),
+  [picks, submittedPickIds])
+
+  const unfilledCount = remainingPicks.length - pendingSelections.length
+
   const handleSubmit = async () => {
     if (pendingSelections.length === 0) {
       showMessage('Aucun choix rempli.', 'error')
+      return
+    }
+    if (unfilledCount > 0) {
+      showMessage(`Il reste ${unfilledCount} choix à remplir avant de pouvoir soumettre.`, 'error')
       return
     }
     setSubmitting(true)
@@ -323,8 +333,15 @@ export default function DraftBoard({
       {/* Barre de soumission — admin seulement */}
       {!readOnly && <div className="flex items-center justify-between bg-white rounded-lg shadow px-5 py-4">
         <div className="text-sm text-gray-500">
-          {picks.filter(p => !submittedPickIds.has(p.id)).length > 0
-            ? `${pendingSelections.length} / ${picks.filter(p => !submittedPickIds.has(p.id)).length} choix restants remplis`
+          {remainingPicks.length > 0
+            ? <>
+                {pendingSelections.length} / {remainingPicks.length} choix restants remplis
+                {unfilledCount > 0 && (
+                  <span className="text-amber-600 ml-2">
+                    — remplis les {unfilledCount} restants pour pouvoir soumettre
+                  </span>
+                )}
+              </>
             : <span className="text-green-600 font-medium">Tous les choix ont été soumis ✓</span>
           }
         </div>
@@ -334,7 +351,7 @@ export default function DraftBoard({
               {message}
             </span>
           )}
-          {picks.filter(p => !submittedPickIds.has(p.id)).length > 0 && (
+          {remainingPicks.length > 0 && (
             <>
               <button
                 onClick={handleSaveProgress}
@@ -346,7 +363,8 @@ export default function DraftBoard({
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={submitting || pendingSelections.length === 0}
+                disabled={submitting || pendingSelections.length === 0 || unfilledCount > 0}
+                title={unfilledCount > 0 ? `Remplis les ${unfilledCount} choix restants avant de soumettre` : undefined}
                 className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {submitting ? 'Soumission...' : `Soumettre${pendingSelections.length > 0 ? ` (${pendingSelections.length})` : ''}`}

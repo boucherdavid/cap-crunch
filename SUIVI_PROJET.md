@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-03 (suite 5)
+Derniere mise a jour: 2026-09-03 (suite 6)
 
 ## Role du fichier
 
@@ -43,6 +43,30 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   touche jamais `is_active`/`season_started` (hors de sa portée délibérée). Donc : activer
   2026-27 en prod d'abord → rouler le sync → cliquer "Démarrer la saison" **séparément en
   prod aussi** une fois prêt (le script ne le fait pas automatiquement).
+
+### 2026-09-03 (suite 6)
+
+**[Fix] — Vue admin du repêchage jamais rafraîchie + soumission autorisée en partiel**
+(`app/app/admin/repechage/actions.ts`, `app/app/admin/repechage/DraftBoard.tsx`) :
+- David a remarqué que les picks déjà "Soumis" n'affichaient jamais le nom du joueur côté
+  admin. Vérifié en base : les données étaient correctes (`draft_pick_id` bien lié au bon
+  joueur dans `pooler_rosters` pour les 20 picks déjà soumis) — le vrai problème :
+  `app/app/admin/repechage/actions.ts` n'appelait `revalidatePath` nulle part
+  (`submitDraftAction`, `saveDraftProgressAction`, `saveDraftOrderAction`,
+  `rollbackPickAction`), contrairement à la convention établie partout ailleurs dans le
+  projet. La page admin gardait donc les props de son tout premier chargement — `chosen`
+  (nom du joueur, résolu via `playerByPickId`) restait `undefined` pour tout ce qui se passait
+  après, même après un "Soumettre". Corrigé : `revalidateDraftPages()` (nouveau helper
+  interne) appelée en fin des 4 actions, revalidant `/admin/repechage` et
+  `/repechage-recrues`.
+- David a aussi demandé le workflow explicite : Sauvegarder pendant le repêchage (déjà
+  automatique par sélection, voir "suite 3"), Soumettre seulement une fois **tous** les
+  choix restants remplis — pas de soumission partielle. `handleSubmit` bloque maintenant si
+  `unfilledCount > 0` (picks non soumis sans sélection), bouton "Soumettre" désactivé avec
+  infobulle, message d'aide affiché dans la barre de progression tant qu'il en manque.
+  N'affecte que les picks pas encore soumis — les 20 déjà commis (rounds 1-2 complets +
+  partie de la ronde 3, faits avant ce correctif) restent inchangés, aucun rollback.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
 
 ### 2026-09-03 (suite 5)
 

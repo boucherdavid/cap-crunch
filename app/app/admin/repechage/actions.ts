@@ -1,10 +1,16 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
 
 type PickSelection = {
   pick_id: number
   player_id: number
+}
+
+function revalidateDraftPages() {
+  revalidatePath('/admin/repechage')
+  revalidatePath('/repechage-recrues')
 }
 
 export async function submitDraftAction(
@@ -93,6 +99,7 @@ export async function submitDraftAction(
     if (error) return { error: error.message }
   }
 
+  revalidateDraftPages()
   return {}
 }
 
@@ -117,6 +124,7 @@ export async function saveDraftProgressAction(
     if (error) return { error: error.message }
   }
 
+  revalidateDraftPages()
   return {}
 }
 
@@ -140,6 +148,7 @@ export async function saveDraftOrderAction(
     if (error) return { error: error.message }
   }
 
+  revalidateDraftPages()
   return {}
 }
 
@@ -175,5 +184,6 @@ export async function rollbackPickAction(pickId: number): Promise<{ error?: stri
     .eq('id', pickId)
   if (error) return { error: error.message }
 
+  revalidateDraftPages()
   return {}
 }
