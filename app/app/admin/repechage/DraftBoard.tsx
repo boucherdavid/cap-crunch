@@ -298,7 +298,7 @@ export default function DraftBoard({
                                   <span className="text-gray-400">(non confirmé)</span>
                                 </span>
                               : <span className="text-xs text-gray-400 italic">En attente</span>)
-                          : <span className="flex items-center gap-2">
+                          : <div className="flex items-center gap-2">
                               <RookieSelect
                                 rookies={rookies}
                                 value={selectedId}
@@ -308,7 +308,7 @@ export default function DraftBoard({
                               {savingPickIds.has(pick.id) && (
                                 <span className="text-xs text-gray-400 shrink-0">Sauvegarde...</span>
                               )}
-                            </span>
+                            </div>
                         }
                       </td>
                     </tr>

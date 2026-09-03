@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-03 (suite 3)
+Derniere mise a jour: 2026-09-03 (suite 4)
 
 ## Role du fichier
 
@@ -43,6 +43,22 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   touche jamais `is_active`/`season_started` (hors de sa portée délibérée). Donc : activer
   2026-27 en prod d'abord → rouler le sync → cliquer "Démarrer la saison" **séparément en
   prod aussi** une fois prêt (le script ne le fait pas automatiquement).
+
+### 2026-09-03 (suite 4)
+
+**[Fix] — Régression : le menu déroulant du sélecteur de recrue ne répondait plus**
+(`app/app/admin/repechage/DraftBoard.tsx`) :
+- Introduite par le correctif précédent (auto-save par sélection, "suite 3") : `RookieSelect`
+  (dont la racine est un `<div>`) avait été enveloppé dans un `<span>` pour placer
+  l'indicateur "Sauvegarde..." à côté — `<div>` dans `<span>` est du HTML invalide (élément
+  de bloc dans un élément en ligne), que le navigateur corrige silencieusement à l'analyse en
+  sortant le `<div>` du `<span>`. L'arbre DOM réel divergeait alors de celui que React
+  attendait, cassant les refs/écouteurs d'événements du composant — le menu ne s'ouvrait
+  (ou ne répondait) plus.
+- Corrigé : le conteneur remplacé par un `<div>` (déjà dans une `<td>`, imbrication valide).
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès) — `tsc`/le build ne
+  détectent pas ce genre de bug HTML invalide, seul un test manuel dans le navigateur l'a
+  révélé.
 
 ### 2026-09-03 (suite 3)
 
