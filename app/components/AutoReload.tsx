@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 
-export default function AutoRefresh({ enabled, intervalMs = 10000 }: { enabled: boolean; intervalMs?: number }) {
+export default function AutoReload({ enabled, intervalMs = 10000 }: { enabled: boolean; intervalMs?: number }) {
   useEffect(() => {
     if (!enabled) return
     // router.refresh() (rafraîchissement RSC "doux") s'est avéré peu fiable ici — un

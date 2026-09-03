@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import DraftBoard from '../admin/repechage/DraftBoard'
 import SaisonSelectClient from './SaisonSelectClient'
-import AutoRefresh from './AutoRefresh'
+import AutoRefresh from '@/components/AutoReload'
 
 export const dynamic = 'force-dynamic'
 

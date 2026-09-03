@@ -454,6 +454,24 @@ CREATE TABLE transaction_items (
 -- CREATE POLICY "Admin gère bulletin_comments" ON bulletin_comments FOR ALL
 --   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
 
+-- Migration 2026-09-03 : file d'attente partagée du repêchage des agents libres (pré-saison)
+-- — remplace l'état 100% local de PresaisonManager.tsx, visible côté pooler sur
+-- /repechage-agents-libres — exécutée dans le SQL Editor Supabase (staging puis prod) :
+--
+-- CREATE TABLE presaison_draft_state (
+--   pool_season_id INTEGER PRIMARY KEY REFERENCES pool_seasons(id) ON DELETE CASCADE,
+--   is_active BOOLEAN NOT NULL DEFAULT false,
+--   queue JSONB NOT NULL DEFAULT '[]'::jsonb,
+--   turn_started_at TIMESTAMPTZ,
+--   turn_duration_seconds INTEGER NOT NULL DEFAULT 90,
+--   ended_at TIMESTAMPTZ,
+--   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+-- );
+-- ALTER TABLE presaison_draft_state ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Lecture publique presaison_draft_state" ON presaison_draft_state FOR SELECT USING (true);
+-- CREATE POLICY "Admin gère presaison_draft_state" ON presaison_draft_state FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
 -- Migration 2026-08-25 (suite) : tables push_subscriptions et notification_log — existaient
 -- déjà en prod (créées directement, jamais documentées) mais absentes en staging, cause de
 -- l'erreur "Could not find the table 'public.push_subscriptions'" en cliquant "Activer les
@@ -843,4 +861,22 @@ CREATE POLICY "Pooler ajoute ses commentaires" ON bulletin_comments FOR INSERT
 CREATE POLICY "Auteur supprime son commentaire" ON bulletin_comments FOR DELETE
   USING (pooler_id = auth.uid());
 CREATE POLICY "Admin gère bulletin_comments" ON bulletin_comments FOR ALL
+  USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- File d'attente partagée du repêchage des agents libres (pré-saison) — une ligne par
+-- saison régulière, remplace l'état 100% local qu'avait PresaisonManager.tsx. Lue par
+-- /admin/init?tab=presaison (admin) et /repechage-agents-libres (poolers, lecture seule).
+CREATE TABLE presaison_draft_state (
+  pool_season_id INTEGER PRIMARY KEY REFERENCES pool_seasons(id) ON DELETE CASCADE,
+  is_active BOOLEAN NOT NULL DEFAULT false,
+  queue JSONB NOT NULL DEFAULT '[]'::jsonb,
+  turn_started_at TIMESTAMPTZ,
+  turn_duration_seconds INTEGER NOT NULL DEFAULT 90,
+  ended_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE presaison_draft_state ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Lecture publique presaison_draft_state" ON presaison_draft_state FOR SELECT USING (true);
+CREATE POLICY "Admin gère presaison_draft_state" ON presaison_draft_state FOR ALL
   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));

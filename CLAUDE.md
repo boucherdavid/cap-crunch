@@ -168,6 +168,9 @@ Hockey_Pool_App/
   propre à ce sondage, distinct de `bulletin_posts`/`bulletin_comments` ci-dessous)
 - `bulletin_posts`, `bulletin_comments` (babillard global, `/babillard` — communications de
   l'admin à tout le pool, commentables par les poolers)
+- `presaison_draft_state` (file d'attente partagée du repêchage des agents libres pré-saison —
+  une ligne par saison régulière, lue par `/admin/init?tab=presaison` et
+  `/repechage-agents-libres` — voir section 5)
 
 **Conventions :**
 - Statuts joueurs : `ELC`, `RFA`, `UFA`
@@ -198,6 +201,16 @@ soumission/commentaire). Gestion (créer le sondage, ajouter/retirer des dates) 
 commentables par les poolers ; notifie les poolers abonnés aux push à chaque nouvelle
 communication, et les admins à chaque commentaire — distinct du babillard de `/planification`
 ci-dessus). Publication réservée à l'admin, sur `/admin/communaute?tab=babillard`.
+`/repechage-agents-libres` (tableau de bord partagé du repêchage des agents libres pré-saison,
+lecture seule — vue de chaque pooler : masse salariale, alignement dépliable de n'importe qui,
+file d'attente/tour/chronomètre indicatif, fil des derniers choix signés, et un panneau
+personnel "Mon alignement" avec bascule Actuel (synchronisé) / Bac à sable (test libre local,
+non sauvegardé) ; décisions ELC et conformité cap du pooler visibles mais non actionnables
+depuis cette page. Rafraîchissement automatique — `AutoReload`, `app/components/AutoReload.tsx`,
+composant partagé avec `/repechage-recrues`. La signature réelle reste admin-only sur
+`/admin/init?tab=presaison`. État "à qui le tour" persisté dans `presaison_draft_state`
+(section 4), remplace l'ancien état 100% local de `PresaisonManager.tsx` — survit à une
+navigation de l'admin vers `/admin/transactions` (ex: traiter un échange) et retour.
 
 **Menu pooler (`Navbar.tsx`) — réorganisé le 2026-08-30, ordre/regroupement affinés le
 2026-09-01 :**
@@ -207,7 +220,7 @@ ci-dessus). Publication réservée à l'admin, sur `/admin/communaute?tab=babill
 | Alignements (ex-Pool Saison) | Mon équipe · Équipes · Journal des transactions — puis séparateur — Gestion d'effectifs (les 3 premiers = consultation, le dernier = action) |
 | Classement | Saison complète · Hebdomadaire (à venir) · Mensuel (à venir) — sorti d'Alignements pour son propre menu |
 | LNH | 3 sections : Statistiques (LNH, AHL à venir) · Calendrier · Contrats (ex-"Contrats LNH", ex-item à plat) |
-| Repêchage | Repêchage recrues · Classement des prospects · Repêchage LNH — réordonné le 2026-09-01 (le repêchage du pool lui-même, plus pertinent au quotidien, remonté en premier — même principe que "Mon équipe" en tête d'Alignements) |
+| Repêchage | Repêchage recrues · Repêchage agents libres (ajouté le 2026-09-03) · Classement des prospects · Repêchage LNH — réordonné le 2026-09-01 (le repêchage du pool lui-même, plus pertinent au quotidien, remonté en premier — même principe que "Mon équipe" en tête d'Alignements) |
 | Ressources | Babillard (global, ajouté le 2026-09-02) · Planification · Aide & Règlements (déplacé du menu Compte/avatar) |
 
 **`/transactions` renommé `/journal-transactions` le 2026-09-01** (David) : c'est un historique

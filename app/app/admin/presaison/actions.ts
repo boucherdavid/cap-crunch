@@ -4,7 +4,17 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { computeReverseStandingsOrder } from '@/lib/draftOrder'
 import { getEffectiveCap } from '@/lib/capUtils'
-import type { PoolerCapInfo, ElcDecisionEntry } from './types'
+import { FREE_AGENT_THRESHOLD } from './types'
+import type { PoolerCapInfo, ElcDecisionEntry, DraftState } from './types'
+
+const TURN_DURATION_DEFAULT = 90
+
+function eligibleQueueIds(poolers: PoolerCapInfo[], order: string[]): string[] {
+  return order.filter(id => {
+    const p = poolers.find(pp => pp.id === id)
+    return p !== undefined && p.capSpace >= FREE_AGENT_THRESHOLD
+  })
+}
 
 function getPlayerBucket(position: string | null): 'forward' | 'defense' | 'goalie' {
   const pos = (position ?? '').toUpperCase()
@@ -230,7 +240,20 @@ export async function resetPresaisonDraftAction(
     .in('id', txIds)
   if (delTxErr) return { error: delTxErr.message }
 
+  // Remet aussi la file d'attente partagée à plat — un reset de test doit permettre de
+  // relancer "Démarrer le repêchage" proprement, pas juste vider les transactions.
+  await supabase.from('presaison_draft_state').upsert({
+    pool_season_id: saisonId,
+    is_active: false,
+    queue: [],
+    turn_started_at: null,
+    turn_duration_seconds: TURN_DURATION_DEFAULT,
+    ended_at: null,
+    updated_at: new Date().toISOString(),
+  })
+
   revalidatePath('/admin/presaison')
+  revalidatePath('/repechage-agents-libres')
   return { reversed: txIds.length }
 }
 
@@ -322,4 +345,198 @@ export async function initDraftOrderFromStandingsAction(
   revalidatePath('/admin/presaison')
   revalidatePath('/admin/repechage')
   return { order: poolerIds, previousSeason }
+}
+
+// ── File d'attente partagée du repêchage des agents libres ─────────────────
+// Remplace l'ancien état 100% local (queue/draftActive/draftDone dans
+// PresaisonManager.tsx) — persisté pour survivre à une navigation hors de la page et pour
+// être visible côté pooler (/repechage-agents-libres).
+
+export async function loadPresaisonDraftStateAction(saisonId: number): Promise<{ error?: string; state?: DraftState }> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('presaison_draft_state')
+    .select('pool_season_id, is_active, queue, turn_started_at, turn_duration_seconds, ended_at')
+    .eq('pool_season_id', saisonId)
+    .maybeSingle()
+  if (error) return { error: error.message }
+
+  if (!data) {
+    return {
+      state: {
+        pool_season_id: saisonId,
+        is_active: false,
+        queue: [],
+        turn_started_at: null,
+        turn_duration_seconds: TURN_DURATION_DEFAULT,
+        ended_at: null,
+      },
+    }
+  }
+  return { state: data as DraftState }
+}
+
+export async function startPresaisonDraftAction(saisonId: number): Promise<{ error?: string; state?: DraftState }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  if (!me?.is_admin) return { error: 'Accès refusé.' }
+
+  const fresh = await loadPresaisonDataAction(saisonId)
+  if (fresh.error || !fresh.poolers) return { error: fresh.error ?? 'Impossible de charger les données.' }
+  const queue = eligibleQueueIds(fresh.poolers, fresh.draftOrder ?? [])
+
+  const nowIso = new Date().toISOString()
+  const isActive = queue.length > 0
+  const { error } = await supabase.from('presaison_draft_state').upsert({
+    pool_season_id: saisonId,
+    is_active: isActive,
+    queue,
+    turn_started_at: isActive ? nowIso : null,
+    turn_duration_seconds: TURN_DURATION_DEFAULT,
+    ended_at: isActive ? null : nowIso,
+    updated_at: nowIso,
+  })
+  if (error) return { error: error.message }
+
+  if (isActive) {
+    const { sendPushToUser } = await import('@/lib/push')
+    sendPushToUser(queue[0], {
+      title: 'Repêchage agents libres',
+      body: "C'est ton tour de signer un agent libre.",
+      url: '/repechage-agents-libres',
+    }).catch(() => {})
+  }
+
+  revalidatePath('/repechage-agents-libres')
+  return loadPresaisonDraftStateAction(saisonId)
+}
+
+// Appelée après une signature réussie ("Signer") ou pour "Passer" (aucune transaction dans
+// ce second cas) — fait tourner queue[0] en fin de file puis refiltre par cap frais, exactement
+// comme l'ancien advanceQueue() local, mais persisté.
+export async function advancePresaisonQueueAction(saisonId: number): Promise<{ error?: string; state?: DraftState }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  if (!me?.is_admin) return { error: 'Accès refusé.' }
+
+  const { data: current } = await supabase
+    .from('presaison_draft_state')
+    .select('queue')
+    .eq('pool_season_id', saisonId)
+    .maybeSingle()
+  const prevQueue = (current?.queue as string[] | undefined) ?? []
+  if (prevQueue.length === 0) return loadPresaisonDraftStateAction(saisonId)
+
+  const fresh = await loadPresaisonDataAction(saisonId)
+  if (fresh.error || !fresh.poolers) return { error: fresh.error ?? 'Impossible de charger les données.' }
+
+  const rotated = [...prevQueue.slice(1), prevQueue[0]]
+  const nextQueue = rotated.filter(id => {
+    const p = fresh.poolers!.find(pp => pp.id === id)
+    return p !== undefined && p.capSpace >= FREE_AGENT_THRESHOLD
+  })
+
+  const nowIso = new Date().toISOString()
+  const isActive = nextQueue.length > 0
+  const { error } = await supabase
+    .from('presaison_draft_state')
+    .update({
+      is_active: isActive,
+      queue: nextQueue,
+      turn_started_at: isActive ? nowIso : null,
+      turn_duration_seconds: TURN_DURATION_DEFAULT,
+      ended_at: isActive ? null : nowIso,
+      updated_at: nowIso,
+    })
+    .eq('pool_season_id', saisonId)
+  if (error) return { error: error.message }
+
+  if (isActive && nextQueue[0] !== prevQueue[0]) {
+    const { sendPushToUser } = await import('@/lib/push')
+    sendPushToUser(nextQueue[0], {
+      title: 'Repêchage agents libres',
+      body: "C'est ton tour de signer un agent libre.",
+      url: '/repechage-agents-libres',
+    }).catch(() => {})
+  }
+
+  revalidatePath('/repechage-agents-libres')
+  return loadPresaisonDraftStateAction(saisonId)
+}
+
+export async function endPresaisonDraftAction(saisonId: number): Promise<{ error?: string; state?: DraftState }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  if (!me?.is_admin) return { error: 'Accès refusé.' }
+
+  const nowIso = new Date().toISOString()
+  const { error } = await supabase.from('presaison_draft_state').upsert({
+    pool_season_id: saisonId,
+    is_active: false,
+    queue: [],
+    turn_started_at: null,
+    turn_duration_seconds: TURN_DURATION_DEFAULT,
+    ended_at: nowIso,
+    updated_at: nowIso,
+  })
+  if (error) return { error: error.message }
+
+  revalidatePath('/repechage-agents-libres')
+  return loadPresaisonDraftStateAction(saisonId)
+}
+
+// "+30s" côté admin — n'affecte que le tour en cours, pas un réglage permanent.
+export async function adjustPresaisonTimerAction(saisonId: number, deltaSeconds: number): Promise<{ error?: string; state?: DraftState }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  if (!me?.is_admin) return { error: 'Accès refusé.' }
+
+  const { data: current } = await supabase
+    .from('presaison_draft_state')
+    .select('turn_duration_seconds')
+    .eq('pool_season_id', saisonId)
+    .maybeSingle()
+  const nextDuration = Math.max(0, (current?.turn_duration_seconds ?? TURN_DURATION_DEFAULT) + deltaSeconds)
+
+  const { error } = await supabase
+    .from('presaison_draft_state')
+    .update({ turn_duration_seconds: nextDuration, updated_at: new Date().toISOString() })
+    .eq('pool_season_id', saisonId)
+  if (error) return { error: error.message }
+
+  revalidatePath('/repechage-agents-libres')
+  return loadPresaisonDraftStateAction(saisonId)
+}
+
+// Relance le chrono du tour en cours sans changer de tour (distinct de "Passer").
+export async function resetPresaisonTimerAction(saisonId: number): Promise<{ error?: string; state?: DraftState }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  if (!me?.is_admin) return { error: 'Accès refusé.' }
+
+  const nowIso = new Date().toISOString()
+  const { error } = await supabase
+    .from('presaison_draft_state')
+    .update({ turn_started_at: nowIso, turn_duration_seconds: TURN_DURATION_DEFAULT, updated_at: nowIso })
+    .eq('pool_season_id', saisonId)
+  if (error) return { error: error.message }
+
+  revalidatePath('/repechage-agents-libres')
+  return loadPresaisonDraftStateAction(saisonId)
 }

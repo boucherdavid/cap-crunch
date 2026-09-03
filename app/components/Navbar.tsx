@@ -250,12 +250,13 @@ export default function Navbar({
               {/* Repêchage */}
               <div className="relative">
                 <button onClick={() => toggle('repechage')}
-                  className={navBtnClass(isActive('/repechage', '/repechage-recrues', '/draft-center'))}>
+                  className={navBtnClass(isActive('/repechage', '/repechage-recrues', '/repechage-agents-libres', '/draft-center'))}>
                   {'Repêchage'} <Chevron open={openDropdown === 'repechage'} />
                 </button>
                 {openDropdown === 'repechage' && (
                   <div className="absolute left-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
                     <Link href="/repechage-recrues" className={dropdownLinkClass('/repechage-recrues')}>{'Repêchage recrues'}</Link>
+                    <Link href="/repechage-agents-libres" className={dropdownLinkClass('/repechage-agents-libres')}>{'Repêchage agents libres'}</Link>
                     <Link href="/draft-center" className={dropdownLinkClass('/draft-center')}>{'Classement des prospects'}</Link>
                     <Link href="/repechage" className={dropdownLinkClass('/repechage')}>{'Repêchage LNH'}</Link>
                   </div>
@@ -414,6 +415,7 @@ export default function Navbar({
 
             <MobileSection label={'Repêchage'} />
             <Link href="/repechage-recrues" className={mobileLinkClass('/repechage-recrues')}>{'Repêchage recrues'}</Link>
+            <Link href="/repechage-agents-libres" className={mobileLinkClass('/repechage-agents-libres')}>{'Repêchage agents libres'}</Link>
             <Link href="/draft-center" className={mobileLinkClass('/draft-center')}>{'Classement des prospects'}</Link>
             <Link href="/repechage"  className={mobileLinkClass('/repechage')}>{'Repêchage LNH'}</Link>
 

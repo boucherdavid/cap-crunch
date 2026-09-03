@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-03 (suite 6)
+Derniere mise a jour: 2026-09-03 (suite 7)
 
 ## Role du fichier
 
@@ -43,6 +43,59 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   touche jamais `is_active`/`season_started` (hors de sa portée délibérée). Donc : activer
   2026-27 en prod d'abord → rouler le sync → cliquer "Démarrer la saison" **séparément en
   prod aussi** une fois prêt (le script ne le fait pas automatiquement).
+
+### 2026-09-03 (suite 7)
+
+**[Feature] — Tableau de bord partagé du repêchage des agents libres + file d'attente persistée**
+(nouveaux : `app/app/repechage-agents-libres/page.tsx`, `AgentsLibresDashboard.tsx`,
+`app/components/AutoReload.tsx` ; modifiés : `schema.sql`, `app/app/admin/presaison/actions.ts`,
+`app/app/admin/presaison/types.ts`, `app/app/admin/presaison/PresaisonManager.tsx`,
+`app/app/repechage-recrues/page.tsx`, `app/components/Navbar.tsx`) :
+- Discuté avec David via un schéma UI interactif (Artifact, plusieurs itérations) pendant
+  qu'il testait `/admin/init?tab=presaison` en staging. Trois demandes : (1) un tableau de
+  bord partagé admin/poolers pour le repêchage AL — même principe que le repêchage des
+  recrues déjà livré cette session — avec indicateur "à qui le tour", alignement de chaque
+  pooler consultable, fil des derniers choix, chronomètre indicatif, et un panneau "Mon
+  alignement" avec bascule Actuel (synchronisé)/Bac à sable (test libre, réinitialisable) ;
+  (2) visibilité pooler sur les décisions ELC en attente et la conformité cap (action reste
+  admin-only, question posée directement, réponse : oui visibles) ; (3) que le repêchage AL
+  survive une absence de l'admin (ex: traiter un échange sur `/admin/transactions` et
+  revenir).
+- Recherche (3 agents Explore en parallèle) avant le plan formel (`EnterPlanMode`) : la file
+  d'attente "à qui le tour" de `PresaisonManager.tsx` (`queue`/`draftActive`/`draftDone`)
+  n'existait qu'en état local React — perdue à toute navigation, invisible aux poolers.
+  `submitTransactionAction` ('sign') confirmé admin-only sans notion de tour — cohérent avec
+  le choix déjà fait de garder la signature réelle admin-only, poolers en observation +
+  bac à sable local. RLS déjà publique en lecture sur `pooler_rosters`/`player_contracts`/
+  `poolers`/`pool_seasons` — rien à changer là. Aucun précédent Supabase Realtime dans le
+  repo — réutilisé le patron `window.location.reload()` déjà validé pour
+  `/repechage-recrues` plutôt que d'introduire une nouvelle techno.
+- Nouvelle table `presaison_draft_state` (une ligne par saison régulière : `is_active`,
+  `queue` JSONB ordonné, `turn_started_at`, `turn_duration_seconds`, `ended_at`) — RLS
+  lecture publique / écriture admin, même patron que `bulletin_posts`. Migration roulée
+  manuellement par David en staging (puis prod à faire séparément).
+- 6 nouvelles actions dans `presaison/actions.ts`
+  (`loadPresaisonDraftStateAction`/`startPresaisonDraftAction`/`advancePresaisonQueueAction`/
+  `endPresaisonDraftAction`/`adjustPresaisonTimerAction`/`resetPresaisonTimerAction`) —
+  `advancePresaisonQueueAction` recalcule l'éligibilité (`capSpace >= FREE_AGENT_THRESHOLD`)
+  à partir de données fraîches à chaque appel, exactement comme l'ancien `advanceQueue()`
+  local, mais persisté ; notifie le nouveau pooler au tour via `sendPushToUser` (déjà
+  existant). `resetPresaisonDraftAction` ("Zone de test") remet aussi la file à plat.
+- `PresaisonManager.tsx` : `queue`/`draftActive`/`draftDone` remplacés par un `draftState`
+  chargé/rafraîchi via les nouvelles actions — tout le reste (décisions ELC,
+  `ComplianceCard`, Zone de test, éditeur d'ordre) inchangé. Ajout d'un chronomètre affiché
+  (calcul client à partir de `turn_started_at`, aucun appel serveur pour le tick) avec
+  contrôles admin "+30s"/"Réinitialiser".
+- Nouvelle route pooler `/repechage-agents-libres` (lien Navbar, dropdown Repêchage) :
+  reprend le schéma validé dans l'Artifact — grille des 8 poolers (masse salariale,
+  compteurs F/D/G/rés., alignement dépliable), fil des derniers choix (`transaction_items`
+  où `notes='Repêchage pré-saison'`), panneau personnel "Mon alignement" (Actuel/Bac à
+  sable, recherche d'agents libres via `searchFreeAgentsAction` déjà existant), décisions
+  ELC filtrées à `pooler_id === me.id` (lecture seule). `AutoReload` extrait de
+  `repechage-recrues/AutoRefresh.tsx` vers `app/components/AutoReload.tsx` (composant
+  partagé, comportement identique) — `/repechage-recrues` mis à jour pour l'importer.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès, route
+  `/repechage-agents-libres` générée).
 
 ### 2026-09-03 (suite 6)
 

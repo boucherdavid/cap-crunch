@@ -1,8 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { loadPresaisonDataAction, saveDraftOrderAction, initDraftOrderFromStandingsAction, resetLtirToActifAction, resetPresaisonDraftAction, resolveElcDecisionAction } from './actions'
-import { FREE_AGENT_THRESHOLD, type PoolerCapInfo, type RosterEntry, type ElcDecisionEntry } from './types'
+import {
+  loadPresaisonDataAction, saveDraftOrderAction, initDraftOrderFromStandingsAction,
+  resetLtirToActifAction, resetPresaisonDraftAction, resolveElcDecisionAction,
+  loadPresaisonDraftStateAction, startPresaisonDraftAction, advancePresaisonQueueAction,
+  endPresaisonDraftAction, adjustPresaisonTimerAction, resetPresaisonTimerAction,
+} from './actions'
+import { FREE_AGENT_THRESHOLD, type PoolerCapInfo, type RosterEntry, type ElcDecisionEntry, type DraftState } from './types'
 import { submitTransactionAction, searchFreeAgentsAction } from '../transactions/actions'
 
 type Saison = { id: number; season: string; is_active: boolean }
@@ -490,10 +495,10 @@ export default function PresaisonManager({
   const [orderMsg, setOrderMsg] = useState<string | null>(null)
   const [initializingOrder, setInitializingOrder] = useState(false)
 
-  // Draft state
-  const [draftActive, setDraftActive] = useState(false)
-  const [draftDone, setDraftDone] = useState(false)
-  const [queue, setQueue] = useState<string[]>([])
+  // Draft state — persisté en base (presaison_draft_state), partagé avec /repechage-agents-libres
+  const [draftState, setDraftState] = useState<DraftState | null>(null)
+  const [starting, setStarting] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
 
   // LTIR reset
   const [resettingLtir, setResettingLtir] = useState(false)
@@ -511,7 +516,10 @@ export default function PresaisonManager({
   const loadAll = useCallback(async (id: number) => {
     setLoadingInit(true)
     setInitErr(null)
-    const result = await loadPresaisonDataAction(id)
+    const [result, stateResult] = await Promise.all([
+      loadPresaisonDataAction(id),
+      loadPresaisonDraftStateAction(id),
+    ])
     setLoadingInit(false)
     if (result.error) { setInitErr(result.error); return null }
     const d: Data = {
@@ -523,6 +531,7 @@ export default function PresaisonManager({
     }
     setData(d)
     setDraftOrder(d.draftOrder)
+    setDraftState(stateResult.state ?? null)
     return d
   }, [])
 
@@ -542,9 +551,6 @@ export default function PresaisonManager({
   }, [saisonId])
 
   useEffect(() => {
-    setDraftActive(false)
-    setDraftDone(false)
-    setQueue([])
     loadAll(saisonId)
   }, [saisonId, loadAll])
 
@@ -555,13 +561,11 @@ export default function PresaisonManager({
     document.getElementById(`pooler-card-${highlightPoolerId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }, [data, highlightPoolerId])
 
-  // Auto-end draft when queue empties
+  // Chrono affiché — purement local, aucun appel serveur, ancré sur turn_started_at
   useEffect(() => {
-    if (draftActive && queue.length === 0) {
-      setDraftActive(false)
-      setDraftDone(true)
-    }
-  }, [draftActive, queue])
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
 
   const eligibleIds = (poolers: PoolerCapInfo[], order: string[]) =>
     order.filter(id => {
@@ -569,38 +573,36 @@ export default function PresaisonManager({
       return p && p.capSpace >= FREE_AGENT_THRESHOLD
     })
 
-  const startDraft = () => {
-    if (!data) return
-    const eligible = eligibleIds(data.poolers, draftOrder)
-    if (eligible.length === 0) {
-      setDraftDone(true)
-      return
-    }
-    setQueue(eligible)
-    setDraftActive(true)
-    setDraftDone(false)
+  const startDraft = async () => {
+    setStarting(true)
+    const result = await startPresaisonDraftAction(saisonId)
+    setStarting(false)
+    if (result.state) setDraftState(result.state)
   }
 
-  // Rotate current to end, then filter out anyone below threshold
-  const advanceQueue = (freshPoolers: PoolerCapInfo[]) => {
-    setQueue(prev => {
-      if (prev.length === 0) return []
-      const rotated = [...prev.slice(1), prev[0]]
-      return rotated.filter(id => {
-        const p = freshPoolers.find(pp => pp.id === id)
-        return p && p.capSpace >= FREE_AGENT_THRESHOLD
-      })
-    })
+  // Après une signature ("Signer") ou "Passer" : le serveur recalcule l'éligibilité à partir
+  // de données fraîches et fait tourner la file — remplace l'ancien advanceQueue() local.
+  const advanceAfterAction = async () => {
+    const [stateResult] = await Promise.all([advancePresaisonQueueAction(saisonId), refreshData()])
+    if (stateResult.state) setDraftState(stateResult.state)
   }
 
-  const handleSign = async () => {
-    const d = await refreshData()
-    if (d) advanceQueue(d.poolers)
+  const handleSign = advanceAfterAction
+  const handlePass = advanceAfterAction
+
+  const handleEndDraft = async () => {
+    const result = await endPresaisonDraftAction(saisonId)
+    if (result.state) setDraftState(result.state)
   }
 
-  const handlePass = async () => {
-    const d = await refreshData()
-    if (d) advanceQueue(d.poolers)
+  const handleTimerAdjust = async (delta: number) => {
+    const result = await adjustPresaisonTimerAction(saisonId, delta)
+    if (result.state) setDraftState(result.state)
+  }
+
+  const handleTimerReset = async () => {
+    const result = await resetPresaisonTimerAction(saisonId)
+    if (result.state) setDraftState(result.state)
   }
 
   const handleSaveOrder = async () => {
@@ -628,9 +630,15 @@ export default function PresaisonManager({
   if (initErr) return <div className="text-red-600 text-sm p-8">{initErr}</div>
   if (!data) return null
 
+  const queue = draftState?.queue ?? []
+  const isDraftActive = draftState?.is_active ?? false
+  const isDraftDone = !isDraftActive && draftState?.ended_at != null
   const currentPoolerId = queue[0] ?? null
   const currentPooler = data.poolers.find(p => p.id === currentPoolerId) ?? null
   const nextPoolerName = queue[1] ? (data.poolers.find(p => p.id === queue[1])?.name ?? '?') : null
+  const remainingSeconds = draftState?.turn_started_at
+    ? Math.max(0, draftState.turn_duration_seconds - Math.floor((now - new Date(draftState.turn_started_at).getTime()) / 1000))
+    : null
 
   const ltirCount = data.poolers.reduce(
     (sum, p) => sum + p.roster.filter(e => e.player_type === 'ltir').length, 0,
@@ -774,7 +782,7 @@ export default function PresaisonManager({
       </div>
 
       {/* Draft section */}
-      {!draftActive && !draftDone && (
+      {!isDraftActive && !isDraftDone && (
         <div className="bg-white rounded-lg shadow p-5">
           <h2 className="font-semibold text-gray-800 mb-1">Ordre du repêchage</h2>
           <p className="text-xs text-gray-400 mb-4">
@@ -805,48 +813,64 @@ export default function PresaisonManager({
           <div className="border-t pt-4 mt-4">
             <button
               onClick={startDraft}
-              disabled={draftOrder.length === 0}
+              disabled={draftOrder.length === 0 || starting}
               className="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-40 text-sm"
             >
-              Démarrer le repêchage
+              {starting ? 'Démarrage...' : 'Démarrer le repêchage'}
             </button>
             {draftOrder.length > 0 && (
               <p className="text-xs text-gray-400 mt-2">
-                {eligibleIds(data.poolers, draftOrder).length} pooler{eligibleIds(data.poolers, draftOrder).length > 1 ? 's' : ''} éligibles (≥ {fmt(FREE_AGENT_THRESHOLD)} d'espace)
+                {eligibleIds(data.poolers, draftOrder).length} pooler{eligibleIds(data.poolers, draftOrder).length > 1 ? 's' : ''} éligibles (≥ {fmt(FREE_AGENT_THRESHOLD)} d'espace) · visible en direct par les poolers sur /repechage-agents-libres
               </p>
             )}
           </div>
         </div>
       )}
 
-      {draftDone && (
+      {isDraftDone && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-5">
           <p className="text-green-700 font-semibold">Repêchage terminé.</p>
           <p className="text-sm text-green-600 mt-1">
             Tous les poolers éligibles ont complété leur repêchage ou n'ont plus d'espace suffisant.
           </p>
           <button
-            onClick={() => { setDraftDone(false); setDraftActive(false); setQueue([]) }}
-            className="mt-3 text-sm text-blue-600 hover:underline"
+            onClick={startDraft}
+            disabled={starting}
+            className="mt-3 text-sm text-blue-600 hover:underline disabled:opacity-40"
           >
-            Recommencer un repêchage
+            {starting ? 'Démarrage...' : 'Recommencer un repêchage'}
           </button>
         </div>
       )}
 
-      {draftActive && currentPooler && (
+      {isDraftActive && currentPooler && (
         <div className="bg-white rounded-lg shadow p-5">
           <div className="flex items-start justify-between mb-4">
             <div>
               <h2 className="font-semibold text-gray-800 text-lg">
                 Tour de : <span className="text-blue-700">{currentPooler.name}</span>
+                {remainingSeconds !== null && (
+                  <span className={`ml-3 text-sm font-mono align-middle ${
+                    remainingSeconds <= 10 ? 'text-red-600' : remainingSeconds <= 30 ? 'text-amber-600' : 'text-gray-400'
+                  }`}>
+                    ⏱ {String(Math.floor(remainingSeconds / 60)).padStart(2, '0')}:{String(remainingSeconds % 60).padStart(2, '0')}
+                  </span>
+                )}
               </h2>
               <p className="text-xs text-gray-400 mt-1">
                 File : {queue.map(id => data.poolers.find(p => p.id === id)?.name ?? id).join(' → ')}
               </p>
+              <div className="flex items-center gap-2 mt-1.5">
+                <button onClick={() => handleTimerAdjust(30)} className="text-xs text-gray-400 hover:text-gray-700 border rounded px-2 py-0.5">
+                  +30s
+                </button>
+                <button onClick={handleTimerReset} className="text-xs text-gray-400 hover:text-gray-700 border rounded px-2 py-0.5">
+                  ↺ Réinitialiser le chrono
+                </button>
+              </div>
             </div>
             <button
-              onClick={() => { setDraftActive(false); setDraftDone(true); setQueue([]) }}
+              onClick={handleEndDraft}
               className="text-xs text-gray-400 hover:text-red-600 border rounded px-2 py-1"
             >
               Terminer le repêchage
@@ -893,7 +917,6 @@ export default function PresaisonManager({
                 setResetDraftMsg(`Erreur : ${res.error}`)
               } else {
                 setResetDraftMsg(`${res.reversed} transaction(s) annulée(s).`)
-                setQueue([])
                 await loadAll(saisonId)
               }
               setResettingDraft(false)
