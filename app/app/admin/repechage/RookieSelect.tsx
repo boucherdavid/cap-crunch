@@ -34,7 +34,7 @@ export default function RookieSelect({
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null)
+  const [coords, setCoords] = useState<{ inputTop: number; inputBottom: number; left: number; width: number; openUp: boolean } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -59,7 +59,12 @@ export default function RookieSelect({
     const updateCoords = () => {
       if (!inputRef.current) return
       const rect = inputRef.current.getBoundingClientRect()
-      setCoords({ top: rect.bottom, left: rect.left, width: rect.width })
+      const spaceBelow = window.innerHeight - rect.bottom
+      const spaceAbove = rect.top
+      // Près du bas de la fenêtre (dernier pick d'une ronde) : pas assez de place pour
+      // ouvrir vers le bas sans chevaucher le contenu qui suit — on ouvre vers le haut.
+      const openUp = spaceBelow < 260 && spaceAbove > spaceBelow
+      setCoords({ inputTop: rect.top, inputBottom: rect.bottom, left: rect.left, width: rect.width, openUp })
     }
     updateCoords()
     window.addEventListener('scroll', updateCoords, true)
@@ -89,8 +94,19 @@ export default function RookieSelect({
       {open && coords && createPortal(
         <div
           ref={dropdownRef}
-          style={{ position: 'fixed', top: coords.top + 4, left: coords.left, width: coords.width }}
-          className="z-50 max-h-64 overflow-y-auto bg-white border rounded-lg shadow-lg"
+          style={{
+            position: 'fixed',
+            left: coords.left,
+            width: coords.width,
+            maxHeight: Math.max(120, Math.min(
+              256,
+              coords.openUp ? coords.inputTop - 8 : window.innerHeight - coords.inputBottom - 8,
+            )),
+            ...(coords.openUp
+              ? { bottom: window.innerHeight - coords.inputTop + 4 }
+              : { top: coords.inputBottom + 4 }),
+          }}
+          className="z-50 overflow-y-auto bg-white border rounded-lg shadow-lg"
         >
           <div
             className="px-3 py-1.5 text-sm text-gray-400 hover:bg-gray-50 cursor-pointer"

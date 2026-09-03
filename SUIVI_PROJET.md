@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-02 (suite 8)
+Derniere mise a jour: 2026-09-03
 
 ## Role du fichier
 
@@ -43,6 +43,23 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   touche jamais `is_active`/`season_started` (hors de sa portée délibérée). Donc : activer
   2026-27 en prod d'abord → rouler le sync → cliquer "Démarrer la saison" **séparément en
   prod aussi** une fois prêt (le script ne le fait pas automatiquement).
+
+### 2026-09-03
+
+**[Fix] — Le sélecteur de recrue s'ouvrait toujours vers le bas, même en fin de page**
+(`app/app/admin/repechage/RookieSelect.tsx`) :
+- David a repéré un affichage cassé en testant le repêchage des recrues (staging) : pour un
+  pick proche du bas de la page (dernier pick de la dernière ronde), le menu déroulant du
+  sélecteur de recrue (positionné en `fixed` via portail, coordonnées calculées par
+  `getBoundingClientRect()`) s'ouvrait quand même vers le bas — chevauchant le résumé
+  "X / Y choix restants" et débordant en partie hors viewport, sans place réelle pour
+  s'afficher proprement.
+- Corrigé : calcul de l'espace disponible au-dessus vs en dessous de l'input à l'ouverture
+  (et à chaque scroll/resize, comme avant) ; si l'espace en dessous est insuffisant
+  (< 260px) et qu'il y a plus de place au-dessus, le menu s'ouvre vers le haut
+  (`bottom` au lieu de `top` en CSS) avec une hauteur max qui s'adapte à l'espace réellement
+  disponible de chaque côté (plafonnée à 256px comme avant, jamais sous 120px).
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
 
 ### 2026-09-02 (suite 8)
 
