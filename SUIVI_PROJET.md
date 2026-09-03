@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-03
+Derniere mise a jour: 2026-09-03 (suite 2)
 
 ## Role du fichier
 
@@ -43,6 +43,26 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   touche jamais `is_active`/`season_started` (hors de sa portée délibérée). Donc : activer
   2026-27 en prod d'abord → rouler le sync → cliquer "Démarrer la saison" **séparément en
   prod aussi** une fois prêt (le script ne le fait pas automatiquement).
+
+### 2026-09-03 (suite 2)
+
+**[Feature] — Rafraîchissement automatique de la vue pooler du repêchage des recrues**
+(nouveau : `app/app/repechage-recrues/AutoRefresh.tsx` ; modifié :
+`app/app/repechage-recrues/page.tsx`) :
+- Suite au fix précédent (choix provisoires maintenant visibles côté pooler), David a demandé
+  le rafraîchissement automatique tout de suite plutôt que d'attendre le jour du repêchage
+  global, pour valider que ça fonctionne dès maintenant.
+- `AutoRefresh` (composant client minimal) appelle `router.refresh()` toutes les 6 secondes —
+  ré-exécute le Server Component de la page (nouvelle requête Supabase) sans perdre l'état
+  local de `DraftBoard` (le `useState` de `selections` ne se réinitialise qu'au montage, pas à
+  chaque changement de props). Actif seulement quand pertinent : saison active, repêchage pas
+  complété, au moins un choix configuré — indicateur visuel discret (point vert pulsant +
+  "Mise à jour automatique") à côté du sélecteur de saison.
+- Scope volontairement limité à `/repechage-recrues` (vue pooler en lecture seule) — pas
+  touché `/admin/repechage` (l'admin est en train de saisir, un refresh périodique n'y apporte
+  rien et risquerait de perturber une saisie en cours si le pattern devait un jour y être ajouté
+  différemment).
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
 
 ### 2026-09-03 (suite)
 

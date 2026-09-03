@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import DraftBoard from '../admin/repechage/DraftBoard'
 import SaisonSelectClient from './SaisonSelectClient'
+import AutoRefresh from './AutoRefresh'
 
 export const dynamic = 'force-dynamic'
 
@@ -107,7 +108,10 @@ export default async function RepechageRecruesPage({
             {!isDraftStarted && totalPicks > 0 && <span className="ml-2 text-gray-400">· Pas encore commencé</span>}
           </p>
         </div>
-        <SaisonSelectClient saisons={saisons} selectedId={saison.id} />
+        <div className="flex items-center gap-4">
+          <AutoRefresh enabled={saison.is_active && !isDraftDone && totalPicks > 0} />
+          <SaisonSelectClient saisons={saisons} selectedId={saison.id} />
+        </div>
       </div>
 
       {totalPicks === 0 ? (
