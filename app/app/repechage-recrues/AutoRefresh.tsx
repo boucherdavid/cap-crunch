@@ -1,16 +1,16 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 
-export default function AutoRefresh({ enabled, intervalMs = 6000 }: { enabled: boolean; intervalMs?: number }) {
-  const router = useRouter()
-
+export default function AutoRefresh({ enabled, intervalMs = 10000 }: { enabled: boolean; intervalMs?: number }) {
   useEffect(() => {
     if (!enabled) return
-    const id = setInterval(() => router.refresh(), intervalMs)
+    // router.refresh() (rafraîchissement RSC "doux") s'est avéré peu fiable ici — un
+    // rechargement complet reproduit exactement ce qu'un F5 manuel fait déjà, dont on sait
+    // qu'il fonctionne.
+    const id = setInterval(() => window.location.reload(), intervalMs)
     return () => clearInterval(id)
-  }, [enabled, intervalMs, router])
+  }, [enabled, intervalMs])
 
   if (!enabled) return null
 

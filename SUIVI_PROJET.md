@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-03 (suite 4)
+Derniere mise a jour: 2026-09-03 (suite 5)
 
 ## Role du fichier
 
@@ -43,6 +43,23 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   touche jamais `is_active`/`season_started` (hors de sa portée délibérée). Donc : activer
   2026-27 en prod d'abord → rouler le sync → cliquer "Démarrer la saison" **séparément en
   prod aussi** une fois prêt (le script ne le fait pas automatiquement).
+
+### 2026-09-03 (suite 5)
+
+**[Fix] — Le rafraîchissement automatique ne captait pas les sauvegardes suivantes**
+(`app/app/repechage-recrues/AutoRefresh.tsx`) :
+- David a confirmé la première mise à jour automatique, puis fait un nouveau choix côté
+  admin (Jérôme) sans que la vue pooler ne bouge, même en attendant/interagissant avec la
+  page. Vérifié en base : le choix **était** bien sauvegardé (`pending_player_id` correct)
+  — le problème n'était donc pas côté écriture (déjà validé "suite 3") mais dans
+  `router.refresh()`, qui n'allait apparemment pas rechercher les données fraîches de façon
+  fiable à chaque tick (comportement du cache routeur RSC de Next.js pas assez prévisible
+  ici).
+- Remplacé par `window.location.reload()` — un rechargement complet reproduit exactement ce
+  qu'un F5 manuel fait déjà (dont on sait qu'il fonctionne, testé juste avant), au prix d'un
+  flash visuel bref à chaque cycle plutôt qu'une mise à jour "douce". Intervalle monté à 10s
+  (au lieu de 6s) pour compenser.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
 
 ### 2026-09-03 (suite 4)
 
