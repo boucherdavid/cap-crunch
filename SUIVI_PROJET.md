@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-03 (suite 2)
+Derniere mise a jour: 2026-09-03 (suite 3)
 
 ## Role du fichier
 
@@ -43,6 +43,24 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   touche jamais `is_active`/`season_started` (hors de sa portée délibérée). Donc : activer
   2026-27 en prod d'abord → rouler le sync → cliquer "Démarrer la saison" **séparément en
   prod aussi** une fois prêt (le script ne le fait pas automatiquement).
+
+### 2026-09-03 (suite 3)
+
+**[Fix] — Une sélection de recrue devait être "Sauvegardée" manuellement pour apparaître en direct**
+(`app/app/admin/repechage/DraftBoard.tsx`) :
+- David a testé le rafraîchissement automatique (voir "suite 2") avec deux picks sélectionnés
+  côté admin sans cliquer "Sauvegarder" : seul le premier (déjà sauvegardé lors d'un test
+  précédent) apparaissait côté pooler, le second restait "En attente" — confirmé en base
+  (`pending_player_id` non-null sur un seul pick des deux visiblement remplis à l'écran admin).
+  Attendu : la fonction de sauvegarde manuelle marchait comme conçue, mais ne correspondait
+  pas à la demande initiale de David ("lorsque je choisis un joueur, ça pourrait sauvegarder
+  automatiquement").
+- Corrigé : chaque sélection dans `RookieSelect` déclenche maintenant immédiatement
+  `saveDraftProgressAction` pour ce pick (plus besoin d'attendre un clic groupé) — indicateur
+  "Sauvegarde..." le temps de l'appel. Le bouton "Sauvegarder" reste en place comme filet de
+  sécurité (relance groupée en cas d'échec réseau ponctuel sur une sauvegarde individuelle),
+  infobulle mise à jour en conséquence.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
 
 ### 2026-09-03 (suite 2)
 

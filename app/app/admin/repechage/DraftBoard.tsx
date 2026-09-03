@@ -55,11 +55,27 @@ export default function DraftBoard({
   const [submittedPickIds, setSubmittedPickIds] = useState<Set<number>>(new Set())
   const [rollingBack, setRollingBack] = useState<number | null>(null)
   const [rolledBackPickIds, setRolledBackPickIds] = useState<Set<number>>(new Set())
+  const [savingPickIds, setSavingPickIds] = useState<Set<number>>(new Set())
 
   const showMessage = (text: string, type: 'success' | 'error') => {
     setMessage(text)
     setMessageType(type)
     setTimeout(() => setMessage(''), 5000)
+  }
+
+  // Sauvegarde immédiate à chaque sélection — les poolers suivent le repêchage en direct
+  // (vue lecture seule) sans attendre le clic sur "Sauvegarder", qui reste un filet de
+  // sécurité en cas d'échec réseau ponctuel.
+  const handlePickChange = async (pickId: number, playerId: number | null) => {
+    setSelections(prev => ({ ...prev, [pickId]: playerId }))
+    setSavingPickIds(prev => new Set([...prev, pickId]))
+    const result = await saveDraftProgressAction(saisonId, [{ pickId, playerId }])
+    setSavingPickIds(prev => {
+      const next = new Set(prev)
+      next.delete(pickId)
+      return next
+    })
+    if (result.error) showMessage(result.error, 'error')
   }
 
   const handleRollback = async (pickId: number) => {
@@ -282,15 +298,17 @@ export default function DraftBoard({
                                   <span className="text-gray-400">(non confirmé)</span>
                                 </span>
                               : <span className="text-xs text-gray-400 italic">En attente</span>)
-                          : <RookieSelect
-                              rookies={rookies}
-                              value={selectedId}
-                              excludeIds={selectedPlayerIds}
-                              onChange={playerId => setSelections(prev => ({
-                                ...prev,
-                                [pick.id]: playerId,
-                              }))}
-                            />
+                          : <span className="flex items-center gap-2">
+                              <RookieSelect
+                                rookies={rookies}
+                                value={selectedId}
+                                excludeIds={selectedPlayerIds}
+                                onChange={playerId => handlePickChange(pick.id, playerId)}
+                              />
+                              {savingPickIds.has(pick.id) && (
+                                <span className="text-xs text-gray-400 shrink-0">Sauvegarde...</span>
+                              )}
+                            </span>
                         }
                       </td>
                     </tr>
@@ -322,7 +340,7 @@ export default function DraftBoard({
                 onClick={handleSaveProgress}
                 disabled={savingProgress}
                 className="px-5 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                title="Sauvegarder les choix en cours sans les assigner"
+                title="Chaque choix se sauvegarde déjà automatiquement — ce bouton relance une sauvegarde groupée en cas d'échec réseau ponctuel"
               >
                 {savingProgress ? 'Sauvegarde...' : 'Sauvegarder'}
               </button>
