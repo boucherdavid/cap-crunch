@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import MovementHistoryPanel from '@/components/MovementHistoryPanel'
 import { loadRosterAction, searchFreeAgentsAction, submitTransactionAction, ActionType, TxItemPayload } from './actions'
-import { isRookieProtectionExpired } from '@/lib/rookieProtection'
+import { isRookieProtectionExpired, isElcActiveForSeason } from '@/lib/rookieProtection'
 
 const DASH = '\u2014'
 const STAR = '\u2605'
@@ -26,10 +26,8 @@ type TxItem = TxItemPayload & {
 function isRecruitExpired(entry: RosterEntry, season: string): boolean {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const contracts: any[] = entry.players?.player_contracts ?? []
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const contract = contracts.find((c: any) => c.season === season)
   const seasonStartYear = parseInt(season.split('-')[0], 10)
-  return isRookieProtectionExpired(entry.rookie_type ?? null, entry.pool_draft_year ?? null, !!contract?.is_elc, seasonStartYear)
+  return isRookieProtectionExpired(entry.rookie_type ?? null, entry.pool_draft_year ?? null, isElcActiveForSeason(contracts, season), seasonStartYear)
 }
 
 const PLAYER_TYPES = ['actif', 'reserviste', 'ltir', 'recrue'] as const

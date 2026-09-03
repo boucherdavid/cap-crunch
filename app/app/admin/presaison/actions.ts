@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { computeReverseStandingsOrder } from '@/lib/draftOrder'
 import { getEffectiveCap } from '@/lib/capUtils'
-import { isRookieProtectionExpired } from '@/lib/rookieProtection'
+import { isRookieProtectionExpired, isElcActiveForSeason } from '@/lib/rookieProtection'
 import { FREE_AGENT_THRESHOLD } from './types'
 import type { PoolerCapInfo, DraftState } from './types'
 
@@ -45,8 +45,7 @@ async function syncExpiredRookieProtection(supabase: any, saisonId: number, seas
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const row of (rows ?? []) as any[]) {
     const contracts: any[] = row.players?.player_contracts ?? []
-    const currentContract = contracts.find((c: any) => c.season === season)
-    const expired = isRookieProtectionExpired(row.rookie_type, row.pool_draft_year ?? null, !!currentContract?.is_elc, seasonStartYear)
+    const expired = isRookieProtectionExpired(row.rookie_type, row.pool_draft_year ?? null, isElcActiveForSeason(contracts, season), seasonStartYear)
     if (expired) {
       await supabase.from('pooler_rosters').update({ player_type: 'recrue' }).eq('id', row.id)
     }
@@ -106,7 +105,6 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
     if (!info) continue
 
     const contracts: any[] = entry.players?.player_contracts ?? []
-    const currentContract = contracts.find((c: any) => c.season === saison.season)
     const { cap: capNum, isEstimated: capIsEstimated } = getEffectiveCap(contracts, saison.season, unsignedMultiplier)
     const pos: string | null = entry.players?.position ?? null
     let type: string = entry.player_type
@@ -117,7 +115,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
     if (type === 'recrue') {
       const rookieType = (entry.rookie_type ?? null) as 'repeche' | 'agent_libre' | null
       const draftYear: number | null = entry.pool_draft_year ?? null
-      const isExpired = isRookieProtectionExpired(rookieType, draftYear, !!currentContract?.is_elc, seasonStartYear)
+      const isExpired = isRookieProtectionExpired(rookieType, draftYear, isElcActiveForSeason(contracts, saison.season), seasonStartYear)
 
       if (!isExpired) {
         // Recrue encore protégée → hors du repêchage pré-saison

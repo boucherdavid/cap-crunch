@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { isRookieProtectionExpired } from '@/lib/rookieProtection'
+import { isRookieProtectionExpired, isElcActiveForSeason } from '@/lib/rookieProtection'
 
 const REVALIDATE_PATHS = ['/admin/pool', '/admin', '/', '/poolers', '/dashboard']
 const revalidateAll = () => REVALIDATE_PATHS.forEach(p => revalidatePath(p))
@@ -188,7 +188,6 @@ export async function previewTransitionAction(
 
   for (const e of entries) {
     const contracts: any[] = e.players?.player_contracts ?? []
-    const currentContract = contracts.find((c: any) => c.season === toSaison.season)
     const hasContract = contracts.some((c: any) => c.season === toSaison.season && c.cap_number > 0)
 
     // Joueur actif/réserviste dont la protection recrue (ELC, ou plafond 5 saisons pour un
@@ -197,7 +196,7 @@ export async function previewTransitionAction(
     // puisque ce cas survient très normalement même quand un vrai contrat post-ELC existe
     // déjà pour la saison cible (David, 2026-09-03).
     if ((e.player_type === 'actif' || e.player_type === 'reserviste') && e.rookie_type) {
-      const isExpired = isRookieProtectionExpired(e.rookie_type, e.pool_draft_year ?? null, !!currentContract?.is_elc, seasonStartYear)
+      const isExpired = isRookieProtectionExpired(e.rookie_type, e.pool_draft_year ?? null, isElcActiveForSeason(contracts, toSaison.season), seasonStartYear)
       if (isExpired) {
         willReturnToBank++
         continue
@@ -266,7 +265,6 @@ export async function transitionSeasonAction(
       let playerType = e.player_type === 'ltir' ? 'actif' : e.player_type
 
       const contracts: any[] = e.players?.player_contracts ?? []
-      const currentContract = contracts.find((c: any) => c.season === toSaison.season)
 
       // Joueur actif/réserviste dont la protection recrue (ELC, ou plafond 5 saisons pour un
       // repêché) vient d'expirer : retourne dans la banque de recrues plutôt que de rester
@@ -276,7 +274,7 @@ export async function transitionSeasonAction(
       // Même définition que previewTransitionAction — l'avertissement affiché avant de
       // confirmer doit correspondre exactement à ce qui se passe ici.
       if ((playerType === 'actif' || playerType === 'reserviste') && e.rookie_type) {
-        if (isRookieProtectionExpired(e.rookie_type, e.pool_draft_year ?? null, !!currentContract?.is_elc, seasonStartYear)) {
+        if (isRookieProtectionExpired(e.rookie_type, e.pool_draft_year ?? null, isElcActiveForSeason(contracts, toSaison.season), seasonStartYear)) {
           playerType = 'recrue'
           returned++
         }

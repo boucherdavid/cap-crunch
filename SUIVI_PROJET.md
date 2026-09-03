@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-03 (suite 8)
+Derniere mise a jour: 2026-09-03 (suite 9)
 
 ## Role du fichier
 
@@ -43,6 +43,33 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   touche jamais `is_active`/`season_started` (hors de sa portée délibérée). Donc : activer
   2026-27 en prod d'abord → rouler le sync → cliquer "Démarrer la saison" **séparément en
   prod aussi** une fois prêt (le script ne le fait pas automatiquement).
+
+### 2026-09-03 (suite 9)
+
+**[Fix] — Recrues fraîchement repêchées comptées à tort comme non protégées (régression)**
+(`app/lib/rookieProtection.ts`, `app/app/admin/presaison/actions.ts`,
+`app/app/admin/config/actions.ts`, `app/app/admin/transactions/actions.ts`,
+`app/app/admin/transactions/TransactionBuilder.tsx`) :
+- David a remarqué sur "Aperçu des rosters" (`/admin/init?tab=presaison`) des recrues
+  fraîchement repêchées (ex: Cullen, Wyatt — repêché 2026, aucun contrat NHL) apparaître dans
+  le groupe "Attaquants" (actif) au lieu de la banque. Vérifié en base : `player_type`
+  restait bien `'recrue'` (rien de corrompu) — le bug était uniquement dans le calcul
+  d'affichage/comptage de "suite 8".
+- Cause : `isElcActive` était calculé partout comme `!!contract?.is_elc`, où `contract` est
+  `undefined` quand aucune ligne `player_contracts` n'existe pour la saison — ce qui arrive
+  très normalement pour une recrue tout juste repêchée (encore junior/AHL/Europe, pas encore
+  signée en NHL). `!isElcActive` valait donc `true` (expiré) pour n'importe quelle recrue sans
+  contrat du tout, peu importe son année de repêchage — l'absence de données était
+  confondue avec "ELC terminé".
+- Corrigé : nouvelle fonction partagée `isElcActiveForSeason(contracts, season)`
+  (`rookieProtection.ts`) — retourne `true` (présumé protégé) quand aucune ligne de contrat
+  n'existe pour la saison, et seulement `contract.is_elc` quand une ligne existe réellement.
+  Remplace `!!contract?.is_elc`/`!!currentContract?.is_elc` aux 6 endroits qui appelaient
+  `isRookieProtectionExpired` (2× `presaison/actions.ts`, 2× `config/actions.ts`,
+  `transactions/actions.ts`, `TransactionBuilder.tsx`).
+- Validé par un test isolé (script Python reproduisant la logique) : Cullen (repêché 2026,
+  sans contrat, saison 2026-27) → `expired=False` après correctif (était `True` avant).
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
 
 ### 2026-09-03 (suite 8)
 

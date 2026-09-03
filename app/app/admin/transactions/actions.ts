@@ -402,10 +402,13 @@ export async function submitTransactionAction(
           .eq('season', saison.season)
           .maybeSingle()
         const seasonStartYear = parseInt(saison.season.split('-')[0], 10)
+        // Pas de ligne de contrat pour cette saison : ne veut pas dire "ELC terminé" — souvent
+        // une recrue jamais signée en NHL, toujours présumée protégée (voir rookieProtection.ts).
+        const isElcActive = contract ? !!contract.is_elc : true
         const expired = isRookieProtectionExpired(
           existingRow.rookie_type as 'repeche' | 'agent_libre',
           existingRow.pool_draft_year ?? null,
-          !!contract?.is_elc,
+          isElcActive,
           seasonStartYear,
         )
         if (expired) rookieClearFields = { rookie_type: null, pool_draft_year: null }

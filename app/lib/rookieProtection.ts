@@ -23,3 +23,19 @@ export function isRookieProtectionExpired(
   // comportement que le code existant qu'on remplace.
   return true
 }
+
+// Calcule isElcActive à partir des contrats réels — à utiliser par TOUS les appelants de
+// isRookieProtectionExpired plutôt que `!!contract?.is_elc` en direct. Un repêché tout juste
+// sélectionné par le pool n'a souvent aucun contrat NHL du tout (encore junior/AHL/Europe) —
+// l'absence de ligne pour la saison ne veut PAS dire "ELC terminé", et ne doit surtout pas
+// être traitée comme une expiration (bug trouvé par David, 2026-09-03 : des recrues fraîchement
+// repêchées, sans contrat, se retrouvaient comptées comme actives/hors protection dès le
+// chargement de la pré-saison). Seule une ligne de contrat existante avec is_elc=false prouve
+// que la protection est réellement terminée.
+export function isElcActiveForSeason(
+  contracts: { season: string; is_elc: boolean | null }[] | null | undefined,
+  season: string,
+): boolean {
+  const contract = (contracts ?? []).find(c => c.season === season)
+  return contract ? !!contract.is_elc : true
+}
