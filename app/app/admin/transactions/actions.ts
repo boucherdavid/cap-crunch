@@ -5,6 +5,7 @@ import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/roste
 import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
 import { validateRosterLimits } from '@/lib/rosterLimits'
 import { getEffectiveCap } from '@/lib/capUtils'
+import { isRookieProtectionExpired } from '@/lib/rookieProtection'
 
 export type ActionType = 'transfer' | 'promote' | 'sign' | 'reactivate' | 'release' | 'type_change'
 
@@ -50,7 +51,7 @@ export async function loadRosterAction(poolerId: string, saisonId: number) {
   const [{ data: rosterData }, { data: picksData }] = await Promise.all([
     supabase
       .from('pooler_rosters')
-      .select(`id, player_id, player_type, players (id, first_name, last_name, position, status, is_rookie, teams (code), player_contracts (season, cap_number))`)
+      .select(`id, player_id, player_type, rookie_type, pool_draft_year, players (id, first_name, last_name, position, status, is_rookie, teams (code), player_contracts (season, cap_number, is_elc))`)
       .eq('pooler_id', poolerId)
       .eq('pool_season_id', saisonId)
       .eq('is_active', true)
@@ -377,7 +378,7 @@ export async function submitTransactionAction(
 
       const { data: existingRow } = await supabase
         .from('pooler_rosters')
-        .select('id, added_at')
+        .select('id, added_at, rookie_type, pool_draft_year')
         .eq('pooler_id', poolerId)
         .eq('player_id', player_id!)
         .eq('pool_season_id', saisonId)
@@ -387,9 +388,36 @@ export async function submitTransactionAction(
       if (!existingRow) return { error: `Joueur (id: ${player_id}) avec type "${matchType}" introuvable.` }
       const { addedAtOverride, warning } = computeTypeChangeAddedAt(existingRow.added_at, txTs)
       if (warning) warnings.push(warning)
+
+      // Promouvoir une recrue dont la protection (ELC, ou plafond 5 saisons pour un
+      // repêché) est déjà expirée rend la perte du statut recrue permanente et automatique
+      // au moment même de l'activation — le pooler comprend qu'il ne pourra plus la
+      // remettre en banque ensuite (David, 2026-09-03).
+      let rookieClearFields = {}
+      if (action_type === 'promote' && existingRow.rookie_type) {
+        const { data: contract } = await supabase
+          .from('player_contracts')
+          .select('is_elc')
+          .eq('player_id', player_id!)
+          .eq('season', saison.season)
+          .maybeSingle()
+        const seasonStartYear = parseInt(saison.season.split('-')[0], 10)
+        const expired = isRookieProtectionExpired(
+          existingRow.rookie_type as 'repeche' | 'agent_libre',
+          existingRow.pool_draft_year ?? null,
+          !!contract?.is_elc,
+          seasonStartYear,
+        )
+        if (expired) rookieClearFields = { rookie_type: null, pool_draft_year: null }
+      }
+
       const { error } = await supabase
         .from('pooler_rosters')
-        .update({ player_type: new_player_type, ...(addedAtOverride ? { added_at: addedAtOverride } : {}) })
+        .update({
+          player_type: new_player_type,
+          ...(addedAtOverride ? { added_at: addedAtOverride } : {}),
+          ...rookieClearFields,
+        })
         .eq('id', existingRow.id)
       if (error) return { error: error.message }
       await log(player_id!, poolerId, matchType!, new_player_type!)

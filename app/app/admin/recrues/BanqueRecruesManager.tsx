@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { normalizeSearch } from '@/lib/normalizeSearch'
 import { addPlayerAction, removePlayerAction, updateRookieTypeAction } from '../rosters/actions'
+import { submitTransactionAction } from '../transactions/actions'
 
 const DASH = '\u2014'
 const CROSS = '\u2715'
@@ -62,10 +63,11 @@ const draftLabel = (r: Rookie) => {
 
 const PENCIL = '\u270e'
 
-function BankRow({ entry, onRemove, onEdit, loading, expired = false }: {
+function BankRow({ entry, onRemove, onEdit, onActivate, loading, expired = false }: {
   entry: BankEntry
   onRemove: (id: number) => void
   onEdit: () => void
+  onActivate?: () => void
   loading: boolean
   expired?: boolean
 }) {
@@ -96,15 +98,70 @@ function BankRow({ entry, onRemove, onEdit, loading, expired = false }: {
           </span>
         )}
       </div>
-      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2 shrink-0">
-        <button onClick={onEdit} disabled={loading}
-          className="text-blue-400 hover:text-blue-600 text-xs disabled:opacity-30"
-          title="Modifier le type">
-          {PENCIL}
+      <div className="flex items-center gap-1 ml-2 shrink-0">
+        {expired && onActivate && (
+          <button onClick={onActivate} disabled={loading}
+            className="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 text-xs font-medium disabled:opacity-30 px-2 py-1 rounded whitespace-nowrap">
+            Activer
+          </button>
+        )}
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={onEdit} disabled={loading}
+            className="text-blue-400 hover:text-blue-600 text-xs disabled:opacity-30"
+            title="Modifier le type">
+            {PENCIL}
+          </button>
+          <button onClick={() => onRemove(entry.id)} disabled={loading}
+            className="text-red-400 hover:text-red-600 text-xs disabled:opacity-30">
+            {CROSS}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ActivatePanel({ rookie, onConfirm, onCancel, loading }: {
+  rookie: Rookie
+  onConfirm: (type: 'actif' | 'reserviste') => void
+  onCancel: () => void
+  loading: boolean
+}) {
+  const [type, setType] = useState<'actif' | 'reserviste'>('actif')
+
+  return (
+    <div className="mt-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm">
+      <p className="font-medium text-gray-700 mb-1">
+        Activer {rookie.last_name}, {rookie.first_name}
+      </p>
+      <p className="text-xs text-gray-500 mb-2">
+        Protection expirée — cette activation est permanente, le joueur ne pourra plus revenir dans la banque.
+      </p>
+      <div className="flex gap-3 mb-3">
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <input type="radio" name="activateType" value="actif"
+            checked={type === 'actif'} onChange={() => setType('actif')} />
+          <span>Actif</span>
+        </label>
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <input type="radio" name="activateType" value="reserviste"
+            checked={type === 'reserviste'} onChange={() => setType('reserviste')} />
+          <span>Réserviste</span>
+        </label>
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={() => onConfirm(type)}
+          disabled={loading}
+          className="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded hover:bg-emerald-700 disabled:opacity-50"
+        >
+          Confirmer
         </button>
-        <button onClick={() => onRemove(entry.id)} disabled={loading}
-          className="text-red-400 hover:text-red-600 text-xs disabled:opacity-30">
-          {CROSS}
+        <button
+          onClick={onCancel}
+          className="text-gray-500 text-xs px-3 py-1.5 rounded hover:bg-gray-100"
+        >
+          Annuler
         </button>
       </div>
     </div>
@@ -178,6 +235,7 @@ export default function BanqueRecruesManager({
   const [message, setMessage] = useState('')
   const [pendingRookie, setPendingRookie] = useState<Rookie | null>(null)
   const [editingEntryId, setEditingEntryId] = useState<number | null>(null)
+  const [activatingEntryId, setActivatingEntryId] = useState<number | null>(null)
 
   const saisonFin = saison ? getSaisonFin(saison.season) : 0
 
@@ -297,6 +355,33 @@ export default function BanqueRecruesManager({
     setLoading(false)
   }
 
+  // Activation permanente — protection expirée : "Promouvoir recrue" via submitTransactionAction
+  // efface automatiquement rookie_type/pool_draft_year au moment même de l'activation (David,
+  // 2026-09-03). Notes distinctes de 'Repêchage pré-saison' pour ne pas être ramassées par la
+  // "Zone de test" de /admin/init?tab=presaison, qui ne doit annuler que les signatures d'AL.
+  const confirmActivate = async (entry: BankEntry, newType: 'actif' | 'reserviste') => {
+    if (!saison) return
+    setLoading(true)
+    const result = await submitTransactionAction(saison.id, 'Ajustement pré-saison', [{
+      action_type: 'promote',
+      to_pooler_id: selectedPooler,
+      from_pooler_id: selectedPooler,
+      player_id: entry.player_id,
+      old_player_type: 'recrue',
+      new_player_type: newType,
+    }])
+    if (result.error) {
+      setMessage(`Erreur: ${result.error}`)
+    } else {
+      setBank((prev) => prev.filter((e) => e.id !== entry.id))
+      setAllTakenIds((prev) => { const next = new Set(prev); next.delete(entry.player_id); return next })
+      setActivatingEntryId(null)
+      setMessage(`${entry.players.last_name}, ${entry.players.first_name} activé.`)
+    }
+    setLoading(false)
+    setTimeout(() => setMessage(''), 3000)
+  }
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow p-4 flex items-center gap-4 flex-wrap">
@@ -359,13 +444,22 @@ export default function BanqueRecruesManager({
                 {expiredBank.map((entry) => (
                   <div key={entry.id}>
                     <BankRow entry={entry} onRemove={removeFromBank} loading={loading} expired
-                      onEdit={() => setEditingEntryId(editingEntryId === entry.id ? null : entry.id)} />
+                      onEdit={() => setEditingEntryId(editingEntryId === entry.id ? null : entry.id)}
+                      onActivate={() => setActivatingEntryId(activatingEntryId === entry.id ? null : entry.id)} />
                     {editingEntryId === entry.id && (
                       <TypePanel
                         rookie={entry.players}
                         initialType={entry.rookie_type ?? undefined}
                         onConfirm={(type) => confirmEdit(entry.id, type, entry.players.draft_year)}
                         onCancel={() => setEditingEntryId(null)}
+                        loading={loading}
+                      />
+                    )}
+                    {activatingEntryId === entry.id && (
+                      <ActivatePanel
+                        rookie={entry.players}
+                        onConfirm={(type) => confirmActivate(entry, type)}
+                        onCancel={() => setActivatingEntryId(null)}
                         loading={loading}
                       />
                     )}

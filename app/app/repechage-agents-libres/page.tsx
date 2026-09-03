@@ -75,7 +75,6 @@ export default async function AgentsLibresPage() {
         is_active: false, queue: [],
         turn_started_at: null, turn_duration_seconds: 90, ended_at: null,
       }}
-      elcDecisions={dataResult.elcDecisions ?? []}
       recentPicks={recentPicks}
       saisonId={saison.id}
       season={saison.season}

@@ -165,7 +165,7 @@ export async function previewTransitionAction(
   playerCount?: number
   poolerCount?: number
   noContract?: { playerName: string; poolerName: string; playerType: string }[]
-  willBumpToReserviste?: number
+  willReturnToBank?: number
 }> {
   const supabase = await createClient()
 
@@ -184,24 +184,33 @@ export async function previewTransitionAction(
   const entries = (rosters ?? []) as any[]
   const noContract: { playerName: string; poolerName: string; playerType: string }[] = []
 
-  let willBumpToReserviste = 0
+  let willReturnToBank = 0
 
   for (const e of entries) {
     const contracts: any[] = e.players?.player_contracts ?? []
     const currentContract = contracts.find((c: any) => c.season === toSaison.season)
     const hasContract = contracts.some((c: any) => c.season === toSaison.season && c.cap_number > 0)
+
+    // Joueur actif/réserviste dont la protection recrue (ELC, ou plafond 5 saisons pour un
+    // repêché) vient d'expirer : retourne dans la banque de recrues plutôt que de rester
+    // actif/réserviste sans protection — vérifié avant le gate "hasContract" ci-dessous,
+    // puisque ce cas survient très normalement même quand un vrai contrat post-ELC existe
+    // déjà pour la saison cible (David, 2026-09-03).
+    if ((e.player_type === 'actif' || e.player_type === 'reserviste') && e.rookie_type) {
+      const isExpired = isRookieProtectionExpired(e.rookie_type, e.pool_draft_year ?? null, !!currentContract?.is_elc, seasonStartYear)
+      if (isExpired) {
+        willReturnToBank++
+        continue
+      }
+    }
+
     if (hasContract) continue
 
     // Recrue encore protégée (5 saisons repêchage, ou ELC actif) : normal de ne pas avoir
     // de contrat NHL — n'appartient pas au même avertissement que les vétérans non signés.
-    if (e.player_type === 'recrue') {
-      const isExpired = isRookieProtectionExpired(e.rookie_type ?? null, e.pool_draft_year ?? null, !!currentContract?.is_elc, seasonStartYear)
-      if (!isExpired) continue
-      // Protection expirée : sera basculée en réserviste par transitionSeasonAction (David,
-      // 2026-09-02) — de toute façon, elle devra devenir active ou réservistes si le pooler
-      // la garde, autant l'exposer tout de suite plutôt que la laisser invisible dans la banque.
-      willBumpToReserviste++
-    }
+    // Si sa protection est expirée, elle reste en banque telle quelle (pas de bascule) —
+    // sera flaguée "Activation obligatoire" par la banque de recrues, à activer au choix.
+    if (e.player_type === 'recrue') continue
 
     noContract.push({
       playerName: `${e.players?.last_name}, ${e.players?.first_name}`,
@@ -212,13 +221,13 @@ export async function previewTransitionAction(
 
   const poolerCount = new Set(entries.map((e: any) => e.pooler_id)).size
 
-  return { playerCount: entries.length, poolerCount, noContract, willBumpToReserviste }
+  return { playerCount: entries.length, poolerCount, noContract, willReturnToBank }
 }
 
 export async function transitionSeasonAction(
   fromSaisonId: number,
   toSaisonId: number,
-): Promise<{ error?: string; copied?: number; bumped?: number }> {
+): Promise<{ error?: string; copied?: number; returned?: number }> {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -248,7 +257,7 @@ export async function transitionSeasonAction(
     .eq('pool_season_id', toSaisonId)
   const existingKeys = new Set((existing ?? []).map((e: any) => `${e.pooler_id}:${e.player_id}`))
 
-  let bumped = 0
+  let returned = 0
 
   const toInsert = entries
     .filter((e: any) => !existingKeys.has(`${e.pooler_id}:${e.player_id}`))
@@ -256,20 +265,24 @@ export async function transitionSeasonAction(
       // Les joueurs en LTIR reviennent actif au début de la nouvelle saison
       let playerType = e.player_type === 'ltir' ? 'actif' : e.player_type
 
-      // Recrue dont la protection expire pour la saison cible (5 saisons repêchage, ou fin
-      // d'ELC pour un agent libre) : bascule en réserviste plutôt que de rester invisible
-      // dans la banque de recrues — de toute façon elle devra devenir active ou réserviste
-      // si le pooler la garde, autant l'exposer tout de suite pour le ménage pré-saison
-      // (David, 2026-09-02). Même définition que previewTransitionAction — l'avertissement
-      // affiché avant de confirmer doit correspondre exactement à ce qui se passe ici.
-      if (playerType === 'recrue') {
-        const contracts: any[] = e.players?.player_contracts ?? []
-        const currentContract = contracts.find((c: any) => c.season === toSaison.season)
-        if (isRookieProtectionExpired(e.rookie_type ?? null, e.pool_draft_year ?? null, !!currentContract?.is_elc, seasonStartYear)) {
-          playerType = 'reserviste'
-          bumped++
+      const contracts: any[] = e.players?.player_contracts ?? []
+      const currentContract = contracts.find((c: any) => c.season === toSaison.season)
+
+      // Joueur actif/réserviste dont la protection recrue (ELC, ou plafond 5 saisons pour un
+      // repêché) vient d'expirer : retourne dans la banque de recrues plutôt que de rester
+      // actif/réserviste sans protection — le pooler décidera de l'activer ou non depuis la
+      // banque (Promouvoir recrue), ce qui rendra alors la perte du statut recrue permanente
+      // (David, 2026-09-03 — remplace l'ancienne bascule vers réserviste du 2026-09-02).
+      // Même définition que previewTransitionAction — l'avertissement affiché avant de
+      // confirmer doit correspondre exactement à ce qui se passe ici.
+      if ((playerType === 'actif' || playerType === 'reserviste') && e.rookie_type) {
+        if (isRookieProtectionExpired(e.rookie_type, e.pool_draft_year ?? null, !!currentContract?.is_elc, seasonStartYear)) {
+          playerType = 'recrue'
+          returned++
         }
       }
+      // Recrue déjà en banque dont la protection a expiré : reste en banque telle quelle
+      // (pas de bascule) — sera flaguée "Activation obligatoire" par la banque de recrues.
 
       return {
         pooler_id: e.pooler_id,
@@ -289,14 +302,14 @@ export async function transitionSeasonAction(
       }
     })
 
-  if (toInsert.length === 0) return { copied: 0, bumped: 0 }
+  if (toInsert.length === 0) return { copied: 0, returned: 0 }
 
   const { error } = await supabase.from('pooler_rosters').insert(toInsert)
 
   if (error) return { error: error.message }
 
   revalidateAll()
-  return { copied: toInsert.length, bumped }
+  return { copied: toInsert.length, returned }
 }
 
 // Masque/affiche une saison inactive dans les sélecteurs publics (/journal-transactions,

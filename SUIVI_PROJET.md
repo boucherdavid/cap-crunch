@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-03 (suite 7)
+Derniere mise a jour: 2026-09-03 (suite 8)
 
 ## Role du fichier
 
@@ -43,6 +43,53 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   touche jamais `is_active`/`season_started` (hors de sa portée délibérée). Donc : activer
   2026-27 en prod d'abord → rouler le sync → cliquer "Démarrer la saison" **séparément en
   prod aussi** une fois prêt (le script ne le fait pas automatiquement).
+
+### 2026-09-03 (suite 8)
+
+**[Fix] — Révision de la protection recrue : ELC prioritaire, retour en banque plutôt que réserviste**
+(`app/lib/rookieProtection.ts`, `app/app/admin/config/actions.ts`,
+`app/app/admin/config/SeasonsManager.tsx`, `app/app/admin/presaison/actions.ts`,
+`app/app/admin/presaison/types.ts`, `app/app/admin/presaison/PresaisonManager.tsx`,
+`app/app/admin/transactions/actions.ts`, `app/app/admin/transactions/TransactionBuilder.tsx`,
+`app/app/admin/recrues/BanqueRecruesManager.tsx`, `app/app/repechage-agents-libres/*`) :
+- David a repéré, en préparant le repêchage pré-saison en staging, que la bascule
+  automatique vers réserviste du 2026-09-02 (protection 5 ans expirée) et l'ancien panneau
+  "Décisions requises — Recrues hors ELC" (basé sur le contrat ELC, plus ancien) se
+  chevauchaient mal — un même joueur pouvait être déjà réserviste et encore réclamer une
+  décision manuelle, avec un choix "Mettre en banque" incohérent quand la protection 5 ans
+  elle-même était expirée. Clarifié via 3 questions : la fin de l'ELC prime toujours (le 5 ans
+  n'est qu'un plafond dur pour un repêché), et une protection expirée renvoie le joueur en
+  banque plutôt qu'en réserviste — l'activation (permanente) reste au choix du pooler/admin,
+  "comme une transaction entre poolers", à tout moment.
+- `isRookieProtectionExpired()` (`rookieProtection.ts`) : ajout de `!isElcActive ||` sur la
+  branche `repeche`.
+- `transitionSeasonAction`/`previewTransitionAction` : recrue en banque à protection expirée
+  → reste en banque (plus de bascule) ; **nouveau** — joueur actif/réserviste dont la
+  protection expire pour la saison cible → copié en `recrue` (retour en banque), même si un
+  vrai contrat post-ELC existe déjà. Compteur renommé `willBumpToReserviste`/`bumped` →
+  `willReturnToBank`/`returned`, texte de la modale de confirmation mis à jour.
+- `loadPresaisonDataAction` : nouvel helper `syncExpiredRookieProtection()` appelé en tout
+  début de fonction — corrige en base (retour en banque) à **chaque chargement**, pas
+  seulement à la transition annuelle. Panneau "Décisions requises" et
+  `resolveElcDecisionAction` retirés (devenus inatteignables — tout cas qui les aurait
+  déclenchés est maintenant intercepté en amont par la correction continue).
+- `submitTransactionAction` (`'promote'`) : vérifie maintenant la protection au moment de la
+  promotion — si déjà expirée, efface automatiquement `rookie_type`/`pool_draft_year` dans la
+  même écriture (permanent immédiat). `loadRosterAction` étendu (`rookie_type`,
+  `pool_draft_year`, `is_elc`) pour que `TransactionBuilder.tsx` affiche le statut ELC dans le
+  sélecteur "Promouvoir une recrue" (⚠ si expiré) et dans le libellé de la transaction ajoutée.
+- `BanqueRecruesManager.tsx` : le panneau "Activation obligatoire" (déjà existant, visuel
+  seulement) a maintenant un vrai bouton "Activer" (choix Actif/Réserviste) qui déclenche la
+  même transaction `'promote'` — notes `'Ajustement pré-saison'` (pas `'Repêchage
+  pré-saison'`) pour ne pas être ramassé par le bouton "Réinitialiser le repêchage" (Zone de
+  test), qui ne doit annuler que les signatures d'agents libres.
+- Panneau ELC retiré aussi de `/repechage-agents-libres` (vue pooler, ajoutée juste avant ce
+  fix) — devenu inapplicable pour la même raison.
+- Aucune migration DB requise — repose sur des colonnes déjà existantes.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès). Effet de bord attendu en
+  staging : au premier chargement de `/admin/init?tab=presaison` après ce déploiement, les
+  recrues déjà basculées en réserviste par l'ancienne logique (testées par David plus tôt)
+  retournent automatiquement en banque.
 
 ### 2026-09-03 (suite 7)
 

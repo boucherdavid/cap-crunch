@@ -14,10 +14,6 @@ type PoolerInfo = {
   counts: { forward: number; defense: number; goalie: number; reserviste: number }
   roster: RosterEntry[]
 }
-type ElcDecision = {
-  roster_id: number; pooler_id: string; player_id: number; playerName: string
-  position: string | null; draft_year: number; cap_number: number; player_type: string
-}
 type DraftState = {
   is_active: boolean; queue: string[]; turn_started_at: string | null
   turn_duration_seconds: number; ended_at: string | null
@@ -36,13 +32,12 @@ function fmtDateTime(iso: string) {
 }
 
 export default function AgentsLibresDashboard({
-  me, poolers, poolCap, draftState, elcDecisions, recentPicks, saisonId, season,
+  me, poolers, poolCap, draftState, recentPicks, saisonId, season,
 }: {
   me: Me
   poolers: PoolerInfo[]
   poolCap: number
   draftState: DraftState
-  elcDecisions: ElcDecision[]
   recentPicks: RecentPick[]
   saisonId: number
   season: string
@@ -60,7 +55,6 @@ export default function AgentsLibresDashboard({
     : null
 
   const myPooler = poolers.find(p => p.id === me.id) ?? null
-  const myElc = elcDecisions.filter(e => e.pooler_id === me.id)
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4">
@@ -135,7 +129,6 @@ export default function AgentsLibresDashboard({
           <MonAlignement
             me={me}
             myPooler={myPooler}
-            myElc={myElc}
             poolCap={poolCap}
             saisonId={saisonId}
           />
@@ -196,11 +189,10 @@ function PoolerCard({ pooler, poolCap, isCurrentDrafter }: { pooler: PoolerInfo;
 }
 
 function MonAlignement({
-  me, myPooler, myElc, poolCap, saisonId,
+  me, myPooler, poolCap, saisonId,
 }: {
   me: Me
   myPooler: PoolerInfo | null
-  myElc: ElcDecision[]
   poolCap: number
   saisonId: number
 }) {
@@ -362,24 +354,6 @@ function MonAlignement({
           </>
         )}
       </div>
-
-      {myElc.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-5">
-          <h2 className="font-semibold text-gray-800 mb-1">Décisions ELC en attente</h2>
-          <p className="text-xs text-gray-400 mb-3">En attente de décision de l&apos;admin — garder actif ou remettre en banque de recrues.</p>
-          <div className="space-y-2">
-            {myElc.map(e => (
-              <div key={e.roster_id} className="border rounded-lg p-2.5 text-xs">
-                <div className="flex justify-between">
-                  <span className="font-medium text-gray-700">{e.playerName}</span>
-                  <span className="text-gray-400">{e.position ?? DASH}</span>
-                </div>
-                <div className="text-gray-400 mt-0.5">Repêché {e.draft_year} · {e.cap_number > 0 ? fmt(e.cap_number) : DASH}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

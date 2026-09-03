@@ -20,19 +20,6 @@ export type PoolerCapInfo = {
   roster: RosterEntry[]
 }
 
-// Recrue repêchée dans actif/réserviste dont l'ELC est échu → décision requise
-export type ElcDecisionEntry = {
-  roster_id: number
-  pooler_id: string
-  poolerName: string
-  player_id: number
-  playerName: string
-  position: string | null
-  draft_year: number
-  cap_number: number
-  player_type: string // 'actif' | 'reserviste'
-}
-
 // État partagé (en base) de la file d'attente du repêchage des agents libres — remplace
 // l'ancien état 100% local (queue/draftActive/draftDone) pour survivre à une navigation hors
 // de PresaisonManager et rester visible côté pooler.

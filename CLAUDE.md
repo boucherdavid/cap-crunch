@@ -16,7 +16,13 @@ Application web pour gérer un pool de hockey long terme, en remplacement d'un f
 - La banque de recrues et les joueurs LTIR ne comptent pas dans la masse salariale
 - Transactions gérées côté admin
 - Historique conservé dans `transactions` et `transaction_items`
-- Protection recrue : 5 saisons pour les repêchages, durée ELC pour les agents libres
+- Protection recrue : la fin de l'ELC déclenche toujours la perte de protection — pour un
+  repêché par le pool, les 5 saisons depuis le repêchage ne sont qu'un plafond dur (jamais
+  protégé au-delà, même sur un ELC prolongé) ; pour un agent libre, protégé tant que l'ELC
+  est actif (`isRookieProtectionExpired()`, `app/lib/rookieProtection.ts`). Quand la
+  protection expire pour un joueur actif/réserviste, il retourne dans la banque de recrues
+  (pas basculé en réserviste) — l'admin l'active ensuite au choix via "Promouvoir recrue",
+  ce qui efface alors définitivement `rookie_type`/`pool_draft_year`. Détails en section 6.
 - Calcul des points (`buildStandings()`) : seules les fenêtres où le joueur est réellement
   `actif` comptent — `recrue`/`reserviste`/`ltir` ne rapportent aucun point. Un joueur peut
   être actif plusieurs fois non consécutives dans une même saison (ex: réserve puis rappelé) ;
@@ -414,6 +420,38 @@ existants) — pas des pages à part entière.
   `roster_change_log`, avec le même vocabulaire `change_type` que `/gestion-effectifs` et
   `/admin/rosters` (`activation`/`deactivation`/`ajout_reserviste`/`ajout_recrue`/`retrait`/
   `ltir`/`retour_ltir`/`changement_type`).
+
+**Protection recrue (`app/lib/rookieProtection.ts`) — David, 2026-09-03 :**
+- `isRookieProtectionExpired(rookieType, poolDraftYear, isElcActive, seasonStartYear)` : la
+  fin de l'ELC prime toujours ; pour `repeche`, `!isElcActive || (seasonStartYear -
+  poolDraftYear) >= 5` (le 5 ans est un plafond dur, pas une garantie de durée) ; pour
+  `agent_libre`, `!isElcActive` seul (inchangé). Remplace une première version (2026-09-02)
+  qui basculait les recrues à 5 ans expirés directement en réserviste — corrigé après
+  clarification : ce n'était pas le comportement voulu.
+- Quand la protection expire pour un joueur `actif`/`reserviste`, il **retourne dans la
+  banque de recrues** (`player_type='recrue'`, `rookie_type`/`pool_draft_year` conservés —
+  rien n'est encore permanent) plutôt que d'être basculé en réserviste. Deux points d'entrée :
+  `transitionSeasonAction` (`admin/config/actions.ts`, une fois par an à la transition de
+  saison) et `syncExpiredRookieProtection()` (interne, `admin/presaison/actions.ts`), appelée
+  en tout début de `loadPresaisonDataAction` — se réapplique à **chaque chargement** de
+  `/admin/init?tab=presaison`, pour capter les cas qui échapperaient à la transition annuelle
+  (ex: un agent libre recrue dont l'ELC se termine en cours de pré-saison, alors qu'il était
+  déjà actif depuis une saison antérieure).
+- L'admin (ou le pooler via l'admin) active ensuite une recrue en banque à tout moment via
+  "Promouvoir recrue" (`/admin/transactions`, `action_type='promote'`) — traité comme une
+  transaction libre, pas lié au tour d'un repêchage. **Si la protection est déjà expirée au
+  moment de la promotion**, `submitTransactionAction` efface automatiquement
+  `rookie_type`/`pool_draft_year` dans la même écriture — la perte du statut recrue devient
+  permanente et immédiate, sans étape de décision séparée. Si la protection est encore active
+  à ce moment (ex: encore sur ELC), ces champs restent intacts.
+- `/admin/init?tab=recrues` (`BanqueRecruesManager.tsx`) affiche un panneau "Activation
+  obligatoire" pour les recrues à protection expirée (sa propre `isEntryProtected`, formule
+  légèrement divergente — `players.status==='ELC'` plutôt que `player_contracts.is_elc` pour
+  le cas agent_libre, pré-existant, pas unifié) avec un bouton "Activer" (choix Actif/
+  Réserviste) qui appelle la même transaction `'promote'`.
+- L'ancien panneau "Décisions requises — Recrues hors ELC" (résolution manuelle
+  garder-actif/remettre-en-banque, `resolveElcDecisionAction`) est **retiré** —
+  `syncExpiredRookieProtection()` couvre maintenant ce cas automatiquement, en amont.
 
 **Cap simulé pour joueur sans contrat (`app/lib/capUtils.ts`) :**
 - `getEffectiveCap(contracts, season, unsignedMultiplier)` : sans contrat réel pour la

@@ -3,19 +3,33 @@
 import { useEffect, useState } from 'react'
 import MovementHistoryPanel from '@/components/MovementHistoryPanel'
 import { loadRosterAction, searchFreeAgentsAction, submitTransactionAction, ActionType, TxItemPayload } from './actions'
+import { isRookieProtectionExpired } from '@/lib/rookieProtection'
 
 const DASH = '\u2014'
 const STAR = '\u2605'
 
 type Pooler = { id: string; name: string }
 type Saison = { id: number; season: string; pool_cap: number }
-type RosterEntry = { id: number; player_id: number; player_type: string; players: any }
+type RosterEntry = {
+  id: number; player_id: number; player_type: string
+  rookie_type: 'repeche' | 'agent_libre' | null; pool_draft_year: number | null
+  players: any
+}
 type PickEntry = { id: number; round: number; pool_seasons: { season: string }; original_owner: { id: string; name: string } }
 
 type TxItem = TxItemPayload & {
   tempId: string
   label: string
   sideLabel: string
+}
+
+function isRecruitExpired(entry: RosterEntry, season: string): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const contracts: any[] = entry.players?.player_contracts ?? []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const contract = contracts.find((c: any) => c.season === season)
+  const seasonStartYear = parseInt(season.split('-')[0], 10)
+  return isRookieProtectionExpired(entry.rookie_type ?? null, entry.pool_draft_year ?? null, !!contract?.is_elc, seasonStartYear)
 }
 
 const PLAYER_TYPES = ['actif', 'reserviste', 'ltir', 'recrue'] as const
@@ -112,6 +126,7 @@ function AdjustmentForm({
     const playerLabel = `${p.last_name}, ${p.first_name} (${p.teams?.code ?? DASH})`
 
     if (action === 'promote') {
+      const expired = isRecruitExpired(entry, season)
       onAdd({
         tempId: nextId(),
         action_type: 'promote',
@@ -120,7 +135,7 @@ function AdjustmentForm({
         player_id: entry.player_id,
         old_player_type: 'recrue',
         new_player_type: newType,
-        label: `${STAR} Promouvoir ${playerLabel} → ${typeLabel[newType]}`,
+        label: `${STAR} Promouvoir ${playerLabel} → ${typeLabel[newType]}${expired ? ' — ⚠ ELC expiré, statut recrue perdu définitivement' : ''}`,
         sideLabel: poolerName,
       })
     } else if (action === 'reactivate') {
@@ -248,6 +263,7 @@ function AdjustmentForm({
           {sourceList.map(e => (
             <option key={e.id} value={String(e.id)}>
               {e.players.last_name}, {e.players.first_name} ({e.players.teams?.code ?? DASH}) — {typeLabel[e.player_type]}
+              {action === 'promote' ? (isRecruitExpired(e, season) ? ' — ⚠ ELC expiré' : ' — ELC actif') : ''}
             </option>
           ))}
         </select>
