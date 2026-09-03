@@ -44,6 +44,34 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   2026-27 en prod d'abord → rouler le sync → cliquer "Démarrer la saison" **séparément en
   prod aussi** une fois prêt (le script ne le fait pas automatiquement).
 
+### 2026-09-03 (suite)
+
+**[Fix] — La vue pooler du repêchage des recrues ignorait les choix sauvegardés (non soumis)**
+(`app/app/admin/repechage/DraftBoard.tsx`, `app/app/repechage-recrues/page.tsx`) :
+- David a testé `/repechage-recrues` en navigation privée (autre compte) pendant que l'admin
+  travaillait le repêchage dans l'autre fenêtre : après un "Sauvegarder" côté admin (état
+  provisoire, `pool_draft_picks.pending_player_id`, distinct du "Soumettre" qui commit dans
+  `pooler_rosters`), la vue pooler continuait d'afficher "Pas encore commencé" même après
+  rafraîchissement.
+- Cause double : la requête de `/repechage-recrues` ne sélectionnait pas
+  `pending_player_id`, et `DraftBoard` forçait `selections` à `null` en mode `readOnly`
+  (`picks.map(p => [p.id, readOnly ? null : (p.pending_player_id ?? null)])`) — la donnée
+  provisoire n'était donc ni chargée ni affichée côté pooler, même si elle existait déjà en
+  base.
+- Corrigé : `pending_player_id` maintenant sélectionné et utilisé dans les deux modes
+  (readOnly compris) ; les rangées "en attente" côté lecture seule affichent désormais le nom
+  du choix provisoire (via lookup dans `rookies`, déjà disponible côté page — aucune requête
+  supplémentaire) avec un badge "(non confirmé)" distinct du vert "✓" des picks réellement
+  soumis. `isDraftStarted` (bandeau d'en-tête) considère maintenant aussi les picks en attente,
+  pas seulement les soumis — nouveau libellé "· En cours" entre "Pas encore commencé" et
+  "Complété ✓".
+- Question plus large de David (voir aussi conversation) : généraliser ce mécanisme
+  "sauvegarde provisoire visible en direct par les poolers, commit final séparé" pour le
+  repêchage des agents libres et les ajustements d'alignement le jour du repêchage global —
+  discuté, pas encore implémenté (le repêchage des recrues sert de première validation du
+  patron avant de le répliquer ailleurs).
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
+
 ### 2026-09-03
 
 **[Fix] — Le sélecteur de recrue s'ouvrait toujours vers le bas, même en fin de page**

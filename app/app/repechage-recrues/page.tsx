@@ -48,7 +48,7 @@ export default async function RepechageRecruesPage({
   ] = await Promise.all([
     supabase
       .from('pool_draft_picks')
-      .select('id, round, draft_order, current_owner:poolers!current_owner_id(id, name), original_owner:poolers!original_owner_id(id, name)')
+      .select('id, round, draft_order, pending_player_id, current_owner:poolers!current_owner_id(id, name), original_owner:poolers!original_owner_id(id, name)')
       .eq('pool_season_id', saison.id)
       .eq('is_used', false)
       .order('round'),
@@ -92,7 +92,8 @@ export default async function RepechageRecruesPage({
 
   const totalPicks = (picksData?.length ?? 0) + (usedPicksData?.length ?? 0)
   const isDraftDone = (picksData?.length ?? 0) === 0 && totalPicks > 0
-  const isDraftStarted = (usedPicksData?.length ?? 0) > 0
+  const hasPendingPick = (picksData ?? []).some(p => p.pending_player_id != null)
+  const isDraftStarted = (usedPicksData?.length ?? 0) > 0 || hasPendingPick
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4">
@@ -102,6 +103,7 @@ export default async function RepechageRecruesPage({
           <p className="text-gray-500 text-sm mt-1">
             Repêchage {poolDraftYear}
             {isDraftDone && <span className="ml-2 text-green-600 font-medium">· Complété ✓</span>}
+            {!isDraftDone && isDraftStarted && <span className="ml-2 text-amber-600 font-medium">· En cours</span>}
             {!isDraftStarted && totalPicks > 0 && <span className="ml-2 text-gray-400">· Pas encore commencé</span>}
           </p>
         </div>

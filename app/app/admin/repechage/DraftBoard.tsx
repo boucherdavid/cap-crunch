@@ -45,8 +45,9 @@ export default function DraftBoard({
   readOnly?: boolean
 }) {
   const [selections, setSelections] = useState<Record<number, number | null>>(() =>
-    Object.fromEntries(picks.map(p => [p.id, readOnly ? null : (p.pending_player_id ?? null)]))
+    Object.fromEntries(picks.map(p => [p.id, p.pending_player_id ?? null]))
   )
+  const rookieById = useMemo(() => new Map(rookies.map(r => [r.id, r])), [rookies])
   const [submitting, setSubmitting] = useState(false)
   const [savingProgress, setSavingProgress] = useState(false)
   const [message, setMessage] = useState('')
@@ -271,7 +272,16 @@ export default function DraftBoard({
                       </td>
                       <td className="px-4 py-3">
                         {readOnly
-                          ? <span className="text-xs text-gray-400 italic">En attente</span>
+                          ? (selectedId != null
+                              ? <span className="text-xs text-amber-600 italic flex items-center gap-1.5">
+                                  <span className="text-amber-500">●</span>
+                                  {(() => {
+                                    const p = rookieById.get(selectedId)
+                                    return p ? `${p.last_name}, ${p.first_name} ${p.position ?? ''}` : 'Choix en cours'
+                                  })()}
+                                  <span className="text-gray-400">(non confirmé)</span>
+                                </span>
+                              : <span className="text-xs text-gray-400 italic">En attente</span>)
                           : <RookieSelect
                               rookies={rookies}
                               value={selectedId}
