@@ -8,9 +8,7 @@ import PushToggle from './PushToggle'
 type Profile = {
   name: string
   email: string
-  phone: string | null
   notif_email: boolean
-  notif_sms: boolean
 }
 
 export default function CompteForm({ profile }: { profile: Profile }) {
@@ -28,9 +26,7 @@ export default function CompteForm({ profile }: { profile: Profile }) {
   const [pwdMsg, setPwdMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [pwdBusy, setPwdBusy] = useState(false)
 
-  const [phone, setPhone] = useState(profile.phone ?? '')
   const [notifEmail, setNotifEmail] = useState(profile.notif_email)
-  const [notifSms, setNotifSms] = useState(profile.notif_sms)
   const [profileMsg, setProfileMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [profileBusy, setProfileBusy] = useState(false)
 
@@ -72,7 +68,7 @@ export default function CompteForm({ profile }: { profile: Profile }) {
     e.preventDefault()
     setProfileBusy(true)
     setProfileMsg(null)
-    const res = await updateProfileAction(phone || null, notifEmail, notifSms)
+    const res = await updateProfileAction(notifEmail)
     setProfileBusy(false)
     setProfileMsg(res.error ? { type: 'err', text: res.error } : { type: 'ok', text: 'Profil mis à jour.' })
   }
@@ -203,20 +199,6 @@ export default function CompteForm({ profile }: { profile: Profile }) {
         </div>
 
         <form onSubmit={handleProfile} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Numéro de cellulaire <span className="text-gray-400 font-normal">(optionnel)</span>
-            </label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              placeholder="ex: 514-555-1234"
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <p className="text-xs text-gray-400 mt-1">Pour les futures notifications SMS.</p>
-          </div>
-
           <div className="space-y-2">
             <label className="flex items-center gap-3 cursor-pointer">
               <input
@@ -228,21 +210,6 @@ export default function CompteForm({ profile }: { profile: Profile }) {
               <div>
                 <span className="text-sm font-medium text-gray-700">Notifications par courriel</span>
                 <p className="text-xs text-gray-400">Recevoir les alertes du pool par courriel.</p>
-              </div>
-            </label>
-            <label className="flex items-center gap-3 cursor-pointer opacity-60">
-              <input
-                type="checkbox"
-                checked={notifSms}
-                onChange={e => setNotifSms(e.target.checked)}
-                disabled={!phone}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <div>
-                <span className="text-sm font-medium text-gray-700">Notifications par SMS</span>
-                <p className="text-xs text-gray-400">
-                  {phone ? 'Recevoir les alertes par texto (à venir).' : 'Entrez un numéro de cellulaire pour activer.'}
-                </p>
               </div>
             </label>
           </div>

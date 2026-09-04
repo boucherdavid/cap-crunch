@@ -51,22 +51,14 @@ export async function updatePasswordAction(newPassword: string): Promise<{ error
   return {}
 }
 
-export async function updateProfileAction(
-  phone: string | null,
-  notifEmail: boolean,
-  notifSms: boolean,
-): Promise<{ error?: string }> {
+export async function updateProfileAction(notifEmail: boolean): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié.' }
 
   const { error } = await supabase
     .from('poolers')
-    .update({
-      phone: phone?.trim() || null,
-      notif_email: notifEmail,
-      notif_sms: notifSms,
-    })
+    .update({ notif_email: notifEmail })
     .eq('id', user.id)
 
   if (error) return { error: error.message }

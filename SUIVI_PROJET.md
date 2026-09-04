@@ -21,6 +21,34 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-04 (suite 3)
+
+**[Fix] — Bug d'envoi Resend corrigé (log manquant) + retrait des notifications SMS**
+(`app/lib/email.ts`, `app/app/compte/CompteForm.tsx`, `app/app/compte/actions.ts`,
+`app/app/compte/page.tsx`) :
+- Test réel du courriel babillard en staging : aucun courriel reçu, même dans les pourriels.
+  Diagnostic en base (script ponctuel avec la service role key) : tous les comptes staging
+  utilisent des adresses factices `@staging.test` (comptes de test générés, voir
+  `credentials/`) — le courriel partait bel et bien vers une adresse qui n'existe nulle part.
+  Pas un bug du code.
+- En corrigeant quand même un vrai bug trouvé au passage : le SDK Resend ne lance pas
+  d'exception sur une erreur API (clé invalide, domaine non vérifié, etc.) — il retourne
+  `{ data, error }` sans throw. `sendToEmails()` ignorait ce champ, donc un vrai échec Resend
+  aurait été tout aussi silencieux. Ajout de `console.error`/`console.warn` sur clé API
+  absente, aucun destinataire opt-in, et `result.error` par destinataire.
+- Courriel de test de David sur staging changé de `david@staging.test` vers son vrai courriel
+  via `auth.admin.updateUserById()` (contourne le flux de double-confirmation de Supabase Auth,
+  qui rejetait l'ancienne adresse `.test` comme invalide au moment du changement via l'UI
+  `/compte`) — pour permettre un vrai test de réception.
+- **Décision** : David a choisi de ne pas ajouter les notifications SMS (coût réel par message
+  + provisionnement Twilio, contrairement au courriel qui est gratuit avec Resend à ce volume).
+  Case "Notifications par SMS" et champ "Numéro de cellulaire" retirés de `/compte`
+  (`CompteForm.tsx`) — leur seul usage était de préparer ce SMS jamais construit.
+  `updateProfileAction()` simplifié (ne prend plus que `notifEmail`) ; `poolers.phone` et
+  `poolers.notif_sms` restent en base (colonnes inutilisées, pas de migration de suppression —
+  changement de `schema.sql` hors du scope de cette session).
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
+
 ### 2026-09-04 (suite)
 
 **[Feat] — Notifications par courriel sur le babillard global (Resend)**
