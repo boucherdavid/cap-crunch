@@ -10,14 +10,31 @@ export type EmailPayload = {
 
 async function sendToEmails(emails: string[], payload: EmailPayload) {
   const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey || emails.length === 0) return
+  if (!apiKey) {
+    console.warn('[email] RESEND_API_KEY absente — envoi ignoré.')
+    return
+  }
+  if (emails.length === 0) {
+    console.warn('[email] Aucun destinataire opt-in trouvé — envoi ignoré.')
+    return
+  }
   const resend = new Resend(apiKey)
 
-  await Promise.allSettled(
+  const results = await Promise.allSettled(
     emails.map(email =>
       resend.emails.send({ from: FROM_ADDRESS, to: email, subject: payload.subject, html: payload.html }),
     ),
   )
+  // Le SDK Resend ne lance pas d'exception sur une erreur API (clé invalide, domaine non
+  // vérifié, etc.) — il retourne { data, error } sans throw — donc on doit vérifier `error`
+  // explicitement, pas seulement le statut de la promesse.
+  results.forEach((r, i) => {
+    if (r.status === 'rejected') {
+      console.error(`[email] Échec réseau vers ${emails[i]} :`, r.reason)
+    } else if (r.value.error) {
+      console.error(`[email] Erreur Resend vers ${emails[i]} :`, r.value.error)
+    }
+  })
 }
 
 // Poolers ayant activé notif_email — email récupéré via auth.admin (pas stocké sur poolers).
