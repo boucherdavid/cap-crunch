@@ -29,6 +29,8 @@ export async function createPostAction(title: string, body: string): Promise<{ e
   })
   if (error) return { error: error.message }
 
+  const { data: author } = await supabase.from('poolers').select('name').eq('id', user.id).single()
+
   const { sendPushToAll } = await import('@/lib/push')
   sendPushToAll({
     title: `Babillard — ${trimmedTitle}`,
@@ -41,6 +43,7 @@ export async function createPostAction(title: string, body: string): Promise<{ e
   sendEmailToAll({
     subject: `Babillard — ${trimmedTitle}`,
     html: `
+      <p>Publié par <strong>${escapeHtml(author?.name ?? 'Admin')}</strong></p>
       <p>${escapeHtml(trimmedBody).replace(/\n/g, '<br>')}</p>
       <p><a href="${siteUrl}/babillard">Voir sur Cap Crunch</a></p>
     `,
@@ -86,6 +89,17 @@ export async function addCommentAction(postId: number, body: string): Promise<{ 
     title: 'Babillard — Nouveau commentaire',
     body: `${pooler?.name ?? 'Un pooler'} : ${trimmed.slice(0, 120)}`,
     url: '/babillard',
+  }, user.id).catch(() => {})
+
+  const { sendEmailToAdmins, escapeHtml } = await import('@/lib/email')
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
+  sendEmailToAdmins({
+    subject: 'Babillard — Nouveau commentaire',
+    html: `
+      <p><strong>${escapeHtml(pooler?.name ?? 'Un pooler')}</strong> a commenté :</p>
+      <p>${escapeHtml(trimmed).replace(/\n/g, '<br>')}</p>
+      <p><a href="${siteUrl}/babillard">Voir sur Cap Crunch</a></p>
+    `,
   }, user.id).catch(() => {})
 
   revalidatePath('/babillard')

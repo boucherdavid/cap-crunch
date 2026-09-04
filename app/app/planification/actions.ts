@@ -134,6 +134,17 @@ export async function addCommentAction(pollId: number, body: string): Promise<{ 
     url: '/planification',
   }, user.id).catch(() => {})
 
+  const { sendEmailToAdmins, escapeHtml } = await import('@/lib/email')
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
+  sendEmailToAdmins({
+    subject: 'Planification — Nouveau commentaire',
+    html: `
+      <p><strong>${escapeHtml(pooler?.name ?? 'Un pooler')}</strong> a commenté :</p>
+      <p>${escapeHtml(trimmed).replace(/\n/g, '<br>')}</p>
+      <p><a href="${siteUrl}/planification">Voir sur Cap Crunch</a></p>
+    `,
+  }, user.id).catch(() => {})
+
   revalidatePath('/planification')
   return {}
 }

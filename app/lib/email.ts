@@ -38,10 +38,12 @@ async function sendToEmails(emails: string[], payload: EmailPayload) {
 }
 
 // Poolers ayant activé notif_email — email récupéré via auth.admin (pas stocké sur poolers).
-async function optedInEmails(excludeUserId?: string): Promise<string[]> {
+async function optedInEmails(adminOnly: boolean, excludeUserId?: string): Promise<string[]> {
   const supabase = createAdminClient()
 
-  const { data: poolers } = await supabase.from('poolers').select('id').eq('notif_email', true)
+  let query = supabase.from('poolers').select('id').eq('notif_email', true)
+  if (adminOnly) query = query.eq('is_admin', true)
+  const { data: poolers } = await query
   if (!poolers || poolers.length === 0) return []
   const ids = new Set(poolers.map(p => p.id).filter(id => id !== excludeUserId))
   if (ids.size === 0) return []
@@ -53,7 +55,12 @@ async function optedInEmails(excludeUserId?: string): Promise<string[]> {
 }
 
 export async function sendEmailToAll(payload: EmailPayload, excludeUserId?: string) {
-  const emails = await optedInEmails(excludeUserId)
+  const emails = await optedInEmails(false, excludeUserId)
+  await sendToEmails(emails, payload)
+}
+
+export async function sendEmailToAdmins(payload: EmailPayload, excludeUserId?: string) {
+  const emails = await optedInEmails(true, excludeUserId)
   await sendToEmails(emails, payload)
 }
 

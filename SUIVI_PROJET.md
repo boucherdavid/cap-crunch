@@ -21,6 +21,31 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-04 (suite 5)
+
+**[Feat] — Courriel confirmé fonctionnel ; étendu aux commentaires (babillard + planification) et au nom de l'auteur**
+(`app/lib/email.ts`, `app/app/babillard/actions.ts`, `app/app/planification/actions.ts`) :
+- David a publié une vraie communication test sur staging — courriel reçu avec succès (le
+  "problème" des tentatives précédentes était qu'il ajoutait un commentaire au post existant
+  du 2 septembre plutôt que de publier un nouveau post, donc `createPostAction` n'était jamais
+  appelé — voir aussi suite 3/4, mêmes vérifications en base).
+- Retour direct : le courriel de publication n'indiquait pas qui l'avait écrit. Corrigé —
+  `createPostAction` récupère maintenant le nom de l'auteur (`poolers.name`) et l'inclut en
+  tête du corps HTML (« Publié par **{nom}** »).
+- David a aussi demandé que le courriel (et le push, déjà en place) fonctionnent pour les
+  **commentaires**, sur le babillard global ET sur le babillard de planification
+  (`/planification`, distinct — voir section 4/5 de `CLAUDE.md`). Les deux `addCommentAction`
+  (`babillard/actions.ts`, `planification/actions.ts`) notifiaient déjà les admins par push
+  uniquement (`sendPushToAdmins`) — même portée reproduite en courriel.
+- `app/lib/email.ts` : nouvelle fonction `sendEmailToAdmins(payload, excludeUserId?)`, miroir
+  de `sendEmailToAll` mais filtrée sur `poolers.is_admin=true` (en plus de `notif_email=true`).
+  `optedInEmails()` interne prend maintenant un paramètre `adminOnly`.
+- Scope volontairement limité aux commentaires (pas `submitAvailabilityAction` — la
+  soumission de disponibilités du sondage — qui notifiait déjà les admins par push et n'a pas
+  été mentionnée dans la demande).
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès). Envoi réel des nouveaux
+  chemins (commentaires) non testé — à valider par David en staging.
+
 ### 2026-09-04 (suite 4)
 
 **[Fix+Feat] — Indicateur "trop de joueurs/cap" distinct du "manque d'espace" + activité récente publique**
