@@ -36,6 +36,16 @@ export async function createPostAction(title: string, body: string): Promise<{ e
     url: '/babillard',
   }).catch(() => {})
 
+  const { sendEmailToAll, escapeHtml } = await import('@/lib/email')
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
+  sendEmailToAll({
+    subject: `Babillard — ${trimmedTitle}`,
+    html: `
+      <p>${escapeHtml(trimmedBody).replace(/\n/g, '<br>')}</p>
+      <p><a href="${siteUrl}/babillard">Voir sur Cap Crunch</a></p>
+    `,
+  }).catch(() => {})
+
   revalidatePath('/babillard')
   revalidatePath('/admin/communaute')
   return {}

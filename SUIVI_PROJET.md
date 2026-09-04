@@ -21,6 +21,39 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-04 (suite)
+
+**[Feat] — Notifications par courriel sur le babillard global (Resend)**
+(`app/lib/email.ts` nouveau, `app/app/babillard/actions.ts`, `app/package.json`) :
+- David a remarqué que la case « Notifications par courriel » (`/compte`) n'était pas
+  étiquetée « à venir » comme le SMS, alors qu'aucune infrastructure d'envoi n'existait —
+  `notif_email` était sauvegardé en base (`poolers.notif_email`) mais jamais lu par personne.
+  Vérifié : aucune dépendance email, aucune clé API, `sendPushToAll`/`sendPushToAdmins`
+  (`app/lib/push.ts`) étaient les seuls canaux de notif du babillard.
+- Choix du service : Resend (David) — package `resend` ajouté.
+- Nouveau `app/lib/email.ts` : `sendEmailToAll(payload, excludeUserId?)` — récupère les
+  poolers avec `notif_email=true`, résout leurs courriels via `supabase.auth.admin.listUsers()`
+  (l'email vit sur `auth.users`, pas sur `poolers`), envoie un courriel par destinataire via
+  Resend. No-op silencieux si `RESEND_API_KEY` absent (même philosophie que
+  `initVapid()`/`push.ts` — pas d'erreur si le canal n'est pas configuré, ex: en local).
+  `escapeHtml()` exporté aussi (échappe le texte admin avant de l'injecter dans le HTML du
+  courriel).
+- `babillard/actions.ts` (`createPostAction`) : appelle `sendEmailToAll` en plus de
+  `sendPushToAll` à chaque nouvelle communication publiée — sujet `Babillard — {titre}`, corps
+  + lien vers `${NEXT_PUBLIC_SITE_URL}/babillard` (même variable d'env déjà utilisée dans
+  `compte/actions.ts` pour les redirections d'auth). Scope volontairement limité aux **posts**
+  du babillard global — pas les commentaires (qui notifient déjà les admins par push
+  uniquement), pas le babillard propre à `/planification` (sondage, distinct).
+- **Config requise avant que ça fonctionne réellement** (pas encore faite par David au moment
+  de ce commit) : créer un compte Resend, obtenir une clé API, ajouter `RESEND_API_KEY` (et
+  optionnellement `RESEND_FROM_EMAIL` — sinon `onboarding@resend.dev` par défaut, adresse
+  bac-à-sable Resend) aux variables d'environnement Vercel des deux projets (`cap-crunch`,
+  `cap-crunch-staging`). Sans domaine vérifié dans Resend, les courriels partent de
+  `onboarding@resend.dev` — fonctionnel mais moins fiable côté délivrabilité/anti-spam qu'un
+  domaine dédié.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès). Envoi réel non testé
+  (aucune clé Resend configurée encore) — à valider en staging une fois la clé ajoutée.
+
 ### 2026-09-04
 
 **[Feat] — Seuil de participation AL corrigé (850k$) + indicateur de préparation au repêchage**
