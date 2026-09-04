@@ -71,6 +71,7 @@ export default async function AgentsLibresPage() {
       me={{ id: me.id, name: me.name, isAdmin: me.is_admin }}
       poolers={dataResult.poolers}
       poolCap={dataResult.poolCap ?? 0}
+      nhlMinimumSalary={dataResult.nhlMinimumSalary ?? 850_000}
       draftState={stateResult.state ?? {
         is_active: false, queue: [],
         turn_started_at: null, turn_duration_seconds: 90, ended_at: null,

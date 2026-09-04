@@ -1,4 +1,8 @@
-export const FREE_AGENT_THRESHOLD = 500_000
+// Salaire minimum LNH — utilisé comme seuil de participation au repêchage AL et comme coût
+// par poste manquant pour l'indicateur de préparation. Valeur réelle stockée dans
+// app_settings.nhl_minimum_salary (change chaque convention collective) ; ceci n'est que le
+// repli si la colonne n'a pas encore été migrée.
+export const DEFAULT_NHL_MINIMUM_SALARY = 850_000
 
 export type RosterEntry = {
   roster_id: number
@@ -18,6 +22,12 @@ export type PoolerCapInfo = {
   isCompliant: boolean
   counts: { forward: number; defense: number; goalie: number; reserviste: number }
   roster: RosterEntry[]
+  // Indicateur de préparation au repêchage AL (informationnel, pas un blocage) : espace cap
+  // minimum réel pour compléter légalement l'alignement (12A/6D/2G actifs + 2 réservistes min),
+  // au salaire minimum LNH par poste manquant.
+  slotsManquants: number
+  capNeededForReady: number
+  isReadyForDraft: boolean
 }
 
 // État partagé (en base) de la file d'attente du repêchage des agents libres — remplace

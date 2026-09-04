@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-03 (suite 10)
+Derniere mise a jour: 2026-09-04
 
 ## Role du fichier
 
@@ -20,6 +20,34 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-09-04
+
+**[Feat] — Seuil de participation AL corrigé (850k$) + indicateur de préparation au repêchage**
+(`app/app/admin/presaison/types.ts`, `app/app/admin/presaison/actions.ts`,
+`app/app/admin/presaison/PresaisonManager.tsx`, `app/app/repechage-agents-libres/page.tsx`,
+`app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`, `schema.sql`) :
+- Implémente la décision prise en session 2026-09-03 (suite 10), non codée à l'époque (David
+  avait dû fermer la session).
+- **A. Seuil corrigé** : `FREE_AGENT_THRESHOLD` (500 000 $ codé en dur) retiré, remplacé par
+  `app_settings.nhl_minimum_salary` (défaut 850 000 $ — salaire minimum LNH réel), suivant le
+  même patron que `unsigned_player_cap_multiplier` (pas d'UI d'admin, colonne à migrer/ajuster
+  manuellement via SQL). `DEFAULT_NHL_MINIMUM_SALARY` (`types.ts`) sert de repli tant que la
+  colonne n'est pas migrée. `eligibleQueueIds()` et `advancePresaisonQueueAction` prennent
+  maintenant ce seuil en paramètre plutôt que d'importer une constante.
+- **B. Indicateur de préparation** (informationnel, pas un blocage) : `PoolerCapInfo` gagne
+  `slotsManquants` / `capNeededForReady` / `isReadyForDraft`, calculés dans
+  `loadPresaisonDataAction` — postes manquants pour atteindre 12A/6D/2G actifs + 2 réservistes
+  minimum, × salaire minimum LNH, comparé à `capSpace`. Affiché sur `ComplianceCard`
+  (`/admin/init?tab=presaison`, badge "Prêt"/"Manque X$" + détail dans la carte dépliée) et
+  sur le panneau "Mon alignement" (`/repechage-agents-libres`, onglet Actuel + badge sur
+  `PoolerCard`).
+- **Migration requise** (staging d'abord, puis prod) — voir bloc en fin de `schema.sql` :
+  `ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS nhl_minimum_salary INTEGER NOT NULL DEFAULT 850000;`
+  Pas encore exécutée par David au moment de ce commit — le code fonctionne quand même via le
+  repli `DEFAULT_NHL_MINIMUM_SALARY` (850 000 $, identique à la valeur par défaut de la
+  colonne) tant que la migration n'a pas tourné.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
 
 ### 2026-09-02
 

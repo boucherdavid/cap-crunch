@@ -737,10 +737,14 @@ CREATE POLICY "Pooler gère ses réponses" ON meeting_poll_responses FOR ALL
 
 -- Réglages globaux de l'app (une seule ligne, id=1).
 -- unsigned_player_cap_multiplier/cap_deadline_days : voir "Conformité cap" plus bas.
+-- nhl_minimum_salary : seuil de participation au repêchage AL pré-saison (espace cap requis
+-- pour rester dans la file) et coût par poste manquant pour l'indicateur "prêt pour le
+-- repêchage" (voir app/app/admin/presaison/) — change chaque convention collective.
 CREATE TABLE app_settings (
   id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
   unsigned_player_cap_multiplier NUMERIC(5,2) NOT NULL DEFAULT 1.20,
-  cap_deadline_days INTEGER NOT NULL DEFAULT 7
+  cap_deadline_days INTEGER NOT NULL DEFAULT 7,
+  nhl_minimum_salary INTEGER NOT NULL DEFAULT 850000
 );
 INSERT INTO app_settings (id) VALUES (1);
 
@@ -880,3 +884,9 @@ ALTER TABLE presaison_draft_state ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Lecture publique presaison_draft_state" ON presaison_draft_state FOR SELECT USING (true);
 CREATE POLICY "Admin gère presaison_draft_state" ON presaison_draft_state FOR ALL
   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- Migration 2026-09-04 : seuil de participation au repêchage AL corrigé (salaire minimum LNH
+-- réel, plus configurable qu'une constante codée en dur) — à exécuter une seule fois dans le
+-- SQL Editor Supabase (staging d'abord) :
+--
+-- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS nhl_minimum_salary INTEGER NOT NULL DEFAULT 850000;

@@ -5,15 +5,15 @@ import { revalidatePath } from 'next/cache'
 import { computeReverseStandingsOrder } from '@/lib/draftOrder'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { isRookieProtectionExpired, isElcActiveForSeason } from '@/lib/rookieProtection'
-import { FREE_AGENT_THRESHOLD } from './types'
+import { DEFAULT_NHL_MINIMUM_SALARY } from './types'
 import type { PoolerCapInfo, DraftState } from './types'
 
 const TURN_DURATION_DEFAULT = 90
 
-function eligibleQueueIds(poolers: PoolerCapInfo[], order: string[]): string[] {
+function eligibleQueueIds(poolers: PoolerCapInfo[], order: string[], threshold: number): string[] {
   return order.filter(id => {
     const p = poolers.find(pp => pp.id === id)
-    return p !== undefined && p.capSpace >= FREE_AGENT_THRESHOLD
+    return p !== undefined && p.capSpace >= threshold
   })
 }
 
@@ -58,6 +58,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
   draftOrder?: string[]
   poolCap?: number
   season?: string
+  nhlMinimumSalary?: number
 }> {
   const supabase = await createClient()
 
@@ -81,11 +82,12 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
           player_contracts (season, cap_number, is_elc))`)
       .eq('pool_season_id', saisonId)
       .eq('is_active', true),
-    supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
+    supabase.from('app_settings').select('unsigned_player_cap_multiplier, nhl_minimum_salary').eq('id', 1).maybeSingle(),
   ])
 
   if (!saison) return { error: 'Saison introuvable.' }
   const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
+  const nhlMinimumSalary = settings?.nhl_minimum_salary ?? DEFAULT_NHL_MINIMUM_SALARY
 
   const poolerMap = new Map<string, PoolerCapInfo>()
   for (const p of (poolers ?? [])) {
@@ -97,6 +99,9 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
       isCompliant: false,
       counts: { forward: 0, defense: 0, goalie: 0, reserviste: 0 },
       roster: [],
+      slotsManquants: 0,
+      capNeededForReady: 0,
+      isReadyForDraft: true,
     })
   }
 
@@ -150,6 +155,16 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
       info.counts.goalie <= 2 &&
       info.counts.reserviste >= 2 &&
       info.capSpace >= 0
+
+    // Indicateur de préparation : postes manquants pour atteindre 12A/6D/2G actifs + 2
+    // réservistes min, au salaire minimum LNH chacun — informationnel, pas un blocage.
+    const missingForward = Math.max(0, 12 - info.counts.forward)
+    const missingDefense = Math.max(0, 6 - info.counts.defense)
+    const missingGoalie = Math.max(0, 2 - info.counts.goalie)
+    const missingReserviste = Math.max(0, 2 - info.counts.reserviste)
+    info.slotsManquants = missingForward + missingDefense + missingGoalie + missingReserviste
+    info.capNeededForReady = info.slotsManquants * nhlMinimumSalary
+    info.isReadyForDraft = info.capSpace >= info.capNeededForReady
   }
 
   const draftOrder = (saison.presaison_draft_order as string[] | null) ?? []
@@ -159,6 +174,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
     draftOrder,
     poolCap: saison.pool_cap,
     season: saison.season,
+    nhlMinimumSalary,
   }
 }
 
@@ -352,7 +368,7 @@ export async function startPresaisonDraftAction(saisonId: number): Promise<{ err
 
   const fresh = await loadPresaisonDataAction(saisonId)
   if (fresh.error || !fresh.poolers) return { error: fresh.error ?? 'Impossible de charger les données.' }
-  const queue = eligibleQueueIds(fresh.poolers, fresh.draftOrder ?? [])
+  const queue = eligibleQueueIds(fresh.poolers, fresh.draftOrder ?? [], fresh.nhlMinimumSalary ?? DEFAULT_NHL_MINIMUM_SALARY)
 
   const nowIso = new Date().toISOString()
   const isActive = queue.length > 0
@@ -402,10 +418,11 @@ export async function advancePresaisonQueueAction(saisonId: number): Promise<{ e
   const fresh = await loadPresaisonDataAction(saisonId)
   if (fresh.error || !fresh.poolers) return { error: fresh.error ?? 'Impossible de charger les données.' }
 
+  const threshold = fresh.nhlMinimumSalary ?? DEFAULT_NHL_MINIMUM_SALARY
   const rotated = [...prevQueue.slice(1), prevQueue[0]]
   const nextQueue = rotated.filter(id => {
     const p = fresh.poolers!.find(pp => pp.id === id)
-    return p !== undefined && p.capSpace >= FREE_AGENT_THRESHOLD
+    return p !== undefined && p.capSpace >= threshold
   })
 
   const nowIso = new Date().toISOString()

@@ -7,7 +7,7 @@ import {
   loadPresaisonDraftStateAction, startPresaisonDraftAction, advancePresaisonQueueAction,
   endPresaisonDraftAction, adjustPresaisonTimerAction, resetPresaisonTimerAction,
 } from './actions'
-import { FREE_AGENT_THRESHOLD, type PoolerCapInfo, type RosterEntry, type DraftState } from './types'
+import { DEFAULT_NHL_MINIMUM_SALARY, type PoolerCapInfo, type RosterEntry, type DraftState } from './types'
 import { submitTransactionAction, searchFreeAgentsAction } from '../transactions/actions'
 
 type Saison = { id: number; season: string; is_active: boolean }
@@ -156,6 +156,13 @@ function ComplianceCard({
           <span className={pooler.capSpace < 0 ? 'text-red-600 font-medium' : 'text-gray-600'}>
             {pooler.capSpace >= 0 ? `${fmt(pooler.capSpace)} dispo` : `${fmt(Math.abs(pooler.capSpace))} dépassé`}
           </span>
+          {pooler.isReadyForDraft ? (
+            <span className="text-[10px] font-medium bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded">Prêt</span>
+          ) : (
+            <span className="text-[10px] font-medium bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">
+              Manque {fmt(pooler.capNeededForReady - pooler.capSpace)}
+            </span>
+          )}
           <span className="text-gray-400">{expanded ? '▲' : '▼'}</span>
         </div>
       </button>
@@ -177,6 +184,15 @@ function ComplianceCard({
             <span>Gar {pooler.counts.goalie}/2</span>
             <span>Rés {pooler.counts.reserviste}</span>
           </div>
+
+          {/* Préparation au repêchage AL */}
+          {pooler.slotsManquants > 0 && (
+            <p className={`text-xs ${pooler.isReadyForDraft ? 'text-emerald-600' : 'text-amber-600'}`}>
+              {pooler.slotsManquants} poste{pooler.slotsManquants > 1 ? 's' : ''} à combler — besoin d&apos;au moins{' '}
+              {fmt(pooler.capNeededForReady)} d&apos;espace pour compléter l&apos;alignement au salaire minimum.
+              {!pooler.isReadyForDraft && ' Pas encore assez d\'espace disponible.'}
+            </p>
+          )}
 
           {/* Roster par position */}
           <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
@@ -351,12 +367,13 @@ function DraftOrderEditor({
 // ── Free Agent Signer ─────────────────────────────────────────────────────────
 
 function FreeAgentSigner({
-  pooler, saisonId, season, onSign,
+  pooler, saisonId, season, onSign, threshold,
 }: {
   pooler: PoolerCapInfo
   saisonId: number
   season: string
   onSign: () => Promise<void>
+  threshold: number
 }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<any[]>([])
@@ -406,11 +423,11 @@ function FreeAgentSigner({
     <div className="space-y-3">
       <p className="text-xs text-gray-500">
         Espace disponible :{' '}
-        <span className={`font-semibold ${pooler.capSpace < FREE_AGENT_THRESHOLD ? 'text-amber-600' : 'text-green-700'}`}>
+        <span className={`font-semibold ${pooler.capSpace < threshold ? 'text-amber-600' : 'text-green-700'}`}>
           {fmt(pooler.capSpace)}
         </span>
-        {pooler.capSpace < FREE_AGENT_THRESHOLD && (
-          <span className="text-amber-600"> — sous le seuil de {fmt(FREE_AGENT_THRESHOLD)}</span>
+        {pooler.capSpace < threshold && (
+          <span className="text-amber-600"> — sous le seuil de {fmt(threshold)}</span>
         )}
       </p>
 
@@ -472,6 +489,7 @@ type Data = {
   draftOrder: string[]
   poolCap: number
   season: string
+  nhlMinimumSalary: number
 }
 
 export default function PresaisonManager({
@@ -522,6 +540,7 @@ export default function PresaisonManager({
       draftOrder: result.draftOrder!,
       poolCap: result.poolCap!,
       season: result.season!,
+      nhlMinimumSalary: result.nhlMinimumSalary ?? DEFAULT_NHL_MINIMUM_SALARY,
     }
     setData(d)
     setDraftOrder(d.draftOrder)
@@ -538,6 +557,7 @@ export default function PresaisonManager({
       draftOrder: result.draftOrder!,
       poolCap: result.poolCap!,
       season: result.season!,
+      nhlMinimumSalary: result.nhlMinimumSalary ?? DEFAULT_NHL_MINIMUM_SALARY,
     }
     setData(d)
     return d
@@ -560,10 +580,10 @@ export default function PresaisonManager({
     return () => clearInterval(id)
   }, [])
 
-  const eligibleIds = (poolers: PoolerCapInfo[], order: string[]) =>
+  const eligibleIds = (poolers: PoolerCapInfo[], order: string[], threshold: number) =>
     order.filter(id => {
       const p = poolers.find(pp => pp.id === id)
-      return p && p.capSpace >= FREE_AGENT_THRESHOLD
+      return p && p.capSpace >= threshold
     })
 
   const startDraft = async () => {
@@ -717,7 +737,7 @@ export default function PresaisonManager({
         <div className="bg-white rounded-lg shadow p-5">
           <h2 className="font-semibold text-gray-800 mb-1">Ordre du repêchage</h2>
           <p className="text-xs text-gray-400 mb-4">
-            Seuil de participation : {fmt(FREE_AGENT_THRESHOLD)} d'espace cap. En dessous, le pooler est retiré automatiquement de la file.
+            Seuil de participation : {fmt(data.nhlMinimumSalary)} d'espace cap. En dessous, le pooler est retiré automatiquement de la file.
           </p>
           <button
             onClick={handleInitOrderFromStandings}
@@ -751,7 +771,7 @@ export default function PresaisonManager({
             </button>
             {draftOrder.length > 0 && (
               <p className="text-xs text-gray-400 mt-2">
-                {eligibleIds(data.poolers, draftOrder).length} pooler{eligibleIds(data.poolers, draftOrder).length > 1 ? 's' : ''} éligibles (≥ {fmt(FREE_AGENT_THRESHOLD)} d'espace) · visible en direct par les poolers sur /repechage-agents-libres
+                {eligibleIds(data.poolers, draftOrder, data.nhlMinimumSalary).length} pooler{eligibleIds(data.poolers, draftOrder, data.nhlMinimumSalary).length > 1 ? 's' : ''} éligibles (≥ {fmt(data.nhlMinimumSalary)} d'espace) · visible en direct par les poolers sur /repechage-agents-libres
               </p>
             )}
           </div>
@@ -813,6 +833,7 @@ export default function PresaisonManager({
             saisonId={saisonId}
             season={data.season}
             onSign={handleSign}
+            threshold={data.nhlMinimumSalary}
           />
 
           <div className="border-t pt-4 mt-4">

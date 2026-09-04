@@ -13,6 +13,9 @@ type PoolerInfo = {
   id: string; name: string; capUsed: number; capSpace: number; isCompliant: boolean
   counts: { forward: number; defense: number; goalie: number; reserviste: number }
   roster: RosterEntry[]
+  slotsManquants: number
+  capNeededForReady: number
+  isReadyForDraft: boolean
 }
 type DraftState = {
   is_active: boolean; queue: string[]; turn_started_at: string | null
@@ -32,7 +35,7 @@ function fmtDateTime(iso: string) {
 }
 
 export default function AgentsLibresDashboard({
-  me, poolers, poolCap, draftState, recentPicks, saisonId, season,
+  me, poolers, poolCap, draftState, recentPicks, saisonId, season, nhlMinimumSalary,
 }: {
   me: Me
   poolers: PoolerInfo[]
@@ -41,6 +44,7 @@ export default function AgentsLibresDashboard({
   recentPicks: RecentPick[]
   saisonId: number
   season: string
+  nhlMinimumSalary: number
 }) {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
@@ -131,6 +135,7 @@ export default function AgentsLibresDashboard({
             myPooler={myPooler}
             poolCap={poolCap}
             saisonId={saisonId}
+            nhlMinimumSalary={nhlMinimumSalary}
           />
         </div>
       </div>
@@ -164,6 +169,14 @@ function PoolerCard({ pooler, poolCap, isCurrentDrafter }: { pooler: PoolerInfo;
         <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ${dOk ? 'text-emerald-600 border-emerald-200' : 'text-red-600 border-red-200'}`}>{pooler.counts.defense}D</span>
         <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ${gOk ? 'text-emerald-600 border-emerald-200' : 'text-red-600 border-red-200'}`}>{pooler.counts.goalie}G</span>
         <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ${resOk ? 'text-emerald-600 border-emerald-200' : 'text-red-600 border-red-200'}`}>{pooler.counts.reserviste} rés.</span>
+        {pooler.slotsManquants > 0 && (
+          <span
+            className={`text-xs font-medium px-1.5 py-0.5 rounded border ${pooler.isReadyForDraft ? 'text-emerald-600 border-emerald-200' : 'text-amber-600 border-amber-200'}`}
+            title={`${pooler.slotsManquants} poste(s) à combler — besoin d'au moins ${fmt(pooler.capNeededForReady)} d'espace`}
+          >
+            {pooler.isReadyForDraft ? 'Prêt' : `Manque ${fmt(pooler.capNeededForReady - pooler.capSpace)}`}
+          </span>
+        )}
       </div>
       <button onClick={() => setOpen(v => !v)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">
         {open ? `Masquer l'alignement de ${firstName} ▴` : `Voir l'alignement de ${firstName} ▾`}
@@ -189,12 +202,13 @@ function PoolerCard({ pooler, poolCap, isCurrentDrafter }: { pooler: PoolerInfo;
 }
 
 function MonAlignement({
-  me, myPooler, poolCap, saisonId,
+  me, myPooler, poolCap, saisonId, nhlMinimumSalary,
 }: {
   me: Me
   myPooler: PoolerInfo | null
   poolCap: number
   saisonId: number
+  nhlMinimumSalary: number
 }) {
   const [tab, setTab] = useState<'actuel' | 'sandbox'>('actuel')
   const [removed, setRemoved] = useState<Set<number>>(new Set())
@@ -276,6 +290,13 @@ function MonAlignement({
               <span className="text-gray-500">Espace restant</span>
               <span className="font-medium text-emerald-600">{fmt(poolCap - myPooler.capUsed)}</span>
             </div>
+            {myPooler.slotsManquants > 0 && (
+              <p className={`text-xs mb-3 rounded-lg px-2 py-1.5 ${myPooler.isReadyForDraft ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                {myPooler.isReadyForDraft ? '✓' : '⚠'} {myPooler.slotsManquants} poste{myPooler.slotsManquants > 1 ? 's' : ''} à combler — besoin d&apos;au moins{' '}
+                {fmt(myPooler.capNeededForReady)} d&apos;espace (salaire minimum {fmt(nhlMinimumSalary)}/poste).
+                {!myPooler.isReadyForDraft && ' Pas encore assez d\'espace pour compléter légalement l\'alignement.'}
+              </p>
+            )}
             <div className="border-t pt-2 space-y-1">
               {myPooler.roster.map(e => (
                 <div key={e.roster_id} className="flex justify-between text-xs text-gray-600">
