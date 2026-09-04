@@ -21,6 +21,31 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-04 (suite 6)
+
+**[Feat] — Commentaires : notifie aussi les participants au fil, pas juste les admins**
+(`app/lib/push.ts`, `app/lib/email.ts`, `app/lib/threadNotify.ts` nouveau,
+`app/app/babillard/actions.ts`, `app/app/planification/actions.ts`) :
+- David a demandé si les poolers (pas juste les admins) recevraient aussi les notifications
+  de commentaire — réponse : non, portée admin-only reproduite de l'ancien comportement push.
+  Clarifié : ni "personne d'autre que les admins" ni "tous les poolers opt-in à chaque
+  commentaire" (risque de bruit) — David a choisi un fil de discussion classique : admins +
+  poolers ayant déjà commenté sur ce post/sondage précis.
+- `app/lib/push.ts` : nouvelle `sendPushToUsers(userIds, payload)` (miroir de
+  `sendPushToAll`/`sendPushToUser`, filtre `push_subscriptions.user_id IN (...)`).
+- `app/lib/email.ts` : `optedInEmails()` généralisée pour accepter une liste `ids` optionnelle
+  (au lieu du booléen `adminOnly` de suite 5) ; nouvelle `sendEmailToIds(ids, payload)`.
+  `sendEmailToAdmins()` supprimée — devenue inutilisée après ce changement (remplacée par le
+  chemin participants-au-fil qui inclut déjà les admins).
+- Nouveau `app/lib/threadNotify.ts` : `notifyThreadParticipants(participantIds, excludeUserId,
+  pushPayload, emailPayload)` — récupère les ids admin, fusionne avec `participantIds`,
+  exclut l'auteur du commentaire, envoie push + courriel à l'ensemble dédupliqué.
+  Partagé entre les deux `addCommentAction` (babillard global et planification) — chacun
+  calcule ses `participantIds` en interrogeant les `pooler_id` distincts des commentaires
+  déjà existants sur ce `post_id`/`poll_id` avant d'insérer le nouveau.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès). Non testé en réel (à
+  valider par David en commentant sur staging avec un second compte pour voir le fil suivre).
+
 ### 2026-09-04 (suite 5)
 
 **[Feat] — Courriel confirmé fonctionnel ; étendu aux commentaires (babillard + planification) et au nom de l'auteur**

@@ -120,6 +120,11 @@ export async function addCommentAction(pollId: number, body: string): Promise<{ 
 
   const { data: pooler } = await supabase.from('poolers').select('name').eq('id', user.id).single()
 
+  const { data: priorComments } = await supabase
+    .from('meeting_poll_comments')
+    .select('pooler_id')
+    .eq('poll_id', pollId)
+
   const { error } = await supabase.from('meeting_poll_comments').insert({
     poll_id: pollId,
     pooler_id: user.id,
@@ -127,23 +132,27 @@ export async function addCommentAction(pollId: number, body: string): Promise<{ 
   })
   if (error) return { error: error.message }
 
-  const { sendPushToAdmins } = await import('@/lib/push')
-  sendPushToAdmins({
-    title: 'Planification — Nouveau commentaire',
-    body: `${pooler?.name ?? 'Un pooler'} : ${trimmed.slice(0, 120)}`,
-    url: '/planification',
-  }, user.id).catch(() => {})
-
-  const { sendEmailToAdmins, escapeHtml } = await import('@/lib/email')
+  const { escapeHtml } = await import('@/lib/email')
+  const { notifyThreadParticipants } = await import('@/lib/threadNotify')
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
-  sendEmailToAdmins({
-    subject: 'Planification — Nouveau commentaire',
-    html: `
-      <p><strong>${escapeHtml(pooler?.name ?? 'Un pooler')}</strong> a commenté :</p>
-      <p>${escapeHtml(trimmed).replace(/\n/g, '<br>')}</p>
-      <p><a href="${siteUrl}/planification">Voir sur Cap Crunch</a></p>
-    `,
-  }, user.id).catch(() => {})
+  const participantIds = [...new Set((priorComments ?? []).map(c => c.pooler_id as string))]
+  notifyThreadParticipants(
+    participantIds,
+    user.id,
+    {
+      title: 'Planification — Nouveau commentaire',
+      body: `${pooler?.name ?? 'Un pooler'} : ${trimmed.slice(0, 120)}`,
+      url: '/planification',
+    },
+    {
+      subject: 'Planification — Nouveau commentaire',
+      html: `
+        <p><strong>${escapeHtml(pooler?.name ?? 'Un pooler')}</strong> a commenté :</p>
+        <p>${escapeHtml(trimmed).replace(/\n/g, '<br>')}</p>
+        <p><a href="${siteUrl}/planification">Voir sur Cap Crunch</a></p>
+      `,
+    },
+  ).catch(() => {})
 
   revalidatePath('/planification')
   return {}
