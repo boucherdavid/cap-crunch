@@ -21,6 +21,43 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-04 (suite 4)
+
+**[Fix+Feat] — Indicateur "trop de joueurs/cap" distinct du "manque d'espace" + activité récente publique**
+(`app/app/admin/presaison/types.ts`, `app/app/admin/presaison/actions.ts`,
+`app/app/admin/presaison/PresaisonManager.tsx`, `app/app/repechage-agents-libres/page.tsx`,
+`app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`) :
+- David a testé "Aperçu des rosters" en situation réelle (rosters gonflés après une saison de
+  hausse salariale, cf. décision du 2026-09-03 suite 10) : badge "Manque 49 050 335 $" pour un
+  pooler avec 15/12 attaquants et 49M$ de dépassement de plafond. Le message était trompeur —
+  la formule `capNeededForReady - capSpace` (conçue pour "il manque de l'espace pour combler
+  des postes vides") donnait un chiffre qui ressemblait à un besoin de signer, alors que la
+  vraie situation est l'inverse : trop de joueurs actifs à combiner avec un dépassement de cap,
+  il faut **libérer**, pas signer.
+- Nouveau champ `isOverLimits` (`PoolerCapInfo`) : vrai si `capSpace < 0` ou une position
+  dépasse son maximum (12A/6D/2G) — distinct de `slotsManquants`/`capNeededForReady` (postes
+  *manquants*, l'autre sens). `isReadyForDraft` est maintenant faux dans les deux cas mais le
+  message affiché diffère : badge rouge "À libérer" + liste des raisons (`overageReasons()`,
+  ex: "3 attaquants de trop · dépasse le plafond de 49 050 335 $") vs badge ambre "Manque X$"
+  pour le cas sous-rempli. Appliqué sur `ComplianceCard` (admin) et `PoolerCard`/`MonAlignement`
+  (`/repechage-agents-libres`, dupliqué localement — ce composant garde ses propres types).
+- Confirmation du flux avec David : libérer des joueurs ici fait baisser `capUsed` et les
+  compteurs de position en temps réel (mêmes données que `loadPresaisonDataAction`), mais
+  **aucun gate de composition n'existe** pour démarrer le repêchage — seul `capSpace >=
+  nhl_minimum_salary` détermine qui entre dans la file (`eligibleQueueIds`). Le badge
+  "À libérer"/"Prêt" reste donc informationnel, pas un blocage — les indicateurs de conformité
+  de composition (12/6/2/2 exact) ne sont vérifiés qu'au moment de "Démarrer la saison"
+  (`checkSeasonConformity`, section 6 de `CLAUDE.md`), pas ici.
+- **Nouvelle section "Activité récente" sur `/repechage-agents-libres`** (déjà visible par tous
+  les poolers, remplace "Derniers choix") : combine signatures d'agents libres (déjà existant)
+  et **libérations du ménage pré-saison** (nouveau — David voulait que "tout le monde soit au
+  courant" des joueurs libérés). Deux requêtes `transaction_items` (action_type `sign`/notes
+  `Repêchage pré-saison`, et action_type `release`/notes `Ajustement pré-saison` — le filtre de
+  notes exclut volontairement les libérations d'autres flux, ex: `/admin/transactions` en
+  saison ou libération automatique plafond dépassé), fusionnées et triées par date, point
+  rouge + "a libéré" pour les libérations vs point vert + "a signé" pour les signatures.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
+
 ### 2026-09-04 (suite 3)
 
 **[Fix] — Bug d'envoi Resend corrigé (log manquant) + retrait des notifications SMS**

@@ -28,6 +28,20 @@ function posBucket(position: string | null): 'forward' | 'defense' | 'goalie' {
   return 'forward'
 }
 
+// Raisons du surplus (trop de joueurs à une position et/ou plafond dépassé) — distinct des
+// postes manquants : ici il faut libérer, pas signer.
+function overageReasons(p: PoolerCapInfo): string[] {
+  const reasons: string[] = []
+  const overF = p.counts.forward - 12
+  const overD = p.counts.defense - 6
+  const overG = p.counts.goalie - 2
+  if (overF > 0) reasons.push(`${overF} attaquant${overF > 1 ? 's' : ''} de trop`)
+  if (overD > 0) reasons.push(`${overD} défenseur${overD > 1 ? 's' : ''} de trop`)
+  if (overG > 0) reasons.push(`${overG} gardien${overG > 1 ? 's' : ''} de trop`)
+  if (p.capSpace < 0) reasons.push(`dépasse le plafond de ${fmt(Math.abs(p.capSpace))}`)
+  return reasons
+}
+
 function ComplianceCard({
   pooler, saisonId, onRefresh, isCurrentDrafter, startExpanded,
 }: {
@@ -158,6 +172,8 @@ function ComplianceCard({
           </span>
           {pooler.isReadyForDraft ? (
             <span className="text-[10px] font-medium bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded">Prêt</span>
+          ) : pooler.isOverLimits ? (
+            <span className="text-[10px] font-medium bg-red-50 text-red-600 px-1.5 py-0.5 rounded">À libérer</span>
           ) : (
             <span className="text-[10px] font-medium bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">
               Manque {fmt(pooler.capNeededForReady - pooler.capSpace)}
@@ -186,7 +202,12 @@ function ComplianceCard({
           </div>
 
           {/* Préparation au repêchage AL */}
-          {pooler.slotsManquants > 0 && (
+          {pooler.isOverLimits && (
+            <p className="text-xs text-red-600">
+              ⚠ {overageReasons(pooler).join(' · ')} — libérer des joueurs avant de pouvoir participer au repêchage.
+            </p>
+          )}
+          {!pooler.isOverLimits && pooler.slotsManquants > 0 && (
             <p className={`text-xs ${pooler.isReadyForDraft ? 'text-emerald-600' : 'text-amber-600'}`}>
               {pooler.slotsManquants} poste{pooler.slotsManquants > 1 ? 's' : ''} à combler — besoin d&apos;au moins{' '}
               {fmt(pooler.capNeededForReady)} d&apos;espace pour compléter l&apos;alignement au salaire minimum.

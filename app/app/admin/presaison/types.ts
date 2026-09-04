@@ -22,9 +22,12 @@ export type PoolerCapInfo = {
   isCompliant: boolean
   counts: { forward: number; defense: number; goalie: number; reserviste: number }
   roster: RosterEntry[]
-  // Indicateur de préparation au repêchage AL (informationnel, pas un blocage) : espace cap
-  // minimum réel pour compléter légalement l'alignement (12A/6D/2G actifs + 2 réservistes min),
-  // au salaire minimum LNH par poste manquant.
+  // Indicateur de préparation au repêchage AL (informationnel, pas un blocage). Deux états
+  // distincts, pas confondre : "trop de joueurs / trop de cap utilisé" (isOverLimits — il faut
+  // libérer des joueurs, pas signer) vs "manque d'espace pour compléter l'alignement au
+  // salaire minimum" (slotsManquants>0 avec capSpace insuffisant — il peut manquer d'espace
+  // même sans être en surplus). isReadyForDraft est faux dans les deux cas.
+  isOverLimits: boolean
   slotsManquants: number
   capNeededForReady: number
   isReadyForDraft: boolean

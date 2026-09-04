@@ -99,6 +99,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
       isCompliant: false,
       counts: { forward: 0, defense: 0, goalie: 0, reserviste: 0 },
       roster: [],
+      isOverLimits: false,
       slotsManquants: 0,
       capNeededForReady: 0,
       isReadyForDraft: true,
@@ -156,6 +157,16 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
       info.counts.reserviste >= 2 &&
       info.capSpace >= 0
 
+    // Trop de joueurs actifs à une position et/ou trop de cap utilisé : il faut libérer des
+    // joueurs, pas signer — distinct du cas "manque d'espace pour combler des postes vides"
+    // ci-dessous. Un pooler peut être ici même avec des postes "manquants" ailleurs (ex: trop
+    // d'attaquants, pas assez de défenseurs) — les deux indicateurs coexistent.
+    info.isOverLimits =
+      info.capSpace < 0 ||
+      info.counts.forward > 12 ||
+      info.counts.defense > 6 ||
+      info.counts.goalie > 2
+
     // Indicateur de préparation : postes manquants pour atteindre 12A/6D/2G actifs + 2
     // réservistes min, au salaire minimum LNH chacun — informationnel, pas un blocage.
     const missingForward = Math.max(0, 12 - info.counts.forward)
@@ -164,7 +175,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
     const missingReserviste = Math.max(0, 2 - info.counts.reserviste)
     info.slotsManquants = missingForward + missingDefense + missingGoalie + missingReserviste
     info.capNeededForReady = info.slotsManquants * nhlMinimumSalary
-    info.isReadyForDraft = info.capSpace >= info.capNeededForReady
+    info.isReadyForDraft = !info.isOverLimits && info.capSpace >= info.capNeededForReady
   }
 
   const draftOrder = (saison.presaison_draft_order as string[] | null) ?? []

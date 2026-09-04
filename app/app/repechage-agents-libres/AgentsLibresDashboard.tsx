@@ -13,6 +13,7 @@ type PoolerInfo = {
   id: string; name: string; capUsed: number; capSpace: number; isCompliant: boolean
   counts: { forward: number; defense: number; goalie: number; reserviste: number }
   roster: RosterEntry[]
+  isOverLimits: boolean
   slotsManquants: number
   capNeededForReady: number
   isReadyForDraft: boolean
@@ -21,7 +22,10 @@ type DraftState = {
   is_active: boolean; queue: string[]; turn_started_at: string | null
   turn_duration_seconds: number; ended_at: string | null
 }
-type RecentPick = { id: number; poolerName: string; playerName: string; position: string | null; at: string }
+type RecentActivity = {
+  id: number; kind: 'sign' | 'release'; poolerName: string; playerName: string
+  position: string | null; at: string
+}
 type FreeAgent = { id: number; first_name: string; last_name: string; position: string | null }
 
 const fmt = (n: number) =>
@@ -34,14 +38,29 @@ function fmtDateTime(iso: string) {
   })
 }
 
+// Raisons du surplus (trop de joueurs à une position et/ou plafond dépassé) — reflète
+// admin/presaison/PresaisonManager.tsx (overageReasons), dupliqué ici car ce composant garde
+// ses propres types locaux plutôt que d'importer ceux de l'admin.
+function overageReasons(p: PoolerInfo): string[] {
+  const reasons: string[] = []
+  const overF = p.counts.forward - 12
+  const overD = p.counts.defense - 6
+  const overG = p.counts.goalie - 2
+  if (overF > 0) reasons.push(`${overF} attaquant${overF > 1 ? 's' : ''} de trop`)
+  if (overD > 0) reasons.push(`${overD} défenseur${overD > 1 ? 's' : ''} de trop`)
+  if (overG > 0) reasons.push(`${overG} gardien${overG > 1 ? 's' : ''} de trop`)
+  if (p.capSpace < 0) reasons.push(`dépasse le plafond de ${fmt(Math.abs(p.capSpace))}`)
+  return reasons
+}
+
 export default function AgentsLibresDashboard({
-  me, poolers, poolCap, draftState, recentPicks, saisonId, season, nhlMinimumSalary,
+  me, poolers, poolCap, draftState, recentActivity, saisonId, season, nhlMinimumSalary,
 }: {
   me: Me
   poolers: PoolerInfo[]
   poolCap: number
   draftState: DraftState
-  recentPicks: RecentPick[]
+  recentActivity: RecentActivity[]
   saisonId: number
   season: string
   nhlMinimumSalary: number
@@ -107,18 +126,19 @@ export default function AgentsLibresDashboard({
           </div>
 
           <div>
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Derniers choix</h2>
-            {recentPicks.length === 0 ? (
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Activité récente</h2>
+            <p className="text-xs text-gray-400 mb-3 -mt-2">Signatures d&apos;agents libres et libérations du ménage pré-saison.</p>
+            {recentActivity.length === 0 ? (
               <div className="bg-white rounded-lg shadow p-6 text-center text-gray-400 text-sm">
-                Aucun agent libre signé pour l&apos;instant.
+                Aucune activité pour l&apos;instant.
               </div>
             ) : (
               <div className="space-y-2">
-                {recentPicks.map(r => (
-                  <div key={r.id} className="bg-white rounded-lg shadow px-4 py-2.5 text-sm flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                {recentActivity.map(r => (
+                  <div key={`${r.kind}-${r.id}`} className="bg-white rounded-lg shadow px-4 py-2.5 text-sm flex items-center gap-2">
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${r.kind === 'sign' ? 'bg-emerald-400' : 'bg-red-400'}`} />
                     <span className="font-medium text-gray-800">{r.poolerName}</span>
-                    <span className="text-gray-500">a signé</span>
+                    <span className="text-gray-500">{r.kind === 'sign' ? 'a signé' : 'a libéré'}</span>
                     <span className="font-medium text-gray-800">{r.playerName}</span>
                     {r.position && <span className="text-gray-400 text-xs">({r.position})</span>}
                     <span className="ml-auto text-xs text-gray-400">{fmtDateTime(r.at)}</span>
@@ -169,7 +189,14 @@ function PoolerCard({ pooler, poolCap, isCurrentDrafter }: { pooler: PoolerInfo;
         <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ${dOk ? 'text-emerald-600 border-emerald-200' : 'text-red-600 border-red-200'}`}>{pooler.counts.defense}D</span>
         <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ${gOk ? 'text-emerald-600 border-emerald-200' : 'text-red-600 border-red-200'}`}>{pooler.counts.goalie}G</span>
         <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ${resOk ? 'text-emerald-600 border-emerald-200' : 'text-red-600 border-red-200'}`}>{pooler.counts.reserviste} rés.</span>
-        {pooler.slotsManquants > 0 && (
+        {pooler.isOverLimits ? (
+          <span
+            className="text-xs font-medium px-1.5 py-0.5 rounded border text-red-600 border-red-200"
+            title={overageReasons(pooler).join(' · ')}
+          >
+            À libérer
+          </span>
+        ) : pooler.slotsManquants > 0 && (
           <span
             className={`text-xs font-medium px-1.5 py-0.5 rounded border ${pooler.isReadyForDraft ? 'text-emerald-600 border-emerald-200' : 'text-amber-600 border-amber-200'}`}
             title={`${pooler.slotsManquants} poste(s) à combler — besoin d'au moins ${fmt(pooler.capNeededForReady)} d'espace`}
@@ -290,7 +317,12 @@ function MonAlignement({
               <span className="text-gray-500">Espace restant</span>
               <span className="font-medium text-emerald-600">{fmt(poolCap - myPooler.capUsed)}</span>
             </div>
-            {myPooler.slotsManquants > 0 && (
+            {myPooler.isOverLimits && (
+              <p className="text-xs mb-3 rounded-lg px-2 py-1.5 bg-red-50 text-red-600">
+                ⚠ {overageReasons(myPooler).join(' · ')} — libère des joueurs avant de pouvoir participer au repêchage.
+              </p>
+            )}
+            {!myPooler.isOverLimits && myPooler.slotsManquants > 0 && (
               <p className={`text-xs mb-3 rounded-lg px-2 py-1.5 ${myPooler.isReadyForDraft ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
                 {myPooler.isReadyForDraft ? '✓' : '⚠'} {myPooler.slotsManquants} poste{myPooler.slotsManquants > 1 ? 's' : ''} à combler — besoin d&apos;au moins{' '}
                 {fmt(myPooler.capNeededForReady)} d&apos;espace (salaire minimum {fmt(nhlMinimumSalary)}/poste).

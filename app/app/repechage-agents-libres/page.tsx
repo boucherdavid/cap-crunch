@@ -30,7 +30,7 @@ export default async function AgentsLibresPage() {
     )
   }
 
-  const [dataResult, stateResult, recentResult] = await Promise.all([
+  const [dataResult, stateResult, signResult, releaseResult] = await Promise.all([
     loadPresaisonDataAction(saison.id),
     loadPresaisonDraftStateAction(saison.id),
     supabase
@@ -46,6 +46,21 @@ export default async function AgentsLibresPage() {
       .eq('transactions.notes', 'Repêchage pré-saison')
       .order('created_at', { referencedTable: 'transactions', ascending: false })
       .limit(15),
+    // Libérations du ménage pré-saison (ComplianceCard, /admin/init?tab=presaison) — pour que
+    // les poolers voient qui a été libéré, sans avoir à demander à l'admin.
+    supabase
+      .from('transaction_items')
+      .select(`
+        id, player_id, from_pooler_id,
+        players (first_name, last_name, position),
+        poolers!from_pooler_id (name),
+        transactions!inner (created_at, pool_season_id, notes)
+      `)
+      .eq('action_type', 'release')
+      .eq('transactions.pool_season_id', saison.id)
+      .eq('transactions.notes', 'Ajustement pré-saison')
+      .order('created_at', { referencedTable: 'transactions', ascending: false })
+      .limit(15),
   ])
 
   if (dataResult.error || !dataResult.poolers) {
@@ -58,13 +73,26 @@ export default async function AgentsLibresPage() {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recentPicks = ((recentResult.data ?? []) as any[]).map(item => ({
+  const signs = ((signResult.data ?? []) as any[]).map(item => ({
     id: item.id as number,
+    kind: 'sign' as const,
     poolerName: (item.poolers?.name as string | undefined) ?? '?',
     playerName: item.players ? `${item.players.last_name}, ${item.players.first_name}` : '?',
     position: (item.players?.position as string | null) ?? null,
     at: (item.transactions?.created_at as string | undefined) ?? new Date().toISOString(),
   }))
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const releases = ((releaseResult.data ?? []) as any[]).map(item => ({
+    id: item.id as number,
+    kind: 'release' as const,
+    poolerName: (item.poolers?.name as string | undefined) ?? '?',
+    playerName: item.players ? `${item.players.last_name}, ${item.players.first_name}` : '?',
+    position: (item.players?.position as string | null) ?? null,
+    at: (item.transactions?.created_at as string | undefined) ?? new Date().toISOString(),
+  }))
+  const recentActivity = [...signs, ...releases]
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+    .slice(0, 15)
 
   return (
     <AgentsLibresDashboard
@@ -76,7 +104,7 @@ export default async function AgentsLibresPage() {
         is_active: false, queue: [],
         turn_started_at: null, turn_duration_seconds: 90, ended_at: null,
       }}
-      recentPicks={recentPicks}
+      recentActivity={recentActivity}
       saisonId={saison.id}
       season={saison.season}
     />
