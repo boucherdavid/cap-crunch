@@ -21,6 +21,26 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-06 (suite 3)
+
+**[Fix+Feat] — "X de trop" trompeur corrigé (cap seulement) + reclassement en masse actif→réserviste**
+(`app/app/admin/presaison/actions.ts`, `app/app/admin/presaison/PresaisonManager.tsx`,
+`app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`) :
+- David : un surplus de joueurs actifs à une position (ex: 15/12 attaquants) n'exige pas de
+  libérer qui que ce soit — un réserviste compte encore dans `capUsed`, donc reclasser suffit
+  et ne change rien au cap. Seul un vrai dépassement de plafond salarial force une vraie
+  libération. `isOverLimits` (`loadPresaisonDataAction`) ne regarde plus que
+  `capSpace < 0` — les comparaisons `counts.forward > 12`/etc. retirées. Message "À libérer"/
+  badge rouge simplifié en conséquence (`ComplianceCard`, `PoolerCard`, `MonAlignement`) :
+  seulement "Dépasse le plafond de X$", plus de "3 attaquants de trop".
+- Nouveau `demoteSurplusToReserveAction(saisonId)` : reclasse en réserviste le surplus actif
+  au-delà de 12A/6D/2G, **tous poolers en un seul geste** (les moins chers d'abord — garde les
+  meilleurs actifs par défaut, sans conséquence puisque chaque pooler ajustera lui-même ensuite
+  en libre-service). Bouton global "Mettre les surplus en réserviste" dans `PresaisonManager`
+  (même patron que "Remettre tous les LTIR à Actif"), visible seulement s'il y a un surplus —
+  pas de bouton par pooler, pour ne pas réintroduire la redondance retirée en suite 2.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
+
 ### 2026-09-06 (suite 2)
 
 **[Fix] — ComplianceCard simplifiée en suivi lecture seule (retrait des boutons Libérer/Changer type)**

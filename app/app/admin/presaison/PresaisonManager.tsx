@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   loadPresaisonDataAction, saveDraftOrderAction, initDraftOrderFromStandingsAction,
-  resetLtirToActifAction, resetPresaisonDraftAction,
+  resetLtirToActifAction, demoteSurplusToReserveAction, resetPresaisonDraftAction,
   loadPresaisonDraftStateAction, startPresaisonDraftAction, advancePresaisonQueueAction,
   endPresaisonDraftAction, adjustPresaisonTimerAction, resetPresaisonTimerAction,
 } from './actions'
@@ -22,20 +22,6 @@ function posBucket(position: string | null): 'forward' | 'defense' | 'goalie' {
   if (pos.includes('G')) return 'goalie'
   if (pos.includes('D')) return 'defense'
   return 'forward'
-}
-
-// Raisons du surplus (trop de joueurs à une position et/ou plafond dépassé) — distinct des
-// postes manquants : ici il faut libérer, pas signer.
-function overageReasons(p: PoolerCapInfo): string[] {
-  const reasons: string[] = []
-  const overF = p.counts.forward - 12
-  const overD = p.counts.defense - 6
-  const overG = p.counts.goalie - 2
-  if (overF > 0) reasons.push(`${overF} attaquant${overF > 1 ? 's' : ''} de trop`)
-  if (overD > 0) reasons.push(`${overD} défenseur${overD > 1 ? 's' : ''} de trop`)
-  if (overG > 0) reasons.push(`${overG} gardien${overG > 1 ? 's' : ''} de trop`)
-  if (p.capSpace < 0) reasons.push(`dépasse le plafond de ${fmt(Math.abs(p.capSpace))}`)
-  return reasons
 }
 
 // Suivi en lecture seule (David, 2026-09-06) — les actions (libérer, changer de type) sont
@@ -139,7 +125,7 @@ function ComplianceCard({
           {/* Préparation au repêchage AL */}
           {pooler.isOverLimits && (
             <p className="text-xs text-red-600">
-              ⚠ {overageReasons(pooler).join(' · ')} — libérer des joueurs avant de pouvoir participer au repêchage.
+              ⚠ Dépasse le plafond de {fmt(Math.abs(pooler.capSpace))} — libérer des joueurs avant de pouvoir participer au repêchage.
             </p>
           )}
           {!pooler.isOverLimits && pooler.slotsManquants > 0 && (
@@ -401,6 +387,10 @@ export default function PresaisonManager({
   const [resettingLtir, setResettingLtir] = useState(false)
   const [ltirMsg, setLtirMsg] = useState<string | null>(null)
 
+  // Reclassement du surplus actif → réserviste
+  const [demoting, setDemoting] = useState(false)
+  const [demoteMsg, setDemoteMsg] = useState<string | null>(null)
+
   // Draft reset
   const [resettingDraft, setResettingDraft] = useState(false)
   const [resetDraftMsg, setResetDraftMsg] = useState<string | null>(null)
@@ -550,6 +540,31 @@ export default function PresaisonManager({
     setTimeout(() => setLtirMsg(null), 4000)
   }
 
+  const MAX_BY_BUCKET = { forward: 12, defense: 6, goalie: 2 } as const
+  const surplusCount = data.poolers.reduce((sum, p) => {
+    const counts = { forward: 0, defense: 0, goalie: 0 }
+    for (const e of p.roster) {
+      if (e.player_type === 'actif') counts[posBucket(e.position)]++
+    }
+    return sum
+      + Math.max(0, counts.forward - MAX_BY_BUCKET.forward)
+      + Math.max(0, counts.defense - MAX_BY_BUCKET.defense)
+      + Math.max(0, counts.goalie - MAX_BY_BUCKET.goalie)
+  }, 0)
+
+  const handleDemoteSurplus = async () => {
+    setDemoting(true)
+    const result = await demoteSurplusToReserveAction(saisonId)
+    setDemoting(false)
+    if (result.error) {
+      setDemoteMsg(`Erreur : ${result.error}`)
+    } else {
+      setDemoteMsg(`${result.updated} joueur${(result.updated ?? 0) > 1 ? 's' : ''} reclassé${(result.updated ?? 0) > 1 ? 's' : ''} en réserviste.`)
+      await refreshData()
+    }
+    setTimeout(() => setDemoteMsg(null), 4000)
+  }
+
   return (
     <div className="space-y-6">
       {/* Season selector */}
@@ -591,6 +606,25 @@ export default function PresaisonManager({
         </div>
       )}
 
+      {/* Banner surplus actif → réserviste */}
+      {surplusCount > 0 && (
+        <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+          <p className="text-sm text-blue-800">
+            {surplusCount} joueur{surplusCount > 1 ? 's' : ''} actif{surplusCount > 1 ? 's' : ''} en trop à une position (au-delà de 12A/6D/2G), tous poolers confondus.
+            Un surplus de composition n&apos;affecte pas le cap — les moins chers seraient reclassés en réserviste, chaque pooler pourra ajuster ensuite lui-même en libre-service.
+          </p>
+          <div className="flex items-center gap-3 ml-4 shrink-0">
+            {demoteMsg && <span className="text-xs text-blue-700">{demoteMsg}</span>}
+            <button
+              onClick={handleDemoteSurplus}
+              disabled={demoting}
+              className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 whitespace-nowrap"
+            >
+              {demoting ? '...' : 'Mettre les surplus en réserviste'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Compliance panel */}
       <div className="bg-white rounded-lg shadow p-5">

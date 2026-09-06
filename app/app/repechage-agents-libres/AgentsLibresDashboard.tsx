@@ -39,20 +39,10 @@ function fmtDateTime(iso: string) {
   })
 }
 
-// Raisons du surplus (trop de joueurs à une position et/ou plafond dépassé) — reflète
-// admin/presaison/PresaisonManager.tsx (overageReasons), dupliqué ici car ce composant garde
-// ses propres types locaux plutôt que d'importer ceux de l'admin.
-function overageReasons(p: PoolerInfo): string[] {
-  const reasons: string[] = []
-  const overF = p.counts.forward - 12
-  const overD = p.counts.defense - 6
-  const overG = p.counts.goalie - 2
-  if (overF > 0) reasons.push(`${overF} attaquant${overF > 1 ? 's' : ''} de trop`)
-  if (overD > 0) reasons.push(`${overD} défenseur${overD > 1 ? 's' : ''} de trop`)
-  if (overG > 0) reasons.push(`${overG} gardien${overG > 1 ? 's' : ''} de trop`)
-  if (p.capSpace < 0) reasons.push(`dépasse le plafond de ${fmt(Math.abs(p.capSpace))}`)
-  return reasons
-}
+// isOverLimits ne reflète maintenant que le dépassement de plafond salarial (David,
+// 2026-09-06) — un surplus de joueurs actifs à une position (12/6/2) se règle en les
+// reclassant réserviste (n'affecte pas capUsed), pas en libérant ; voir
+// admin/presaison/actions.ts (demoteSurplusToReserveAction, isOverLimits).
 
 export default function AgentsLibresDashboard({
   me, poolers, poolCap, draftState, recentActivity, saisonId, season, nhlMinimumSalary, seasonStarted,
@@ -195,7 +185,7 @@ function PoolerCard({ pooler, poolCap, isCurrentDrafter }: { pooler: PoolerInfo;
         {pooler.isOverLimits ? (
           <span
             className="text-xs font-medium px-1.5 py-0.5 rounded border text-red-600 border-red-200"
-            title={overageReasons(pooler).join(' · ')}
+            title={`Dépasse le plafond de ${fmt(Math.abs(pooler.capSpace))}`}
           >
             À libérer
           </span>
@@ -384,7 +374,7 @@ function MonAlignement({
             </div>
             {myPooler.isOverLimits && (
               <p className="text-xs mb-3 rounded-lg px-2 py-1.5 bg-red-50 text-red-600">
-                ⚠ {overageReasons(myPooler).join(' · ')} — libère des joueurs avant de pouvoir participer au repêchage.
+                ⚠ Dépasse le plafond de {fmt(Math.abs(myPooler.capSpace))} — libère des joueurs avant de pouvoir participer au repêchage.
               </p>
             )}
             {!myPooler.isOverLimits && myPooler.slotsManquants > 0 && (

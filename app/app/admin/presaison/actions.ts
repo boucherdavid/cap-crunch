@@ -157,15 +157,13 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
       info.counts.reserviste >= 2 &&
       info.capSpace >= 0
 
-    // Trop de joueurs actifs à une position et/ou trop de cap utilisé : il faut libérer des
-    // joueurs, pas signer — distinct du cas "manque d'espace pour combler des postes vides"
-    // ci-dessous. Un pooler peut être ici même avec des postes "manquants" ailleurs (ex: trop
-    // d'attaquants, pas assez de défenseurs) — les deux indicateurs coexistent.
-    info.isOverLimits =
-      info.capSpace < 0 ||
-      info.counts.forward > 12 ||
-      info.counts.defense > 6 ||
-      info.counts.goalie > 2
+    // Uniquement le dépassement de plafond salarial — un surplus de joueurs actifs à une
+    // position (ex: 15/12 attaquants) n'est PAS en soi un problème "à libérer" : un réserviste
+    // compte encore dans capUsed, donc reclasser suffit (voir demoteSurplusToReserveAction) et
+    // ne coûte rien. Seul le vrai dépassement de cap force une vraie libération.
+    // David, 2026-09-06 — remplace l'ancienne version qui incluait aussi les compteurs de
+    // position, ce qui donnait un message trompeur ("3 attaquants de trop").
+    info.isOverLimits = info.capSpace < 0
 
     // Indicateur de préparation : postes manquants pour atteindre 12A/6D/2G actifs + 2
     // réservistes min, au salaire minimum LNH chacun — informationnel, pas un blocage.
@@ -210,6 +208,51 @@ export async function resetLtirToActifAction(
 
   revalidatePath('/admin/presaison')
   return { updated: (data ?? []).length }
+}
+
+// Reclasse en réserviste le surplus de joueurs actifs à une position (au-delà de 12A/6D/2G),
+// tous poolers confondus en un seul geste — David, 2026-09-06 : "3 attaquants de trop" ne veut
+// pas dire libérer, juste reclasser (un réserviste compte encore dans capUsed, donc ça ne
+// touche pas au cap). Un seul bouton global (comme "Remettre tous les LTIR à Actif") plutôt
+// qu'une action par pooler, pour ne pas réintroduire la redondance retirée de ComplianceCard.
+// Les moins chers d'abord (garde les meilleurs actifs par défaut) — le pooler ajustera de
+// toute façon lui-même ensuite en libre-service.
+export async function demoteSurplusToReserveAction(
+  saisonId: number,
+): Promise<{ error?: string; updated?: number }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  if (!me?.is_admin) return { error: 'Accès refusé.' }
+
+  const fresh = await loadPresaisonDataAction(saisonId)
+  if (fresh.error || !fresh.poolers) return { error: fresh.error ?? 'Impossible de charger les données.' }
+
+  const MAX_BY_BUCKET = { forward: 12, defense: 6, goalie: 2 } as const
+  const idsToDemote: number[] = []
+  for (const p of fresh.poolers) {
+    for (const bucket of ['forward', 'defense', 'goalie'] as const) {
+      const actives = p.roster.filter(e => e.player_type === 'actif' && getPlayerBucket(e.position) === bucket)
+      const surplus = actives.length - MAX_BY_BUCKET[bucket]
+      if (surplus > 0) {
+        const cheapestFirst = [...actives].sort((a, b) => a.cap_number - b.cap_number)
+        idsToDemote.push(...cheapestFirst.slice(0, surplus).map(e => e.roster_id))
+      }
+    }
+  }
+  if (idsToDemote.length === 0) return { updated: 0 }
+
+  const { error } = await supabase
+    .from('pooler_rosters')
+    .update({ player_type: 'reserviste' })
+    .in('id', idsToDemote)
+  if (error) return { error: error.message }
+
+  revalidatePath('/admin/presaison')
+  revalidatePath('/repechage-agents-libres')
+  return { updated: idsToDemote.length }
 }
 
 export async function resetPresaisonDraftAction(
