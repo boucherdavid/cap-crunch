@@ -15,10 +15,6 @@ type Saison = { id: number; season: string; is_active: boolean }
 const fmt = (n: number) =>
   new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 const DASH = '\u2014'
-const typeLabel: Record<string, string> = {
-  actif: 'Actif', reserviste: 'Réserviste', ltir: 'LTIR', recrue: 'Recrue',
-}
-
 // ── Compliance Card ───────────────────────────────────────────────────────────
 
 function posBucket(position: string | null): 'forward' | 'defense' | 'goalie' {
@@ -42,60 +38,20 @@ function overageReasons(p: PoolerCapInfo): string[] {
   return reasons
 }
 
+// Suivi en lecture seule (David, 2026-09-06) — les actions (libérer, changer de type) sont
+// maintenant en libre-service par chaque pooler via /repechage-agents-libres (Mon
+// alignement) ; garder les mêmes boutons ici en plus faisait double emploi et portait à
+// confusion. Pour agir au nom d'un pooler dans un cas exceptionnel, /admin/transactions
+// couvre déjà tout (release/type_change/promote pour n'importe quel pooler) — pas besoin de
+// dupliquer ce pouvoir ici.
 function ComplianceCard({
-  pooler, saisonId, onRefresh, isCurrentDrafter, startExpanded,
+  pooler, isCurrentDrafter, startExpanded,
 }: {
   pooler: PoolerCapInfo
-  saisonId: number
-  onRefresh: () => Promise<void>
   isCurrentDrafter: boolean
   startExpanded?: boolean
 }) {
   const [expanded, setExpanded] = useState(!!startExpanded)
-  const [releaseMode, setReleaseMode] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
-  const [showTypeChange, setShowTypeChange] = useState(false)
-  const [typeChangeRosterId, setTypeChangeRosterId] = useState('')
-  const [newType, setNewType] = useState('actif')
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
-
-  const toggleSelect = (playerId: number) =>
-    setSelectedIds(prev => {
-      const next = new Set(prev)
-      next.has(playerId) ? next.delete(playerId) : next.add(playerId)
-      return next
-    })
-
-  const cancelRelease = () => { setReleaseMode(false); setSelectedIds(new Set()); setErr(null) }
-  const cancelTypeChange = () => { setShowTypeChange(false); setTypeChangeRosterId(''); setErr(null) }
-
-  const handleRelease = async () => {
-    if (selectedIds.size === 0) return
-    setBusy(true); setErr(null)
-    const items = pooler.roster
-      .filter(e => selectedIds.has(e.player_id))
-      .map(e => ({ action_type: 'release' as const, from_pooler_id: pooler.id, player_id: e.player_id, old_player_type: e.player_type }))
-    const result = await submitTransactionAction(saisonId, 'Ajustement pré-saison', items)
-    setBusy(false)
-    if (result.error) { setErr(result.error) } else { cancelRelease(); await onRefresh() }
-  }
-
-  const handleTypeChange = async () => {
-    const entry = pooler.roster.find(e => String(e.roster_id) === typeChangeRosterId)
-    if (!entry) return
-    setBusy(true); setErr(null)
-    const result = await submitTransactionAction(saisonId, 'Ajustement pré-saison', [{
-      action_type: 'type_change' as const,
-      from_pooler_id: pooler.id,
-      to_pooler_id: pooler.id,
-      player_id: entry.player_id,
-      old_player_type: entry.player_type,
-      new_player_type: newType,
-    }])
-    setBusy(false)
-    if (result.error) { setErr(result.error) } else { cancelTypeChange(); await onRefresh() }
-  }
 
   // Groupes par position/type
   const forwards   = pooler.roster.filter(e => e.player_type === 'actif' && posBucket(e.position) === 'forward')
@@ -110,43 +66,22 @@ function ComplianceCard({
       <div key={title}>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">{title}</p>
         <div className="space-y-0.5">
-          {entries.map(e => {
-            const isChecked = selectedIds.has(e.player_id)
-            return (
-              <div
-                key={e.roster_id}
-                onClick={() => releaseMode && toggleSelect(e.player_id)}
-                className={`flex items-center text-xs px-2 py-1.5 rounded gap-2 ${
-                  releaseMode
-                    ? isChecked
-                      ? 'bg-red-50 border border-red-200 cursor-pointer'
-                      : 'hover:bg-gray-100 bg-white cursor-pointer'
-                    : 'bg-gray-50'
-                }`}
-              >
-                {releaseMode && (
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    readOnly
-                    className="accent-red-500 pointer-events-none shrink-0"
-                  />
+          {entries.map(e => (
+            <div key={e.roster_id} className="flex items-center text-xs px-2 py-1.5 rounded gap-2 bg-gray-50">
+              <span className="flex-1 text-gray-700">{e.playerName}</span>
+              <span className="text-gray-400 shrink-0 flex items-center gap-1">
+                {e.position ?? DASH} · {e.cap_number > 0 ? fmt(e.cap_number) : DASH}
+                {e.isEstimatedCap && (
+                  <span
+                    className="text-amber-600 bg-amber-50 rounded px-1 py-0.5 text-[10px] font-medium"
+                    title="Cap simulé — joueur sans contrat pour cette saison, en attente du vrai contrat."
+                  >
+                    ≈ estimé
+                  </span>
                 )}
-                <span className="flex-1 text-gray-700">{e.playerName}</span>
-                <span className="text-gray-400 shrink-0 flex items-center gap-1">
-                  {e.position ?? DASH} · {e.cap_number > 0 ? fmt(e.cap_number) : DASH}
-                  {e.isEstimatedCap && (
-                    <span
-                      className="text-amber-600 bg-amber-50 rounded px-1 py-0.5 text-[10px] font-medium"
-                      title="Cap simulé — joueur sans contrat pour cette saison, en attente du vrai contrat."
-                    >
-                      ≈ estimé
-                    </span>
-                  )}
-                </span>
-              </div>
-            )
-          })}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     )
@@ -224,82 +159,6 @@ function ComplianceCard({
             {renderGroup('LTIR', ltir)}
           </div>
 
-          {err && <p className="text-xs text-red-600">{err}</p>}
-
-          {/* Barre d'actions en mode libération */}
-          {releaseMode && (
-            <div className="flex items-center gap-3 pt-2 border-t">
-              <span className="text-xs text-gray-500 flex-1">
-                {selectedIds.size > 0 ? `${selectedIds.size} joueur${selectedIds.size > 1 ? 's' : ''} sélectionné${selectedIds.size > 1 ? 's' : ''}` : 'Cocher les joueurs à libérer'}
-              </span>
-              <button
-                onClick={handleRelease}
-                disabled={busy || selectedIds.size === 0}
-                className="text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-40"
-              >
-                {busy ? '...' : `Libérer (${selectedIds.size})`}
-              </button>
-              <button onClick={cancelRelease} className="text-xs text-gray-400 hover:text-gray-600">Annuler</button>
-            </div>
-          )}
-
-          {/* Formulaire changement de type */}
-          {showTypeChange && (
-            <div className="bg-gray-50 border rounded p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-600">Changer le type</span>
-                <button onClick={cancelTypeChange} className="text-xs text-gray-400 hover:text-gray-600">Annuler</button>
-              </div>
-              <select
-                value={typeChangeRosterId}
-                onChange={e => setTypeChangeRosterId(e.target.value)}
-                className="w-full border rounded px-2 py-1 text-xs focus:outline-none"
-              >
-                <option value="">— Sélectionner un joueur —</option>
-                {pooler.roster
-                  .filter(e => ['actif', 'reserviste', 'ltir'].includes(e.player_type))
-                  .map(e => (
-                    <option key={e.roster_id} value={String(e.roster_id)}>
-                      {e.playerName} — {typeLabel[e.player_type]}
-                    </option>
-                  ))}
-              </select>
-              <select
-                value={newType}
-                onChange={e => setNewType(e.target.value)}
-                className="w-full border rounded px-2 py-1 text-xs focus:outline-none"
-              >
-                {['actif', 'reserviste', 'ltir'].map(t => (
-                  <option key={t} value={t}>{typeLabel[t]}</option>
-                ))}
-              </select>
-              <button
-                onClick={handleTypeChange}
-                disabled={busy || !typeChangeRosterId}
-                className="w-full text-xs bg-gray-700 text-white py-1.5 rounded hover:bg-gray-800 disabled:opacity-40"
-              >
-                {busy ? 'En cours...' : 'Confirmer'}
-              </button>
-            </div>
-          )}
-
-          {/* Boutons d'entrée dans un mode */}
-          {!releaseMode && !showTypeChange && (
-            <div className="flex gap-2 pt-1 border-t">
-              <button
-                onClick={() => setReleaseMode(true)}
-                className="text-xs px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded"
-              >
-                Libérer des joueurs
-              </button>
-              <button
-                onClick={() => setShowTypeChange(true)}
-                className="text-xs px-2 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded"
-              >
-                Changer type
-              </button>
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -737,15 +596,13 @@ export default function PresaisonManager({
       <div className="bg-white rounded-lg shadow p-5">
         <h2 className="font-semibold text-gray-800 mb-3">Aperçu des rosters</h2>
         <p className="text-xs text-gray-400 mb-4">
-          Cliquer sur un pooler pour voir son roster et effectuer des ajustements (libérations, changements de type) en dehors des tours de repêchage.
+          Suivi en lecture seule — chaque pooler ajuste son propre alignement (libérations, actif/réserviste, activer une recrue) en libre-service depuis /repechage-agents-libres. Pour agir à sa place dans un cas exceptionnel, utiliser /admin/transactions.
         </p>
         <div className="space-y-2">
           {data.poolers.map(p => (
             <ComplianceCard
               key={p.id}
               pooler={p}
-              saisonId={saisonId}
-              onRefresh={async () => { await refreshData() }}
               isCurrentDrafter={p.id === currentPoolerId}
               startExpanded={p.id === highlightPoolerId}
             />

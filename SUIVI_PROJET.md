@@ -21,6 +21,26 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-06 (suite 2)
+
+**[Fix] — ComplianceCard simplifiée en suivi lecture seule (retrait des boutons Libérer/Changer type)**
+(`app/app/admin/presaison/PresaisonManager.tsx`) :
+- David a remarqué la redondance introduite en suite 1 : les mêmes actions (libérer,
+  actif↔réserviste) existaient maintenant à la fois dans `ComplianceCard`
+  (`/admin/init?tab=presaison`) ET en libre-service pooler (`/repechage-agents-libres`) — en
+  creusant, une **troisième** version existait déjà (`/admin/transactions`, sans restriction,
+  pour n'importe quel pooler). Décision : `ComplianceCard` retrouve son rôle de tableau de
+  bord de suivi uniquement (badges, composition, cap, roster consultable) ; `/admin/
+  transactions` reste le filet de sécurité si l'admin doit agir à la place d'un pooler.
+- Retiré : mode "Libérer des joueurs" (sélection + confirmation), formulaire "Changer type",
+  les deux boutons d'entrée, et tout l'état/handlers associés (`releaseMode`, `selectedIds`,
+  `showTypeChange`, `typeChangeRosterId`, `newType`, `busy`, `err`, `handleRelease`,
+  `handleTypeChange`) — `ComplianceCard` n'a plus besoin de `saisonId`/`onRefresh` en props.
+  `typeLabel` (devenu inutilisé) retiré aussi.
+- Texte d'aide du panneau "Aperçu des rosters" mis à jour pour pointer vers le libre-service
+  pooler et `/admin/transactions`.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
+
 ### 2026-09-06
 
 **[Feat] — Libre-service pooler pour le ménage pré-saison (actif↔réserviste, libération, activer une recrue)**
