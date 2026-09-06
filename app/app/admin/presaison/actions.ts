@@ -99,6 +99,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
       isCompliant: false,
       counts: { forward: 0, defense: 0, goalie: 0, reserviste: 0 },
       roster: [],
+      pendingRecrueActivation: 0,
       isOverLimits: false,
       slotsManquants: 0,
       capNeededForReady: 0,
@@ -131,6 +132,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
       // pour l'aperçu cap/compteurs (rien n'est persisté ici) — flaguée "Activation
       // obligatoire" dans la banque de recrues, à activer au choix du pooler.
       type = 'actif'
+      info.pendingRecrueActivation++
     }
 
     info.roster.push({

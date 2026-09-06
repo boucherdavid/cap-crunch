@@ -121,6 +121,11 @@ function ComplianceCard({
             <span>Gar {pooler.counts.goalie}/2</span>
             <span>Rés {pooler.counts.reserviste}</span>
           </div>
+          {pooler.pendingRecrueActivation > 0 && (
+            <p className="text-xs text-gray-400">
+              Dont {pooler.pendingRecrueActivation} recrue{pooler.pendingRecrueActivation > 1 ? 's' : ''} à protection expirée, comptée{pooler.pendingRecrueActivation > 1 ? 's' : ''} ci-dessus mais encore en banque — à activer via la banque de recrues, pas reclassable en réserviste.
+            </p>
+          )}
 
           {/* Préparation au repêchage AL */}
           {pooler.isOverLimits && (

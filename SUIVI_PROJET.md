@@ -21,6 +21,28 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-06 (suite 5)
+
+**[Fix] — "Att X/12" explique enfin pourquoi ça reste au-dessus de 12 après le reclassement**
+(`app/app/admin/presaison/types.ts`, `app/app/admin/presaison/actions.ts`,
+`app/app/admin/presaison/PresaisonManager.tsx`,
+`app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`) :
+- David a re-testé le bouton (déjà corrigé en suite 4) : toujours "Att 14/12" pour lui,
+  "13/12" pour Jérôme, "14/12" pour Nicolas — apparemment inchangé. Vérifié en base
+  directement : leur vrai `player_type='actif'` est en fait déjà exactement 12/11/12 —
+  compliant. L'écart constant de +2/+2/+2 vient des recrues à protection expirée
+  (`isRookieProtectionExpired`) que `loadPresaisonDataAction` compte comme pseudo-actives
+  (pour un portrait cap réaliste) sans qu'elles soient réellement sur le roster actif/réserve
+  — confirmé : David a 2 recrues ainsi comptées (Svechkov, Räty). Le bouton (suite 4) est
+  correct et ne peut pas les toucher — elles doivent être activées via la banque de recrues,
+  pas reclassées.
+- Comme ce n'était pas du tout évident depuis l'affichage, ajout de `pendingRecrueActivation`
+  (`PoolerCapInfo`) — nombre de recrues comptées dans `counts`/`capUsed`/`roster` mais encore
+  réellement en banque. Affiché comme note explicite sous les compteurs (`ComplianceCard`,
+  admin) et comme badge/note (`PoolerCard`, `MonAlignement` côté pooler) — pointe vers
+  l'activation plutôt que de laisser croire à un surplus non résolu.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
+
 ### 2026-09-06 (suite 4)
 
 **[Fix] — demoteSurplusToReserveAction touchait parfois une recrue en banque au lieu d'un vrai actif**

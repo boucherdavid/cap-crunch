@@ -22,6 +22,13 @@ export type PoolerCapInfo = {
   isCompliant: boolean
   counts: { forward: number; defense: number; goalie: number; reserviste: number }
   roster: RosterEntry[]
+  // Recrues à protection expirée comptées dans `counts`/`capUsed`/`roster` ci-dessus comme si
+  // déjà actives (pour un portrait cap/composition réaliste), mais encore réellement en
+  // banque (player_type='recrue' en base) — pas éligibles au reclassement en réserviste
+  // (demoteSurplusToReserveAction interroge le vrai player_type, pas ce roster relabellisé),
+  // doivent être activées via la banque de recrues. David, 2026-09-06 — explique pourquoi
+  // "Att X/12" peut rester au-dessus de 12 même une fois tous les vrais surplus reclassés.
+  pendingRecrueActivation: number
   // Indicateur de préparation au repêchage AL (informationnel, pas un blocage). Deux états
   // distincts, pas confondre : "trop de joueurs / trop de cap utilisé" (isOverLimits — il faut
   // libérer des joueurs, pas signer) vs "manque d'espace pour compléter l'alignement au

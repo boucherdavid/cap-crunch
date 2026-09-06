@@ -14,6 +14,7 @@ type PoolerInfo = {
   id: string; name: string; capUsed: number; capSpace: number; isCompliant: boolean
   counts: { forward: number; defense: number; goalie: number; reserviste: number }
   roster: RosterEntry[]
+  pendingRecrueActivation: number
   isOverLimits: boolean
   slotsManquants: number
   capNeededForReady: number
@@ -182,6 +183,14 @@ function PoolerCard({ pooler, poolCap, isCurrentDrafter }: { pooler: PoolerInfo;
         <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ${dOk ? 'text-emerald-600 border-emerald-200' : 'text-red-600 border-red-200'}`}>{pooler.counts.defense}D</span>
         <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ${gOk ? 'text-emerald-600 border-emerald-200' : 'text-red-600 border-red-200'}`}>{pooler.counts.goalie}G</span>
         <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ${resOk ? 'text-emerald-600 border-emerald-200' : 'text-red-600 border-red-200'}`}>{pooler.counts.reserviste} rés.</span>
+        {pooler.pendingRecrueActivation > 0 && (
+          <span
+            className="text-xs font-medium px-1.5 py-0.5 rounded border text-gray-500 border-gray-200"
+            title="Recrue(s) à protection expirée déjà comptée(s) ci-dessus mais encore en banque — à activer, pas reclassable en réserviste."
+          >
+            {pooler.pendingRecrueActivation} recrue{pooler.pendingRecrueActivation > 1 ? 's' : ''} à activer
+          </span>
+        )}
         {pooler.isOverLimits ? (
           <span
             className="text-xs font-medium px-1.5 py-0.5 rounded border text-red-600 border-red-200"
@@ -382,6 +391,11 @@ function MonAlignement({
                 {myPooler.isReadyForDraft ? '✓' : '⚠'} {myPooler.slotsManquants} poste{myPooler.slotsManquants > 1 ? 's' : ''} à combler — besoin d&apos;au moins{' '}
                 {fmt(myPooler.capNeededForReady)} d&apos;espace (salaire minimum {fmt(nhlMinimumSalary)}/poste).
                 {!myPooler.isReadyForDraft && ' Pas encore assez d\'espace pour compléter légalement l\'alignement.'}
+              </p>
+            )}
+            {myPooler.pendingRecrueActivation > 0 && (
+              <p className="text-xs mb-3 rounded-lg px-2 py-1.5 bg-gray-50 text-gray-500">
+                {myPooler.pendingRecrueActivation} recrue{myPooler.pendingRecrueActivation > 1 ? 's' : ''} à protection expirée déjà compté{myPooler.pendingRecrueActivation > 1 ? 'es' : 'e'} ci-dessus mais encore en banque — active-{myPooler.pendingRecrueActivation > 1 ? 'les' : '-la'} ci-dessous pour que ton alignement reflète la vraie situation.
               </p>
             )}
 
