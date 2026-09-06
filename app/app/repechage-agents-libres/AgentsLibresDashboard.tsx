@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import AutoReload from '@/components/AutoReload'
 import { searchFreeAgentsAction } from '../admin/transactions/actions'
+import { submitSelfServiceAction, loadOwnRecrueBankAction } from './actions'
 
 type Me = { id: string; name: string; isAdmin: boolean }
 type RosterEntry = {
@@ -54,7 +55,7 @@ function overageReasons(p: PoolerInfo): string[] {
 }
 
 export default function AgentsLibresDashboard({
-  me, poolers, poolCap, draftState, recentActivity, saisonId, season, nhlMinimumSalary,
+  me, poolers, poolCap, draftState, recentActivity, saisonId, season, nhlMinimumSalary, seasonStarted,
 }: {
   me: Me
   poolers: PoolerInfo[]
@@ -64,6 +65,7 @@ export default function AgentsLibresDashboard({
   saisonId: number
   season: string
   nhlMinimumSalary: number
+  seasonStarted: boolean
 }) {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
@@ -156,6 +158,7 @@ export default function AgentsLibresDashboard({
             poolCap={poolCap}
             saisonId={saisonId}
             nhlMinimumSalary={nhlMinimumSalary}
+            seasonStarted={seasonStarted}
           />
         </div>
       </div>
@@ -228,14 +231,17 @@ function PoolerCard({ pooler, poolCap, isCurrentDrafter }: { pooler: PoolerInfo;
   )
 }
 
+type RecrueOption = { roster_id: number; player_id: number; name: string; position: string | null; cap_number: number }
+
 function MonAlignement({
-  me, myPooler, poolCap, saisonId, nhlMinimumSalary,
+  me, myPooler, poolCap, saisonId, nhlMinimumSalary, seasonStarted,
 }: {
   me: Me
   myPooler: PoolerInfo | null
   poolCap: number
   saisonId: number
   nhlMinimumSalary: number
+  seasonStarted: boolean
 }) {
   const [tab, setTab] = useState<'actuel' | 'sandbox'>('actuel')
   const [removed, setRemoved] = useState<Set<number>>(new Set())
@@ -244,6 +250,61 @@ function MonAlignement({
   const [results, setResults] = useState<FreeAgent[]>([])
   const [searching, setSearching] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Libre-service (ménage pré-saison) — actions réelles, distinctes du bac à sable ci-dessous.
+  const [busy, setBusy] = useState(false)
+  const [selfErr, setSelfErr] = useState<string | null>(null)
+  const [releaseMode, setReleaseMode] = useState(false)
+  const [selectedForRelease, setSelectedForRelease] = useState<Set<number>>(new Set())
+  const [recruePlayers, setRecruePlayers] = useState<RecrueOption[]>([])
+  const [recrueLoading, setRecrueLoading] = useState(!seasonStarted)
+  const [selectedRecrueId, setSelectedRecrueId] = useState('')
+  const [recrueNewType, setRecrueNewType] = useState<'actif' | 'reserviste'>('actif')
+
+  useEffect(() => {
+    if (seasonStarted) return
+    loadOwnRecrueBankAction(saisonId).then(res => {
+      setRecruePlayers(res.players)
+      setRecrueLoading(false)
+    })
+  }, [saisonId, seasonStarted])
+
+  const toggleReleaseSelect = (playerId: number) => {
+    setSelectedForRelease(prev => {
+      const next = new Set(prev)
+      next.has(playerId) ? next.delete(playerId) : next.add(playerId)
+      return next
+    })
+  }
+  const cancelRelease = () => { setReleaseMode(false); setSelectedForRelease(new Set()); setSelfErr(null) }
+
+  const handleToggleType = async (entry: RosterEntry) => {
+    if (busy) return
+    setBusy(true); setSelfErr(null)
+    const newType = entry.player_type === 'actif' ? 'reserviste' : 'actif'
+    const result = await submitSelfServiceAction(saisonId, [{
+      action_type: 'type_change', player_id: entry.player_id,
+      old_player_type: entry.player_type as 'actif' | 'reserviste', new_player_type: newType,
+    }])
+    if (result.error) { setBusy(false); setSelfErr(result.error) } else { window.location.reload() }
+  }
+
+  const handleConfirmRelease = async () => {
+    if (selectedForRelease.size === 0) return
+    setBusy(true); setSelfErr(null)
+    const items = Array.from(selectedForRelease).map(playerId => ({ action_type: 'release' as const, player_id: playerId }))
+    const result = await submitSelfServiceAction(saisonId, items)
+    if (result.error) { setBusy(false); setSelfErr(result.error) } else { window.location.reload() }
+  }
+
+  const handlePromote = async () => {
+    if (!selectedRecrueId) return
+    setBusy(true); setSelfErr(null)
+    const result = await submitSelfServiceAction(saisonId, [{
+      action_type: 'promote', player_id: Number(selectedRecrueId), new_player_type: recrueNewType,
+    }])
+    if (result.error) { setBusy(false); setSelfErr(result.error) } else { window.location.reload() }
+  }
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -308,7 +369,11 @@ function MonAlignement({
 
         {tab === 'actuel' ? (
           <>
-            <p className="text-xs text-gray-400 mb-3">Synchronisé automatiquement avec ce que l&apos;admin a signé pour toi.</p>
+            <p className="text-xs text-gray-400 mb-3">
+              {seasonStarted
+                ? 'Synchronisé automatiquement avec ce que l\'admin a signé pour toi.'
+                : 'Ajuste toi-même ton alignement pendant le ménage pré-saison — libère, mets en réserve, active une recrue.'}
+            </p>
             <div className="flex justify-between text-sm mb-1">
               <span className="text-gray-500">Masse salariale</span>
               <span className="font-medium">{fmt(myPooler.capUsed)}</span>
@@ -329,14 +394,119 @@ function MonAlignement({
                 {!myPooler.isReadyForDraft && ' Pas encore assez d\'espace pour compléter légalement l\'alignement.'}
               </p>
             )}
+
+            {!seasonStarted && (
+              <div className="flex items-center justify-end mb-2">
+                {!releaseMode ? (
+                  <button
+                    onClick={() => setReleaseMode(true)}
+                    disabled={busy}
+                    className="text-xs px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded disabled:opacity-40"
+                  >
+                    Libérer des joueurs
+                  </button>
+                ) : (
+                  <button onClick={cancelRelease} className="text-xs text-gray-400 hover:text-gray-600">Annuler la libération</button>
+                )}
+              </div>
+            )}
+
             <div className="border-t pt-2 space-y-1">
-              {myPooler.roster.map(e => (
-                <div key={e.roster_id} className="flex justify-between text-xs text-gray-600">
-                  <span><span className="text-gray-400 mr-1">{e.position ?? DASH}</span>{e.playerName}</span>
-                  <span>{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
-                </div>
-              ))}
+              {myPooler.roster.map(e => {
+                const canAct = !seasonStarted && (e.player_type === 'actif' || e.player_type === 'reserviste')
+                const selected = selectedForRelease.has(e.player_id)
+                return (
+                  <div key={e.roster_id} className={`flex items-center justify-between text-xs py-1 gap-2 ${selected ? 'bg-red-50 rounded px-1' : ''}`}>
+                    <span className="flex-1 text-gray-600">
+                      <span className="text-gray-400 mr-1">{e.position ?? DASH}</span>
+                      {e.playerName}
+                      {e.player_type === 'reserviste' && <span className="text-gray-400 ml-1">(rés.)</span>}
+                    </span>
+                    <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
+                    {canAct && !releaseMode && (
+                      <button
+                        onClick={() => handleToggleType(e)}
+                        disabled={busy}
+                        title={e.player_type === 'actif' ? 'Mettre en réserve' : 'Activer'}
+                        className="text-[10px] px-1.5 py-0.5 border rounded text-gray-500 hover:text-blue-600 hover:border-blue-300 shrink-0 disabled:opacity-40"
+                      >
+                        {e.player_type === 'actif' ? '→ Rés.' : '→ Actif'}
+                      </button>
+                    )}
+                    {canAct && releaseMode && (
+                      <button
+                        onClick={() => toggleReleaseSelect(e.player_id)}
+                        className={`w-5 h-5 rounded border text-[10px] shrink-0 flex items-center justify-center ${selected ? 'bg-red-500 text-white border-red-500' : 'text-gray-400 hover:text-red-600'}`}
+                      >
+                        {selected ? '✓' : ''}
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
             </div>
+
+            {releaseMode && (
+              <div className="flex items-center gap-3 pt-2 mt-2 border-t">
+                <span className="text-xs text-gray-500 flex-1">
+                  {selectedForRelease.size > 0 ? `${selectedForRelease.size} sélectionné(s)` : 'Coche les joueurs à libérer'}
+                </span>
+                <button
+                  onClick={handleConfirmRelease}
+                  disabled={busy || selectedForRelease.size === 0}
+                  className="text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-40"
+                >
+                  {busy ? '...' : `Libérer (${selectedForRelease.size})`}
+                </button>
+              </div>
+            )}
+
+            {selfErr && <p className="text-xs text-red-600 mt-2">{selfErr}</p>}
+
+            {!seasonStarted && (
+              <div className="border-t pt-3 mt-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Activer une recrue</p>
+                {recrueLoading ? (
+                  <p className="text-xs text-gray-400">Chargement...</p>
+                ) : recruePlayers.length === 0 ? (
+                  <p className="text-xs text-gray-400">Aucune recrue dans ta banque.</p>
+                ) : (
+                  <div className="space-y-2">
+                    <select
+                      value={selectedRecrueId}
+                      onChange={e => setSelectedRecrueId(e.target.value)}
+                      className="w-full border rounded-lg px-2 py-1.5 text-xs focus:outline-none"
+                    >
+                      <option value="">— Choisir une recrue —</option>
+                      {recruePlayers.map(r => (
+                        <option key={r.player_id} value={String(r.player_id)}>
+                          {r.name} ({r.position ?? DASH}){r.cap_number > 0 ? ` — ${fmt(r.cap_number)}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedRecrueId && (
+                      <>
+                        <select
+                          value={recrueNewType}
+                          onChange={e => setRecrueNewType(e.target.value as 'actif' | 'reserviste')}
+                          className="w-full border rounded-lg px-2 py-1.5 text-xs focus:outline-none"
+                        >
+                          <option value="actif">Actif</option>
+                          <option value="reserviste">Réserviste</option>
+                        </select>
+                        <button
+                          onClick={handlePromote}
+                          disabled={busy}
+                          className="w-full text-xs bg-emerald-600 text-white py-1.5 rounded-lg hover:bg-emerald-700 disabled:opacity-40"
+                        >
+                          {busy ? '...' : 'Activer'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </>
         ) : (
           <>

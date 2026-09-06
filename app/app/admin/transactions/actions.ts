@@ -105,6 +105,24 @@ export async function submitTransactionAction(
   if (!user) return { error: 'Non authentifié.' }
   const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
   if (!me?.is_admin) return { error: 'Accès refusé.' }
+
+  return applyTransactionItems(supabase, user.id, saisonId, notes, items, transactionDate)
+}
+
+// Cœur de la mutation, séparé de submitTransactionAction pour être réutilisable par un
+// appelant non-admin déjà validé autrement (ex: libre-service pooler,
+// repechage-agents-libres/actions.ts) — la vérification is_admin ci-dessus reste le seul
+// point d'entrée admin ; tout appelant de cette fonction doit avoir fait sa propre
+// vérification d'autorisation avant (ex: restreindre items à from/to_pooler_id === l'appelant).
+export async function applyTransactionItems(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  userId: string,
+  saisonId: number,
+  notes: string,
+  items: TxItemPayload[],
+  transactionDate?: string,
+): Promise<{ error?: string; warning?: string }> {
   if (items.length === 0) return { error: 'La transaction est vide.' }
 
   const [{ data: saison }, { data: settings }] = await Promise.all([
@@ -288,7 +306,7 @@ export async function submitTransactionAction(
     deferredToTomorrow = deferred
   }
 
-  const txPayload: Record<string, unknown> = { pool_season_id: saisonId, notes: notes || null, created_by: user.id }
+  const txPayload: Record<string, unknown> = { pool_season_id: saisonId, notes: notes || null, created_by: userId }
   if (transactionDate) txPayload.created_at = txTs
 
   const { data: tx, error: txErr } = await supabase

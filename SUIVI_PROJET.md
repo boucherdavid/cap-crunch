@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-04
+Derniere mise a jour: 2026-09-06
 
 ## Role du fichier
 
@@ -20,6 +20,60 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-09-06
+
+**[Feat] — Libre-service pooler pour le ménage pré-saison (actif↔réserviste, libération, activer une recrue)**
+(`app/app/admin/transactions/actions.ts`, `app/app/repechage-agents-libres/actions.ts`
+nouveau, `app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`,
+`app/app/repechage-agents-libres/page.tsx`) :
+- David a remarqué que la libération manuelle par l'admin (`ComplianceCard`,
+  `/admin/init?tab=presaison`) pour 8 poolers est lourde, et que "3 attaquants de trop" ne
+  veut pas forcément dire libérer — ça peut aussi être réglé en mettant en réserve. Décision
+  après discussion : plutôt que d'ouvrir `/gestion-effectifs` en avance (proposé d'abord, mais
+  David voulait une page dédiée pour éviter la confusion) ou de construire un remplissage
+  automatique actif/réserve (jugé inutile — le pooler ajuste de toute façon lui-même), rendre
+  le panneau "Mon alignement" de `/repechage-agents-libres` (déjà la bonne page, déjà
+  pooler-facing) réellement actionnable : actif↔réserviste, libération, et activation d'une
+  recrue de sa propre banque — en libre-service, sans passer par l'admin. Comme le pooler
+  gérait son pool dans Excel avant Cap Crunch (David) — objectif : repêchage "dynamique et
+  fluide".
+- **Refactor** `admin/transactions/actions.ts` : `submitTransactionAction` (admin, inchangé
+  côté comportement) séparé en une vérification `is_admin` + un cœur exporté
+  `applyTransactionItems(supabase, userId, saisonId, notes, items, transactionDate?)` —
+  réutilisable par un appelant déjà autorisé autrement.
+- **Nouveau** `repechage-agents-libres/actions.ts` : `submitSelfServiceAction(saisonId, items)`
+  — accepte seulement 3 `action_type` (`type_change` actif↔réserviste, `release`, `promote`),
+  force `from_pooler_id`/`to_pooler_id` à l'utilisateur authentifié (jamais pris du client,
+  donc structurellement impossible de toucher au roster d'un autre pooler même en forgeant la
+  requête — `applyTransactionItems` ne charge que le roster de l'appelant puisque les deux
+  ids sont identiques). **Validation runtime ajoutée après coup** (`isValidSelfServiceItem`) :
+  le type TS `SelfServiceItem` ne protège que l'appel depuis ce projet, pas un Server Action
+  appelé directement avec un payload forgé — sans check runtime, un `action_type: 'sign'`
+  aurait contourné toute la file du repêchage AL (aucune vérification de tour dans
+  `applyTransactionItems`), et un `new_player_type` hors `actif`/`reserviste` aurait permis de
+  créer un statut LTIR illégitime via `type_change`. Bloqué en amont maintenant.
+  Bloqué aussi si `season_started=true` (place alors à `/gestion-effectifs`).
+- `transactions`/`transaction_items` sont admin-only en RLS (`schema.sql`) — un client
+  authentifié pooler s'y ferait rejeter en écriture. Comme `/gestion-effectifs`
+  (`submitBatchAction`, déjà en prod), la mutation elle-même passe par `createAdminClient()`
+  (service role) une fois l'autorisation déjà validée en code — la RLS n'est plus la barrière
+  de sécurité ici, le code applicatif l'est.
+- Notes de transaction : `'Ajustement pré-saison'` (identique à `ComplianceCard`/
+  `BanqueRecruesManager`, pas une variante) — pour que les libérations en libre-service soient
+  ramassées par la même requête "Activité récente" ajoutée en suite 4, et ne soient pas
+  annulées par "Réinitialiser le repêchage" (qui ne cible que les signatures AL).
+- `AgentsLibresDashboard.tsx` : onglet "Actuel" de `MonAlignement` passe de lecture seule à
+  actionnable — bouton par joueur (`→ Rés.`/`→ Actif`, immédiat), mode "Libérer des joueurs"
+  (sélection multiple + confirmation, même patron que `ComplianceCard`), section "Activer une
+  recrue" (liste chargée via `loadOwnRecrueBankAction`, choix actif/réserviste). Rechargement
+  complet de la page après succès (`window.location.reload()`, même patron établi que
+  `AutoReload.tsx` pour cette famille de routes). Le tout masqué si `season_started=true`
+  (nouveau prop, requête ajoutée dans `page.tsx`) — remplacé par un message renvoyant vers
+  `/gestion-effectifs`. Onglet "Bac à sable" inchangé (reste une simulation locale, utile pour
+  tester l'ajout d'un agent libre pas encore signé).
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès). Non testé en réel — à
+  valider par David en libre-service sur staging.
 
 ### 2026-09-04 (suite 6)
 

@@ -16,7 +16,7 @@ export default async function AgentsLibresPage() {
 
   const { data: saison } = await supabase
     .from('pool_seasons')
-    .select('id, season')
+    .select('id, season, season_started')
     .eq('is_active', true)
     .eq('is_playoff', false)
     .maybeSingle()
@@ -107,6 +107,7 @@ export default async function AgentsLibresPage() {
       recentActivity={recentActivity}
       saisonId={saison.id}
       season={saison.season}
+      seasonStarted={saison.season_started ?? true}
     />
   )
 }
