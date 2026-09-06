@@ -21,6 +21,30 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-06 (suite 6) — bilan de session, à reprendre la prochaine fois
+
+**Tout ce qui suit est sur `staging` uniquement — rien promu vers `main`/prod aujourd'hui.**
+David n'a pas encore donné de validation globale ("c'est bon") ; attendre sa confirmation
+avant `git checkout main && git merge staging`.
+
+Résumé de la session (détails complets dans les entrées "suite 1" à "suite 5" ci-dessous) :
+- Notifications par courriel (Resend) pour le babillard global et celui de `/planification` —
+  posts (tous les poolers opt-in) et commentaires (admins + participants au fil). Fonctionnel
+  et testé par David en staging.
+- SMS retiré de `/compte` (jamais construit, David ne veut pas du coût récurrent).
+- Repêchage AL pré-saison : seuil de participation corrigé (850k$, `nhl_minimum_salary`),
+  indicateur de préparation, distinction "trop de joueurs" (reclassable) vs "trop de cap"
+  (à libérer), bouton admin global de reclassement en masse, et surtout : **libre-service
+  pooler** sur `/repechage-agents-libres` (actif↔réserviste, libération, activation de
+  recrue) — `ComplianceCard` (admin) redevenue lecture seule en conséquence.
+- `CLAUDE.md` section 5 mise à jour pour refléter que `/repechage-agents-libres` n'est plus
+  en lecture seule.
+
+**Point en suspens** (non bloquant, mentionné par David mais pas encore construit) : les
+notifications par courriel pour les commentaires (participants au fil, pas juste admins)
+n'ont pas été testées en conditions réelles (il faudrait deux comptes distincts commentant
+l'un après l'autre sur le même post/sondage).
+
 ### 2026-09-06 (suite 5)
 
 **[Fix] — "Att X/12" explique enfin pourquoi ça reste au-dessus de 12 après le reclassement**

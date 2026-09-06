@@ -207,16 +207,24 @@ soumission/commentaire). Gestion (créer le sondage, ajouter/retirer des dates) 
 commentables par les poolers ; notifie les poolers abonnés aux push à chaque nouvelle
 communication, et les admins à chaque commentaire — distinct du babillard de `/planification`
 ci-dessus). Publication réservée à l'admin, sur `/admin/communaute?tab=babillard`.
-`/repechage-agents-libres` (tableau de bord partagé du repêchage des agents libres pré-saison,
-lecture seule — vue de chaque pooler : masse salariale, alignement dépliable de n'importe qui,
-file d'attente/tour/chronomètre indicatif, fil des derniers choix signés, et un panneau
-personnel "Mon alignement" avec bascule Actuel (synchronisé) / Bac à sable (test libre local,
-non sauvegardé) ; décisions ELC et conformité cap du pooler visibles mais non actionnables
-depuis cette page. Rafraîchissement automatique — `AutoReload`, `app/components/AutoReload.tsx`,
-composant partagé avec `/repechage-recrues`. La signature réelle reste admin-only sur
-`/admin/init?tab=presaison`. État "à qui le tour" persisté dans `presaison_draft_state`
-(section 4), remplace l'ancien état 100% local de `PresaisonManager.tsx` — survit à une
-navigation de l'admin vers `/admin/transactions` (ex: traiter un échange) et retour.
+`/repechage-agents-libres` (tableau de bord partagé du repêchage des agents libres pré-saison
+— vue de chaque pooler : masse salariale, alignement dépliable de n'importe qui, badges de
+composition/cap (voir `isOverLimits`/`pendingRecrueActivation` ci-dessous), file
+d'attente/tour/chronomètre indicatif, "Activité récente" (signatures ET libérations
+pré-saison confondues), et un panneau personnel "Mon alignement" à deux onglets : **Actuel**
+— libre-service réel depuis le 2026-09-06 (`repechage-agents-libres/actions.ts`,
+`submitSelfServiceAction`) : basculer un joueur actif↔réserviste, le libérer, activer une
+recrue de sa propre banque — restreint à ses propres joueurs, désactivé dès que
+`season_started=true` (place alors à `/gestion-effectifs`) ; et **Bac à sable** — simulation
+locale non sauvegardée, pour tester l'ajout d'un agent libre pas encore signé. La signature
+réelle d'un agent libre (pendant son tour) reste admin-only sur `/admin/init?tab=presaison`
+(`ComplianceCard`, redevenu un suivi en lecture seule le 2026-09-06 — les anciens boutons
+Libérer/Changer type y faisaient double emploi avec le libre-service ; `/admin/transactions`
+reste le filet de sécurité pour agir au nom d'un pooler). Rafraîchissement automatique —
+`AutoReload`, `app/components/AutoReload.tsx`, composant partagé avec `/repechage-recrues`.
+État "à qui le tour" persisté dans `presaison_draft_state` (section 4), remplace l'ancien état
+100% local de `PresaisonManager.tsx` — survit à une navigation de l'admin vers
+`/admin/transactions` (ex: traiter un échange) et retour.
 
 **Menu pooler (`Navbar.tsx`) — réorganisé le 2026-08-30, ordre/regroupement affinés le
 2026-09-01 :**
