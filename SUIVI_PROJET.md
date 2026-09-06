@@ -21,6 +21,30 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-06 (suite 4)
+
+**[Fix] — demoteSurplusToReserveAction touchait parfois une recrue en banque au lieu d'un vrai actif**
+(`app/app/admin/presaison/actions.ts`) :
+- David a testé le bouton "Mettre les surplus en réserviste" : pour lui, 1 seul des 3
+  attaquants en surplus a été reclassé, et pas le moins cher (Räty, 850k$) mais Marchenko
+  (3,85M$). Vérifié en base : Räty Aatu est resté `player_type='recrue'` — pas touché.
+- Cause : la première version réutilisait `loadPresaisonDataAction()`, dont le `roster`
+  relabellise en `'actif'` (affichage seulement, jamais persisté) les recrues à protection
+  expirée — pour l'aperçu cap/composition. Räty (recrue, protection expirée) était donc
+  candidat "moins cher" dans la sélection ; la mise à jour l'a bien fait passer à
+  `'reserviste'` en base, mais le tout prochain chargement (`syncExpiredRookieProtection()`,
+  en tête de `loadPresaisonDataAction`) a détecté ce `reserviste` avec `rookie_type` toujours
+  rempli et protection expirée, et l'a aussitôt repassé en `'recrue'` — annulant l'effet sans
+  jamais réduire le vrai surplus, ni signaler d'erreur.
+- Corrigé : requête directe sur `pooler_rosters` filtrée `player_type='actif'` (le vrai statut
+  en base), plus jamais via le roster relabellisé de `loadPresaisonDataAction` — impossible
+  désormais de sélectionner une recrue en banque. Vérifié qu'aucune autre ligne n'était restée
+  dans un état incohérent (10 lignes `actif`/`reserviste` avec `rookie_type` encore rempli
+  trouvées, mais toutes des recrues encore protégées légitimement, rien à corriger).
+- Roster de David déjà exactement 12A/6D/2G au moment du diagnostic (probablement après un
+  second clic) — pas de correction manuelle nécessaire, seulement le code.
+- Validé avec `tsc --noEmit` (0 erreur) et `npm run build` (succès).
+
 ### 2026-09-06 (suite 3)
 
 **[Fix+Feat] — "X de trop" trompeur corrigé (cap seulement) + reclassement en masse actif→réserviste**

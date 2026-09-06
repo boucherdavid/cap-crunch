@@ -227,19 +227,43 @@ export async function demoteSurplusToReserveAction(
   const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
   if (!me?.is_admin) return { error: 'Accès refusé.' }
 
-  const fresh = await loadPresaisonDataAction(saisonId)
-  if (fresh.error || !fresh.poolers) return { error: fresh.error ?? 'Impossible de charger les données.' }
+  const { data: saison } = await supabase.from('pool_seasons').select('season').eq('id', saisonId).single()
+  if (!saison) return { error: 'Saison introuvable.' }
+  const { data: settings } = await supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle()
+  const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
+
+  // Requête directe sur le vrai player_type en base — PAS loadPresaisonDataAction(), dont le
+  // roster relabellise en 'actif' (affichage seulement, jamais persisté) les recrues à
+  // protection expirée. Un premier essai réutilisait ce roster relabellisé : une recrue comme
+  // celle-ci se faisait passer en 'reserviste', puis syncExpiredRookieProtection() (au tout
+  // début du prochain loadPresaisonDataAction) la repassait aussitôt en 'recrue' — gaspillant
+  // une place de démotion sans jamais réduire le vrai surplus (bug trouvé par David,
+  // 2026-09-06 : Räty, une recrue, avait été "démis" au lieu d'un vrai actif moins cher).
+  const { data: rows } = await supabase
+    .from('pooler_rosters')
+    .select('id, pooler_id, players (position, player_contracts (season, cap_number))')
+    .eq('pool_season_id', saisonId)
+    .eq('is_active', true)
+    .eq('player_type', 'actif')
 
   const MAX_BY_BUCKET = { forward: 12, defense: 6, goalie: 2 } as const
+  const byPoolerBucket = new Map<string, { roster_id: number; cap: number }[]>()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const row of (rows ?? []) as any[]) {
+    const bucket = getPlayerBucket(row.players?.position ?? null)
+    const cap = getEffectiveCap(row.players?.player_contracts, saison.season, unsignedMultiplier).cap
+    const key = `${row.pooler_id}:${bucket}`
+    if (!byPoolerBucket.has(key)) byPoolerBucket.set(key, [])
+    byPoolerBucket.get(key)!.push({ roster_id: row.id, cap })
+  }
+
   const idsToDemote: number[] = []
-  for (const p of fresh.poolers) {
-    for (const bucket of ['forward', 'defense', 'goalie'] as const) {
-      const actives = p.roster.filter(e => e.player_type === 'actif' && getPlayerBucket(e.position) === bucket)
-      const surplus = actives.length - MAX_BY_BUCKET[bucket]
-      if (surplus > 0) {
-        const cheapestFirst = [...actives].sort((a, b) => a.cap_number - b.cap_number)
-        idsToDemote.push(...cheapestFirst.slice(0, surplus).map(e => e.roster_id))
-      }
+  for (const [key, entries] of byPoolerBucket) {
+    const bucket = key.split(':')[1] as keyof typeof MAX_BY_BUCKET
+    const surplus = entries.length - MAX_BY_BUCKET[bucket]
+    if (surplus > 0) {
+      const cheapestFirst = [...entries].sort((a, b) => a.cap - b.cap)
+      idsToDemote.push(...cheapestFirst.slice(0, surplus).map(e => e.roster_id))
     }
   }
   if (idsToDemote.length === 0) return { updated: 0 }
