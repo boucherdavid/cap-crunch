@@ -63,11 +63,12 @@ const draftLabel = (r: Rookie) => {
 
 const PENCIL = '\u270e'
 
-function BankRow({ entry, onRemove, onEdit, onActivate, loading, expired = false }: {
+function BankRow({ entry, onRemove, onEdit, onActivate, onRelease, loading, expired = false }: {
   entry: BankEntry
   onRemove: (id: number) => void
   onEdit: () => void
   onActivate?: () => void
+  onRelease?: () => void
   loading: boolean
   expired?: boolean
 }) {
@@ -105,16 +106,24 @@ function BankRow({ entry, onRemove, onEdit, onActivate, loading, expired = false
             Activer
           </button>
         )}
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {expired && onRelease && (
+          <button onClick={onRelease} disabled={loading}
+            className="text-red-700 bg-red-50 hover:bg-red-100 text-xs font-medium disabled:opacity-30 px-2 py-1 rounded whitespace-nowrap">
+            Libérer
+          </button>
+        )}
+        <div className={`flex gap-1 transition-opacity ${expired ? '' : 'opacity-0 group-hover:opacity-100'}`}>
           <button onClick={onEdit} disabled={loading}
             className="text-blue-400 hover:text-blue-600 text-xs disabled:opacity-30"
             title="Modifier le type">
             {PENCIL}
           </button>
-          <button onClick={() => onRemove(entry.id)} disabled={loading}
-            className="text-red-400 hover:text-red-600 text-xs disabled:opacity-30">
-            {CROSS}
-          </button>
+          {!expired && (
+            <button onClick={() => onRemove(entry.id)} disabled={loading}
+              className="text-red-400 hover:text-red-600 text-xs disabled:opacity-30">
+              {CROSS}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -341,18 +350,32 @@ export default function BanqueRecruesManager({
     setTimeout(() => setMessage(''), 3000)
   }
 
-  const removeFromBank = async (entryId: number) => {
+  const removeFromBank = async (entryId: number, successMessage?: string) => {
     setLoading(true)
     const result = await removePlayerAction(entryId)
     if (!result.error) {
       const removed = bank.find((e) => e.id === entryId)
       setBank((prev) => prev.filter((e) => e.id !== entryId))
       if (removed) setAllTakenIds((prev) => { const next = new Set(prev); next.delete(removed.player_id); return next })
+      if (successMessage) {
+        setMessage(successMessage)
+        setTimeout(() => setMessage(''), 3000)
+      }
     } else {
       setMessage(`Erreur: ${result.error}`)
       setTimeout(() => setMessage(''), 3000)
     }
     setLoading(false)
+  }
+
+  // Libérer une recrue à protection expirée : même opération que le ✕ (hard delete, pas
+  // d'historique — Mode init), mais mise en évidence ici puisque le pooler doit choisir entre
+  // Activer et Libérer, contrairement au reste de la banque où le retrait est une correction
+  // ponctuelle cachée derrière le survol.
+  const releaseExpired = (entry: BankEntry) => {
+    const label = `${entry.players.last_name}, ${entry.players.first_name}`
+    if (!window.confirm(`Libérer ${label} ? Cette recrue redevient un agent libre, disponible pour n'importe quel pooler.`)) return
+    removeFromBank(entry.id, `${label} libéré.`)
   }
 
   // Activation permanente — protection expirée : "Promouvoir recrue" via submitTransactionAction
@@ -445,7 +468,8 @@ export default function BanqueRecruesManager({
                   <div key={entry.id}>
                     <BankRow entry={entry} onRemove={removeFromBank} loading={loading} expired
                       onEdit={() => setEditingEntryId(editingEntryId === entry.id ? null : entry.id)}
-                      onActivate={() => setActivatingEntryId(activatingEntryId === entry.id ? null : entry.id)} />
+                      onActivate={() => setActivatingEntryId(activatingEntryId === entry.id ? null : entry.id)}
+                      onRelease={() => releaseExpired(entry)} />
                     {editingEntryId === entry.id && (
                       <TypePanel
                         rookie={entry.players}

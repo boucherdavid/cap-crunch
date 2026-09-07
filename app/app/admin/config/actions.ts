@@ -165,7 +165,7 @@ export async function previewTransitionAction(
   playerCount?: number
   poolerCount?: number
   noContract?: { playerName: string; poolerName: string; playerType: string }[]
-  willReturnToBank?: number
+  willLoseProtection?: number
 }> {
   const supabase = await createClient()
 
@@ -184,31 +184,31 @@ export async function previewTransitionAction(
   const entries = (rosters ?? []) as any[]
   const noContract: { playerName: string; poolerName: string; playerType: string }[] = []
 
-  let willReturnToBank = 0
+  // Compte les joueurs actifs/réservistes dont la protection recrue (ELC, ou plafond 5
+  // saisons pour un repêché) sera expirée pour la saison cible — perdent alors rookie_type/
+  // pool_draft_year immédiatement (transitionSeasonAction), mais restent actifs/réservistes
+  // tels quels (David, 2026-09-07 — plus de passage par la banque de recrues, voir
+  // transitionSeasonAction ci-dessous). Une recrue encore en banque à ce moment-là (jamais
+  // promue) sera plutôt activée automatiquement en 'actif' au prochain chargement de
+  // /admin/init?tab=presaison ou /repechage-agents-libres (syncExpiredRookieProtection,
+  // admin/presaison/actions.ts) — pas comptée ici, cet aperçu ne porte que sur la copie de
+  // roster elle-même.
+  let willLoseProtection = 0
 
   for (const e of entries) {
     const contracts: any[] = e.players?.player_contracts ?? []
     const hasContract = contracts.some((c: any) => c.season === toSaison.season && c.cap_number > 0)
 
-    // Joueur actif/réserviste dont la protection recrue (ELC, ou plafond 5 saisons pour un
-    // repêché) vient d'expirer : retourne dans la banque de recrues plutôt que de rester
-    // actif/réserviste sans protection — vérifié avant le gate "hasContract" ci-dessous,
-    // puisque ce cas survient très normalement même quand un vrai contrat post-ELC existe
-    // déjà pour la saison cible (David, 2026-09-03).
     if ((e.player_type === 'actif' || e.player_type === 'reserviste') && e.rookie_type) {
       const isExpired = isRookieProtectionExpired(e.rookie_type, e.pool_draft_year ?? null, isElcActiveForSeason(contracts, toSaison.season), seasonStartYear)
-      if (isExpired) {
-        willReturnToBank++
-        continue
-      }
+      if (isExpired) willLoseProtection++
     }
 
     if (hasContract) continue
 
     // Recrue encore protégée (5 saisons repêchage, ou ELC actif) : normal de ne pas avoir
     // de contrat NHL — n'appartient pas au même avertissement que les vétérans non signés.
-    // Si sa protection est expirée, elle reste en banque telle quelle (pas de bascule) —
-    // sera flaguée "Activation obligatoire" par la banque de recrues, à activer au choix.
+    // Si sa protection est expirée, elle sera activée automatiquement (voir plus haut).
     if (e.player_type === 'recrue') continue
 
     noContract.push({
@@ -220,7 +220,7 @@ export async function previewTransitionAction(
 
   const poolerCount = new Set(entries.map((e: any) => e.pooler_id)).size
 
-  return { playerCount: entries.length, poolerCount, noContract, willReturnToBank }
+  return { playerCount: entries.length, poolerCount, noContract, willLoseProtection }
 }
 
 export async function transitionSeasonAction(
@@ -262,25 +262,28 @@ export async function transitionSeasonAction(
     .filter((e: any) => !existingKeys.has(`${e.pooler_id}:${e.player_id}`))
     .map((e: any) => {
       // Les joueurs en LTIR reviennent actif au début de la nouvelle saison
-      let playerType = e.player_type === 'ltir' ? 'actif' : e.player_type
+      const playerType = e.player_type === 'ltir' ? 'actif' : e.player_type
 
       const contracts: any[] = e.players?.player_contracts ?? []
 
       // Joueur actif/réserviste dont la protection recrue (ELC, ou plafond 5 saisons pour un
-      // repêché) vient d'expirer : retourne dans la banque de recrues plutôt que de rester
-      // actif/réserviste sans protection — le pooler décidera de l'activer ou non depuis la
-      // banque (Promouvoir recrue), ce qui rendra alors la perte du statut recrue permanente
-      // (David, 2026-09-03 — remplace l'ancienne bascule vers réserviste du 2026-09-02).
-      // Même définition que previewTransitionAction — l'avertissement affiché avant de
-      // confirmer doit correspondre exactement à ce qui se passe ici.
+      // repêché) vient d'expirer : reste exactement où il est (actif reste actif, réserviste
+      // reste réserviste) — seuls rookie_type/pool_draft_year sont effacés, rendant la perte
+      // du statut recrue immédiate et permanente. Le pooler gère ensuite lui-même un éventuel
+      // surplus de salaire via le libre-service (actif↔réserviste, libération) sur
+      // /repechage-agents-libres (David, 2026-09-07 — remplace le retour en banque du
+      // 2026-09-03, jugé trop de friction). Une recrue déjà en banque (jamais promue) n'est
+      // pas traitée ici — elle sera activée automatiquement en 'actif' au prochain chargement
+      // de la pré-saison (syncExpiredRookieProtection, admin/presaison/actions.ts). Même
+      // définition que previewTransitionAction — l'avertissement affiché avant de confirmer
+      // doit correspondre exactement à ce qui se passe ici.
+      let rookieClearFields = {}
       if ((playerType === 'actif' || playerType === 'reserviste') && e.rookie_type) {
         if (isRookieProtectionExpired(e.rookie_type, e.pool_draft_year ?? null, isElcActiveForSeason(contracts, toSaison.season), seasonStartYear)) {
-          playerType = 'recrue'
+          rookieClearFields = { rookie_type: null, pool_draft_year: null }
           returned++
         }
       }
-      // Recrue déjà en banque dont la protection a expiré : reste en banque telle quelle
-      // (pas de bascule) — sera flaguée "Activation obligatoire" par la banque de recrues.
 
       return {
         pooler_id: e.pooler_id,
@@ -289,6 +292,7 @@ export async function transitionSeasonAction(
         player_type: playerType,
         rookie_type: e.rookie_type ?? null,
         pool_draft_year: e.pool_draft_year ?? null,
+        ...rookieClearFields,
         is_active: true,
         // Pas de date tant que la saison n'est pas démarrée pour de vrai — "Démarrer la
         // saison" (nouvelle-saison/actions.ts) assigne la vraie date de début en bloc à ce

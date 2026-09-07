@@ -114,10 +114,14 @@ export async function submitTransactionAction(
 // repechage-agents-libres/actions.ts) — la vérification is_admin ci-dessus reste le seul
 // point d'entrée admin ; tout appelant de cette fonction doit avoir fait sa propre
 // vérification d'autorisation avant (ex: restreindre items à from/to_pooler_id === l'appelant).
+// userId est nullable pour le seul cas d'une mutation déclenchée automatiquement par le
+// système plutôt que par un utilisateur (syncExpiredRookieProtection, admin/presaison/actions.ts)
+// — transactions.created_by (nullable en base) reste alors vide plutôt que d'attribuer
+// faussement l'action à quelqu'un.
 export async function applyTransactionItems(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
-  userId: string,
+  userId: string | null,
   saisonId: number,
   notes: string,
   items: TxItemPayload[],

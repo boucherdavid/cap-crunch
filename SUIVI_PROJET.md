@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-06
+Derniere mise a jour: 2026-09-07
 
 ## Role du fichier
 
@@ -20,6 +20,61 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-09-07
+
+**[Fix] — Bouton "Libérer" dans "Activation obligatoire"** (`admin/recrues/BanqueRecruesManager.tsx`) :
+- Ajouté à côté du bouton "Activer" existant, toujours visible (pas seulement au survol comme
+  le ✕ générique), avec confirmation — même opération que le ✕ (`removePlayerAction`, retrait
+  direct sans historique, cohérent avec le reste de la banque en Mode init).
+
+**[Feature] — Activation automatique et permanente à l'expiration de la protection recrue**
+(`app/lib/rookieProtection.ts` doc, `admin/presaison/actions.ts`, `admin/config/actions.ts`,
+`admin/transactions/actions.ts`, `repechage-agents-libres/AgentsLibresDashboard.tsx`) :
+- Revient sur la décision du 2026-09-03 (retour en banque + activation manuelle) — David a
+  jugé cette étape trop de friction : le pooler doit pouvoir gérer son surplus de salaire
+  lui-même, de A à Z, via le libre-service déjà en place, sans attendre l'admin ni cliquer
+  "Activer" à chaque fois.
+- `syncExpiredRookieProtection()` (`admin/presaison/actions.ts`, appelée à chaque chargement
+  de `/admin/init?tab=presaison` et `/repechage-agents-libres`) gère maintenant deux cas :
+  actif/réserviste avec protection expirée → reste où il est, `rookie_type`/`pool_draft_year`
+  simplement effacés (pas de transaction, `player_type` inchangé) ; recrue encore en banque
+  avec protection expirée → promue automatiquement en `actif` via `applyTransactionItems`
+  (`action_type='promote'`, même chemin que l'ancien bouton "Activer" manuel), avec le client
+  admin (`createAdminClient()`) puisque cette fonction tourne aussi depuis la page pooler
+  `/repechage-agents-libres`, où le client de la requête n'a pas accès en écriture à
+  `transactions`/`transaction_items` (RLS admin-only). Erreur journalisée en console sans
+  bloquer le chargement de la page si l'activation auto échoue.
+- `applyTransactionItems` (`admin/transactions/actions.ts`) : `userId` élargi à
+  `string | null` pour ce cas d'appel système (pas d'utilisateur réel derrière l'action) —
+  `transactions.created_by` reste vide plutôt que d'attribuer faussement l'action.
+- `transitionSeasonAction`/`previewTransitionAction` (`admin/config/actions.ts`) : ne
+  basculent plus les actifs/réservistes à protection expirée vers `'recrue'` à la transition
+  annuelle — effacent seulement `rookie_type`/`pool_draft_year` en place. Champ renommé
+  `willReturnToBank` → `willLoseProtection` (`SeasonsManager.tsx` mis à jour en conséquence).
+- Nettoyage : `pendingRecrueActivation` (compteur/badge "recrue(s) à activer" du 2026-09-06,
+  devenu impossible à déclencher puisque plus aucune recrue expirée ne reste en banque)
+  retiré de `PoolerCapInfo`, `PresaisonManager.tsx` et `AgentsLibresDashboard.tsx`.
+- Le panneau "Activation obligatoire" et les boutons Activer/Libérer de
+  `BanqueRecruesManager.tsx` (ajoutés plus tôt dans cette même session) restent en place comme
+  filet de sécurité manuel, mais devraient rarement se déclencher désormais.
+
+**[Feature] — Libre-service : "Libérer" une recrue de sa propre banque**
+(`repechage-agents-libres/AgentsLibresDashboard.tsx`) :
+- Section renommée "Activer une recrue" → "Activer ou libérer une recrue" : bouton "Libérer"
+  ajouté à côté d'"Activer", pour n'importe quelle recrue de la banque du pooler (pas
+  seulement celles à protection expirée — il peut renoncer à un prospect à tout moment).
+  Utilise `submitSelfServiceAction` (`action_type='release'`, déjà générique — aucune
+  modification backend nécessaire), donc tracé comme une vraie transaction ("Activité
+  récente"), contrairement au retrait silencieux côté admin.
+
+**Décisions à retenir** :
+- Le pooler doit pouvoir résoudre lui-même, de bout en bout, un surplus de salaire ou de
+  composition causé par l'expiration d'une protection recrue — l'admin n'intervient plus par
+  défaut dans ce flux, seulement en filet de sécurité.
+- À rapprocher si contradiction future : cette session **annule** la décision du 2026-09-03
+  (bascule en banque + activation manuelle) — vérifier la date la plus récente en cas de
+  doute sur le comportement voulu.
 
 ### 2026-09-06 (suite 6) — bilan de session, à reprendre la prochaine fois
 

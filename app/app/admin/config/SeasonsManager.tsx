@@ -34,7 +34,7 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
     playerCount: number
     poolerCount: number
     noContract: { playerName: string; poolerName: string; playerType: string }[]
-    willReturnToBank: number
+    willLoseProtection: number
   }
   const [transitioning, setTransitioning] = useState<number | null>(null)
   const [preview, setPreview] = useState<{ toId: number; data: TransitionPreview } | null>(null)
@@ -90,7 +90,7 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
     if (result.error) {
       showMsg('error', result.error)
     } else {
-      showMsg('success', `${result.copied} entrées copiées vers la nouvelle saison.${result.returned ? ` ${result.returned} recrue${result.returned > 1 ? 's' : ''} à protection expirée remise${result.returned > 1 ? 's' : ''} dans la banque.` : ''}`)
+      showMsg('success', `${result.copied} entrées copiées vers la nouvelle saison.${result.returned ? ` ${result.returned} recrue${result.returned > 1 ? 's' : ''} à protection expirée — statut recrue perdu de façon permanente (reste${result.returned > 1 ? 'nt' : ''} actif/réserviste tel quel).` : ''}`)
       router.refresh()
     }
   }
@@ -395,10 +395,10 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
               </div>
             )}
 
-            {preview.data.willReturnToBank > 0 && (
+            {preview.data.willLoseProtection > 0 && (
               <p className="text-xs text-amber-700 font-medium mb-4 bg-amber-100 rounded px-2 py-1.5">
-                {preview.data.willReturnToBank} recrue{preview.data.willReturnToBank > 1 ? 's' : ''} {preview.data.willReturnToBank > 1 ? 'ont' : 'a'} une protection expirée pour cette saison (fin d&apos;ELC, ou plafond 5 ans pour un repêché) —
-                {preview.data.willReturnToBank > 1 ? ' elles seront' : ' elle sera'} automatiquement remise{preview.data.willReturnToBank > 1 ? 's' : ''} dans la banque de recrues plutôt que de rester active{preview.data.willReturnToBank > 1 ? 's' : ''}/réserviste{preview.data.willReturnToBank > 1 ? 's' : ''} sans protection.
+                {preview.data.willLoseProtection} recrue{preview.data.willLoseProtection > 1 ? 's' : ''} {preview.data.willLoseProtection > 1 ? 'ont' : 'a'} une protection expirée pour cette saison (fin d&apos;ELC, ou plafond 5 ans pour un repêché) —
+                {preview.data.willLoseProtection > 1 ? ' elles perdront' : ' elle perdra'} leur statut recrue de façon permanente, mais rest{preview.data.willLoseProtection > 1 ? 'ent' : 'e'} active{preview.data.willLoseProtection > 1 ? 's' : ''}/réserviste{preview.data.willLoseProtection > 1 ? 's' : ''} telle{preview.data.willLoseProtection > 1 ? 's' : ''} quelle{preview.data.willLoseProtection > 1 ? 's' : ''}.
               </p>
             )}
 

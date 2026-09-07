@@ -14,7 +14,6 @@ type PoolerInfo = {
   id: string; name: string; capUsed: number; capSpace: number; isCompliant: boolean
   counts: { forward: number; defense: number; goalie: number; reserviste: number }
   roster: RosterEntry[]
-  pendingRecrueActivation: number
   isOverLimits: boolean
   slotsManquants: number
   capNeededForReady: number
@@ -183,14 +182,6 @@ function PoolerCard({ pooler, poolCap, isCurrentDrafter }: { pooler: PoolerInfo;
         <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ${dOk ? 'text-emerald-600 border-emerald-200' : 'text-red-600 border-red-200'}`}>{pooler.counts.defense}D</span>
         <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ${gOk ? 'text-emerald-600 border-emerald-200' : 'text-red-600 border-red-200'}`}>{pooler.counts.goalie}G</span>
         <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ${resOk ? 'text-emerald-600 border-emerald-200' : 'text-red-600 border-red-200'}`}>{pooler.counts.reserviste} rés.</span>
-        {pooler.pendingRecrueActivation > 0 && (
-          <span
-            className="text-xs font-medium px-1.5 py-0.5 rounded border text-gray-500 border-gray-200"
-            title="Recrue(s) à protection expirée déjà comptée(s) ci-dessus mais encore en banque — à activer, pas reclassable en réserviste."
-          >
-            {pooler.pendingRecrueActivation} recrue{pooler.pendingRecrueActivation > 1 ? 's' : ''} à activer
-          </span>
-        )}
         {pooler.isOverLimits ? (
           <span
             className="text-xs font-medium px-1.5 py-0.5 rounded border text-red-600 border-red-200"
@@ -305,6 +296,20 @@ function MonAlignement({
     if (result.error) { setBusy(false); setSelfErr(result.error) } else { window.location.reload() }
   }
 
+  // Libérer une recrue de sa propre banque (n'importe laquelle, pas seulement celles à
+  // protection expirée — le pooler peut renoncer à un prospect à tout moment). Même
+  // action_type 'release' que pour un actif/réserviste : tracé comme une vraie transaction
+  // (roster_change_log, "Activité récente"), contrairement au retrait silencieux de
+  // l'admin dans la banque de recrues (BanqueRecruesManager.tsx, Mode init).
+  const handleReleaseRecrue = async () => {
+    if (!selectedRecrueId) return
+    const rookie = recruePlayers.find(r => String(r.player_id) === selectedRecrueId)
+    if (!window.confirm(`Libérer ${rookie?.name ?? 'cette recrue'} ? Elle redevient un agent libre, disponible pour n'importe quel pooler.`)) return
+    setBusy(true); setSelfErr(null)
+    const result = await submitSelfServiceAction(saisonId, [{ action_type: 'release', player_id: Number(selectedRecrueId) }])
+    if (result.error) { setBusy(false); setSelfErr(result.error) } else { window.location.reload() }
+  }
+
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     if (query.trim().length < 2) { setResults([]); return }
@@ -393,12 +398,6 @@ function MonAlignement({
                 {!myPooler.isReadyForDraft && ' Pas encore assez d\'espace pour compléter légalement l\'alignement.'}
               </p>
             )}
-            {myPooler.pendingRecrueActivation > 0 && (
-              <p className="text-xs mb-3 rounded-lg px-2 py-1.5 bg-gray-50 text-gray-500">
-                {myPooler.pendingRecrueActivation} recrue{myPooler.pendingRecrueActivation > 1 ? 's' : ''} à protection expirée déjà compté{myPooler.pendingRecrueActivation > 1 ? 'es' : 'e'} ci-dessus mais encore en banque — active-{myPooler.pendingRecrueActivation > 1 ? 'les' : '-la'} ci-dessous pour que ton alignement reflète la vraie situation.
-              </p>
-            )}
-
             {!seasonStarted && (
               <div className="flex items-center justify-end mb-2">
                 {!releaseMode ? (
@@ -469,7 +468,7 @@ function MonAlignement({
 
             {!seasonStarted && (
               <div className="border-t pt-3 mt-3">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Activer une recrue</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Activer ou libérer une recrue</p>
                 {recrueLoading ? (
                   <p className="text-xs text-gray-400">Chargement...</p>
                 ) : recruePlayers.length === 0 ? (
@@ -498,13 +497,22 @@ function MonAlignement({
                           <option value="actif">Actif</option>
                           <option value="reserviste">Réserviste</option>
                         </select>
-                        <button
-                          onClick={handlePromote}
-                          disabled={busy}
-                          className="w-full text-xs bg-emerald-600 text-white py-1.5 rounded-lg hover:bg-emerald-700 disabled:opacity-40"
-                        >
-                          {busy ? '...' : 'Activer'}
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handlePromote}
+                            disabled={busy}
+                            className="flex-1 text-xs bg-emerald-600 text-white py-1.5 rounded-lg hover:bg-emerald-700 disabled:opacity-40"
+                          >
+                            {busy ? '...' : 'Activer'}
+                          </button>
+                          <button
+                            onClick={handleReleaseRecrue}
+                            disabled={busy}
+                            className="flex-1 text-xs bg-red-50 text-red-600 py-1.5 rounded-lg hover:bg-red-100 disabled:opacity-40"
+                          >
+                            {busy ? '...' : 'Libérer'}
+                          </button>
+                        </div>
                       </>
                     )}
                   </div>
