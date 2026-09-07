@@ -76,6 +76,9 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   (bascule en banque + activation manuelle) — vérifier la date la plus récente en cas de
   doute sur le comportement voulu.
 
+**Validation** : testé et confirmé par David en staging le 2026-09-07 (« c'est bon ») —
+promu vers `main`/prod le même jour.
+
 ### 2026-09-06 (suite 6) — bilan de session, à reprendre la prochaine fois
 
 **Tout ce qui suit est sur `staging` uniquement — rien promu vers `main`/prod aujourd'hui.**
