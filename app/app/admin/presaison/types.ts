@@ -31,6 +31,10 @@ export type PoolerCapInfo = {
   slotsManquants: number
   capNeededForReady: number
   isReadyForDraft: boolean
+  // Déclaration "mon alignement est prêt" (David, 2026-09-08, presaison_pooler_ready) —
+  // distincte d'isCompliant : une intention du pooler, pas un calcul. Remise à null dès que le
+  // pooler soumet un changement réel via le libre-service (submitSelfServiceAction).
+  readyAt: string | null
 }
 
 // État partagé (en base) de la file d'attente du repêchage des agents libres — remplace

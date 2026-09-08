@@ -179,6 +179,8 @@ Hockey_Pool_App/
 - `presaison_draft_state` (file d'attente partagée du repêchage des agents libres pré-saison —
   une ligne par saison régulière, lue par `/admin/init?tab=presaison` et
   `/repechage-agents-libres` — voir section 5)
+- `presaison_pooler_ready` (déclaration "mon alignement est prêt" par pooler, une ligne par
+  saison+pooler — voir section 5)
 
 **Conventions :**
 - Statuts joueurs : `ELC`, `RFA`, `UFA`
@@ -219,7 +221,8 @@ une recrue de sa propre banque — restreint à ses propres joueurs, désactivé
 `season_started=true` (place alors à `/gestion-effectifs`) ; et **Bac à sable** — simulation
 locale non sauvegardée, pour tester l'ajout d'un agent libre pas encore signé (toujours actif,
 peu importe la phase, aucune écriture serveur). La signature réelle d'un agent libre (pendant
-son tour) reste admin-only sur `/admin/init?tab=presaison` (`ComplianceCard`, redevenu un
+son tour) reste admin-only, peu importe où l'admin la déclenche — panneau admin rétractable de
+cette page (voir plus bas) ou `/admin/init?tab=presaison` (`ComplianceCard`, redevenu un
 suivi en lecture seule le 2026-09-06 — les anciens boutons Libérer/Changer type y faisaient
 double emploi avec le libre-service ; `/admin/transactions` reste le filet de sécurité pour
 agir au nom d'un pooler). Rafraîchissement automatique — `AutoReload`,
@@ -228,23 +231,47 @@ tour" persisté dans `presaison_draft_state` (section 4), remplace l'ancien éta
 `PresaisonManager.tsx` — survit à une navigation de l'admin vers `/admin/transactions` (ex:
 traiter un échange) et retour.
 
-**Phase "libération de joueurs" (David, 2026-09-08)** — `presaison_draft_state.
-release_phase_open`, **fermée par défaut** (l'admin l'ouvre explicitement, jamais l'inverse —
-premier bouton visible = "Ouvrir la libération de joueurs"), distincte du repêchage AL
-lui-même. Tant qu'ouverte, libérer n'importe quel joueur signé est permis en libre-service
-comme décrit ci-dessus, y compris depuis le bac à sable (voir plus bas). L'admin la ferme
-depuis `/admin/init?tab=presaison` (bandeau dédié, `setReleasePhaseAction`) une fois que tout
-le monde a ajusté sa masse salariale — à partir de là, "Libérer des joueurs" (vétérans)
-disparaît de `/repechage-agents-libres`, mais actif↔réserviste et activer/libérer une recrue
-de banque restent toujours permis (jamais gatés par cette phase), tout comme le bac à sable.
-`submitSelfServiceAction` revalide côté serveur (le `player_type` réel en base, pas l'état
-client) : une libération n'est bloquée que si le joueur visé n'est pas une `recrue`.
-"Démarrer le repêchage" (`startPresaisonDraftAction`) reste désactivé — client et serveur —
-tant que la phase est ouverte. Une fois le repêchage AL terminé (plus personne d'éligible),
-rendre l'alignement conforme n'est pas une phase séparée : "Démarrer la saison"
-(`/admin/nouvelle-saison`, déjà existant) bloque déjà tant qu'un pooler n'est pas exactement
-12/6/2 + sous le cap et pointe vers le fautif — et tant qu'il n'est pas cliqué, le
-libre-service reste réutilisable à volonté, peu importe la phase.
+**Panneau admin rétractable sur `/repechage-agents-libres` (David, 2026-09-08)** — David
+trouvait confus de devoir jongler entre cette page et `/admin/init?tab=presaison` pour gérer
+son propre alignement (l'admin est aussi un pooler). `AdminPanel.tsx`
+(`repechage-agents-libres/AdminPanel.tsx`), visible seulement si `me.isAdmin`, replié par
+défaut, porte maintenant tout le contrôle admin directement ici : phase de libération, ordre
+du repêchage, tour de repêchage en cours (signature d'agent libre, Passer, chrono), et Zone de
+test (Réinitialiser le repêchage) — réutilise les mêmes Server Actions que
+`/admin/init?tab=presaison` (`DraftOrderEditor`/`FreeAgentSigner` extraits en composants
+partagés, `admin/presaison/DraftOrderEditor.tsx` et `FreeAgentSigner.tsx`), aucune logique
+dupliquée. **`/admin/init?tab=presaison` reste pleinement fonctionnelle, inchangée** — filet
+de sécurité volontaire (David), et seule option pour préparer une saison pas encore activée
+(le panneau de `/repechage-agents-libres` ne lit que la saison régulière active). La carte
+"Pré-saison" du hub `/admin/nouvelle-saison` pointe désormais vers `/repechage-agents-libres`
+plutôt que vers l'ancienne page.
+
+**Phase "libération de joueurs"** — `presaison_draft_state.release_phase_open`, **fermée par
+défaut** (l'admin l'ouvre explicitement, jamais l'inverse — premier bouton visible = "Ouvrir
+la libération de joueurs"), distincte du repêchage AL lui-même. Tant qu'ouverte, libérer
+n'importe quel joueur signé est permis en libre-service comme décrit plus haut, y compris
+depuis le bac à sable (voir plus bas). L'admin la ferme (bandeau du panneau admin ci-dessus,
+`setReleasePhaseAction`) une fois que tout le monde a ajusté sa masse salariale — à partir de
+là, "Libérer des joueurs" (vétérans) disparaît de `/repechage-agents-libres`, mais
+actif↔réserviste et activer/libérer une recrue de banque restent toujours permis (jamais
+gatés par cette phase), tout comme le bac à sable. `submitSelfServiceAction` revalide côté
+serveur (le `player_type` réel en base, pas l'état client) : une libération n'est bloquée que
+si le joueur visé n'est pas une `recrue`. "Démarrer le repêchage"
+(`startPresaisonDraftAction`) reste désactivé — client et serveur — tant que la phase est
+ouverte.
+
+**Déclaration "mon alignement est prêt" (David, 2026-09-08)** — table `presaison_pooler_ready`
+(`pool_season_id, pooler_id, ready_at` — absence de ligne ou `ready_at` NULL = pas prêt).
+Chaque pooler confirme lui-même, depuis `/repechage-agents-libres` (bouton dans "Mon
+alignement", `setReadyAction`), avoir placé ses actifs/réservistes comme il le veut — une
+intention, pas un calcul, distincte de la conformité 12/6/2 + cap. Remise à zéro
+**automatiquement** dès que `submitSelfServiceAction` s'exécute avec succès (tout changement
+réel invalide la déclaration précédente). "Démarrer la saison" (`/admin/nouvelle-saison`,
+`checkSeasonConformity`, `app/lib/seasonConformity.ts`) exige maintenant les deux : conformité
+ET déclaration "prêt", pour tout le monde — un pooler pas encore prêt apparaît dans la liste
+des non-conformes avec le motif "Alignement pas encore déclaré prêt par le pooler". Tant que
+"Démarrer la saison" n'est pas cliqué, le libre-service reste réutilisable à volonté, peu
+importe la phase.
 
 **Bac à sable soumettable (David, 2026-09-08)** — dans `MonAlignement` (onglet Bac à sable de
 `/repechage-agents-libres`), les retraits testés (`removed`, joueurs déjà possédés) peuvent

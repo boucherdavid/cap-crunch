@@ -892,6 +892,26 @@ CREATE POLICY "Lecture publique presaison_draft_state" ON presaison_draft_state 
 CREATE POLICY "Admin gère presaison_draft_state" ON presaison_draft_state FOR ALL
   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
 
+-- Déclaration "mon alignement est prêt" par pooler (David, 2026-09-08) — une ligne par
+-- (saison, pooler) ; absence de ligne ou ready_at NULL = pas prêt. Sert uniquement à confirmer
+-- que le pooler a placé ses actifs/réservistes comme il le désire avant le début de saison —
+-- pas une conformité au sens strict (12/6/2 + cap), qui reste vérifiée séparément
+-- (app/lib/seasonConformity.ts). Remis à NULL automatiquement dès que le pooler soumet un
+-- changement réel via le libre-service (submitSelfServiceAction), pour éviter une déclaration
+-- caduque. Écriture via le client admin après authentification (même patron que
+-- transactions/transaction_items, RLS admin-only) — pas de politique "pooler gère sa propre
+-- ligne", pour rester cohérent avec le reste du libre-service dans ce projet.
+CREATE TABLE presaison_pooler_ready (
+  pool_season_id INTEGER REFERENCES pool_seasons(id) ON DELETE CASCADE,
+  pooler_id UUID REFERENCES poolers(id) ON DELETE CASCADE,
+  ready_at TIMESTAMPTZ,
+  PRIMARY KEY (pool_season_id, pooler_id)
+);
+ALTER TABLE presaison_pooler_ready ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Lecture publique presaison_pooler_ready" ON presaison_pooler_ready FOR SELECT USING (true);
+CREATE POLICY "Admin gère presaison_pooler_ready" ON presaison_pooler_ready FOR ALL
+  USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
 -- Migration 2026-09-04 : seuil de participation au repêchage AL corrigé (salaire minimum LNH
 -- réel, plus configurable qu'une constante codée en dur) — à exécuter une seule fois dans le
 -- SQL Editor Supabase (staging d'abord) :
@@ -911,3 +931,17 @@ CREATE POLICY "Admin gère presaison_draft_state" ON presaison_draft_state FOR A
 --
 -- ALTER TABLE presaison_draft_state ALTER COLUMN release_phase_open SET DEFAULT false;
 -- UPDATE presaison_draft_state SET release_phase_open = false;
+
+-- Migration 2026-09-08 (suite 2) : table presaison_pooler_ready (voir définition plus haut) —
+-- à exécuter une seule fois dans le SQL Editor Supabase (staging d'abord, puis prod) :
+--
+-- CREATE TABLE presaison_pooler_ready (
+--   pool_season_id INTEGER REFERENCES pool_seasons(id) ON DELETE CASCADE,
+--   pooler_id UUID REFERENCES poolers(id) ON DELETE CASCADE,
+--   ready_at TIMESTAMPTZ,
+--   PRIMARY KEY (pool_season_id, pooler_id)
+-- );
+-- ALTER TABLE presaison_pooler_ready ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Lecture publique presaison_pooler_ready" ON presaison_pooler_ready FOR SELECT USING (true);
+-- CREATE POLICY "Admin gère presaison_pooler_ready" ON presaison_pooler_ready FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));

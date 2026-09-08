@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import AutoReload from '@/components/AutoReload'
 import { searchFreeAgentsAction } from '../admin/transactions/actions'
-import { submitSelfServiceAction, loadOwnRecrueBankAction } from './actions'
+import { submitSelfServiceAction, loadOwnRecrueBankAction, setReadyAction } from './actions'
+import AdminPanel from './AdminPanel'
 
 type Me = { id: string; name: string; isAdmin: boolean }
 type RosterEntry = {
@@ -18,8 +19,10 @@ type PoolerInfo = {
   slotsManquants: number
   capNeededForReady: number
   isReadyForDraft: boolean
+  readyAt: string | null
 }
 type DraftState = {
+  pool_season_id: number
   is_active: boolean; queue: string[]; turn_started_at: string | null
   turn_duration_seconds: number; ended_at: string | null; release_phase_open: boolean
 }
@@ -69,7 +72,7 @@ function fmtDateTime(iso: string) {
 // admin/presaison/actions.ts (demoteSurplusToReserveAction, isOverLimits).
 
 export default function AgentsLibresDashboard({
-  me, poolers, poolCap, draftState, recentActivity, saisonId, season, nhlMinimumSalary, seasonStarted,
+  me, poolers, poolCap, draftState, recentActivity, saisonId, season, nhlMinimumSalary, seasonStarted, draftOrder,
 }: {
   me: Me
   poolers: PoolerInfo[]
@@ -80,6 +83,7 @@ export default function AgentsLibresDashboard({
   season: string
   nhlMinimumSalary: number
   seasonStarted: boolean
+  draftOrder: string[]
 }) {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
@@ -113,6 +117,17 @@ export default function AgentsLibresDashboard({
         </div>
         <AutoReload enabled={draftState.is_active} intervalMs={8000} />
       </div>
+
+      {me.isAdmin && !seasonStarted && (
+        <AdminPanel
+          saisonId={saisonId}
+          season={season}
+          poolers={poolers}
+          initialDraftOrder={draftOrder}
+          draftState={draftState}
+          nhlMinimumSalary={nhlMinimumSalary}
+        />
+      )}
 
       {draftState.is_active && currentPoolerName && (
         <div className="bg-white rounded-lg shadow px-5 py-4 mb-6 flex items-center justify-between flex-wrap gap-3">
@@ -280,6 +295,16 @@ function MonAlignement({
   // Libre-service (ménage pré-saison) — actions réelles, distinctes du bac à sable ci-dessous.
   const [busy, setBusy] = useState(false)
   const [selfErr, setSelfErr] = useState<string | null>(null)
+  const [togglingReady, setTogglingReady] = useState(false)
+
+  // Déclaration "mon alignement est prêt" (David, 2026-09-08) — confirme uniquement que les
+  // actifs/réservistes sont placés comme voulu ; remise à zéro automatiquement côté serveur
+  // dès qu'un vrai changement est soumis (submitSelfServiceAction), pas de logique ici.
+  const handleToggleReady = async (ready: boolean) => {
+    setTogglingReady(true)
+    await setReadyAction(saisonId, ready)
+    window.location.reload()
+  }
   const [releaseMode, setReleaseMode] = useState(false)
   const [selectedForRelease, setSelectedForRelease] = useState<Set<number>>(new Set())
   const [recruePlayers, setRecruePlayers] = useState<RecrueOption[]>([])
@@ -406,6 +431,24 @@ function MonAlignement({
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow p-5">
         <h2 className="font-semibold text-gray-800 mb-3">Mon alignement — {me.name}</h2>
+
+        {!seasonStarted && (
+          <div className={`flex items-center justify-between gap-3 rounded-lg px-3 py-2 mb-4 ${myPooler.readyAt ? 'bg-emerald-50' : 'bg-gray-50'}`}>
+            <p className="text-xs text-gray-600">
+              {myPooler.readyAt
+                ? '✓ Alignement déclaré prêt — toute modification annulera cette déclaration.'
+                : 'Une fois tes actifs/réservistes placés comme tu le veux, déclare ton alignement prêt.'}
+            </p>
+            <button
+              onClick={() => handleToggleReady(!myPooler.readyAt)}
+              disabled={togglingReady}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0 disabled:opacity-40 ${myPooler.readyAt ? 'bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-100' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
+            >
+              {togglingReady ? '...' : myPooler.readyAt ? 'Annuler' : '✓ Mon alignement est prêt'}
+            </button>
+          </div>
+        )}
+
         <div className="flex gap-2 mb-4">
           <button
             onClick={() => setTab('actuel')}

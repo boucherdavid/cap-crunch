@@ -92,11 +92,11 @@ export default function DemarrerSaisonCard({
 
           {!previewError && !loading && (
             issues.length === 0 ? (
-              <p className="text-xs text-emerald-700 font-medium mt-2">{totalPoolers}/{totalPoolers} poolers conformes</p>
+              <p className="text-xs text-emerald-700 font-medium mt-2">{totalPoolers}/{totalPoolers} poolers conformes et prêts</p>
             ) : (
               <div className="mt-2 space-y-1.5">
                 <p className="text-xs text-red-600 font-medium">
-                  {totalPoolers - issues.length}/{totalPoolers} poolers conformes
+                  {totalPoolers - issues.length}/{totalPoolers} poolers conformes et prêts
                 </p>
                 {issues.map(issue => (
                   <Link

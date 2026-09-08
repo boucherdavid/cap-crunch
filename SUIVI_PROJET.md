@@ -21,6 +21,45 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-08 (suite 3)
+
+**[Feature] — Panneau admin rétractable sur /repechage-agents-libres + déclaration "prêt"**
+(`repechage-agents-libres/AdminPanel.tsx` nouveau, `AgentsLibresDashboard.tsx`, `actions.ts`,
+`page.tsx`, `admin/presaison/DraftOrderEditor.tsx` et `FreeAgentSigner.tsx` extraits,
+`admin/presaison/PresaisonManager.tsx`, `admin/presaison/actions.ts`, `types.ts`,
+`admin/nouvelle-saison/page.tsx`, `DemarrerSaisonCard.tsx`, `app/lib/seasonConformity.ts`,
+`schema.sql`) :
+- David trouvait confus de gérer son propre alignement (il est aussi pooler) sur une page
+  admin séparée de `/repechage-agents-libres`. Décidé via un schéma (Artifact, même document
+  mis à jour en v2) : le contrôle admin (ordre du repêchage, phase de libération, tour de
+  repêchage, Zone de test) devient un panneau rétractable sur `/repechage-agents-libres`,
+  visible seulement si `me.isAdmin`. `/admin/init?tab=presaison` reste pleinement
+  fonctionnelle, inchangée — filet de sécurité explicitement demandé, et seule option pour
+  préparer une saison pas encore activée.
+- `DraftOrderEditor` et `FreeAgentSigner` (jusque-là des sous-composants privés de
+  `PresaisonManager.tsx`) extraits en fichiers partagés pour être réutilisés par
+  `AdminPanel.tsx` sans dupliquer la logique — même Server Actions des deux côtés.
+- `AdminPanel.tsx` recharge la page après chaque action mutante (`window.location.reload()`)
+  plutôt que de synchroniser un état local — même patron que le reste de
+  `AgentsLibresDashboard.tsx` (self-service, `AutoReload`).
+- Carte "Pré-saison" du hub `/admin/nouvelle-saison` : lien changé vers
+  `/repechage-agents-libres` (plus de `&saisonId=`, cette page ne lit que la saison active —
+  sans impact réel puisque "Activer la saison", plus tôt dans le hub, l'a déjà rendue active
+  à ce stade).
+- Nouvelle table `presaison_pooler_ready` (`pool_season_id, pooler_id, ready_at`) — chaque
+  pooler déclare lui-même son alignement "prêt" (bouton dans "Mon alignement",
+  `setReadyAction`), confirmant seulement que ses actifs/réservistes sont placés comme voulu
+  (pas un calcul de conformité). Remis à zéro **automatiquement** dans
+  `submitSelfServiceAction` dès qu'un vrai changement est soumis (confirmé par David : "prêt"
+  ne doit jamais survivre à une modification ultérieure).
+  `checkSeasonConformity` (`app/lib/seasonConformity.ts`) exige maintenant les deux
+  (conformité 12/6/2+cap ET "prêt") pour débloquer "Démarrer la saison" — un pooler pas prêt
+  apparaît dans la liste avec le motif dédié, même mécanisme que les autres non-conformités
+  (pas de gate dupliqué).
+- Migration à exécuter par David (staging d'abord, puis prod) : `CREATE TABLE
+  presaison_pooler_ready (...)` — voir `schema.sql`, section migration 2026-09-08 (suite 2).
+- Pas encore commité — attend l'exécution de la migration et la validation de David.
+
 ### 2026-09-08 (suite 2)
 
 **[UX] — Alignements groupés par position et triés par salaire**

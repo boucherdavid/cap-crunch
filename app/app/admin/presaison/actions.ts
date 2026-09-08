@@ -103,7 +103,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
 
   await syncExpiredRookieProtection(supabase, saisonId, saisonRow.season, seasonStartYear)
 
-  const [{ data: saison }, { data: poolers }, { data: rosters }, { data: settings }] = await Promise.all([
+  const [{ data: saison }, { data: poolers }, { data: rosters }, { data: settings }, { data: readyRows }] = await Promise.all([
     supabase
       .from('pool_seasons')
       .select('season, pool_cap, presaison_draft_order')
@@ -118,11 +118,14 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
       .eq('pool_season_id', saisonId)
       .eq('is_active', true),
     supabase.from('app_settings').select('unsigned_player_cap_multiplier, nhl_minimum_salary').eq('id', 1).maybeSingle(),
+    supabase.from('presaison_pooler_ready').select('pooler_id, ready_at').eq('pool_season_id', saisonId),
   ])
 
   if (!saison) return { error: 'Saison introuvable.' }
   const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
   const nhlMinimumSalary = settings?.nhl_minimum_salary ?? DEFAULT_NHL_MINIMUM_SALARY
+
+  const readyMap = new Map<string, string | null>((readyRows ?? []).map(r => [r.pooler_id, r.ready_at]))
 
   const poolerMap = new Map<string, PoolerCapInfo>()
   for (const p of (poolers ?? [])) {
@@ -138,6 +141,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
       slotsManquants: 0,
       capNeededForReady: 0,
       isReadyForDraft: true,
+      readyAt: readyMap.get(p.id) ?? null,
     })
   }
 
