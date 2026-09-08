@@ -21,6 +21,25 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-08 (suite 8)
+
+**[Feature] — Recrues ajoutables au bac à sable ; libération admin au nom d'un pooler**
+(`repechage-agents-libres/AgentsLibresDashboard.tsx`) :
+- David a confirmé que la libération fonctionne (testée avec le compte d'un autre pooler).
+  Deux demandes de suivi.
+- Bac à sable : nouvelle section "Ajouter une recrue de ta banque" (réutilise `recruePlayers`
+  déjà chargé) — contrairement à un agent libre ajouté (jamais déduit, contrat pas signé),
+  une recrue a un `cap_number` réel, donc réellement soustrait de la masse simulée
+  (`addedRecrueCap`). Reste une simulation, pas soumissible (l'activation réelle reste dans
+  l'onglet Actuel, "Activer ou libérer une recrue").
+- `PoolerCard` (alignement déplié de n'importe qui) : bouton ✕ admin-only par joueur, appelle
+  `submitTransactionAction` (déjà existant, admin-only) pour libérer au nom de ce pooler —
+  demandé comme filet de sécurité pour les tests et pour un pooler qui ne peut pas se
+  connecter pendant le pool. Notes `'Ajustement pré-saison'` (même classe que le
+  libre-service) ; contourne volontairement `release_phase_open`, comme tout
+  `/admin/transactions`.
+- Pas de migration, prêt à pousser sur staging.
+
 ### 2026-09-08 (suite 7)
 
 **[Fix] — Colonnes de saisons codées en dur sur /joueurs (Contrats LNH)**

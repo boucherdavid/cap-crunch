@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import AutoReload from '@/components/AutoReload'
-import { searchFreeAgentsAction } from '../admin/transactions/actions'
+import { searchFreeAgentsAction, submitTransactionAction } from '../admin/transactions/actions'
 import { submitSelfServiceAction, loadOwnRecrueBankAction, setReadyAction } from './actions'
 import AdminPanel from './AdminPanel'
 
@@ -161,7 +161,7 @@ export default function AgentsLibresDashboard({
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Les 8 poolers</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {poolers.map(p => (
-                <PoolerCard key={p.id} pooler={p} poolCap={poolCap} isCurrentDrafter={p.id === currentPoolerId} />
+                <PoolerCard key={p.id} pooler={p} poolCap={poolCap} isCurrentDrafter={p.id === currentPoolerId} isAdmin={me.isAdmin} saisonId={saisonId} />
               ))}
             </div>
           </div>
@@ -206,12 +206,36 @@ export default function AgentsLibresDashboard({
   )
 }
 
-function PoolerCard({ pooler, poolCap, isCurrentDrafter }: { pooler: PoolerInfo; poolCap: number; isCurrentDrafter: boolean }) {
+function PoolerCard({
+  pooler, poolCap, isCurrentDrafter, isAdmin, saisonId,
+}: {
+  pooler: PoolerInfo; poolCap: number; isCurrentDrafter: boolean; isAdmin: boolean; saisonId: number
+}) {
   const [open, setOpen] = useState(false)
+  const [releasingId, setReleasingId] = useState<number | null>(null)
+  const [releaseErr, setReleaseErr] = useState<string | null>(null)
   const remain = poolCap - pooler.capUsed
   const pct = poolCap > 0 ? Math.min(100, (pooler.capUsed / poolCap) * 100) : 0
   const fOk = pooler.counts.forward <= 12, dOk = pooler.counts.defense <= 6, gOk = pooler.counts.goalie <= 2, resOk = pooler.counts.reserviste >= 2
   const firstName = pooler.name.split(' ')[0]
+
+  // Libérer au nom d'un pooler (David, 2026-09-08) — filet de sécurité pratique pour les
+  // tests et pour un pooler qui ne peut pas se connecter pendant le pool ; admin seulement
+  // (submitTransactionAction revérifie is_admin côté serveur). Notes 'Ajustement pré-saison',
+  // même classe que le libre-service — capté par "Activité récente", jamais annulé par
+  // "Réinitialiser le repêchage" (Zone de test, qui ne cible que 'Repêchage pré-saison').
+  const handleAdminRelease = async (playerId: number, playerName: string) => {
+    if (!window.confirm(`Libérer ${playerName} du roster de ${pooler.name} ?`)) return
+    setReleasingId(playerId); setReleaseErr(null)
+    try {
+      const result = await submitTransactionAction(saisonId, 'Ajustement pré-saison', [{
+        action_type: 'release', from_pooler_id: pooler.id, player_id: playerId,
+      }])
+      if (result.error) { setReleasingId(null); setReleaseErr(result.error) } else { window.location.reload() }
+    } catch {
+      setReleasingId(null); setReleaseErr('Erreur inattendue — réessaie.')
+    }
+  }
 
   return (
     <div className={`bg-white rounded-lg shadow p-4 border ${isCurrentDrafter ? 'border-amber-400 ring-2 ring-amber-100' : 'border-transparent'}`}>
@@ -260,17 +284,28 @@ function PoolerCard({ pooler, poolCap, isCurrentDrafter }: { pooler: PoolerInfo;
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{group.label}</p>
               <div className="space-y-0.5">
                 {group.entries.map(e => (
-                  <div key={e.roster_id} className="flex justify-between text-xs text-gray-600 py-0.5">
-                    <span>
+                  <div key={e.roster_id} className="flex items-center justify-between text-xs text-gray-600 py-0.5 gap-2">
+                    <span className="flex-1">
                       <span className="text-gray-400 mr-1">{e.position ?? DASH}</span>
                       {e.playerName}
                     </span>
-                    <span className="text-gray-500">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
+                    <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
+                    {isAdmin && (
+                      <button
+                        onClick={() => handleAdminRelease(e.player_id, e.playerName)}
+                        disabled={releasingId === e.player_id}
+                        title={`Libérer ${e.playerName} au nom de ${pooler.name}`}
+                        className="text-[10px] px-1.5 py-0.5 border rounded text-gray-400 hover:text-red-600 hover:border-red-300 shrink-0 disabled:opacity-40"
+                      >
+                        {releasingId === e.player_id ? '...' : '✕'}
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
           ))}
+          {releaseErr && <p className="text-xs text-red-600 mt-1">{releaseErr}</p>}
         </div>
       )}
     </div>
@@ -293,6 +328,10 @@ function MonAlignement({
   const [tab, setTab] = useState<'actuel' | 'sandbox'>('actuel')
   const [removed, setRemoved] = useState<Set<number>>(new Set())
   const [added, setAdded] = useState<FreeAgent[]>([])
+  // Recrues de la banque ajoutées au bac à sable (David, 2026-09-08) — contrairement aux
+  // agents libres ci-dessus, une recrue est déjà signée (cap_number connu), donc son coût est
+  // réellement déduit dans la simulation, pas juste affiché à titre indicatif.
+  const [addedRecrueIds, setAddedRecrueIds] = useState<Set<number>>(new Set())
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<FreeAgent[]>([])
   const [searching, setSearching] = useState(false)
@@ -429,7 +468,14 @@ function MonAlignement({
     setResults([])
   }
   const removeAdded = (id: number) => setAdded(prev => prev.filter(a => a.id !== id))
-  const resetSandbox = () => { setRemoved(new Set()); setAdded([]); setQuery(''); setResults([]) }
+  const toggleAddedRecrue = (playerId: number) => {
+    setAddedRecrueIds(prev => {
+      const next = new Set(prev)
+      next.has(playerId) ? next.delete(playerId) : next.add(playerId)
+      return next
+    })
+  }
+  const resetSandbox = () => { setRemoved(new Set()); setAdded([]); setAddedRecrueIds(new Set()); setQuery(''); setResults([]) }
 
   // Soumettre pour vrai les retraits testés dans le bac à sable (David, 2026-09-08) — même
   // action_type 'release' que le flux de l'onglet Actuel, donc soumis au même garde-fou
@@ -458,9 +504,10 @@ function MonAlignement({
   }
 
   const removedCap = myPooler.roster.filter(e => removed.has(e.player_id)).reduce((s, e) => s + e.cap_number, 0)
-  const simulatedUsed = myPooler.capUsed - removedCap
+  const addedRecrueCap = recruePlayers.filter(r => addedRecrueIds.has(r.player_id)).reduce((s, r) => s + r.cap_number, 0)
+  const simulatedUsed = myPooler.capUsed - removedCap + addedRecrueCap
   const simulatedRemain = poolCap - simulatedUsed
-  const touched = removed.size > 0 || added.length > 0
+  const touched = removed.size > 0 || added.length > 0 || addedRecrueIds.size > 0
 
   return (
     <div className="space-y-6">
@@ -684,6 +731,15 @@ function MonAlignement({
                   </div>
                 </div>
               ))}
+              {recruePlayers.filter(r => addedRecrueIds.has(r.player_id)).map(r => (
+                <div key={r.player_id} className="flex items-center justify-between text-xs py-1 text-emerald-700">
+                  <span><span className="text-gray-400 mr-1">{r.position ?? DASH}</span>{r.name} <span className="text-emerald-500">(recrue activée)</span></span>
+                  <span className="flex items-center gap-2">
+                    <span>{r.cap_number > 0 ? fmt(r.cap_number) : DASH}</span>
+                    <button onClick={() => toggleAddedRecrue(r.player_id)} className="w-5 h-5 rounded border text-gray-400 hover:text-red-600 text-[10px]">✕</button>
+                  </span>
+                </div>
+              ))}
               {added.map(fa => (
                 <div key={fa.id} className="flex items-center justify-between text-xs py-1 text-emerald-700">
                   <span><span className="text-gray-400 mr-1">{fa.position ?? DASH}</span>{fa.last_name}, {fa.first_name} <span className="text-emerald-500">(ajouté)</span></span>
@@ -710,6 +766,23 @@ function MonAlignement({
             <button onClick={resetSandbox} className="w-full text-xs font-medium text-gray-500 border rounded-lg py-1.5 mb-3 hover:bg-gray-50">
               ↺ Réinitialiser (revenir à l&apos;actuel)
             </button>
+
+            {recruePlayers.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ajouter une recrue de ta banque</p>
+                <div className="space-y-0.5">
+                  {recruePlayers.filter(r => !addedRecrueIds.has(r.player_id)).map(r => (
+                    <div key={r.player_id} onClick={() => toggleAddedRecrue(r.player_id)} className="flex justify-between text-xs px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer">
+                      <span><span className="text-gray-400 mr-1">{r.position ?? DASH}</span>{r.name}{r.cap_number > 0 ? ` — ${fmt(r.cap_number)}` : ''}</span>
+                      <span className="text-blue-600 font-medium">+</span>
+                    </div>
+                  ))}
+                  {recruePlayers.every(r => addedRecrueIds.has(r.player_id)) && (
+                    <p className="text-xs text-gray-400">Toutes tes recrues sont déjà ajoutées.</p>
+                  )}
+                </div>
+              </div>
+            )}
 
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ajouter un agent libre</p>
             <input

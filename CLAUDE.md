@@ -281,6 +281,20 @@ le flux "Libérer des joueurs" de l'onglet Actuel, juste une seconde porte d'ent
 exploré l'impact salarial dans le bac à sable. Les agents libres ajoutés (`added`) restent en
 revanche une simulation pure, jamais soumissibles — signer un agent libre reste réservé à
 l'admin pendant le tour du pooler ; seul le retrait de joueurs déjà possédés peut être soumis.
+Depuis le 2026-09-08, le bac à sable permet aussi d'ajouter une recrue de sa propre banque
+(`addedRecrueIds`) pour voir l'impact réel sur la masse (contrairement à un agent libre, une
+recrue est déjà signée — son `cap_number` est réellement déduit dans la simulation, pas juste
+indicatif) ; reste une simulation, pas soumissible (l'activation réelle passe par "Activer ou
+libérer une recrue" dans l'onglet Actuel).
+
+**Libérer au nom d'un pooler, depuis `/repechage-agents-libres` (David, 2026-09-08)** — chaque
+ligne de l'alignement déplié (`PoolerCard`, "Voir l'alignement de X") a maintenant un bouton
+✕ admin-only qui appelle `submitTransactionAction` (`action_type='release'`,
+`from_pooler_id=` ce pooler) — même notes `'Ajustement pré-saison'` que le libre-service, capté
+par "Activité récente", jamais annulé par "Réinitialiser le repêchage" (Zone de test). Sert de
+filet de sécurité pour les tests et pour un pooler qui ne peut pas se connecter pendant le
+pool — contourne volontairement la phase de libération (comme tout `/admin/transactions`,
+l'admin n'est jamais bloqué par les garde-fous du libre-service).
 
 Corrige au passage un bug où l'UI affichait "Repêchage terminé" dès le premier clic sur
 "Démarrer" si personne n'avait encore d'espace cap (aucun pooler n'avait pourtant eu son
