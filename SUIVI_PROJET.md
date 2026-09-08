@@ -21,6 +21,25 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-08 (suite 5)
+
+**[Fix] — Bouton figé sur "..." sans erreur visible lors d'une libération multiple**
+(`repechage-agents-libres/AgentsLibresDashboard.tsx`, `AdminPanel.tsx`) :
+- David a signalé qu'une libération de plusieurs joueurs (7 sélectionnés) semblait bloquer —
+  bouton figé sur "..." indéfiniment, aucun message d'erreur.
+- Cause probable : aucun des handlers de libre-service (`handleToggleType`,
+  `handleConfirmRelease`, `handlePromote`, `handleReleaseRecrue`,
+  `handleSubmitSandboxReleases`, `handleToggleReady`) n'avait de `try/catch` autour de
+  `submitSelfServiceAction`/`setReadyAction` — une exception inattendue (pas un simple
+  `{error}` renvoyé) laissait `busy=true` pour toujours au lieu de rebasculer à `false` avec
+  un message. Racine exacte pas confirmée avec certitude (candidats écartés par lecture : RLS
+  publique sur `pooler_rosters`/`presaison_draft_state` OK, `computeBatchEffectiveDate`
+  plafonné à 5s avec fallback) — le `try/catch` garantit au moins qu'un échec redevienne
+  visible plutôt que silencieux, peu importe la cause.
+- Même correctif appliqué par précaution aux handlers de `AdminPanel.tsx` (nouveau ce jour).
+- À valider : demander à David de réessayer et de rapporter le message d'erreur exact s'il en
+  apparaît un maintenant — ça permettra de confirmer la vraie cause si le problème persiste.
+
 ### 2026-09-08 (suite 4)
 
 **[Fix] — Affichage négatif de l'espace cap trompeur** (`repechage-agents-libres/AgentsLibresDashboard.tsx`) :

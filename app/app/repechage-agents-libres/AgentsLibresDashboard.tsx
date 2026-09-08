@@ -308,8 +308,13 @@ function MonAlignement({
   // dès qu'un vrai changement est soumis (submitSelfServiceAction), pas de logique ici.
   const handleToggleReady = async (ready: boolean) => {
     setTogglingReady(true)
-    await setReadyAction(saisonId, ready)
-    window.location.reload()
+    try {
+      await setReadyAction(saisonId, ready)
+      window.location.reload()
+    } catch {
+      setTogglingReady(false)
+      setSelfErr('Erreur inattendue — réessaie.')
+    }
   }
   const [releaseMode, setReleaseMode] = useState(false)
   const [selectedForRelease, setSelectedForRelease] = useState<Set<number>>(new Set())
@@ -335,32 +340,48 @@ function MonAlignement({
   }
   const cancelRelease = () => { setReleaseMode(false); setSelectedForRelease(new Set()); setSelfErr(null) }
 
+  // Toutes les actions de libre-service ci-dessous passaient par submitSelfServiceAction sans
+  // try/catch : une exception inattendue (pas une simple {error} renvoyée) laissait busy=true
+  // pour toujours, avec le bouton figé sur "..." sans aucun message visible (David, 2026-09-08
+  // — repéré en staging sur une libération de plusieurs joueurs à la fois).
   const handleToggleType = async (entry: RosterEntry) => {
     if (busy) return
     setBusy(true); setSelfErr(null)
-    const newType = entry.player_type === 'actif' ? 'reserviste' : 'actif'
-    const result = await submitSelfServiceAction(saisonId, [{
-      action_type: 'type_change', player_id: entry.player_id,
-      old_player_type: entry.player_type as 'actif' | 'reserviste', new_player_type: newType,
-    }])
-    if (result.error) { setBusy(false); setSelfErr(result.error) } else { window.location.reload() }
+    try {
+      const newType = entry.player_type === 'actif' ? 'reserviste' : 'actif'
+      const result = await submitSelfServiceAction(saisonId, [{
+        action_type: 'type_change', player_id: entry.player_id,
+        old_player_type: entry.player_type as 'actif' | 'reserviste', new_player_type: newType,
+      }])
+      if (result.error) { setBusy(false); setSelfErr(result.error) } else { window.location.reload() }
+    } catch {
+      setBusy(false); setSelfErr('Erreur inattendue — réessaie.')
+    }
   }
 
   const handleConfirmRelease = async () => {
     if (selectedForRelease.size === 0) return
     setBusy(true); setSelfErr(null)
-    const items = Array.from(selectedForRelease).map(playerId => ({ action_type: 'release' as const, player_id: playerId }))
-    const result = await submitSelfServiceAction(saisonId, items)
-    if (result.error) { setBusy(false); setSelfErr(result.error) } else { window.location.reload() }
+    try {
+      const items = Array.from(selectedForRelease).map(playerId => ({ action_type: 'release' as const, player_id: playerId }))
+      const result = await submitSelfServiceAction(saisonId, items)
+      if (result.error) { setBusy(false); setSelfErr(result.error) } else { window.location.reload() }
+    } catch {
+      setBusy(false); setSelfErr('Erreur inattendue — réessaie.')
+    }
   }
 
   const handlePromote = async () => {
     if (!selectedRecrueId) return
     setBusy(true); setSelfErr(null)
-    const result = await submitSelfServiceAction(saisonId, [{
-      action_type: 'promote', player_id: Number(selectedRecrueId), new_player_type: recrueNewType,
-    }])
-    if (result.error) { setBusy(false); setSelfErr(result.error) } else { window.location.reload() }
+    try {
+      const result = await submitSelfServiceAction(saisonId, [{
+        action_type: 'promote', player_id: Number(selectedRecrueId), new_player_type: recrueNewType,
+      }])
+      if (result.error) { setBusy(false); setSelfErr(result.error) } else { window.location.reload() }
+    } catch {
+      setBusy(false); setSelfErr('Erreur inattendue — réessaie.')
+    }
   }
 
   // Libérer une recrue de sa propre banque (n'importe laquelle, pas seulement celles à
@@ -373,8 +394,12 @@ function MonAlignement({
     const rookie = recruePlayers.find(r => String(r.player_id) === selectedRecrueId)
     if (!window.confirm(`Libérer ${rookie?.name ?? 'cette recrue'} ? Elle redevient un agent libre, disponible pour n'importe quel pooler.`)) return
     setBusy(true); setSelfErr(null)
-    const result = await submitSelfServiceAction(saisonId, [{ action_type: 'release', player_id: Number(selectedRecrueId) }])
-    if (result.error) { setBusy(false); setSelfErr(result.error) } else { window.location.reload() }
+    try {
+      const result = await submitSelfServiceAction(saisonId, [{ action_type: 'release', player_id: Number(selectedRecrueId) }])
+      if (result.error) { setBusy(false); setSelfErr(result.error) } else { window.location.reload() }
+    } catch {
+      setBusy(false); setSelfErr('Erreur inattendue — réessaie.')
+    }
   }
 
   useEffect(() => {
@@ -415,9 +440,13 @@ function MonAlignement({
     if (removed.size === 0) return
     if (!window.confirm(`Libérer ${removed.size} joueur${removed.size > 1 ? 's' : ''} pour vrai ? Cette partie du bac à sable sera appliquée à ton alignement réel.`)) return
     setBusy(true); setSelfErr(null)
-    const items = Array.from(removed).map(playerId => ({ action_type: 'release' as const, player_id: playerId }))
-    const result = await submitSelfServiceAction(saisonId, items)
-    if (result.error) { setBusy(false); setSelfErr(result.error) } else { window.location.reload() }
+    try {
+      const items = Array.from(removed).map(playerId => ({ action_type: 'release' as const, player_id: playerId }))
+      const result = await submitSelfServiceAction(saisonId, items)
+      if (result.error) { setBusy(false); setSelfErr(result.error) } else { window.location.reload() }
+    } catch {
+      setBusy(false); setSelfErr('Erreur inattendue — réessaie.')
+    }
   }
 
   if (!myPooler) {

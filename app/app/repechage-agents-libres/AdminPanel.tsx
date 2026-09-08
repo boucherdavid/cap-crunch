@@ -76,42 +76,67 @@ export default function AdminPanel({
     setTimeout(() => setOrderMsg(null), 5000)
   }
 
+  // try/catch partout ici : une exception inattendue (pas un simple {error} renvoyé) laissait
+  // sinon le bouton figé indéfiniment sans aucun message (David, 2026-09-08, même bug repéré
+  // côté self-service pooler dans AgentsLibresDashboard.tsx).
   const handleSetReleasePhase = async (open: boolean) => {
     setTogglingReleasePhase(true)
-    await setReleasePhaseAction(saisonId, open)
-    window.location.reload()
+    try {
+      await setReleasePhaseAction(saisonId, open)
+      window.location.reload()
+    } catch {
+      setTogglingReleasePhase(false)
+    }
   }
 
   const startDraft = async () => {
     setStarting(true)
     setStartErr(null)
-    const result = await startPresaisonDraftAction(saisonId)
-    if (result.error) { setStarting(false); setStartErr(result.error); return }
-    window.location.reload()
+    try {
+      const result = await startPresaisonDraftAction(saisonId)
+      if (result.error) { setStarting(false); setStartErr(result.error); return }
+      window.location.reload()
+    } catch {
+      setStarting(false)
+      setStartErr('Erreur inattendue — réessaie.')
+    }
   }
 
   const handlePass = async () => {
-    await advancePresaisonQueueAction(saisonId)
-    window.location.reload()
+    try {
+      await advancePresaisonQueueAction(saisonId)
+      window.location.reload()
+    } catch { /* le tour reste affiché tel quel, l'admin peut réessayer */ }
   }
   const handleEndDraft = async () => {
-    await endPresaisonDraftAction(saisonId)
-    window.location.reload()
+    try {
+      await endPresaisonDraftAction(saisonId)
+      window.location.reload()
+    } catch { /* rien à réinitialiser côté client, l'admin peut réessayer */ }
   }
   const handleTimerAdjust = async (delta: number) => {
-    await adjustPresaisonTimerAction(saisonId, delta)
-    window.location.reload()
+    try {
+      await adjustPresaisonTimerAction(saisonId, delta)
+      window.location.reload()
+    } catch { /* chrono inchangé, l'admin peut réessayer */ }
   }
   const handleTimerReset = async () => {
-    await resetPresaisonTimerAction(saisonId)
-    window.location.reload()
+    try {
+      await resetPresaisonTimerAction(saisonId)
+      window.location.reload()
+    } catch { /* chrono inchangé, l'admin peut réessayer */ }
   }
   const handleReset = async () => {
     if (!window.confirm('Réinitialiser le repêchage pré-saison ? Toutes les signatures seront annulées.')) return
     setResettingDraft(true)
-    const res = await resetPresaisonDraftAction(saisonId)
-    if (res.error) { setResettingDraft(false); setResetDraftMsg(`Erreur : ${res.error}`); return }
-    window.location.reload()
+    try {
+      const res = await resetPresaisonDraftAction(saisonId)
+      if (res.error) { setResettingDraft(false); setResetDraftMsg(`Erreur : ${res.error}`); return }
+      window.location.reload()
+    } catch {
+      setResettingDraft(false)
+      setResetDraftMsg('Erreur inattendue — réessaie.')
+    }
   }
 
   return (
