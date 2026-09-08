@@ -21,6 +21,19 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-08 (suite 4)
+
+**[Fix] — Affichage négatif de l'espace cap trompeur** (`repechage-agents-libres/AgentsLibresDashboard.tsx`) :
+- David a testé le panneau admin + "prêt" en staging (SQL exécuté) et signalé que "-49 050 335
+  $ US restant" (grille des 8 poolers, Mon alignement Actuel et Bac à sable) se lisait mal
+  quand le cap est dépassé — "restant" implique de l'espace disponible.
+- `remainLabel()`/`fmtRemainLine()` (nouveaux helpers module-level) : libellé et valeur
+  s'adaptent selon le signe — "Espace restant"/"X $" si positif, "Dépassement"/"X $" (valeur
+  absolue, rouge) si négatif. Couleur de `PoolerCard` aussi corrigée (rouge distinct de
+  l'ambre "presque plein"). Cohérent avec `ComplianceCard` (admin), qui utilisait déjà
+  "dispo"/"dépassé" sans ce problème.
+- Commité et poussé sur staging (pas de migration, correction visuelle seule).
+
 ### 2026-09-08 (suite 3)
 
 **[Feature] — Panneau admin rétractable sur /repechage-agents-libres + déclaration "prêt"**
