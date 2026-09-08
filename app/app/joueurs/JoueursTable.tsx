@@ -7,11 +7,21 @@ import TeamBadge from '@/components/TeamBadge'
 import PlayerLink from '@/components/PlayerLink'
 import { normalizeSearch } from '@/lib/normalizeSearch'
 
-const CURRENT_SEASON = '2025-26'
-const SEASONS = ['2025-26', '2026-27', '2027-28', '2028-29', '2029-30']
 const DASH = '\u2014'
 const STAR = '\u2605'
 
+// 5 saisons cons\u00e9cutives \u00e0 partir de la saison active du pool (David, 2026-09-08) \u2014 remplace
+// l'ancienne liste cod\u00e9e en dur, qui se d\u00e9synchronisait \u00e0 chaque transition de saison.
+// Ind\u00e9pendant du nombre de lignes dans pool_seasons : PuckPedia expose toujours ~5 ans de
+// contrats \u00e0 l'avance, peu importe combien de saisons l'admin a d\u00e9j\u00e0 cr\u00e9\u00e9es.
+function buildSeasons(current: string, count: number): string[] {
+  const startYear = parseInt(current.slice(0, 4), 10)
+  if (Number.isNaN(startYear)) return [current]
+  return Array.from({ length: count }, (_, i) => {
+    const y = startYear + i
+    return `${y}-${String((y + 1) % 100).padStart(2, '0')}`
+  })
+}
 
 const formatCap = (amount: number | null) => {
   if (!amount) return DASH
@@ -42,7 +52,7 @@ const positionBucket = (position: string | null): string => {
   return 'forward'
 }
 
-const sortPlayers = (a: PlayerRow, b: PlayerRow) => {
+const makeSortPlayers = (currentSeason: string) => (a: PlayerRow, b: PlayerRow) => {
   const teamA = a.teams?.code ?? 'ZZZ'
   const teamB = b.teams?.code ?? 'ZZZ'
   const teamCompare = teamA.localeCompare(teamB, 'fr-CA')
@@ -51,7 +61,7 @@ const sortPlayers = (a: PlayerRow, b: PlayerRow) => {
   const posCompare = POSITION_ORDER[positionBucket(a.position)] - POSITION_ORDER[positionBucket(b.position)]
   if (posCompare !== 0) return posCompare
 
-  const capCompare = getSeasonCap(b.player_contracts, CURRENT_SEASON) - getSeasonCap(a.player_contracts, CURRENT_SEASON)
+  const capCompare = getSeasonCap(b.player_contracts, currentSeason) - getSeasonCap(a.player_contracts, currentSeason)
   if (capCompare !== 0) return capCompare
 
   const lastNameCompare = a.last_name.localeCompare(b.last_name, 'fr-CA')
@@ -74,7 +84,9 @@ const sortProspects = (a: PlayerRow, b: PlayerRow) => {
   return overallA - overallB
 }
 
-export default function JoueursTable({ players }: { players: PlayerRow[] }) {
+export default function JoueursTable({ players, currentSeason }: { players: PlayerRow[]; currentSeason: string }) {
+  const SEASONS = useMemo(() => buildSeasons(currentSeason, 5), [currentSeason])
+  const sortPlayers = useMemo(() => makeSortPlayers(currentSeason), [currentSeason])
   const [search, setSearch] = useState('')
   const [selectedTeam, setSelectedTeam] = useState('')
   const [salaryMode, setSalaryMode] = useState<'all' | 'lt' | 'between' | 'gt'>('all')
@@ -112,7 +124,7 @@ export default function JoueursTable({ players }: { players: PlayerRow[] }) {
         const teamCode = player.teams?.code ?? ''
         const fullName = normalizeSearch(`${player.first_name} ${player.last_name}`)
         const reverseName = normalizeSearch(`${player.last_name} ${player.first_name}`)
-        const currentCap = getSeasonCap(player.player_contracts, CURRENT_SEASON)
+        const currentCap = getSeasonCap(player.player_contracts, currentSeason)
         const isElc = player.status === 'ELC'
 
         if (selectedTeam !== '' && teamCode !== selectedTeam) return false
@@ -138,7 +150,7 @@ export default function JoueursTable({ players }: { players: PlayerRow[] }) {
         return true
       })
       .sort(sortPlayers)
-  }, [lnhPlayers, search, selectedTeam, salaryMode, salaryMin, salaryMax, statusFilter])
+  }, [lnhPlayers, search, selectedTeam, salaryMode, salaryMin, salaryMax, statusFilter, currentSeason, sortPlayers])
 
   const filteredProspects = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
@@ -244,7 +256,7 @@ export default function JoueursTable({ players }: { players: PlayerRow[] }) {
               <th className="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">{'\u00c2ge'}</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">{'Exp\u00e9rience'}</th>
               {SEASONS.map((season) => (
-                <th key={season} className={`text-right px-4 py-3 font-medium text-gray-600${season !== CURRENT_SEASON ? ' hidden lg:table-cell' : ''}`}>{season}</th>
+                <th key={season} className={`text-right px-4 py-3 font-medium text-gray-600${season !== currentSeason ? ' hidden lg:table-cell' : ''}`}>{season}</th>
               ))}
             </tr>
           </thead>
@@ -325,7 +337,7 @@ export default function JoueursTable({ players }: { players: PlayerRow[] }) {
                     {SEASONS.map((season) => {
                       const contract = getContract(season)
                       return (
-                        <td key={season} className={`px-4 py-3 text-right${season !== CURRENT_SEASON ? ' hidden lg:table-cell' : ''}`}>
+                        <td key={season} className={`px-4 py-3 text-right${season !== currentSeason ? ' hidden lg:table-cell' : ''}`}>
                           {contract ? (
                             <span>
                               {contract.contract_status && contract.contract_status !== player.status && (

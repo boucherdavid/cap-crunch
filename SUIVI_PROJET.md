@@ -21,6 +21,31 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-08 (suite 7)
+
+**[Fix] — Colonnes de saisons codées en dur sur /joueurs (Contrats LNH)**
+(`app/joueurs/page.tsx`, `app/joueurs/JoueursTable.tsx`) :
+- David a remarqué que la page Contrats LNH semblait afficher la mauvaise saison (2025-26
+  mise en évidence comme "actuelle" alors que 2026-27 est la saison active du pool). Cause :
+  `JoueursTable.tsx` avait `CURRENT_SEASON = '2025-26'` et `SEASONS = [...]` codés en dur,
+  totalement indépendants de `pool_seasons.is_active` — se désynchronise à chaque transition
+  de saison si personne n'y repense.
+- Vérifié en aparté : `/statistiques` (0 joueur affiché) n'est PAS un bug — dérive déjà
+  correctement la saison active, mais la vraie saison LNH 2026-27 n'a simplement pas encore
+  commencé (aujourd'hui : 8 septembre 2026, début réel en octobre) — 0 match joué, 0 stat,
+  normal en pré-saison.
+- Correctif choisi (option durable, confirmée par David plutôt qu'un simple correctif
+  ponctuel) : `page.tsx` lit maintenant `pool_seasons.season` de la saison active et la passe
+  en prop `currentSeason` ; `JoueursTable.tsx` calcule dynamiquement 5 saisons consécutives à
+  partir de celle-ci (`buildSeasons()`), indépendamment du nombre de lignes dans
+  `pool_seasons` (PuckPedia expose toujours ~5 ans de contrats, peu importe combien de
+  saisons l'admin a déjà créées). `sortPlayers` transformé en factory (`makeSortPlayers`) pour
+  fermer sur la saison courante plutôt que sur une constante module-level.
+- Vérifié en aparté (pas touché, hors scope) : `NHL_SEASON = '20252026'`
+  (`app/lib/nhl-stats.ts`) est un pattern différent — utilisé uniquement comme repli quand
+  aucune saison active n'est trouvée (`/statistiques`, `daily-recap.ts`), les appelants
+  passent déjà explicitement la saison dérivée de `pool_seasons` dans le cas normal.
+
 ### 2026-09-08 (suite 6)
 
 **[Fix] — Libération confirmée fonctionnelle ; joueurs libérés en pré-saison affichés à tort

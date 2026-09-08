@@ -503,6 +503,13 @@ existants) — pas des pages à part entière.
   `/admin/rosters` (`activation`/`deactivation`/`ajout_reserviste`/`ajout_recrue`/`retrait`/
   `ltir`/`retour_ltir`/`changement_type`).
 
+**Saisons de contrats sur `/joueurs` (David, 2026-09-08)** — `JoueursTable.tsx` calcule
+dynamiquement ses 5 colonnes de saisons à partir de `pool_seasons.season` (saison active,
+passée en prop par `page.tsx`) via `buildSeasons()`, plutôt qu'une liste codée en dur — un
+ancien `CURRENT_SEASON = '2025-26'` figé se désynchronisait à chaque transition de saison.
+Si une page affiche une saison NHL en dur ailleurs, vérifier qu'elle dérive bien de
+`pool_seasons.is_active` avant de la reproduire.
+
 **Protection recrue (`app/lib/rookieProtection.ts`) — David, 2026-09-07 :**
 - `isRookieProtectionExpired(rookieType, poolDraftYear, isElcActive, seasonStartYear)` : la
   fin de l'ELC prime toujours ; pour `repeche`, `!isElcActive || (seasonStartYear -
