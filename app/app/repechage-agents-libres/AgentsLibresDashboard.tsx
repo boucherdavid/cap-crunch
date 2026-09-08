@@ -345,6 +345,20 @@ function MonAlignement({
   const removeAdded = (id: number) => setAdded(prev => prev.filter(a => a.id !== id))
   const resetSandbox = () => { setRemoved(new Set()); setAdded([]); setQuery(''); setResults([]) }
 
+  // Soumettre pour vrai les retraits testés dans le bac à sable (David, 2026-09-08) — même
+  // action_type 'release' que le flux de l'onglet Actuel, donc soumis au même garde-fou
+  // serveur (phase de libération). Volontairement limité aux joueurs déjà possédés (`removed`)
+  // — les agents libres ajoutés (`added`) ne servent qu'à simuler l'impact salarial d'une
+  // signature pas encore faite ; signer reste admin-only, jamais soumis d'ici.
+  const handleSubmitSandboxReleases = async () => {
+    if (removed.size === 0) return
+    if (!window.confirm(`Libérer ${removed.size} joueur${removed.size > 1 ? 's' : ''} pour vrai ? Cette partie du bac à sable sera appliquée à ton alignement réel.`)) return
+    setBusy(true); setSelfErr(null)
+    const items = Array.from(removed).map(playerId => ({ action_type: 'release' as const, player_id: playerId }))
+    const result = await submitSelfServiceAction(saisonId, items)
+    if (result.error) { setBusy(false); setSelfErr(result.error) } else { window.location.reload() }
+  }
+
   if (!myPooler) {
     return (
       <div className="bg-white rounded-lg shadow p-5 text-sm text-gray-400">
@@ -534,7 +548,7 @@ function MonAlignement({
           </>
         ) : (
           <>
-            <p className="text-xs text-gray-400 mb-3">Ajoute ou retire librement pour tester — rien n&apos;est sauvegardé.</p>
+            <p className="text-xs text-gray-400 mb-3">Ajoute ou retire librement pour tester. Rien n&apos;est sauvegardé automatiquement — un retrait peut être soumis pour vrai ci-dessous, un ajout reste toujours une simulation.</p>
             <div className="space-y-1 mb-2">
               {myPooler.roster.map(e => (
                 <div key={e.roster_id} className={`flex items-center justify-between text-xs py-1 ${removed.has(e.player_id) ? 'opacity-40 line-through' : 'text-gray-600'}`}>
@@ -555,6 +569,21 @@ function MonAlignement({
               ))}
             </div>
 
+            {removed.size > 0 && releasePhaseOpen && (
+              <button
+                onClick={handleSubmitSandboxReleases}
+                disabled={busy}
+                className="w-full text-xs font-medium bg-red-600 text-white rounded-lg py-1.5 mb-2 hover:bg-red-700 disabled:opacity-40"
+              >
+                {busy ? '...' : `Soumettre la libération (${removed.size})`}
+              </button>
+            )}
+            {removed.size > 0 && !releasePhaseOpen && (
+              <p className="text-xs mb-2 rounded-lg px-2 py-1.5 bg-gray-50 text-gray-500">
+                La phase de libération est fermée — ce retrait ne peut plus être soumis pour vrai.
+              </p>
+            )}
+            {selfErr && <p className="text-xs text-red-600 mb-2">{selfErr}</p>}
             <button onClick={resetSandbox} className="w-full text-xs font-medium text-gray-500 border rounded-lg py-1.5 mb-3 hover:bg-gray-50">
               ↺ Réinitialiser (revenir à l&apos;actuel)
             </button>
@@ -594,7 +623,7 @@ function MonAlignement({
               )}
               {added.length > 0 && (
                 <p className="text-xs text-amber-600 mt-1">
-                  Le coût des joueurs ajoutés n&apos;est pas déduit ici (contrat pas encore signé) — sert à repérer les noms disponibles, pas à calculer leur impact exact.
+                  Le coût des joueurs ajoutés n&apos;est pas déduit ici (contrat pas encore signé) — sert à repérer les noms disponibles, pas à calculer leur impact exact. Jamais soumis d&apos;ici : signer un agent libre reste réservé à l&apos;admin, pendant ton tour.
                 </p>
               )}
             </div>

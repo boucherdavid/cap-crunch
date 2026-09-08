@@ -229,19 +229,40 @@ tour" persisté dans `presaison_draft_state` (section 4), remplace l'ancien éta
 traiter un échange) et retour.
 
 **Phase "libération de joueurs" (David, 2026-09-08)** — `presaison_draft_state.
-release_phase_open` (défaut `true`), distincte du repêchage AL lui-même : tant qu'ouverte,
-libérer n'importe quel joueur signé est permis en libre-service comme décrit ci-dessus.
-L'admin la ferme depuis `/admin/init?tab=presaison` (bandeau dédié, `setReleasePhaseAction`)
-une fois que tout le monde a ajusté sa masse salariale — à partir de là, "Libérer des joueurs"
-(vétérans) disparaît de `/repechage-agents-libres`, mais actif↔réserviste et activer/libérer
-une recrue de banque restent toujours permis (jamais gatés par cette phase), tout comme le bac
-à sable. `submitSelfServiceAction` revalide côté serveur (le `player_type` réel en base, pas
-l'état client) : une libération n'est bloquée que si le joueur visé n'est pas une `recrue`.
+release_phase_open`, **fermée par défaut** (l'admin l'ouvre explicitement, jamais l'inverse —
+premier bouton visible = "Ouvrir la libération de joueurs"), distincte du repêchage AL
+lui-même. Tant qu'ouverte, libérer n'importe quel joueur signé est permis en libre-service
+comme décrit ci-dessus, y compris depuis le bac à sable (voir plus bas). L'admin la ferme
+depuis `/admin/init?tab=presaison` (bandeau dédié, `setReleasePhaseAction`) une fois que tout
+le monde a ajusté sa masse salariale — à partir de là, "Libérer des joueurs" (vétérans)
+disparaît de `/repechage-agents-libres`, mais actif↔réserviste et activer/libérer une recrue
+de banque restent toujours permis (jamais gatés par cette phase), tout comme le bac à sable.
+`submitSelfServiceAction` revalide côté serveur (le `player_type` réel en base, pas l'état
+client) : une libération n'est bloquée que si le joueur visé n'est pas une `recrue`.
 "Démarrer le repêchage" (`startPresaisonDraftAction`) reste désactivé — client et serveur —
-tant que la phase est ouverte. Corrige au passage un bug où l'UI affichait "Repêchage terminé"
-dès le premier clic sur "Démarrer" si personne n'avait encore d'espace cap (aucun pooler
-n'avait pourtant eu son tour) — `startPresaisonDraftAction` ne marque plus `ended_at` dans ce
-cas, il retourne une erreur.
+tant que la phase est ouverte. Une fois le repêchage AL terminé (plus personne d'éligible),
+rendre l'alignement conforme n'est pas une phase séparée : "Démarrer la saison"
+(`/admin/nouvelle-saison`, déjà existant) bloque déjà tant qu'un pooler n'est pas exactement
+12/6/2 + sous le cap et pointe vers le fautif — et tant qu'il n'est pas cliqué, le
+libre-service reste réutilisable à volonté, peu importe la phase.
+
+**Bac à sable soumettable (David, 2026-09-08)** — dans `MonAlignement` (onglet Bac à sable de
+`/repechage-agents-libres`), les retraits testés (`removed`, joueurs déjà possédés) peuvent
+être soumis pour vrai via un bouton "Soumettre la libération (N)"
+(`handleSubmitSandboxReleases`) — même `action_type='release'` et même garde-fou de phase que
+le flux "Libérer des joueurs" de l'onglet Actuel, juste une seconde porte d'entrée après avoir
+exploré l'impact salarial dans le bac à sable. Les agents libres ajoutés (`added`) restent en
+revanche une simulation pure, jamais soumissibles — signer un agent libre reste réservé à
+l'admin pendant le tour du pooler ; seul le retrait de joueurs déjà possédés peut être soumis.
+
+Corrige au passage un bug où l'UI affichait "Repêchage terminé" dès le premier clic sur
+"Démarrer" si personne n'avait encore d'espace cap (aucun pooler n'avait pourtant eu son
+tour) — `startPresaisonDraftAction` ne marque plus `ended_at` dans ce cas, il retourne une
+erreur ; et un second où le bloc "Ordre du repêchage" disparaissait complètement dès qu'un
+repêchage précédent était marqué terminé (`isDraftDone`), avec un bouton "Recommencer"
+redondant dont l'erreur ne s'affichait nulle part — fusionné en un seul bouton
+"Démarrer/Relancer le repêchage", toujours visible avec l'éditeur d'ordre tant que le
+repêchage n'est pas activement en cours.
 
 **Menu pooler (`Navbar.tsx`) — réorganisé le 2026-08-30, ordre/regroupement affinés le
 2026-09-01 :**

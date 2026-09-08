@@ -318,46 +318,53 @@ export async function resetPresaisonDraftAction(
     .eq('pool_season_id', saisonId)
     .eq('notes', 'Repêchage pré-saison')
   if (txErr) return { error: txErr.message }
-  if (!txs || txs.length === 0) return { reversed: 0 }
 
-  const txIds = txs.map(t => t.id)
+  // Bug corrigé le 2026-09-08 (David, repéré en staging) : un retour anticipé ici quand il n'y
+  // avait aucune transaction à annuler (cas le plus fréquent en test — le repêchage n'a jamais
+  // vraiment tourné) sautait complètement la remise à plat de presaison_draft_state plus bas.
+  // Le bouton "Réinitialiser le repêchage" semblait alors ne rien faire : `ended_at` restait en
+  // place et "Repêchage terminé" continuait de s'afficher. La remise à plat doit toujours
+  // s'exécuter, peu importe qu'il y ait eu des signatures à annuler ou non.
+  const txIds = (txs ?? []).map(t => t.id)
 
-  // 2. Get the sign items to know which players to deactivate
-  const { data: items, error: itemErr } = await supabase
-    .from('transaction_items')
-    .select('player_id, to_pooler_id')
-    .in('transaction_id', txIds)
-    .eq('action', 'sign')
-  if (itemErr) return { error: itemErr.message }
+  if (txIds.length > 0) {
+    // 2. Get the sign items to know which players to deactivate
+    const { data: items, error: itemErr } = await supabase
+      .from('transaction_items')
+      .select('player_id, to_pooler_id')
+      .in('transaction_id', txIds)
+      .eq('action', 'sign')
+    if (itemErr) return { error: itemErr.message }
 
-  // 3. Deactivate those pooler_roster entries
-  if (items && items.length > 0) {
-    const playerIds = items.map((i: any) => i.player_id)
-    const { error: rosterErr } = await supabase
-      .from('pooler_rosters')
-      .update({ is_active: false, removed_at: new Date().toISOString() })
-      .eq('pool_season_id', saisonId)
-      .in('player_id', playerIds)
-      .eq('is_active', true)
-    if (rosterErr) return { error: rosterErr.message }
+    // 3. Deactivate those pooler_roster entries
+    if (items && items.length > 0) {
+      const playerIds = items.map((i: any) => i.player_id)
+      const { error: rosterErr } = await supabase
+        .from('pooler_rosters')
+        .update({ is_active: false, removed_at: new Date().toISOString() })
+        .eq('pool_season_id', saisonId)
+        .in('player_id', playerIds)
+        .eq('is_active', true)
+      if (rosterErr) return { error: rosterErr.message }
+    }
+
+    // 4. Delete transaction_items then transactions
+    const { error: delItemErr } = await supabase
+      .from('transaction_items')
+      .delete()
+      .in('transaction_id', txIds)
+    if (delItemErr) return { error: delItemErr.message }
+
+    const { error: delTxErr } = await supabase
+      .from('transactions')
+      .delete()
+      .in('id', txIds)
+    if (delTxErr) return { error: delTxErr.message }
   }
-
-  // 4. Delete transaction_items then transactions
-  const { error: delItemErr } = await supabase
-    .from('transaction_items')
-    .delete()
-    .in('transaction_id', txIds)
-  if (delItemErr) return { error: delItemErr.message }
-
-  const { error: delTxErr } = await supabase
-    .from('transactions')
-    .delete()
-    .in('id', txIds)
-  if (delTxErr) return { error: delTxErr.message }
 
   // Remet aussi la file d'attente partagée à plat — un reset de test doit permettre de
   // relancer "Démarrer le repêchage" proprement, pas juste vider les transactions.
-  await supabase.from('presaison_draft_state').upsert({
+  const { error: stateErr } = await supabase.from('presaison_draft_state').upsert({
     pool_season_id: saisonId,
     is_active: false,
     queue: [],
@@ -366,6 +373,7 @@ export async function resetPresaisonDraftAction(
     ended_at: null,
     updated_at: new Date().toISOString(),
   })
+  if (stateErr) return { error: stateErr.message }
 
   revalidatePath('/admin/presaison')
   revalidatePath('/repechage-agents-libres')
@@ -452,7 +460,7 @@ export async function loadPresaisonDraftStateAction(saisonId: number): Promise<{
         turn_started_at: null,
         turn_duration_seconds: TURN_DURATION_DEFAULT,
         ended_at: null,
-        release_phase_open: true,
+        release_phase_open: false,
       },
     }
   }
@@ -500,7 +508,7 @@ export async function startPresaisonDraftAction(saisonId: number): Promise<{ err
     .select('release_phase_open')
     .eq('pool_season_id', saisonId)
     .maybeSingle()
-  if (stateRow?.release_phase_open ?? true) {
+  if (stateRow?.release_phase_open ?? false) {
     return { error: 'La phase de libération de joueurs est encore ouverte — ferme-la avant de démarrer le repêchage.' }
   }
 

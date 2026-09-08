@@ -877,12 +877,13 @@ CREATE TABLE presaison_draft_state (
   turn_started_at TIMESTAMPTZ,
   turn_duration_seconds INTEGER NOT NULL DEFAULT 90,
   ended_at TIMESTAMPTZ,
-  -- Phase "libération de joueurs" (David, 2026-09-08) : tant que true, les poolers peuvent
-  -- libérer n'importe quel joueur signé en libre-service (/repechage-agents-libres). L'admin
-  -- la ferme quand tout le monde a ajusté sa masse salariale — à partir de là, seules les
-  -- recrues de banque restent libérables/activables (submitSelfServiceAction), et le
-  -- repêchage d'agents libres peut démarrer (startPresaisonDraftAction le bloque sinon).
-  release_phase_open BOOLEAN NOT NULL DEFAULT true,
+  -- Phase "libération de joueurs" (David, 2026-09-08) : fermée par défaut — l'admin l'ouvre
+  -- explicitement une fois prêt à démarrer le ménage pré-saison. Tant qu'ouverte, les poolers
+  -- peuvent libérer n'importe quel joueur signé en libre-service (/repechage-agents-libres).
+  -- L'admin la referme quand tout le monde a ajusté sa masse salariale — à partir de là,
+  -- seules les recrues de banque restent libérables/activables (submitSelfServiceAction), et
+  -- le repêchage d'agents libres peut démarrer (startPresaisonDraftAction le bloque sinon).
+  release_phase_open BOOLEAN NOT NULL DEFAULT false,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -902,3 +903,11 @@ CREATE POLICY "Admin gère presaison_draft_state" ON presaison_draft_state FOR A
 -- seule fois dans le SQL Editor Supabase (staging d'abord) :
 --
 -- ALTER TABLE presaison_draft_state ADD COLUMN IF NOT EXISTS release_phase_open BOOLEAN NOT NULL DEFAULT true;
+
+-- Migration 2026-09-08 (suite) : défaut inversé — la phase doit démarrer FERMÉE, l'admin
+-- l'ouvre explicitement (pas l'inverse). Remet aussi à false les lignes déjà créées pendant
+-- les tests (pas de saison réelle en cours à cette étape) — à exécuter une seule fois dans le
+-- SQL Editor Supabase (staging d'abord, puis prod) :
+--
+-- ALTER TABLE presaison_draft_state ALTER COLUMN release_phase_open SET DEFAULT false;
+-- UPDATE presaison_draft_state SET release_phase_open = false;

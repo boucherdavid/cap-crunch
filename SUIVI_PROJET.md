@@ -60,6 +60,39 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Décision validée avec David (AskUserQuestion) : le bouton "Démarrer le repêchage" est bloqué
   dur tant que la phase de libération est ouverte, pas seulement laissé à son jugement.
 
+**[Fix + correction de flux] — Défaut inversé, boutons dupliqués, bac à sable soumettable**
+(suite du dessus, même session) :
+- David a testé en staging : bandeau affichait "Fermer la libération" avant même d'avoir
+  commencé (défaut `true` incorrect — il fallait démarrer fermé et l'ouvrir explicitement),
+  "Ordre du repêchage" disparaissait complètement dès qu'un ancien `isDraftDone` traînait en
+  base (hérité du bug d'avant le premier correctif), et "Recommencer un repêchage" ne faisait
+  visiblement rien (appelait `startDraft` → erreur "phase encore ouverte" jamais affichée dans
+  ce bloc). Clarifié avec un schéma (Artifact — wireframes annotés des deux pages réelles) que
+  du texte seul n'arrivait pas à régler après deux tentatives.
+- `release_phase_open` : défaut basculé à `false` partout (schéma — nouvelle migration
+  `ALTER COLUMN ... SET DEFAULT false` + `UPDATE ... SET release_phase_open = false` pour
+  remettre à plat les lignes de test déjà créées avec l'ancien défaut ; à exécuter en staging
+  puis prod), fallbacks JS (`admin/presaison/actions.ts`, `PresaisonManager.tsx`,
+  `repechage-agents-libres/actions.ts`, `repechage-agents-libres/page.tsx`).
+- `PresaisonManager.tsx` : "Ordre du repêchage" + "Démarrer le repêchage" restent maintenant
+  visibles même quand `isDraftDone` (juste un bandeau "✓ Dernier repêchage terminé" en plus,
+  pas un remplacement) ; bouton "Recommencer un repêchage" (dupliqué, erreur invisible)
+  supprimé — un seul bouton "Démarrer/Relancer le repêchage" selon le cas, avec `startErr`
+  toujours affiché à côté.
+- Bac à sable (`AgentsLibresDashboard.tsx`, `MonAlignement`) : nouveau bouton "Soumettre la
+  libération (N)" — applique pour vrai (même `action_type='release'`, même garde-fou de phase
+  que l'onglet Actuel) les retraits testés sur des joueurs déjà possédés (`removed`). Les
+  agents libres ajoutés en simulation (`added`) restent volontairement non soumissibles —
+  signer reste admin-only pendant le tour du pooler ; le bac à sable ne sert qu'à tester
+  l'impact salarial d'une signature hypothétique, jamais à la déclencher.
+- "Mettre l'alignement conforme" en fin de repêchage AL : pas de nouvelle mécanique — confirmé
+  que "Démarrer la saison" (`/admin/nouvelle-saison`, existant) couvre déjà ce besoin (bloque
+  tant qu'un pooler n'est pas exactement 12/6/2 + sous le cap, pointe vers le fautif), et que
+  le libre-service reste réutilisable à volonté jusqu'à ce clic — comportement déjà en place,
+  rien à construire.
+- Pas encore commité — attend validation de David en staging après la nouvelle migration SQL
+  (cette fois avec le défaut `false`) avant de pousser.
+
 ### 2026-09-07
 
 **[Fix] — Bouton "Libérer" dans "Activation obligatoire"** (`admin/recrues/BanqueRecruesManager.tsx`) :

@@ -66,7 +66,7 @@ export async function submitSelfServiceAction(
       .select('release_phase_open')
       .eq('pool_season_id', saisonId)
       .maybeSingle()
-    if (!(stateRow?.release_phase_open ?? true)) {
+    if (!(stateRow?.release_phase_open ?? false)) {
       const { data: rosterRows } = await supabase
         .from('pooler_rosters')
         .select('player_id, player_type')

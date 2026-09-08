@@ -660,7 +660,7 @@ export default function PresaisonManager({
           signé en libre-service ; une fois fermée, seules les recrues de banque restent
           libérables/activables, et le repêchage AL peut démarrer. */}
       {(() => {
-        const releaseOpen = draftState?.release_phase_open ?? true
+        const releaseOpen = draftState?.release_phase_open ?? false
         return (
           <div className={`rounded-lg shadow p-5 flex items-center justify-between flex-wrap gap-3 ${releaseOpen ? 'bg-amber-50 border border-amber-200' : 'bg-white'}`}>
             <div>
@@ -682,10 +682,17 @@ export default function PresaisonManager({
         )
       })()}
 
-      {/* Draft section */}
-      {!isDraftActive && !isDraftDone && (
+      {/* Draft section — l'éditeur d'ordre + "Démarrer" reste visible même après un
+          repêchage terminé (isDraftDone), pour pouvoir en relancer un sans devoir passer par
+          la Zone de test tout en bas. Un seul bouton "Démarrer/Relancer", pas de doublon. */}
+      {!isDraftActive && (
         <div className="bg-white rounded-lg shadow p-5">
           <h2 className="font-semibold text-gray-800 mb-1">Ordre du repêchage</h2>
+          {isDraftDone && (
+            <p className="text-xs mb-3 rounded-lg px-2 py-1.5 bg-emerald-50 text-emerald-700">
+              ✓ Dernier repêchage terminé — tous les poolers éligibles ont complété leur tour ou n&apos;ont plus d&apos;espace suffisant.
+            </p>
+          )}
           <p className="text-xs text-gray-400 mb-4">
             Seuil de participation : {fmt(data.nhlMinimumSalary)} d'espace cap. En dessous, le pooler est retiré automatiquement de la file.
           </p>
@@ -714,12 +721,12 @@ export default function PresaisonManager({
           <div className="border-t pt-4 mt-4">
             <button
               onClick={startDraft}
-              disabled={draftOrder.length === 0 || starting || (draftState?.release_phase_open ?? true)}
+              disabled={draftOrder.length === 0 || starting || (draftState?.release_phase_open ?? false)}
               className="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-40 text-sm"
             >
-              {starting ? 'Démarrage...' : 'Démarrer le repêchage'}
+              {starting ? 'Démarrage...' : isDraftDone ? 'Relancer le repêchage' : 'Démarrer le repêchage'}
             </button>
-            {(draftState?.release_phase_open ?? true) && (
+            {(draftState?.release_phase_open ?? false) && (
               <p className="text-xs text-amber-600 mt-2">Ferme d’abord la phase de libération de joueurs ci-dessus.</p>
             )}
             {draftOrder.length > 0 && (
@@ -731,22 +738,6 @@ export default function PresaisonManager({
               <p className="text-sm text-red-600 mt-2">{startErr}</p>
             )}
           </div>
-        </div>
-      )}
-
-      {isDraftDone && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-5">
-          <p className="text-green-700 font-semibold">Repêchage terminé.</p>
-          <p className="text-sm text-green-600 mt-1">
-            Tous les poolers éligibles ont complété leur repêchage ou n'ont plus d'espace suffisant.
-          </p>
-          <button
-            onClick={startDraft}
-            disabled={starting}
-            className="mt-3 text-sm text-blue-600 hover:underline disabled:opacity-40"
-          >
-            {starting ? 'Démarrage...' : 'Recommencer un repêchage'}
-          </button>
         </div>
       )}
 
