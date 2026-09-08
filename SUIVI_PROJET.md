@@ -21,6 +21,25 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-08 (suite 6)
+
+**[Fix] — Libération confirmée fonctionnelle ; joueurs libérés en pré-saison affichés à tort
+"PARTI" dans l'alignement** (`app/lib/standings.ts`) :
+- David a confirmé que la libération multiple fonctionne maintenant (correctif `try/catch` de
+  la session précédente). Nouveau signalement : les joueurs libérés en pré-saison (ex:
+  Kaprizov, Tuch, Teravainen) continuaient d'apparaître dans `/poolers/[id]` avec le badge
+  "PARTI" et 0 partout — voulu pour une vraie libération en cours de saison (historique des
+  points gagnés avant le départ), mais superflu pour un "non-choix" en pré-saison qui n'a
+  jamais compté de match.
+- Cause : `buildStandings()` incluait toute ligne `pooler_rosters`, y compris celles jamais
+  activées (`added_at=null`, mis ainsi par Mode init — ne devient réel qu'à "Démarrer la
+  saison"). Une exclusion existait déjà pour les recrues jamais promues
+  (`player_type==='recrue' && periods.length===0`) ; généralisée par une seconde exclusion
+  ciblée : `!stillRostered && added_at===null` sur la dernière ligne — un joueur relâché
+  après un vrai début de saison (`added_at` non nul) garde bien sa trace, même si `periods`
+  est vide pour une autre raison (ex: resté réserviste sans jamais être activé).
+- Corrige `/poolers/[id]` et `/classement`, qui partagent tous deux `buildStandings()`.
+
 ### 2026-09-08 (suite 5)
 
 **[Fix] — Bouton figé sur "..." sans erreur visible lors d'une libération multiple**

@@ -432,6 +432,15 @@ existants) — pas des pages à part entière.
 **Mécanique de `buildStandings()` (`app/lib/standings.ts`) :**
 - Fenêtre de base par ligne `pooler_rosters` : `added_at → removed_at` (`null` = toujours actif).
   Aucun match hors de cette fenêtre n'est considéré, peu importe `roster_change_log`.
+- **Joueur libéré sans avoir jamais eu de `added_at` réel** (David, 2026-09-08) — Mode init
+  crée les lignes avec `added_at=null` ; il ne devient réel qu'au clic sur "Démarrer la
+  saison" (`demarrerSaisonAction`). Un joueur libéré en pré-saison avant ce moment (ex: via le
+  libre-service de `/repechage-agents-libres`) n'a donc jamais eu de fenêtre valide —
+  `buildStandings()` l'exclut complètement de la liste retournée (`stillRostered=false` et
+  `added_at===null` sur sa dernière ligne) plutôt que de l'afficher "PARTI" avec 0 partout.
+  Distinct d'un joueur relâché après un vrai début de saison (`added_at` non nul) : celui-là
+  garde sa trace normalement, même si `periods` est vide pour une autre raison (ex: jamais
+  activé, resté réserviste tout du long).
 - À l'intérieur de la fenêtre, `statusAt()` détermine le statut réel du joueur à l'heure de
   chaque match à partir de `roster_change_log` (événements avec `new_type` non nul, triés par
   `changed_at` — la date **effective**, pas la date de saisie). Seuls les matchs où le statut

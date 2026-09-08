@@ -298,12 +298,22 @@ export async function buildStandings(supabase: any, seasonId: string | number): 
 
     // player_type = la période la plus récente (dernière row)
     const currentRow = rows[rows.length - 1]
+    const stillRostered = currentRow.removed_at === null
 
     // Un joueur actuellement `recrue` sans aucune période active n'a jamais quitté la
-    // banque de recrues (rien à afficher) — mais s'il a été actif à un moment (périods
+    // banque de recrues (rien à afficher) — mais s'il a été actif à un moment (periods
     // non vide), sa contribution passée doit rester visible même si son statut final est
     // redevenu recrue (ex: rétrogradé après un échange).
     if (currentRow.player_type === 'recrue' && periods.length === 0) continue
+
+    // Un joueur libéré (David, 2026-09-08 — libéré en pré-saison via le libre-service,
+    // /repechage-agents-libres) alors que sa dernière ligne n'a jamais eu de added_at réel
+    // (Mode init met added_at à null ; il ne devient réel qu'au clic sur "Démarrer la
+    // saison") n'a jamais vraiment fait partie de l'alignement — l'afficher comme "PARTI"
+    // avec 0 partout n'apporte rien et encombre l'alignement affiché. Distinct d'un joueur
+    // relâché après un vrai début de saison (added_at non nul) : celui-là garde sa trace
+    // même si periods est vide pour une autre raison (ex: jamais activé, resté réserviste).
+    if (!stillRostered && currentRow.added_at === null) continue
 
     poolerMap.get(pooler.id)!.players.push({
       nhlId:          player.nhl_id,
@@ -311,7 +321,7 @@ export async function buildStandings(supabase: any, seasonId: string | number): 
       lastName:       player.last_name,
       position:       player.position,
       playerType:     currentRow.player_type,
-      stillRostered:  currentRow.removed_at === null,
+      stillRostered,
       teamAbbrev:     player.teams?.code ?? '—',
       gamesPlayed:    periods.reduce((s, p) => s + p.gamesPlayed, 0),
       goals:          total.goals,
