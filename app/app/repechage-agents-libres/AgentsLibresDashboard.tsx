@@ -212,28 +212,43 @@ function PoolerCard({
   pooler: PoolerInfo; poolCap: number; isCurrentDrafter: boolean; isAdmin: boolean; saisonId: number
 }) {
   const [open, setOpen] = useState(false)
-  const [releasingId, setReleasingId] = useState<number | null>(null)
+  const [releasing, setReleasing] = useState(false)
   const [releaseErr, setReleaseErr] = useState<string | null>(null)
+  const [releaseMode, setReleaseMode] = useState(false)
+  const [selectedForRelease, setSelectedForRelease] = useState<Set<number>>(new Set())
   const remain = poolCap - pooler.capUsed
   const pct = poolCap > 0 ? Math.min(100, (pooler.capUsed / poolCap) * 100) : 0
   const fOk = pooler.counts.forward <= 12, dOk = pooler.counts.defense <= 6, gOk = pooler.counts.goalie <= 2, resOk = pooler.counts.reserviste >= 2
   const firstName = pooler.name.split(' ')[0]
+
+  const toggleReleaseSelect = (playerId: number) => {
+    setSelectedForRelease(prev => {
+      const next = new Set(prev)
+      next.has(playerId) ? next.delete(playerId) : next.add(playerId)
+      return next
+    })
+  }
+  const cancelReleaseMode = () => { setReleaseMode(false); setSelectedForRelease(new Set()); setReleaseErr(null) }
 
   // Libérer au nom d'un pooler (David, 2026-09-08) — filet de sécurité pratique pour les
   // tests et pour un pooler qui ne peut pas se connecter pendant le pool ; admin seulement
   // (submitTransactionAction revérifie is_admin côté serveur). Notes 'Ajustement pré-saison',
   // même classe que le libre-service — capté par "Activité récente", jamais annulé par
   // "Réinitialiser le repêchage" (Zone de test, qui ne cible que 'Repêchage pré-saison').
-  const handleAdminRelease = async (playerId: number, playerName: string) => {
-    if (!window.confirm(`Libérer ${playerName} du roster de ${pooler.name} ?`)) return
-    setReleasingId(playerId); setReleaseErr(null)
+  // Sélection multiple (David, 2026-09-08, suite) — un window.confirm() par joueur devenait
+  // vite pénible pour libérer plusieurs joueurs d'un coup ; même patron que "Libérer des
+  // joueurs" dans l'onglet Actuel (sélection puis un seul bouton "Libérer (N)", sans confirm).
+  const handleConfirmAdminRelease = async () => {
+    if (selectedForRelease.size === 0) return
+    setReleasing(true); setReleaseErr(null)
     try {
-      const result = await submitTransactionAction(saisonId, 'Ajustement pré-saison', [{
-        action_type: 'release', from_pooler_id: pooler.id, player_id: playerId,
-      }])
-      if (result.error) { setReleasingId(null); setReleaseErr(result.error) } else { window.location.reload() }
+      const items = Array.from(selectedForRelease).map(playerId => ({
+        action_type: 'release' as const, from_pooler_id: pooler.id, player_id: playerId,
+      }))
+      const result = await submitTransactionAction(saisonId, 'Ajustement pré-saison', items)
+      if (result.error) { setReleasing(false); setReleaseErr(result.error) } else { window.location.reload() }
     } catch {
-      setReleasingId(null); setReleaseErr('Erreur inattendue — réessaie.')
+      setReleasing(false); setReleaseErr('Erreur inattendue — réessaie.')
     }
   }
 
@@ -277,34 +292,65 @@ function PoolerCard({
       </button>
       {open && (
         <div className="mt-2 pt-2 border-t space-y-2">
+          {isAdmin && pooler.roster.length > 0 && (
+            <div className="flex items-center justify-end -mt-1">
+              {!releaseMode ? (
+                <button
+                  onClick={() => setReleaseMode(true)}
+                  className="text-xs px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded"
+                >
+                  Libérer des joueurs
+                </button>
+              ) : (
+                <button onClick={cancelReleaseMode} className="text-xs text-gray-400 hover:text-gray-600">
+                  Annuler
+                </button>
+              )}
+            </div>
+          )}
           {pooler.roster.length === 0 ? (
             <p className="text-xs text-gray-400">Aucun joueur.</p>
           ) : groupRosterByPosition(pooler.roster).map(group => (
             <div key={group.label}>
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{group.label}</p>
               <div className="space-y-0.5">
-                {group.entries.map(e => (
-                  <div key={e.roster_id} className="flex items-center justify-between text-xs text-gray-600 py-0.5 gap-2">
-                    <span className="flex-1">
-                      <span className="text-gray-400 mr-1">{e.position ?? DASH}</span>
-                      {e.playerName}
-                    </span>
-                    <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
-                    {isAdmin && (
-                      <button
-                        onClick={() => handleAdminRelease(e.player_id, e.playerName)}
-                        disabled={releasingId === e.player_id}
-                        title={`Libérer ${e.playerName} au nom de ${pooler.name}`}
-                        className="text-[10px] px-1.5 py-0.5 border rounded text-gray-400 hover:text-red-600 hover:border-red-300 shrink-0 disabled:opacity-40"
-                      >
-                        {releasingId === e.player_id ? '...' : '✕'}
-                      </button>
-                    )}
-                  </div>
-                ))}
+                {group.entries.map(e => {
+                  const selected = selectedForRelease.has(e.player_id)
+                  return (
+                    <div key={e.roster_id} className={`flex items-center justify-between text-xs text-gray-600 py-0.5 gap-2 ${selected ? 'bg-red-50 rounded px-1' : ''}`}>
+                      <span className="flex-1">
+                        <span className="text-gray-400 mr-1">{e.position ?? DASH}</span>
+                        {e.playerName}
+                      </span>
+                      <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
+                      {isAdmin && releaseMode && (
+                        <button
+                          onClick={() => toggleReleaseSelect(e.player_id)}
+                          className={`w-5 h-5 rounded border text-[10px] shrink-0 flex items-center justify-center ${selected ? 'bg-red-500 text-white border-red-500' : 'text-gray-400 hover:text-red-600'}`}
+                        >
+                          {selected ? '✓' : ''}
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           ))}
+          {releaseMode && (
+            <div className="flex items-center gap-3 pt-2 border-t">
+              <span className="text-xs text-gray-500 flex-1">
+                {selectedForRelease.size > 0 ? `${selectedForRelease.size} sélectionné(s)` : 'Coche les joueurs à libérer'}
+              </span>
+              <button
+                onClick={handleConfirmAdminRelease}
+                disabled={releasing || selectedForRelease.size === 0}
+                className="text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-40"
+              >
+                {releasing ? '...' : `Libérer (${selectedForRelease.size})`}
+              </button>
+            </div>
+          )}
           {releaseErr && <p className="text-xs text-red-600 mt-1">{releaseErr}</p>}
         </div>
       )}

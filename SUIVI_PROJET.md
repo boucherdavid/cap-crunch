@@ -21,6 +21,17 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-08 (suite 9)
+
+**[UX] — Libération admin en sélection multiple, plus de confirm() par joueur**
+(`repechage-agents-libres/AgentsLibresDashboard.tsx`) :
+- David a validé la libération admin au nom d'un pooler, mais un `window.confirm()` par
+  joueur devenait pénible pour en libérer plusieurs d'un coup. `PoolerCard` reprend
+  maintenant exactement le patron de "Libérer des joueurs" de l'onglet Actuel : bouton
+  "Libérer des joueurs" → cases à cocher par ligne → un seul bouton "Libérer (N)" qui envoie
+  tous les items choisis d'un coup à `submitTransactionAction` — plus de confirm du tout,
+  la sélection explicite + le bouton nommé suffisent.
+
 ### 2026-09-08 (suite 8)
 
 **[Feature] — Recrues ajoutables au bac à sable ; libération admin au nom d'un pooler**
