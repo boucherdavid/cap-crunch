@@ -6,6 +6,7 @@ import {
   resetLtirToActifAction, demoteSurplusToReserveAction, resetPresaisonDraftAction,
   loadPresaisonDraftStateAction, startPresaisonDraftAction, advancePresaisonQueueAction,
   endPresaisonDraftAction, adjustPresaisonTimerAction, resetPresaisonTimerAction,
+  setReleasePhaseAction,
 } from './actions'
 import { DEFAULT_NHL_MINIMUM_SALARY, type PoolerCapInfo, type RosterEntry, type DraftState } from './types'
 import { submitTransactionAction, searchFreeAgentsAction } from '../transactions/actions'
@@ -380,6 +381,8 @@ export default function PresaisonManager({
   // Draft state — persisté en base (presaison_draft_state), partagé avec /repechage-agents-libres
   const [draftState, setDraftState] = useState<DraftState | null>(null)
   const [starting, setStarting] = useState(false)
+  const [startErr, setStartErr] = useState<string | null>(null)
+  const [togglingReleasePhase, setTogglingReleasePhase] = useState(false)
   const [now, setNow] = useState(() => Date.now())
 
   // LTIR reset
@@ -457,8 +460,17 @@ export default function PresaisonManager({
 
   const startDraft = async () => {
     setStarting(true)
+    setStartErr(null)
     const result = await startPresaisonDraftAction(saisonId)
     setStarting(false)
+    if (result.error) { setStartErr(result.error); return }
+    if (result.state) setDraftState(result.state)
+  }
+
+  const handleSetReleasePhase = async (open: boolean) => {
+    setTogglingReleasePhase(true)
+    const result = await setReleasePhaseAction(saisonId, open)
+    setTogglingReleasePhase(false)
     if (result.state) setDraftState(result.state)
   }
 
@@ -643,6 +655,33 @@ export default function PresaisonManager({
         </div>
       </div>
 
+      {/* Phase de libération de joueurs — David, 2026-09-08 : distincte du repêchage AL
+          lui-même. Tant qu'elle est ouverte, chaque pooler peut libérer n'importe quel joueur
+          signé en libre-service ; une fois fermée, seules les recrues de banque restent
+          libérables/activables, et le repêchage AL peut démarrer. */}
+      {(() => {
+        const releaseOpen = draftState?.release_phase_open ?? true
+        return (
+          <div className={`rounded-lg shadow p-5 flex items-center justify-between flex-wrap gap-3 ${releaseOpen ? 'bg-amber-50 border border-amber-200' : 'bg-white'}`}>
+            <div>
+              <h2 className="font-semibold text-gray-800">Phase de libération de joueurs</h2>
+              <p className="text-xs text-gray-500 mt-1 max-w-2xl">
+                {releaseOpen
+                  ? 'Ouverte — chaque pooler peut libérer n’importe quel joueur signé, basculer actif/réserviste, et activer/libérer une recrue depuis /repechage-agents-libres. Ferme-la une fois que tout le monde a ajusté sa masse salariale.'
+                  : 'Fermée — les poolers ne peuvent plus libérer de joueurs signés (les recrues de banque restent activables/libérables). Le repêchage d’agents libres peut démarrer.'}
+              </p>
+            </div>
+            <button
+              onClick={() => handleSetReleasePhase(!releaseOpen)}
+              disabled={togglingReleasePhase}
+              className={`text-sm px-4 py-2 rounded-lg font-medium disabled:opacity-40 shrink-0 ${releaseOpen ? 'bg-amber-600 text-white hover:bg-amber-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+            >
+              {togglingReleasePhase ? '...' : releaseOpen ? 'Fermer la libération de joueurs' : 'Rouvrir la libération de joueurs'}
+            </button>
+          </div>
+        )
+      })()}
+
       {/* Draft section */}
       {!isDraftActive && !isDraftDone && (
         <div className="bg-white rounded-lg shadow p-5">
@@ -675,15 +714,21 @@ export default function PresaisonManager({
           <div className="border-t pt-4 mt-4">
             <button
               onClick={startDraft}
-              disabled={draftOrder.length === 0 || starting}
+              disabled={draftOrder.length === 0 || starting || (draftState?.release_phase_open ?? true)}
               className="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-40 text-sm"
             >
               {starting ? 'Démarrage...' : 'Démarrer le repêchage'}
             </button>
+            {(draftState?.release_phase_open ?? true) && (
+              <p className="text-xs text-amber-600 mt-2">Ferme d’abord la phase de libération de joueurs ci-dessus.</p>
+            )}
             {draftOrder.length > 0 && (
               <p className="text-xs text-gray-400 mt-2">
                 {eligibleIds(data.poolers, draftOrder, data.nhlMinimumSalary).length} pooler{eligibleIds(data.poolers, draftOrder, data.nhlMinimumSalary).length > 1 ? 's' : ''} éligibles (≥ {fmt(data.nhlMinimumSalary)} d'espace) · visible en direct par les poolers sur /repechage-agents-libres
               </p>
+            )}
+            {startErr && (
+              <p className="text-sm text-red-600 mt-2">{startErr}</p>
             )}
           </div>
         </div>

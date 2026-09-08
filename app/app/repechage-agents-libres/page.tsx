@@ -103,6 +103,7 @@ export default async function AgentsLibresPage() {
       draftState={stateResult.state ?? {
         is_active: false, queue: [],
         turn_started_at: null, turn_duration_seconds: 90, ended_at: null,
+        release_phase_open: true,
       }}
       recentActivity={recentActivity}
       saisonId={saison.id}

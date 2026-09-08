@@ -877,6 +877,12 @@ CREATE TABLE presaison_draft_state (
   turn_started_at TIMESTAMPTZ,
   turn_duration_seconds INTEGER NOT NULL DEFAULT 90,
   ended_at TIMESTAMPTZ,
+  -- Phase "libération de joueurs" (David, 2026-09-08) : tant que true, les poolers peuvent
+  -- libérer n'importe quel joueur signé en libre-service (/repechage-agents-libres). L'admin
+  -- la ferme quand tout le monde a ajusté sa masse salariale — à partir de là, seules les
+  -- recrues de banque restent libérables/activables (submitSelfServiceAction), et le
+  -- repêchage d'agents libres peut démarrer (startPresaisonDraftAction le bloque sinon).
+  release_phase_open BOOLEAN NOT NULL DEFAULT true,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -890,3 +896,9 @@ CREATE POLICY "Admin gère presaison_draft_state" ON presaison_draft_state FOR A
 -- SQL Editor Supabase (staging d'abord) :
 --
 -- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS nhl_minimum_salary INTEGER NOT NULL DEFAULT 850000;
+
+-- Migration 2026-09-08 : phase "libération de joueurs" du repêchage AL pré-saison, distincte
+-- de la phase repêchage elle-même (voir presaison_draft_state ci-dessus) — à exécuter une
+-- seule fois dans le SQL Editor Supabase (staging d'abord) :
+--
+-- ALTER TABLE presaison_draft_state ADD COLUMN IF NOT EXISTS release_phase_open BOOLEAN NOT NULL DEFAULT true;

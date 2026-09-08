@@ -210,23 +210,38 @@ commentables par les poolers ; notifie les poolers abonnés aux push à chaque n
 communication, et les admins à chaque commentaire — distinct du babillard de `/planification`
 ci-dessus). Publication réservée à l'admin, sur `/admin/communaute?tab=babillard`.
 `/repechage-agents-libres` (tableau de bord partagé du repêchage des agents libres pré-saison
-— vue de chaque pooler : masse salariale, alignement dépliable de n'importe qui, badges de
-composition/cap (voir `isOverLimits`/`pendingRecrueActivation` ci-dessous), file
-d'attente/tour/chronomètre indicatif, "Activité récente" (signatures ET libérations
-pré-saison confondues), et un panneau personnel "Mon alignement" à deux onglets : **Actuel**
-— libre-service réel depuis le 2026-09-06 (`repechage-agents-libres/actions.ts`,
-`submitSelfServiceAction`) : basculer un joueur actif↔réserviste, le libérer, activer une
-recrue de sa propre banque — restreint à ses propres joueurs, désactivé dès que
+— vue de chaque pooler : masse salariale, alignement dépliable de n'importe qui, badge
+`isOverLimits`, file d'attente/tour/chronomètre indicatif, "Activité récente" (signatures ET
+libérations pré-saison confondues), et un panneau personnel "Mon alignement" à deux onglets :
+**Actuel** — libre-service réel depuis le 2026-09-06 (`repechage-agents-libres/actions.ts`,
+`submitSelfServiceAction`) : basculer un joueur actif↔réserviste, le libérer, activer/libérer
+une recrue de sa propre banque — restreint à ses propres joueurs, désactivé dès que
 `season_started=true` (place alors à `/gestion-effectifs`) ; et **Bac à sable** — simulation
-locale non sauvegardée, pour tester l'ajout d'un agent libre pas encore signé. La signature
-réelle d'un agent libre (pendant son tour) reste admin-only sur `/admin/init?tab=presaison`
-(`ComplianceCard`, redevenu un suivi en lecture seule le 2026-09-06 — les anciens boutons
-Libérer/Changer type y faisaient double emploi avec le libre-service ; `/admin/transactions`
-reste le filet de sécurité pour agir au nom d'un pooler). Rafraîchissement automatique —
-`AutoReload`, `app/components/AutoReload.tsx`, composant partagé avec `/repechage-recrues`.
-État "à qui le tour" persisté dans `presaison_draft_state` (section 4), remplace l'ancien état
-100% local de `PresaisonManager.tsx` — survit à une navigation de l'admin vers
-`/admin/transactions` (ex: traiter un échange) et retour.
+locale non sauvegardée, pour tester l'ajout d'un agent libre pas encore signé (toujours actif,
+peu importe la phase, aucune écriture serveur). La signature réelle d'un agent libre (pendant
+son tour) reste admin-only sur `/admin/init?tab=presaison` (`ComplianceCard`, redevenu un
+suivi en lecture seule le 2026-09-06 — les anciens boutons Libérer/Changer type y faisaient
+double emploi avec le libre-service ; `/admin/transactions` reste le filet de sécurité pour
+agir au nom d'un pooler). Rafraîchissement automatique — `AutoReload`,
+`app/components/AutoReload.tsx`, composant partagé avec `/repechage-recrues`. État "à qui le
+tour" persisté dans `presaison_draft_state` (section 4), remplace l'ancien état 100% local de
+`PresaisonManager.tsx` — survit à une navigation de l'admin vers `/admin/transactions` (ex:
+traiter un échange) et retour.
+
+**Phase "libération de joueurs" (David, 2026-09-08)** — `presaison_draft_state.
+release_phase_open` (défaut `true`), distincte du repêchage AL lui-même : tant qu'ouverte,
+libérer n'importe quel joueur signé est permis en libre-service comme décrit ci-dessus.
+L'admin la ferme depuis `/admin/init?tab=presaison` (bandeau dédié, `setReleasePhaseAction`)
+une fois que tout le monde a ajusté sa masse salariale — à partir de là, "Libérer des joueurs"
+(vétérans) disparaît de `/repechage-agents-libres`, mais actif↔réserviste et activer/libérer
+une recrue de banque restent toujours permis (jamais gatés par cette phase), tout comme le bac
+à sable. `submitSelfServiceAction` revalide côté serveur (le `player_type` réel en base, pas
+l'état client) : une libération n'est bloquée que si le joueur visé n'est pas une `recrue`.
+"Démarrer le repêchage" (`startPresaisonDraftAction`) reste désactivé — client et serveur —
+tant que la phase est ouverte. Corrige au passage un bug où l'UI affichait "Repêchage terminé"
+dès le premier clic sur "Démarrer" si personne n'avait encore d'espace cap (aucun pooler
+n'avait pourtant eu son tour) — `startPresaisonDraftAction` ne marque plus `ended_at` dans ce
+cas, il retourne une erreur.
 
 **Menu pooler (`Navbar.tsx`) — réorganisé le 2026-08-30, ordre/regroupement affinés le
 2026-09-01 :**

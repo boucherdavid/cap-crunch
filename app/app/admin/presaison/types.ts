@@ -43,4 +43,8 @@ export type DraftState = {
   turn_started_at: string | null
   turn_duration_seconds: number
   ended_at: string | null
+  // Phase "libération de joueurs" — tant que true, le libre-service pooler peut libérer
+  // n'importe quel joueur signé ; une fois fermée, seules les recrues de banque restent
+  // libérables/activables, et le repêchage AL peut démarrer. Voir schema.sql.
+  release_phase_open: boolean
 }

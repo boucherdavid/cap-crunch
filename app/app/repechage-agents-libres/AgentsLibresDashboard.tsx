@@ -21,7 +21,7 @@ type PoolerInfo = {
 }
 type DraftState = {
   is_active: boolean; queue: string[]; turn_started_at: string | null
-  turn_duration_seconds: number; ended_at: string | null
+  turn_duration_seconds: number; ended_at: string | null; release_phase_open: boolean
 }
 type RecentActivity = {
   id: number; kind: 'sign' | 'release'; poolerName: string; playerName: string
@@ -80,7 +80,11 @@ export default function AgentsLibresDashboard({
             {season}
             {draftState.is_active && <span className="ml-2 text-amber-600 font-medium">· En cours</span>}
             {!draftState.is_active && draftState.ended_at && <span className="ml-2 text-green-600 font-medium">· Terminé</span>}
-            {!draftState.is_active && !draftState.ended_at && <span className="ml-2 text-gray-400">· Pas encore commencé</span>}
+            {!draftState.is_active && !draftState.ended_at && (
+              <span className={`ml-2 font-medium ${draftState.release_phase_open ? 'text-amber-600' : 'text-gray-400'}`}>
+                · {draftState.release_phase_open ? 'Phase de libération de joueurs en cours' : 'Pas encore commencé'}
+              </span>
+            )}
           </p>
         </div>
         <AutoReload enabled={draftState.is_active} intervalMs={8000} />
@@ -149,6 +153,7 @@ export default function AgentsLibresDashboard({
             saisonId={saisonId}
             nhlMinimumSalary={nhlMinimumSalary}
             seasonStarted={seasonStarted}
+            releasePhaseOpen={draftState.release_phase_open}
           />
         </div>
       </div>
@@ -224,7 +229,7 @@ function PoolerCard({ pooler, poolCap, isCurrentDrafter }: { pooler: PoolerInfo;
 type RecrueOption = { roster_id: number; player_id: number; name: string; position: string | null; cap_number: number }
 
 function MonAlignement({
-  me, myPooler, poolCap, saisonId, nhlMinimumSalary, seasonStarted,
+  me, myPooler, poolCap, saisonId, nhlMinimumSalary, seasonStarted, releasePhaseOpen,
 }: {
   me: Me
   myPooler: PoolerInfo | null
@@ -232,6 +237,7 @@ function MonAlignement({
   saisonId: number
   nhlMinimumSalary: number
   seasonStarted: boolean
+  releasePhaseOpen: boolean
 }) {
   const [tab, setTab] = useState<'actuel' | 'sandbox'>('actuel')
   const [removed, setRemoved] = useState<Set<number>>(new Set())
@@ -398,7 +404,12 @@ function MonAlignement({
                 {!myPooler.isReadyForDraft && ' Pas encore assez d\'espace pour compléter légalement l\'alignement.'}
               </p>
             )}
-            {!seasonStarted && (
+            {!seasonStarted && !releasePhaseOpen && (
+              <p className="text-xs mb-2 rounded-lg px-2 py-1.5 bg-gray-50 text-gray-500">
+                La phase de libération de joueurs signés est fermée par l&apos;admin — seules les recrues de ta banque restent activables/libérables (ci-dessous).
+              </p>
+            )}
+            {!seasonStarted && releasePhaseOpen && (
               <div className="flex items-center justify-end mb-2">
                 {!releaseMode ? (
                   <button
@@ -416,7 +427,8 @@ function MonAlignement({
 
             <div className="border-t pt-2 space-y-1">
               {myPooler.roster.map(e => {
-                const canAct = !seasonStarted && (e.player_type === 'actif' || e.player_type === 'reserviste')
+                const canToggleType = !seasonStarted && (e.player_type === 'actif' || e.player_type === 'reserviste')
+                const canRelease = canToggleType && releasePhaseOpen
                 const selected = selectedForRelease.has(e.player_id)
                 return (
                   <div key={e.roster_id} className={`flex items-center justify-between text-xs py-1 gap-2 ${selected ? 'bg-red-50 rounded px-1' : ''}`}>
@@ -426,7 +438,7 @@ function MonAlignement({
                       {e.player_type === 'reserviste' && <span className="text-gray-400 ml-1">(rés.)</span>}
                     </span>
                     <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
-                    {canAct && !releaseMode && (
+                    {canToggleType && !releaseMode && (
                       <button
                         onClick={() => handleToggleType(e)}
                         disabled={busy}
@@ -436,7 +448,7 @@ function MonAlignement({
                         {e.player_type === 'actif' ? '→ Rés.' : '→ Actif'}
                       </button>
                     )}
-                    {canAct && releaseMode && (
+                    {canRelease && releaseMode && (
                       <button
                         onClick={() => toggleReleaseSelect(e.player_id)}
                         className={`w-5 h-5 rounded border text-[10px] shrink-0 flex items-center justify-center ${selected ? 'bg-red-500 text-white border-red-500' : 'text-gray-400 hover:text-red-600'}`}

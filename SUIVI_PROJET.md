@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-07
+Derniere mise a jour: 2026-09-08
 
 ## Role du fichier
 
@@ -20,6 +20,45 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-09-08
+
+**[Fix] — "Repêchage terminé" affiché à tort quand personne n'est encore éligible**
+(`admin/presaison/actions.ts`, `admin/presaison/PresaisonManager.tsx`) :
+- `startPresaisonDraftAction` traitait "aucun pooler éligible au démarrage" exactement comme
+  "le repêchage a tourné et s'est terminé normalement" — écrivait `ended_at` dans les deux cas,
+  donc l'UI (admin ET `/repechage-agents-libres`) affichait "Terminé" alors qu'aucun pooler
+  n'avait jamais eu son tour. Repéré par David en staging (tous les poolers "À libérer", clic
+  sur "Démarrer le repêchage" → écran figé sur le message vert).
+- Correctif initial : si la file est vide au démarrage, retourne une erreur explicite sans
+  écrire `ended_at` — mais insuffisant en pratique (aucune action possible ensuite tant que
+  personne n'a libéré de cap), d'où la feature ci-dessous.
+
+**[Feature] — Phase "libération de joueurs" distincte du repêchage AL pré-saison**
+(`schema.sql`, `admin/presaison/types.ts`, `admin/presaison/actions.ts`,
+`admin/presaison/PresaisonManager.tsx`, `repechage-agents-libres/actions.ts`,
+`repechage-agents-libres/AgentsLibresDashboard.tsx`, `repechage-agents-libres/page.tsx`) :
+- Nouvelle colonne `presaison_draft_state.release_phase_open` (BOOLEAN, défaut true) — migration
+  exécutée manuellement par David en staging ET prod (voir `schema.sql`, section migration
+  2026-09-08).
+- Admin (`/admin/init?tab=presaison`) : nouveau bandeau "Phase de libération de joueurs" avec
+  bouton Ouvrir/Fermer (`setReleasePhaseAction`). Le bouton "Démarrer le repêchage" reste
+  désactivé (client ET serveur, défense en profondeur) tant que la phase est ouverte.
+- Pooler (`/repechage-agents-libres`) : badge d'en-tête reflète la phase. Phase ouverte :
+  comportement inchangé (libérer n'importe quel joueur signé, actif↔réserviste, activer/libérer
+  une recrue, bac à sable). Phase fermée : "Libérer des joueurs" (vétérans, actif/réserviste)
+  disparaît ; actif↔réserviste et activer/libérer une recrue de sa banque restent permis (jamais
+  bloqués, quelle que soit la phase) ; bac à sable inchangé (100% local, aucune écriture).
+- `submitSelfServiceAction` (self-service) : garde-fou serveur — pour une action `release`,
+  vérifie le `player_type` courant en base ; bloque seulement si ce n'est pas `recrue` et que
+  `release_phase_open=false`. Ne fait pas confiance au seul état client.
+- Flux résultant : admin règle l'ordre de repêchage → retourne au hub sans devoir démarrer tout
+  de suite → ouvre la phase de libération → poolers ajustent leur masse en libre-service
+  (visible en direct côté admin) → admin ferme la phase → "Démarrer le repêchage" se débloque →
+  repêchage AL tour par tour (signature reste admin-only pendant le tour de chacun, inchangé) →
+  "Démarrer la saison" (hub `/admin/nouvelle-saison`, déjà existant, pas dupliqué).
+- Décision validée avec David (AskUserQuestion) : le bouton "Démarrer le repêchage" est bloqué
+  dur tant que la phase de libération est ouverte, pas seulement laissé à son jugement.
 
 ### 2026-09-07
 
