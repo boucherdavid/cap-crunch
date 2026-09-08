@@ -36,6 +36,12 @@ const fmt = (n: number) =>
   new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 const DASH = '—'
 
+// "$X restant" n'a de sens que si l'espace est positif — un négatif écrit "-49 050 335 $
+// restant" se lit mal (David, 2026-09-08). Au-delà du cap, on nomme la chose : un surplus/
+// dépassement, avec la valeur absolue.
+const remainLabel = (n: number) => (n >= 0 ? 'Espace restant' : 'Dépassement')
+const fmtRemainLine = (n: number) => (n >= 0 ? `${fmt(n)} restant` : `${fmt(Math.abs(n))} en surplus`)
+
 function posBucket(position: string | null): 'forward' | 'defense' | 'goalie' {
   const pos = (position ?? '').toUpperCase()
   if (pos.includes('G')) return 'goalie'
@@ -220,7 +226,7 @@ function PoolerCard({ pooler, poolCap, isCurrentDrafter }: { pooler: PoolerInfo;
       <div className="w-full bg-gray-100 rounded-full h-1.5 mb-1">
         <div className="h-1.5 rounded-full bg-blue-500" style={{ width: `${pct}%` }} />
       </div>
-      <div className={`text-xs font-medium mb-2 ${remain < 15_000_000 ? 'text-amber-600' : 'text-emerald-600'}`}>{fmt(remain)} restant</div>
+      <div className={`text-xs font-medium mb-2 ${remain < 0 ? 'text-red-600' : remain < 15_000_000 ? 'text-amber-600' : 'text-emerald-600'}`}>{fmtRemainLine(remain)}</div>
       <div className="flex gap-1.5 flex-wrap mb-2">
         <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ${fOk ? 'text-emerald-600 border-emerald-200' : 'text-red-600 border-red-200'}`}>{pooler.counts.forward}F</span>
         <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ${dOk ? 'text-emerald-600 border-emerald-200' : 'text-red-600 border-red-200'}`}>{pooler.counts.defense}D</span>
@@ -476,8 +482,10 @@ function MonAlignement({
               <span className="font-medium">{fmt(myPooler.capUsed)}</span>
             </div>
             <div className="flex justify-between text-sm mb-3">
-              <span className="text-gray-500">Espace restant</span>
-              <span className="font-medium text-emerald-600">{fmt(poolCap - myPooler.capUsed)}</span>
+              <span className="text-gray-500">{remainLabel(poolCap - myPooler.capUsed)}</span>
+              <span className={`font-medium ${poolCap - myPooler.capUsed >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {fmt(Math.abs(poolCap - myPooler.capUsed))}
+              </span>
             </div>
             {myPooler.isOverLimits && (
               <p className="text-xs mb-3 rounded-lg px-2 py-1.5 bg-red-50 text-red-600">
@@ -699,8 +707,8 @@ function MonAlignement({
                 <span className="font-medium">{fmt(simulatedUsed)}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-gray-500">Espace restant simulé</span>
-                <span className={`font-medium ${simulatedRemain < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{fmt(simulatedRemain)}</span>
+                <span className="text-gray-500">{simulatedRemain >= 0 ? 'Espace restant simulé' : 'Dépassement simulé'}</span>
+                <span className={`font-medium ${simulatedRemain < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{fmt(Math.abs(simulatedRemain))}</span>
               </div>
               {touched && (
                 <p className={`text-xs mt-1 rounded-lg px-2 py-1.5 ${simulatedRemain < 0 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
