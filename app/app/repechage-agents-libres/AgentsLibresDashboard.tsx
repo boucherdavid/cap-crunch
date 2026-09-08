@@ -33,6 +33,30 @@ const fmt = (n: number) =>
   new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 const DASH = '—'
 
+function posBucket(position: string | null): 'forward' | 'defense' | 'goalie' {
+  const pos = (position ?? '').toUpperCase()
+  if (pos.includes('G')) return 'goalie'
+  if (pos.includes('D')) return 'defense'
+  return 'forward'
+}
+
+// Regroupe un alignement par position (Attaquants/Défenseurs/Gardiens/Réservistes — même
+// découpage que ComplianceCard côté admin) et trie chaque groupe par salaire décroissant, pour
+// faciliter le suivi visuel (David, 2026-09-08). Groupes vides omis.
+function groupRosterByPosition<T extends { position: string | null; cap_number: number; player_type: string }>(
+  roster: T[],
+): { label: string; entries: T[] }[] {
+  const groups: { label: string; match: (e: T) => boolean }[] = [
+    { label: 'Attaquants', match: e => e.player_type !== 'reserviste' && posBucket(e.position) === 'forward' },
+    { label: 'Défenseurs', match: e => e.player_type !== 'reserviste' && posBucket(e.position) === 'defense' },
+    { label: 'Gardiens', match: e => e.player_type !== 'reserviste' && posBucket(e.position) === 'goalie' },
+    { label: 'Réservistes', match: e => e.player_type === 'reserviste' },
+  ]
+  return groups
+    .map(g => ({ label: g.label, entries: roster.filter(g.match).sort((a, b) => b.cap_number - a.cap_number) }))
+    .filter(g => g.entries.length > 0)
+}
+
 function fmtDateTime(iso: string) {
   return new Date(iso).toLocaleString('fr-CA', {
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'America/Toronto',
@@ -207,17 +231,23 @@ function PoolerCard({ pooler, poolCap, isCurrentDrafter }: { pooler: PoolerInfo;
         {open ? `Masquer l'alignement de ${firstName} ▴` : `Voir l'alignement de ${firstName} ▾`}
       </button>
       {open && (
-        <div className="mt-2 pt-2 border-t space-y-0.5">
+        <div className="mt-2 pt-2 border-t space-y-2">
           {pooler.roster.length === 0 ? (
             <p className="text-xs text-gray-400">Aucun joueur.</p>
-          ) : pooler.roster.map(e => (
-            <div key={e.roster_id} className="flex justify-between text-xs text-gray-600 py-0.5">
-              <span>
-                <span className="text-gray-400 mr-1">{e.position ?? DASH}</span>
-                {e.playerName}
-                {e.player_type === 'reserviste' && <span className="text-gray-400 ml-1">(rés.)</span>}
-              </span>
-              <span className="text-gray-500">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
+          ) : groupRosterByPosition(pooler.roster).map(group => (
+            <div key={group.label}>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{group.label}</p>
+              <div className="space-y-0.5">
+                {group.entries.map(e => (
+                  <div key={e.roster_id} className="flex justify-between text-xs text-gray-600 py-0.5">
+                    <span>
+                      <span className="text-gray-400 mr-1">{e.position ?? DASH}</span>
+                      {e.playerName}
+                    </span>
+                    <span className="text-gray-500">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
@@ -439,40 +469,46 @@ function MonAlignement({
               </div>
             )}
 
-            <div className="border-t pt-2 space-y-1">
-              {myPooler.roster.map(e => {
-                const canToggleType = !seasonStarted && (e.player_type === 'actif' || e.player_type === 'reserviste')
-                const canRelease = canToggleType && releasePhaseOpen
-                const selected = selectedForRelease.has(e.player_id)
-                return (
-                  <div key={e.roster_id} className={`flex items-center justify-between text-xs py-1 gap-2 ${selected ? 'bg-red-50 rounded px-1' : ''}`}>
-                    <span className="flex-1 text-gray-600">
-                      <span className="text-gray-400 mr-1">{e.position ?? DASH}</span>
-                      {e.playerName}
-                      {e.player_type === 'reserviste' && <span className="text-gray-400 ml-1">(rés.)</span>}
-                    </span>
-                    <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
-                    {canToggleType && !releaseMode && (
-                      <button
-                        onClick={() => handleToggleType(e)}
-                        disabled={busy}
-                        title={e.player_type === 'actif' ? 'Mettre en réserve' : 'Activer'}
-                        className="text-[10px] px-1.5 py-0.5 border rounded text-gray-500 hover:text-blue-600 hover:border-blue-300 shrink-0 disabled:opacity-40"
-                      >
-                        {e.player_type === 'actif' ? '→ Rés.' : '→ Actif'}
-                      </button>
-                    )}
-                    {canRelease && releaseMode && (
-                      <button
-                        onClick={() => toggleReleaseSelect(e.player_id)}
-                        className={`w-5 h-5 rounded border text-[10px] shrink-0 flex items-center justify-center ${selected ? 'bg-red-500 text-white border-red-500' : 'text-gray-400 hover:text-red-600'}`}
-                      >
-                        {selected ? '✓' : ''}
-                      </button>
-                    )}
+            <div className="border-t pt-2 space-y-2">
+              {groupRosterByPosition(myPooler.roster).map(group => (
+                <div key={group.label}>
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{group.label}</p>
+                  <div className="space-y-1">
+                    {group.entries.map(e => {
+                      const canToggleType = !seasonStarted && (e.player_type === 'actif' || e.player_type === 'reserviste')
+                      const canRelease = canToggleType && releasePhaseOpen
+                      const selected = selectedForRelease.has(e.player_id)
+                      return (
+                        <div key={e.roster_id} className={`flex items-center justify-between text-xs py-1 gap-2 ${selected ? 'bg-red-50 rounded px-1' : ''}`}>
+                          <span className="flex-1 text-gray-600">
+                            <span className="text-gray-400 mr-1">{e.position ?? DASH}</span>
+                            {e.playerName}
+                          </span>
+                          <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
+                          {canToggleType && !releaseMode && (
+                            <button
+                              onClick={() => handleToggleType(e)}
+                              disabled={busy}
+                              title={e.player_type === 'actif' ? 'Mettre en réserve' : 'Activer'}
+                              className="text-[10px] px-1.5 py-0.5 border rounded text-gray-500 hover:text-blue-600 hover:border-blue-300 shrink-0 disabled:opacity-40"
+                            >
+                              {e.player_type === 'actif' ? '→ Rés.' : '→ Actif'}
+                            </button>
+                          )}
+                          {canRelease && releaseMode && (
+                            <button
+                              onClick={() => toggleReleaseSelect(e.player_id)}
+                              className={`w-5 h-5 rounded border text-[10px] shrink-0 flex items-center justify-center ${selected ? 'bg-red-500 text-white border-red-500' : 'text-gray-400 hover:text-red-600'}`}
+                            >
+                              {selected ? '✓' : ''}
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
-                )
-              })}
+                </div>
+              ))}
             </div>
 
             {releaseMode && (
@@ -549,16 +585,23 @@ function MonAlignement({
         ) : (
           <>
             <p className="text-xs text-gray-400 mb-3">Ajoute ou retire librement pour tester. Rien n&apos;est sauvegardé automatiquement — un retrait peut être soumis pour vrai ci-dessous, un ajout reste toujours une simulation.</p>
-            <div className="space-y-1 mb-2">
-              {myPooler.roster.map(e => (
-                <div key={e.roster_id} className={`flex items-center justify-between text-xs py-1 ${removed.has(e.player_id) ? 'opacity-40 line-through' : 'text-gray-600'}`}>
-                  <span><span className="text-gray-400 mr-1">{e.position ?? DASH}</span>{e.playerName}</span>
-                  <span className="flex items-center gap-2">
-                    <span>{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
-                    <button onClick={() => toggleRemove(e.player_id)} className="w-5 h-5 rounded border text-gray-400 hover:text-red-600 text-[10px]">
-                      {removed.has(e.player_id) ? '↺' : '✕'}
-                    </button>
-                  </span>
+            <div className="space-y-2 mb-2">
+              {groupRosterByPosition(myPooler.roster).map(group => (
+                <div key={group.label}>
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{group.label}</p>
+                  <div className="space-y-1">
+                    {group.entries.map(e => (
+                      <div key={e.roster_id} className={`flex items-center justify-between text-xs py-1 ${removed.has(e.player_id) ? 'opacity-40 line-through' : 'text-gray-600'}`}>
+                        <span><span className="text-gray-400 mr-1">{e.position ?? DASH}</span>{e.playerName}</span>
+                        <span className="flex items-center gap-2">
+                          <span>{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
+                          <button onClick={() => toggleRemove(e.player_id)} className="w-5 h-5 rounded border text-gray-400 hover:text-red-600 text-[10px]">
+                            {removed.has(e.player_id) ? '↺' : '✕'}
+                          </button>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
               {added.map(fa => (

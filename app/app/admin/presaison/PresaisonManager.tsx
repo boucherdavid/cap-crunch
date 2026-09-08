@@ -40,12 +40,14 @@ function ComplianceCard({
 }) {
   const [expanded, setExpanded] = useState(!!startExpanded)
 
-  // Groupes par position/type
-  const forwards   = pooler.roster.filter(e => e.player_type === 'actif' && posBucket(e.position) === 'forward')
-  const defense    = pooler.roster.filter(e => e.player_type === 'actif' && posBucket(e.position) === 'defense')
-  const goalies    = pooler.roster.filter(e => e.player_type === 'actif' && posBucket(e.position) === 'goalie')
-  const reservistes = pooler.roster.filter(e => e.player_type === 'reserviste')
-  const ltir       = pooler.roster.filter(e => e.player_type === 'ltir')
+  // Groupes par position/type, triés par salaire décroissant dans chaque groupe (David,
+  // 2026-09-08) — facilite le repérage visuel des plus gros contrats à libérer en premier.
+  const byCapDesc = (a: RosterEntry, b: RosterEntry) => b.cap_number - a.cap_number
+  const forwards   = pooler.roster.filter(e => e.player_type === 'actif' && posBucket(e.position) === 'forward').sort(byCapDesc)
+  const defense    = pooler.roster.filter(e => e.player_type === 'actif' && posBucket(e.position) === 'defense').sort(byCapDesc)
+  const goalies    = pooler.roster.filter(e => e.player_type === 'actif' && posBucket(e.position) === 'goalie').sort(byCapDesc)
+  const reservistes = pooler.roster.filter(e => e.player_type === 'reserviste').sort(byCapDesc)
+  const ltir       = pooler.roster.filter(e => e.player_type === 'ltir').sort(byCapDesc)
 
   const renderGroup = (title: string, entries: RosterEntry[]) => {
     if (entries.length === 0) return null

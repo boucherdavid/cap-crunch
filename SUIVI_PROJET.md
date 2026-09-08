@@ -21,6 +21,26 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-08 (suite 2)
+
+**[UX] — Alignements groupés par position et triés par salaire**
+(`repechage-agents-libres/AgentsLibresDashboard.tsx`, `admin/presaison/PresaisonManager.tsx`) :
+- David trouvait la liste plate des joueurs difficile à suivre pour repérer qui libérer.
+  `groupRosterByPosition()` (nouveau helper module-level dans `AgentsLibresDashboard.tsx`) —
+  regroupe Attaquants/Défenseurs/Gardiens/Réservistes (même découpage que `ComplianceCard`
+  côté admin) et trie chaque groupe par `cap_number` décroissant. Appliqué à `PoolerCard`
+  (alignement de n'importe qui, déplié), et aux deux onglets de `MonAlignement` (Actuel —
+  garde les boutons actif/réserviste et la sélection de libération par ligne ; Bac à sable —
+  garde le toggle ✕/↺ par ligne).
+- `ComplianceCard` (admin) groupait déjà par position mais sans trier par salaire dans chaque
+  groupe — ajouté (`byCapDesc`) pour rester cohérent entre les deux pages.
+- Clarifié en aparté : l'interface admin (`/admin/init?tab=presaison`) et le tableau de bord
+  partagé (`/repechage-agents-libres`) sont deux pages distinctes — la première est en lecture
+  seule pour les rosters (depuis le 2026-09-06) et ne gère que les contrôles admin (ordre,
+  phase, tour de repêchage, tests). Pour gérer son **propre** alignement, l'admin doit passer
+  par `/repechage-agents-libres` comme n'importe quel pooler — pas d'action self-service
+  possible depuis la page admin, même pour ses propres joueurs.
+
 ### 2026-09-08
 
 **[Fix] — "Repêchage terminé" affiché à tort quand personne n'est encore éligible**
