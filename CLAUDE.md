@@ -260,6 +260,24 @@ si le joueur visé n'est pas une `recrue`. "Démarrer le repêchage"
 (`startPresaisonDraftAction`) reste désactivé — client et serveur — tant que la phase est
 ouverte.
 
+**Transition entre les tours du repêchage AL — toujours manuelle** (David, 2026-09-08) :
+le chrono est purement indicatif, rien ne se passe automatiquement à 00:00 — l'admin doit
+cliquer "Passer" (`advancePresaisonQueueAction`, remet le pooler courant en fin de file s'il
+reste éligible) ou attendre une signature réussie (même effet). Volontairement manuel : un
+auto-passage à 0 risquerait de sauter un pooler à cause d'un simple délai réseau. Le panneau
+admin (`AdminPanel.tsx`, `repechage-agents-libres`) s'ouvre désormais automatiquement dès
+qu'un tour est actif au chargement de la page (`expanded` initialisé à `draftState.is_active`)
+— avant, il fallait deviner qu'il fallait le déplier pour trouver le formulaire de signature.
+
+**Pause du chrono (David, 2026-09-08)** — `pausePresaisonTimerAction`/
+`resumePresaisonTimerAction` (`admin/presaison/actions.ts`), sans nouvelle colonne :
+`turn_started_at=null` pendant que `is_active=true` sert de signal "en pause", avec
+`turn_duration_seconds` gelé au nombre de secondes qui restaient. Reprendre remet juste
+`turn_started_at=now()`. Affiché dans les 3 endroits qui montrent le chrono (`AdminPanel.tsx`,
+`AgentsLibresDashboard.tsx` — badge "⏸ En pause" pour tous, pas juste l'admin —, et
+`PresaisonManager.tsx`). `adjustPresaisonTimerAction` a aussi un bouton "-30s" en plus de
+"+30s" (la fonction acceptait déjà un delta négatif, seul le bouton manquait).
+
 **Déclaration "mon alignement est prêt" (David, 2026-09-08)** — table `presaison_pooler_ready`
 (`pool_season_id, pooler_id, ready_at` — absence de ligne ou `ready_at` NULL = pas prêt).
 Chaque pooler confirme lui-même, depuis `/repechage-agents-libres` (bouton dans "Mon

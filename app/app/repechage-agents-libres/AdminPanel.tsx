@@ -7,6 +7,7 @@ import {
   saveDraftOrderAction, initDraftOrderFromStandingsAction, setReleasePhaseAction,
   startPresaisonDraftAction, advancePresaisonQueueAction, endPresaisonDraftAction,
   adjustPresaisonTimerAction, resetPresaisonTimerAction, resetPresaisonDraftAction,
+  pausePresaisonTimerAction, resumePresaisonTimerAction,
 } from '../admin/presaison/actions'
 import type { PoolerCapInfo, DraftState } from '../admin/presaison/types'
 
@@ -30,7 +31,9 @@ export default function AdminPanel({
   draftState: DraftState
   nhlMinimumSalary: number
 }) {
-  const [expanded, setExpanded] = useState(false)
+  // Replié par défaut, sauf si un tour est déjà en cours au chargement (David, 2026-09-08) —
+  // sinon l'admin ne voit pas où entrer la signature d'un agent libre pour le pooler courant.
+  const [expanded, setExpanded] = useState(draftState.is_active)
   const [draftOrder, setDraftOrder] = useState(initialDraftOrder)
   const [savingOrder, setSavingOrder] = useState(false)
   const [orderMsg, setOrderMsg] = useState<string | null>(null)
@@ -47,9 +50,12 @@ export default function AdminPanel({
   const currentPoolerId = draftState.queue[0] ?? null
   const currentPooler = poolers.find(p => p.id === currentPoolerId) ?? null
   const nextPoolerName = draftState.queue[1] ? (poolers.find(p => p.id === draftState.queue[1])?.name ?? '?') : null
+  // turn_started_at=null pendant que is_active=true = chrono en pause — turn_duration_seconds
+  // tient alors le nombre de secondes gelées au moment de la pause (pausePresaisonTimerAction).
+  const isPaused = isDraftActive && draftState.turn_started_at === null
   const remainingSeconds = draftState.turn_started_at
     ? Math.max(0, draftState.turn_duration_seconds - Math.floor((now - new Date(draftState.turn_started_at).getTime()) / 1000))
-    : null
+    : isPaused ? draftState.turn_duration_seconds : null
   const eligibleCount = draftOrder.filter(id => {
     const p = poolers.find(pp => pp.id === id)
     return p !== undefined && p.capSpace >= nhlMinimumSalary
@@ -123,6 +129,13 @@ export default function AdminPanel({
   const handleTimerReset = async () => {
     try {
       await resetPresaisonTimerAction(saisonId)
+      window.location.reload()
+    } catch { /* chrono inchangé, l'admin peut réessayer */ }
+  }
+  const handlePauseToggle = async () => {
+    try {
+      if (isPaused) await resumePresaisonTimerAction(saisonId)
+      else await pausePresaisonTimerAction(saisonId)
       window.location.reload()
     } catch { /* chrono inchangé, l'admin peut réessayer */ }
   }
@@ -228,13 +241,18 @@ export default function AdminPanel({
                 <div>
                   <h3 className="font-semibold text-gray-800 text-sm">
                     Tour de : <span className="text-blue-700">{currentPooler.name}</span>
-                    {remainingSeconds !== null && (
+                    {isPaused && <span className="ml-2 text-xs font-medium align-middle text-amber-600">⏸ En pause</span>}
+                    {remainingSeconds !== null && !isPaused && (
                       <span className={`ml-2 text-xs font-mono align-middle ${remainingSeconds <= 10 ? 'text-red-600' : remainingSeconds <= 30 ? 'text-amber-600' : 'text-gray-400'}`}>
                         ⏱ {String(Math.floor(remainingSeconds / 60)).padStart(2, '0')}:{String(remainingSeconds % 60).padStart(2, '0')}
                       </span>
                     )}
                   </h3>
                   <div className="flex items-center gap-2 mt-1.5">
+                    <button onClick={handlePauseToggle} className="text-xs text-gray-400 hover:text-gray-700 border rounded px-2 py-0.5">
+                      {isPaused ? '▶ Reprendre' : '⏸ Pause'}
+                    </button>
+                    <button onClick={() => handleTimerAdjust(-30)} className="text-xs text-gray-400 hover:text-gray-700 border rounded px-2 py-0.5">-30s</button>
                     <button onClick={() => handleTimerAdjust(30)} className="text-xs text-gray-400 hover:text-gray-700 border rounded px-2 py-0.5">+30s</button>
                     <button onClick={handleTimerReset} className="text-xs text-gray-400 hover:text-gray-700 border rounded px-2 py-0.5">↺ Réinitialiser le chrono</button>
                   </div>

@@ -678,3 +678,56 @@ export async function resetPresaisonTimerAction(saisonId: number): Promise<{ err
   revalidatePath('/repechage-agents-libres')
   return loadPresaisonDraftStateAction(saisonId)
 }
+
+// Pause/Reprendre le chrono du tour en cours (David, 2026-09-08) — aucune colonne ajoutée :
+// `turn_started_at=null` pendant que `is_active=true` sert de signal "en pause", avec
+// `turn_duration_seconds` gelé au nombre de secondes qui restaient au moment de la pause.
+// Reprendre remet juste `turn_started_at=now()` — la durée gelée devient la nouvelle base de
+// calcul du décompte, exactement comme au tout début d'un tour. Sans lien avec "Passer" —
+// la file n'avance pas, seul le chrono s'arrête.
+export async function pausePresaisonTimerAction(saisonId: number): Promise<{ error?: string; state?: DraftState }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  if (!me?.is_admin) return { error: 'Accès refusé.' }
+
+  const { data: current } = await supabase
+    .from('presaison_draft_state')
+    .select('turn_started_at, turn_duration_seconds')
+    .eq('pool_season_id', saisonId)
+    .maybeSingle()
+  if (!current?.turn_started_at) return loadPresaisonDraftStateAction(saisonId)
+
+  const elapsed = Math.floor((Date.now() - new Date(current.turn_started_at).getTime()) / 1000)
+  const remaining = Math.max(0, current.turn_duration_seconds - elapsed)
+
+  const { error } = await supabase
+    .from('presaison_draft_state')
+    .update({ turn_started_at: null, turn_duration_seconds: remaining, updated_at: new Date().toISOString() })
+    .eq('pool_season_id', saisonId)
+  if (error) return { error: error.message }
+
+  revalidatePath('/repechage-agents-libres')
+  return loadPresaisonDraftStateAction(saisonId)
+}
+
+export async function resumePresaisonTimerAction(saisonId: number): Promise<{ error?: string; state?: DraftState }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  if (!me?.is_admin) return { error: 'Accès refusé.' }
+
+  const nowIso = new Date().toISOString()
+  const { error } = await supabase
+    .from('presaison_draft_state')
+    .update({ turn_started_at: nowIso, updated_at: nowIso })
+    .eq('pool_season_id', saisonId)
+  if (error) return { error: error.message }
+
+  revalidatePath('/repechage-agents-libres')
+  return loadPresaisonDraftStateAction(saisonId)
+}

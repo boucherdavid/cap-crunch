@@ -99,9 +99,12 @@ export default function AgentsLibresDashboard({
 
   const currentPoolerId = draftState.queue[0] ?? null
   const currentPoolerName = poolers.find(p => p.id === currentPoolerId)?.name ?? null
+  // turn_started_at=null pendant que is_active=true = chrono en pause (David, 2026-09-08) —
+  // turn_duration_seconds tient alors le nombre de secondes gelées au moment de la pause.
+  const isPaused = draftState.is_active && draftState.turn_started_at === null
   const remainingSeconds = draftState.turn_started_at
     ? Math.max(0, draftState.turn_duration_seconds - Math.floor((now - new Date(draftState.turn_started_at).getTime()) / 1000))
-    : null
+    : isPaused ? draftState.turn_duration_seconds : null
 
   const myPooler = poolers.find(p => p.id === me.id) ?? null
 
@@ -140,7 +143,8 @@ export default function AgentsLibresDashboard({
           <div>
             <p className="text-sm text-gray-700">
               Au tour de : <span className="font-semibold text-blue-700">{currentPoolerName}</span>
-              {remainingSeconds !== null && (
+              {isPaused && <span className="ml-3 text-sm font-medium text-amber-600">⏸ En pause</span>}
+              {remainingSeconds !== null && !isPaused && (
                 <span className={`ml-3 text-sm font-mono ${
                   remainingSeconds <= 10 ? 'text-red-600' : remainingSeconds <= 30 ? 'text-amber-600' : 'text-gray-400'
                 }`}>

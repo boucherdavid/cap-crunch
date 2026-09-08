@@ -6,7 +6,7 @@ import {
   resetLtirToActifAction, demoteSurplusToReserveAction, resetPresaisonDraftAction,
   loadPresaisonDraftStateAction, startPresaisonDraftAction, advancePresaisonQueueAction,
   endPresaisonDraftAction, adjustPresaisonTimerAction, resetPresaisonTimerAction,
-  setReleasePhaseAction,
+  setReleasePhaseAction, pausePresaisonTimerAction, resumePresaisonTimerAction,
 } from './actions'
 import { DEFAULT_NHL_MINIMUM_SALARY, type PoolerCapInfo, type RosterEntry, type DraftState } from './types'
 import DraftOrderEditor from './DraftOrderEditor'
@@ -305,6 +305,13 @@ export default function PresaisonManager({
     if (result.state) setDraftState(result.state)
   }
 
+  const handlePauseToggle = async () => {
+    const result = isPaused
+      ? await resumePresaisonTimerAction(saisonId)
+      : await pausePresaisonTimerAction(saisonId)
+    if (result.state) setDraftState(result.state)
+  }
+
   const handleSaveOrder = async () => {
     setSavingOrder(true)
     const result = await saveDraftOrderAction(saisonId, draftOrder)
@@ -336,9 +343,12 @@ export default function PresaisonManager({
   const currentPoolerId = queue[0] ?? null
   const currentPooler = data.poolers.find(p => p.id === currentPoolerId) ?? null
   const nextPoolerName = queue[1] ? (data.poolers.find(p => p.id === queue[1])?.name ?? '?') : null
+  // turn_started_at=null pendant que is_active=true = chrono en pause — voir AdminPanel.tsx
+  // (repechage-agents-libres), même mécanique, même presaison_draft_state.
+  const isPaused = isDraftActive && draftState?.turn_started_at === null
   const remainingSeconds = draftState?.turn_started_at
     ? Math.max(0, draftState.turn_duration_seconds - Math.floor((now - new Date(draftState.turn_started_at).getTime()) / 1000))
-    : null
+    : isPaused ? (draftState?.turn_duration_seconds ?? null) : null
 
   const ltirCount = data.poolers.reduce(
     (sum, p) => sum + p.roster.filter(e => e.player_type === 'ltir').length, 0,
@@ -553,7 +563,8 @@ export default function PresaisonManager({
             <div>
               <h2 className="font-semibold text-gray-800 text-lg">
                 Tour de : <span className="text-blue-700">{currentPooler.name}</span>
-                {remainingSeconds !== null && (
+                {isPaused && <span className="ml-3 text-sm font-medium align-middle text-amber-600">⏸ En pause</span>}
+                {remainingSeconds !== null && !isPaused && (
                   <span className={`ml-3 text-sm font-mono align-middle ${
                     remainingSeconds <= 10 ? 'text-red-600' : remainingSeconds <= 30 ? 'text-amber-600' : 'text-gray-400'
                   }`}>
@@ -565,6 +576,12 @@ export default function PresaisonManager({
                 File : {queue.map(id => data.poolers.find(p => p.id === id)?.name ?? id).join(' → ')}
               </p>
               <div className="flex items-center gap-2 mt-1.5">
+                <button onClick={handlePauseToggle} className="text-xs text-gray-400 hover:text-gray-700 border rounded px-2 py-0.5">
+                  {isPaused ? '▶ Reprendre' : '⏸ Pause'}
+                </button>
+                <button onClick={() => handleTimerAdjust(-30)} className="text-xs text-gray-400 hover:text-gray-700 border rounded px-2 py-0.5">
+                  -30s
+                </button>
                 <button onClick={() => handleTimerAdjust(30)} className="text-xs text-gray-400 hover:text-gray-700 border rounded px-2 py-0.5">
                   +30s
                 </button>

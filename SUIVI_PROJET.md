@@ -21,6 +21,26 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-08 (suite 10)
+
+**[Feature] — Panneau admin auto-ouvert pendant un tour ; pause/reprise du chrono**
+(`admin/presaison/actions.ts`, `repechage-agents-libres/AdminPanel.tsx`,
+`AgentsLibresDashboard.tsx`, `admin/presaison/PresaisonManager.tsx`) :
+- David a testé le repêchage AL en direct : (1) pas clair où entrer la signature d'un pooler
+  (le panneau admin restait replié par défaut même pendant un tour actif) ; (2) besoin de
+  mettre le chrono en pause au besoin ; (3) question sur comment se fait la transition entre
+  les tours.
+- Panneau admin (`AdminPanel.tsx`) : `expanded` initialisé à `draftState.is_active` — s'ouvre
+  automatiquement dès qu'un tour est déjà en cours au chargement.
+- Nouvelles actions `pausePresaisonTimerAction`/`resumePresaisonTimerAction` — sans nouvelle
+  colonne, réutilise `turn_started_at=null` (pendant que `is_active=true`) comme signal
+  "en pause", `turn_duration_seconds` gelé au temps restant. Badge "⏸ En pause" affiché dans
+  les 3 endroits qui montrent le chrono, y compris côté pooler (pas juste admin). Bouton
+  "-30s" ajouté en plus de "+30s" (la fonction acceptait déjà un delta négatif).
+- Transition entre tours : confirmé à David que c'est **volontairement manuelle** — le chrono
+  est indicatif, rien n'avance automatiquement à 00:00, l'admin clique "Passer" ou une
+  signature réussie fait avancer la file. Pas de changement demandé là, juste clarifié.
+
 ### 2026-09-08 (suite 9)
 
 **[UX] — Libération admin en sélection multiple, plus de confirm() par joueur**
