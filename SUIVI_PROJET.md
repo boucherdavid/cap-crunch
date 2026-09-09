@@ -21,6 +21,29 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-09 (suite 3)
+
+**[Fix] — AutoReload coupait une sélection de libération en cours dans "Mon alignement"**
+(`app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`) :
+- David (connecté comme la pooler Paule, staging) : cochait des joueurs à libérer sur
+  `/repechage-agents-libres`, cliquait "Libérer", et l'écran revenait systématiquement aux
+  boutons "→ Rés." sans erreur — comme si la sélection n'avait jamais le temps de se faire.
+- Fausses pistes éliminées avant de trouver la vraie cause : le blocage `season_started`/
+  `gestion_effectifs_ouvert` (n'affecte jamais l'admin, sans rapport ici), la phase de
+  libération fermée en prod (n'a rien à voir, le test se passait en staging où elle était déjà
+  ouverte), une anomalie de données ou un bug de la requête serveur elle-même (testée
+  directement en base — fonctionne parfaitement ; a d'ailleurs réellement libéré Eichel, Jack
+  chez Paule en staging au passage).
+- Vraie cause : `AutoReload` (rechargement complet `window.location.reload()` toutes les 8s,
+  actif tant que `draftState.is_active`) remettait à zéro l'état local `releaseMode` de
+  `MonAlignement` avant que le pooler ait fini de cocher ses joueurs et confirmer — sélection
+  en cours coupée net par un rechargement de page en arrière-plan.
+- Fix : `releaseMode` remonté au parent via un callback (`onReleaseSelectionChange`),
+  `AutoReload` mis en pause tant qu'une sélection de libération est active
+  (`enabled={draftState.is_active && !releaseSelectionActive}`).
+- Validé par David en staging, puis promu vers `main` (déploiements staging + prod confirmés
+  au vert via `gh api .../commits/<sha>/status`).
+
 ### 2026-09-09 (suite 2)
 
 **[Fix] — Panneau "Historique des mouvements" affichait des saisons passées**
