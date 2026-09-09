@@ -884,6 +884,12 @@ CREATE TABLE presaison_draft_state (
   -- seules les recrues de banque restent libérables/activables (submitSelfServiceAction), et
   -- le repêchage d'agents libres peut démarrer (startPresaisonDraftAction le bloque sinon).
   release_phase_open BOOLEAN NOT NULL DEFAULT false,
+  -- Comportement de "Passer" (David, 2026-09-08), choisi par l'admin avant de démarrer le
+  -- repêchage (voir l'éditeur d'ordre) — false (défaut) : retour en fin de file, le pooler
+  -- attend que tout le monde ait joué avant de rejouer. true : repasse juste après le
+  -- pooler suivant, sans attendre tout le monde. Ne s'applique jamais à une signature
+  -- réussie, qui va toujours en fin de file peu importe ce réglage (advancePresaisonQueueAction).
+  pass_skip_one BOOLEAN NOT NULL DEFAULT false,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -945,3 +951,9 @@ CREATE POLICY "Admin gère presaison_pooler_ready" ON presaison_pooler_ready FOR
 -- CREATE POLICY "Lecture publique presaison_pooler_ready" ON presaison_pooler_ready FOR SELECT USING (true);
 -- CREATE POLICY "Admin gère presaison_pooler_ready" ON presaison_pooler_ready FOR ALL
 --   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- Migration 2026-09-08 (suite 3) : comportement de "Passer" choisi par l'admin (voir
+-- presaison_draft_state ci-dessus) — à exécuter une seule fois dans le SQL Editor Supabase
+-- (staging d'abord, puis prod) :
+--
+-- ALTER TABLE presaison_draft_state ADD COLUMN IF NOT EXISTS pass_skip_one BOOLEAN NOT NULL DEFAULT false;

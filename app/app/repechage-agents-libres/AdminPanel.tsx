@@ -7,7 +7,7 @@ import {
   saveDraftOrderAction, initDraftOrderFromStandingsAction, setReleasePhaseAction,
   startPresaisonDraftAction, advancePresaisonQueueAction, endPresaisonDraftAction,
   adjustPresaisonTimerAction, resetPresaisonTimerAction, resetPresaisonDraftAction,
-  pausePresaisonTimerAction, resumePresaisonTimerAction,
+  pausePresaisonTimerAction, resumePresaisonTimerAction, setPassModeAction,
 } from '../admin/presaison/actions'
 import type { PoolerCapInfo, DraftState } from '../admin/presaison/types'
 
@@ -43,6 +43,7 @@ export default function AdminPanel({
   const [togglingReleasePhase, setTogglingReleasePhase] = useState(false)
   const [resettingDraft, setResettingDraft] = useState(false)
   const [resetDraftMsg, setResetDraftMsg] = useState<string | null>(null)
+  const [togglingPassMode, setTogglingPassMode] = useState(false)
   const [now] = useState(() => Date.now())
 
   const isDraftActive = draftState.is_active
@@ -95,6 +96,18 @@ export default function AdminPanel({
     }
   }
 
+  // Comportement de "Passer" (David, 2026-09-08) — choisi avant de démarrer le repêchage,
+  // voir advancePresaisonQueueAction pour l'effet réel.
+  const handleSetPassMode = async (skipOne: boolean) => {
+    setTogglingPassMode(true)
+    try {
+      await setPassModeAction(saisonId, skipOne)
+      window.location.reload()
+    } catch {
+      setTogglingPassMode(false)
+    }
+  }
+
   const startDraft = async () => {
     setStarting(true)
     setStartErr(null)
@@ -110,9 +123,18 @@ export default function AdminPanel({
 
   const handlePass = async () => {
     try {
-      await advancePresaisonQueueAction(saisonId)
+      await advancePresaisonQueueAction(saisonId, true)
       window.location.reload()
     } catch { /* le tour reste affiché tel quel, l'admin peut réessayer */ }
+  }
+  // Bug corrigé le 2026-09-08 : onSign ne faisait que recharger la page sans jamais appeler
+  // advancePresaisonQueueAction — le pooler courant restait indéfiniment en tête de file
+  // après une signature réussie. isPass=false : une signature va toujours en fin de file.
+  const handleSignAdvance = async () => {
+    try {
+      await advancePresaisonQueueAction(saisonId, false)
+    } catch { /* la signature a déjà eu lieu ; on recharge quand même pour refléter l'état réel */ }
+    window.location.reload()
   }
   const handleEndDraft = async () => {
     try {
@@ -197,6 +219,33 @@ export default function AdminPanel({
               <p className="text-xs text-gray-400 mb-3">
                 Seuil de participation : {fmt(nhlMinimumSalary)} d&apos;espace cap.
               </p>
+
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3">
+                <p className="text-xs font-semibold text-gray-700 mb-1.5">Comportement de &laquo; Passer &raquo;</p>
+                <div className="space-y-1.5">
+                  <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={!draftState.pass_skip_one}
+                      disabled={togglingPassMode}
+                      onChange={() => handleSetPassMode(false)}
+                      className="mt-0.5"
+                    />
+                    <span><strong>Retour en fin de file</strong> (défaut) — le pooler attend que tout le monde ait joué avant de rejouer.</span>
+                  </label>
+                  <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={draftState.pass_skip_one}
+                      disabled={togglingPassMode}
+                      onChange={() => handleSetPassMode(true)}
+                      className="mt-0.5"
+                    />
+                    <span><strong>Repasse juste après le suivant</strong> — sans attendre tout le monde. Ne s&apos;applique jamais à une signature réussie.</span>
+                  </label>
+                </div>
+              </div>
+
               <button
                 onClick={handleInitOrderFromStandings}
                 disabled={initializingOrder}
@@ -266,7 +315,7 @@ export default function AdminPanel({
                 pooler={currentPooler}
                 saisonId={saisonId}
                 season={season}
-                onSign={async () => { window.location.reload() }}
+                onSign={handleSignAdvance}
                 threshold={nhlMinimumSalary}
               />
 

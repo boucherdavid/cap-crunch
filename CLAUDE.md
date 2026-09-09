@@ -262,12 +262,24 @@ ouverte.
 
 **Transition entre les tours du repêchage AL — toujours manuelle** (David, 2026-09-08) :
 le chrono est purement indicatif, rien ne se passe automatiquement à 00:00 — l'admin doit
-cliquer "Passer" (`advancePresaisonQueueAction`, remet le pooler courant en fin de file s'il
-reste éligible) ou attendre une signature réussie (même effet). Volontairement manuel : un
-auto-passage à 0 risquerait de sauter un pooler à cause d'un simple délai réseau. Le panneau
-admin (`AdminPanel.tsx`, `repechage-agents-libres`) s'ouvre désormais automatiquement dès
-qu'un tour est actif au chargement de la page (`expanded` initialisé à `draftState.is_active`)
-— avant, il fallait deviner qu'il fallait le déplier pour trouver le formulaire de signature.
+cliquer "Passer" ou attendre une signature réussie. Volontairement manuel : un auto-passage à
+0 risquerait de sauter un pooler à cause d'un simple délai réseau. Le panneau admin
+(`AdminPanel.tsx`, `repechage-agents-libres`) s'ouvre désormais automatiquement dès qu'un tour
+est actif au chargement de la page (`expanded` initialisé à `draftState.is_active`) — avant,
+il fallait deviner qu'il fallait le déplier pour trouver le formulaire de signature.
+
+**Comportement de "Passer" — configurable (David, 2026-09-08, ⚠ pas encore commité/migré, voir
+SUIVI_PROJET.md session 2026-09-08 suite 11)** — `presaison_draft_state.pass_skip_one`
+(BOOLEAN, défaut `false`), choisi par l'admin avant de démarrer le repêchage (sélecteur dans
+"Ordre du repêchage", `AdminPanel.tsx` et `PresaisonManager.tsx`) :
+- `false` (défaut) : "Passer" remet le pooler courant en fin de file — il attend que tout le
+  monde ait joué avant de rejouer.
+- `true` : "Passer" le réinsère juste après le pooler suivant (`[next, current, ...rest]`),
+  sans attendre tout le monde.
+- Une signature réussie va **toujours** en fin de file, peu importe ce réglage — décision
+  volontaire (confirmée avec David) : pas de pénalité réduite pour quelqu'un qui vient de
+  signer. `advancePresaisonQueueAction(saisonId, isPass)` — `isPass=true` seulement pour un
+  vrai clic "Passer", `isPass=false` (ou omis) pour une signature.
 
 **Pause du chrono (David, 2026-09-08)** — `pausePresaisonTimerAction`/
 `resumePresaisonTimerAction` (`admin/presaison/actions.ts`), sans nouvelle colonne :

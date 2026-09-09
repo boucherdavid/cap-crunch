@@ -21,6 +21,42 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-08 (suite 11) — NON COMMITÉ, à reprendre la prochaine session
+
+**[Feature] — Comportement de "Passer" configurable ; bug de signature corrigé**
+(`schema.sql`, `admin/presaison/types.ts`, `admin/presaison/actions.ts`,
+`admin/presaison/PresaisonManager.tsx`, `repechage-agents-libres/AdminPanel.tsx`,
+`AgentsLibresDashboard.tsx`, `page.tsx`) :
+- David a demandé : quand un pooler "Passe" son tour, est-ce qu'il attend tout le monde
+  (comportement actuel, confirmé) ou repasse juste après le suivant ? Voulait les **deux**
+  options, choisies par l'admin avant de démarrer le repêchage.
+- **Bug trouvé au passage** (pas lié à la demande, mais même mécanisme) : dans le nouveau
+  panneau admin (`AdminPanel.tsx`), une signature réussie (`onSign`) ne faisait que recharger
+  la page sans jamais appeler `advancePresaisonQueueAction` — le pooler courant restait
+  indéfiniment en tête de file après avoir signé. Corrigé (`handleSignAdvance`).
+- Nouvelle colonne `presaison_draft_state.pass_skip_one` (BOOLEAN, défaut `false`) — **la
+  migration n'a pas encore été exécutée par David, à faire avant de tester** :
+  ```sql
+  ALTER TABLE presaison_draft_state ADD COLUMN IF NOT EXISTS pass_skip_one BOOLEAN NOT NULL DEFAULT false;
+  ```
+  (staging d'abord, puis prod — voir `schema.sql` pour le détail et le commentaire complet).
+- `advancePresaisonQueueAction(saisonId, isPass = false)` — nouveau paramètre `isPass` :
+  - `isPass=false` (signature réussie) : **toujours** retour en fin de file, peu importe
+    `pass_skip_one` — pas de pénalité réduite pour quelqu'un qui vient d'obtenir un joueur
+    (décision confirmée par David via AskUserQuestion).
+  - `isPass=true` (clic "Passer") ET `pass_skip_one=true` : le pooler courant est réinséré
+    juste après le suivant (`[next, current, ...rest]`) au lieu d'aller en fin de file.
+  - Sinon (comportement par défaut) : retour en fin de file classique, inchangé.
+- Nouvelle action `setPassModeAction(saisonId, skipOne)` — admin-only. Sélecteur (2 boutons
+  radio) ajouté dans la section "Ordre du repêchage" des **deux** pages qui la montrent
+  (`AdminPanel.tsx` et `PresaisonManager.tsx`, pour rester cohérent — le second reste le
+  filet de sécurité).
+- **Pas encore commité** (touche `schema.sql`, exception qui demande confirmation avant de
+  committer) — `npx tsc --noEmit` et `eslint` passent, aucune nouvelle dette.
+- **À faire la prochaine session** : (1) David exécute la migration ci-dessus en staging,
+  (2) commit + push sur `staging`, (3) tester les deux comportements de "Passer" en direct
+  et confirmer que la signature fait maintenant bien avancer la file dans le panneau admin.
+
 ### 2026-09-08 (suite 10)
 
 **[Feature] — Panneau admin auto-ouvert pendant un tour ; pause/reprise du chrono**

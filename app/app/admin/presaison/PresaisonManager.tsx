@@ -7,6 +7,7 @@ import {
   loadPresaisonDraftStateAction, startPresaisonDraftAction, advancePresaisonQueueAction,
   endPresaisonDraftAction, adjustPresaisonTimerAction, resetPresaisonTimerAction,
   setReleasePhaseAction, pausePresaisonTimerAction, resumePresaisonTimerAction,
+  setPassModeAction,
 } from './actions'
 import { DEFAULT_NHL_MINIMUM_SALARY, type PoolerCapInfo, type RosterEntry, type DraftState } from './types'
 import DraftOrderEditor from './DraftOrderEditor'
@@ -189,6 +190,7 @@ export default function PresaisonManager({
   const [starting, setStarting] = useState(false)
   const [startErr, setStartErr] = useState<string | null>(null)
   const [togglingReleasePhase, setTogglingReleasePhase] = useState(false)
+  const [togglingPassMode, setTogglingPassMode] = useState(false)
   const [now, setNow] = useState(() => Date.now())
 
   // LTIR reset
@@ -280,15 +282,25 @@ export default function PresaisonManager({
     if (result.state) setDraftState(result.state)
   }
 
+  const handleSetPassMode = async (skipOne: boolean) => {
+    setTogglingPassMode(true)
+    const result = await setPassModeAction(saisonId, skipOne)
+    setTogglingPassMode(false)
+    if (result.state) setDraftState(result.state)
+  }
+
   // Après une signature ("Signer") ou "Passer" : le serveur recalcule l'éligibilité à partir
   // de données fraîches et fait tourner la file — remplace l'ancien advanceQueue() local.
-  const advanceAfterAction = async () => {
-    const [stateResult] = await Promise.all([advancePresaisonQueueAction(saisonId), refreshData()])
+  // isPass distingue les deux (David, 2026-09-08) : seul "Passer" peut bénéficier du retour
+  // rapide "juste après le suivant" si l'admin l'a activé — une signature va toujours en fin
+  // de file, peu importe ce réglage.
+  const advanceAfterAction = async (isPass: boolean) => {
+    const [stateResult] = await Promise.all([advancePresaisonQueueAction(saisonId, isPass), refreshData()])
     if (stateResult.state) setDraftState(stateResult.state)
   }
 
-  const handleSign = advanceAfterAction
-  const handlePass = advanceAfterAction
+  const handleSign = () => advanceAfterAction(false)
+  const handlePass = () => advanceAfterAction(true)
 
   const handleEndDraft = async () => {
     const result = await endPresaisonDraftAction(saisonId)
@@ -512,6 +524,33 @@ export default function PresaisonManager({
           <p className="text-xs text-gray-400 mb-4">
             Seuil de participation : {fmt(data.nhlMinimumSalary)} d'espace cap. En dessous, le pooler est retiré automatiquement de la file.
           </p>
+
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+            <p className="text-xs font-semibold text-gray-700 mb-1.5">Comportement de « Passer »</p>
+            <div className="space-y-1.5">
+              <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+                <input
+                  type="radio"
+                  checked={!(draftState?.pass_skip_one ?? false)}
+                  disabled={togglingPassMode}
+                  onChange={() => handleSetPassMode(false)}
+                  className="mt-0.5"
+                />
+                <span><strong>Retour en fin de file</strong> (défaut) — le pooler attend que tout le monde ait joué avant de rejouer.</span>
+              </label>
+              <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+                <input
+                  type="radio"
+                  checked={draftState?.pass_skip_one ?? false}
+                  disabled={togglingPassMode}
+                  onChange={() => handleSetPassMode(true)}
+                  className="mt-0.5"
+                />
+                <span><strong>Repasse juste après le suivant</strong> — sans attendre tout le monde. Ne s&apos;applique jamais à une signature réussie.</span>
+              </label>
+            </div>
+          </div>
+
           <button
             onClick={handleInitOrderFromStandings}
             disabled={initializingOrder}

@@ -450,7 +450,7 @@ export async function loadPresaisonDraftStateAction(saisonId: number): Promise<{
 
   const { data, error } = await supabase
     .from('presaison_draft_state')
-    .select('pool_season_id, is_active, queue, turn_started_at, turn_duration_seconds, ended_at, release_phase_open')
+    .select('pool_season_id, is_active, queue, turn_started_at, turn_duration_seconds, ended_at, release_phase_open, pass_skip_one')
     .eq('pool_season_id', saisonId)
     .maybeSingle()
   if (error) return { error: error.message }
@@ -465,10 +465,31 @@ export async function loadPresaisonDraftStateAction(saisonId: number): Promise<{
         turn_duration_seconds: TURN_DURATION_DEFAULT,
         ended_at: null,
         release_phase_open: false,
+        pass_skip_one: false,
       },
     }
   }
   return { state: data as DraftState }
+}
+
+// Comportement de "Passer" (David, 2026-09-08), choisi par l'admin avant de démarrer le
+// repêchage (voir DraftOrderEditor) — voir advancePresaisonQueueAction pour l'effet réel.
+export async function setPassModeAction(saisonId: number, skipOne: boolean): Promise<{ error?: string; state?: DraftState }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  if (!me?.is_admin) return { error: 'Accès refusé.' }
+
+  const { error } = await supabase.from('presaison_draft_state').upsert({
+    pool_season_id: saisonId, pass_skip_one: skipOne, updated_at: new Date().toISOString(),
+  })
+  if (error) return { error: error.message }
+
+  revalidatePath('/admin/presaison')
+  revalidatePath('/repechage-agents-libres')
+  return loadPresaisonDraftStateAction(saisonId)
 }
 
 // Bascule la phase "libération de joueurs" (David, 2026-09-08) — tant qu'elle est ouverte,
@@ -553,9 +574,13 @@ export async function startPresaisonDraftAction(saisonId: number): Promise<{ err
 }
 
 // Appelée après une signature réussie ("Signer") ou pour "Passer" (aucune transaction dans
-// ce second cas) — fait tourner queue[0] en fin de file puis refiltre par cap frais, exactement
-// comme l'ancien advanceQueue() local, mais persisté.
-export async function advancePresaisonQueueAction(saisonId: number): Promise<{ error?: string; state?: DraftState }> {
+// ce second cas) — fait tourner queue[0] puis refiltre par cap frais, exactement comme
+// l'ancien advanceQueue() local, mais persisté.
+// isPass distingue les deux cas (David, 2026-09-08) : une signature va TOUJOURS en fin de
+// file (comme un vrai tour de repêchage), peu importe pass_skip_one — seul un "Passer"
+// explicite (isPass=true) peut bénéficier du retour rapide "juste après le suivant" si
+// l'admin l'a activé (voir setPassModeAction).
+export async function advancePresaisonQueueAction(saisonId: number, isPass = false): Promise<{ error?: string; state?: DraftState }> {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -565,7 +590,7 @@ export async function advancePresaisonQueueAction(saisonId: number): Promise<{ e
 
   const { data: current } = await supabase
     .from('presaison_draft_state')
-    .select('queue')
+    .select('queue, pass_skip_one')
     .eq('pool_season_id', saisonId)
     .maybeSingle()
   const prevQueue = (current?.queue as string[] | undefined) ?? []
@@ -575,7 +600,10 @@ export async function advancePresaisonQueueAction(saisonId: number): Promise<{ e
   if (fresh.error || !fresh.poolers) return { error: fresh.error ?? 'Impossible de charger les données.' }
 
   const threshold = fresh.nhlMinimumSalary ?? DEFAULT_NHL_MINIMUM_SALARY
-  const rotated = [...prevQueue.slice(1), prevQueue[0]]
+  const useSkipOne = isPass && (current?.pass_skip_one ?? false) && prevQueue.length >= 2
+  const rotated = useSkipOne
+    ? [prevQueue[1], prevQueue[0], ...prevQueue.slice(2)]
+    : [...prevQueue.slice(1), prevQueue[0]]
   const nextQueue = rotated.filter(id => {
     const p = fresh.poolers!.find(pp => pp.id === id)
     return p !== undefined && p.capSpace >= threshold

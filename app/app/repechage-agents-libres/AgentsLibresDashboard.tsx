@@ -25,6 +25,7 @@ type DraftState = {
   pool_season_id: number
   is_active: boolean; queue: string[]; turn_started_at: string | null
   turn_duration_seconds: number; ended_at: string | null; release_phase_open: boolean
+  pass_skip_one: boolean
 }
 type RecentActivity = {
   id: number; kind: 'sign' | 'release'; poolerName: string; playerName: string

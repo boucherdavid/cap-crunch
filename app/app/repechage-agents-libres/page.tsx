@@ -104,7 +104,7 @@ export default async function AgentsLibresPage() {
         pool_season_id: saison.id,
         is_active: false, queue: [],
         turn_started_at: null, turn_duration_seconds: 90, ended_at: null,
-        release_phase_open: false,
+        release_phase_open: false, pass_skip_one: false,
       }}
       recentActivity={recentActivity}
       saisonId={saison.id}

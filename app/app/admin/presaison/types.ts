@@ -51,4 +51,9 @@ export type DraftState = {
   // n'importe quel joueur signé ; une fois fermée, seules les recrues de banque restent
   // libérables/activables, et le repêchage AL peut démarrer. Voir schema.sql.
   release_phase_open: boolean
+  // Comportement de "Passer" (David, 2026-09-08), choisi par l'admin avant de démarrer le
+  // repêchage — false (défaut) : retour en fin de file ; true : repasse juste après le
+  // suivant. Ne s'applique jamais à une signature réussie (toujours fin de file). Voir
+  // advancePresaisonQueueAction, schema.sql.
+  pass_skip_one: boolean
 }
