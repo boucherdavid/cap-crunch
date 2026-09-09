@@ -707,6 +707,7 @@ function MonAlignement({
     )
   }
 
+  const hasEligibleForBanque = myPooler.roster.some(e => e.rookieType && (e.player_type === 'actif' || e.player_type === 'reserviste'))
   const removedCap = myPooler.roster.filter(e => removed.has(e.player_id)).reduce((s, e) => s + e.cap_number, 0)
   const addedRecrueCap = recruePlayers.filter(r => addedRecrueIds.has(r.player_id)).reduce((s, r) => s + r.cap_number, 0)
   const simulatedUsed = myPooler.capUsed - removedCap + addedRecrueCap
@@ -781,21 +782,23 @@ function MonAlignement({
             )}
             {!seasonStarted && !releasePhaseOpen && (
               <p className="text-xs mb-2 rounded-lg px-2 py-1.5 bg-gray-50 text-gray-500">
-                La phase de libération de joueurs signés est fermée par l&apos;admin — seules les recrues de ta banque restent activables/libérables (ci-dessous).
+                La phase de libération de joueurs signés est fermée par l&apos;admin — seules les recrues de ta banque restent activables/libérables (ci-dessous){hasEligibleForBanque ? ', et tu peux toujours en remettre une en banque ci-dessous' : ''}.
               </p>
             )}
-            {!seasonStarted && releasePhaseOpen && (
+            {!seasonStarted && (releasePhaseOpen || hasEligibleForBanque) && (
               <div className="flex items-center justify-end gap-2 mb-2">
                 {!releaseMode && !banqueMode && (
                   <>
-                    <button
-                      onClick={startRelease}
-                      disabled={busy}
-                      className="text-xs px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded disabled:opacity-40"
-                    >
-                      Libérer des joueurs
-                    </button>
-                    {myPooler.roster.some(e => e.rookieType && (e.player_type === 'actif' || e.player_type === 'reserviste')) && (
+                    {releasePhaseOpen && (
+                      <button
+                        onClick={startRelease}
+                        disabled={busy}
+                        className="text-xs px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded disabled:opacity-40"
+                      >
+                        Libérer des joueurs
+                      </button>
+                    )}
+                    {hasEligibleForBanque && (
                       <button
                         onClick={startBanque}
                         disabled={busy}
@@ -822,7 +825,7 @@ function MonAlignement({
                     {group.entries.map(e => {
                       const canToggleType = !seasonStarted && (e.player_type === 'actif' || e.player_type === 'reserviste')
                       const canRelease = canToggleType && releasePhaseOpen
-                      const banqueEligible = canToggleType && !!e.rookieType && releasePhaseOpen
+                      const banqueEligible = canToggleType && !!e.rookieType
                       const selected = selectedForRelease.has(e.player_id)
                       const banqueSelected = selectedForBanque.has(e.player_id)
                       return (

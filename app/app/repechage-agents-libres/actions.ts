@@ -83,13 +83,12 @@ export async function submitSelfServiceAction(
   // Phase "libération de joueurs" (David, 2026-09-08) — une fois fermée par l'admin (avant de
   // démarrer le repêchage AL), seules les recrues de banque restent libérables/activables ;
   // libérer un joueur déjà signé (actif/réserviste) redevient admin-only (/admin/transactions).
-  // Même règle pour la remettre en banque (David, 2026-09-09) — retire aussi un joueur signé
-  // de l'alignement actif, même catégorie que "libérer" pour le verrou de phase. type_change
-  // actif↔réserviste et promote (activer une recrue) restent toujours permis, peu importe la
-  // phase — ça ne change rien à la masse salariale totale.
+  // type_change (actif↔réserviste ET remise en banque) et promote (activer une recrue) restent
+  // toujours permis, peu importe la phase (David, 2026-09-09 — remettre en banque devait
+  // rester possible aussi longtemps que le changement de statut, contrairement à un premier
+  // essai qui l'avait soumis au même verrou que "libérer" ; voir SUIVI_PROJET.md).
   const releaseIds = items.filter(it => it.action_type === 'release').map(it => it.player_id)
-  const capReducingIds = [...releaseIds, ...demoteToRecrueIds]
-  if (capReducingIds.length > 0) {
+  if (releaseIds.length > 0) {
     const { data: stateRow } = await supabase
       .from('presaison_draft_state')
       .select('release_phase_open')
@@ -102,7 +101,7 @@ export async function submitSelfServiceAction(
         .eq('pooler_id', user.id)
         .eq('pool_season_id', saisonId)
         .eq('is_active', true)
-        .in('player_id', capReducingIds)
+        .in('player_id', releaseIds)
       const releasingSignedPlayer = (rosterRows ?? []).some(r => r.player_type !== 'recrue')
       if (releasingSignedPlayer) {
         return { error: 'La phase de libération de joueurs est fermée — seules les recrues de ta banque peuvent encore être libérées.' }
