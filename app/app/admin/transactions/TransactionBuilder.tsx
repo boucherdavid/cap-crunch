@@ -487,7 +487,7 @@ export default function TransactionBuilder({ poolers, saison }: { poolers: Poole
   return (
     <div className="flex gap-6 items-start">
       {mainContent}
-      <MovementHistoryPanel poolerId={historyPoolerId} poolerName={historyPoolerName} refreshKey={historyRefresh} />
+      <MovementHistoryPanel poolerId={historyPoolerId} poolerName={historyPoolerName} refreshKey={historyRefresh} saisonId={saison.id} />
     </div>
   )
 }

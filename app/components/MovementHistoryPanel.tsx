@@ -14,10 +14,12 @@ export default function MovementHistoryPanel({
   poolerId,
   poolerName,
   refreshKey,
+  saisonId,
 }: {
   poolerId: string | null
   poolerName?: string
   refreshKey: number
+  saisonId?: number
 }) {
   const [mode, setMode] = useState<'pooler' | 'all'>('pooler')
   const [events, setEvents] = useState<MovementEvent[]>([])
@@ -26,11 +28,11 @@ export default function MovementHistoryPanel({
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    getMovementHistoryAction(mode === 'pooler' ? poolerId : null, mode === 'pooler' ? 30 : 50)
+    getMovementHistoryAction(mode === 'pooler' ? poolerId : null, mode === 'pooler' ? 30 : 50, saisonId)
       .then(data => { if (!cancelled) setEvents(data) })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [poolerId, mode, refreshKey])
+  }, [poolerId, mode, refreshKey, saisonId])
 
   return (
     <div className="w-80 shrink-0 sticky top-4 self-start bg-white rounded-lg shadow flex flex-col max-h-[calc(100vh-2rem)]">
