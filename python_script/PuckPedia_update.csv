@@ -48,7 +48,6 @@ Washe, Tim;ANA;;;24.0;;;812500;RFA;0;0;0
 Gauthier, Cutter;ANA;;LW,RW;22.0;;;RFA;0;0;0;0
 Clang, Calle;ANA;;G;24.0;;;RFA;0;0;0;0
 Buteyets, Vyacheslav;ANA;;G;24.0;;;RFA;0;0;0;0
-undefined, undefined;ANA;;;;;;;;;;
 Pastrnak, David;BOS;;RW,LW;30.0;;;11250000;11250000;11250000;11250000;11250000
 McAvoy, Charlie;BOS;;RD;28.0;;;9500000;9500000;9500000;9500000;UFA
 Swayman, Jeremy;BOS;;G;27.0;;;8250000;8250000;8250000;8250000;8250000
@@ -93,7 +92,6 @@ Sweezey, Billy;BOS;;D;30.0;;;850000;UFA;0;0;0
 Zajicek, Simon;BOS;;G;25.0;;;850000;RFA;0;0;0
 Dipietro, Michael;BOS;;G;27.0;;;812500;UFA;0;0;0
 Poitras, Matthew;BOS;;C,RW;22.0;;;RFA;0;0;0;0
-undefined, undefined;BOS;;;;;;;;;;
 Norris, Joshua;BUF;;C;27.0;;;7950000.0;7950000;7950000;7950000;UFA
 Benson, Zach;BUF;;LW,C;21.0;;;7500000.0;7500000;7500000;7500000;7500000
 Thompson, Tage;BUF;;C,RW;28.0;;;7142857.0;7142857;7142857;7142857;UFA
@@ -139,7 +137,6 @@ Rathbone, Jack;BUF;;D;27.0;;;850000.0;UFA;0;0;0
 Leinonen, Topias;BUF;ELC;G;22.0;2026-27|2027-28;;961667.0;961667;RFA;0;0
 Ratzlaff, Scott;BUF;ELC;G;21.0;2026-27|2027-28;;935000.0;935000;RFA;0;0
 Villalta, Matt;BUF;;G;27.0;;;850000.0;UFA;0;0;0
-undefined, undefined;BUF;;;;;;;;;;
 Aho, Sebastian;CAR;;C;29.0;;;9750000;9750000;9750000;9750000;9750000
 Ehlers, Nikolaj;CAR;;LW;30.0;;;8500000;8500000;8500000;8500000;8500000
 Svechnikov, Andrei;CAR;;LW,RW;26.0;;;7750000;7750000;7750000;UFA;0
@@ -183,7 +180,6 @@ Nikishin, Alexander;CAR;;LD,RD;24.0;;;RFA;0;0;0;0
 Gunler, Noel;CAR;;RW;24.0;;;RFA;0;0;0;0
 Robidas, Justin;CAR;;C;23.0;;;RFA;0;0;0;0
 Primeau, Cayden;CAR;;G;27.0;;;RFA;0;0;0;0
-undefined, undefined;CAR;;;;;;;;;;
 Werenski, Zach;CBJ;;LD;29.0;;;9583334;9583334;UFA;0;0
 Provorov, Ivan;CBJ;;LD,RD;29.0;;;8500000;8500000;8500000;8500000;8500000
 Severson, Damon;CBJ;;LD,RD;32.0;;;6250000;6250000;6250000;6250000;6250000
@@ -231,7 +227,6 @@ Sillinger, Owen;CBJ;;C,LW;28.0;;;850000;UFA;0;0;0
 Ceulemans, Corson;CBJ;;D;23.0;;;850000;RFA;0;0;0
 Fantilli, Adam;CBJ;;C;21.0;;;RFA;0;0;0;0
 Berni, Tim;CBJ;;LD,RD;26.0;;;RFA;0;0;0;0
-undefined, undefined;CBJ;;;;;;;;;;
 Huberdeau, Jonathan;CGY;;LW;33.0;;;10500000;10500000;10500000;10500000;10500000
 Wolf, Dustin;CGY;;G;25.0;;;7500000;7500000;7500000;7500000;7500000
 Nemec, Simon;CGY;;RD;22.0;;;7250000;7250000;7250000;7250000;7250000
@@ -277,7 +272,6 @@ Strömgren, William;CGY;;LW,RW;23.0;;;850000;RFA;0;0;0
 Kuznetsov, Yan;CGY;;LD;24.0;;;812500;0;0;0;0
 Othmann, Brennan;CGY;;LW;23.0;;;RFA;0;0;0;0
 Okhotyuk, Nikita;CGY;;D;25.0;;;RFA;0;0;0;0
-undefined, undefined;CGY;;;;;;;;;;
 Bedard, Connor;CHI;;C;21.0;;;15000000;15000000;15000000;15000000;15000000
 Jones, Seth;CHI;;RD;31.0;;2026-27|2027-28|2028-29|2029-30;9500000;9500000;9500000;9500000;0
 Kane, Patrick;CHI;;RW;37.0;;;8000000;8000000;UFA;0;0
@@ -325,7 +319,6 @@ Boucher, Dillon;CHI;;;29.0;;;850000;UFA;0;0;0
 Brodie, TJ;CHI;;D;36.0;;;258333;0;0;0;0
 Korchinski, Kevin;CHI;;LD;22.0;;;RFA;0;0;0;0
 Del Mastro, Ethan;CHI;;LD;23.0;;;RFA;0;0;0;0
-undefined, undefined;CHI;;;;;;;;;;
 MacKinnon, Nathan;COL;;C;30.0;;;12604000;12604000;12604000;12604000;12604000
 Necas, Martin;COL;;C,RW;27.0;;;11500000;11500000;11500000;11500000;11500000
 Makar, Cale;COL;;RD;27.0;;;9000000;UFA;0;0;0
@@ -372,7 +365,6 @@ Fensore, Domenick;COL;;LD;24.0;;;850000;0;0;0;0
 Ranta, Sampo;COL;;LW,RW;26.0;;;RFA;0;0;0;0
 Bardakov, Zakhar;COL;;C,LW;25.0;;;RFA;0;0;0;0
 Boikov, Sergei;COL;;D;30.0;;;RFA;0;0;0;0
-undefined, undefined;COL;;;;;;;;;;
 Rantanen, Mikko;DAL;;RW;29.0;;;12000000.0;12000000;12000000;12000000;12000000
 Robertson, Jason;DAL;;LW,RW;27.0;;;12000000.0;UFA;0;0;0
 Seguin, Tyler;DAL;;C,RW;34.0;;;9850000.0;UFA;0;0;0
@@ -418,7 +410,6 @@ Burroughs, Kyle;DAL;;D;31.0;;;850000.0;UFA;0;0;0
 Tiefensee, Arno;DAL;ELC;G;24.0;2026-27;;925000.0;RFA;0;0;0
 Halverson, Brandon;DAL;;G;30.0;;;850000.0;UFA;0;0;0
 Poirier, Remi;DAL;;G;24.0;;;850000.0;0;0;0;0
-undefined, undefined;DAL;;;;;;;;;;
 Larkin, Dylan;DET;;C;30.0;;;8700000;8700000;8700000;8700000;8700000.0
 Seider, Moritz;DET;;RD;25.0;;;8550000;8550000;8550000;8550000;8550000.0
 Raymond, Lucas;DET;;RW;24.0;;;8075000;8075000;8075000;8075000;8075000.0
@@ -465,7 +456,6 @@ Lagesson, William;DET;;LD;30.0;;;850000;UFA;0;0;0.0
 Attard, Ronald;DET;;D;27.0;;;850000;UFA;0;0;0.0
 Edvinsson, Simon;DET;;LD;23.0;;;RFA;0;0;0;0.0
 Viro, Eemil;DET;;D;24.0;;;RFA;0;0;0;0.0
-undefined, undefined;DET;;;;;;;;;;
 Draisaitl, Leon;EDM;;C,LW;30.0;;;14000000;14000000;14000000;14000000;14000000.0
 McDavid, Connor;EDM;;C;29.0;;;12500000;12500000;UFA;0;0.0
 Bouchard, Evan;EDM;;RD;26.0;;;10500000;10500000;10500000;UFA;0.0
@@ -514,7 +504,6 @@ Stillman, Riley;EDM;;LD;28.0;;;850000;UFA;0;0;0.0
 Tomkins, Matt;EDM;;G;32.0;;;850000;UFA;0;0;0.0
 Levi, Devon;EDM;;G;24.0;;;812500;RFA;0;0;0.0
 Jarventie, Roby;EDM;;LW,RW;24.0;;;RFA;0;0;0;0.0
-undefined, undefined;EDM;;;;;;;;;;
 Barkov, Aleksander;FLA;;C;30.0;;;10000000.0;10000000;10000000;10000000;UFA
 Tkachuk, Matthew;FLA;;LW,RW;28.0;;;9500000.0;9500000;9500000;9500000;UFA
 Reinhart, Sam;FLA;;RW;30.0;;;8625000.0;8625000;8625000;8625000;8625000
@@ -560,7 +549,6 @@ Hovorka, Mikulas;FLA;;RD;25.0;;;850000.0;RFA;0;0;0
 Muszelik, Tyler;FLA;ELC;G;22.0;2026-27|2027-28;;960000.0;960000;RFA;0;0
 Gerasimyuk, Kirill;FLA;ELC;G;23.0;2026-27;;925000.0;RFA;0;0;0
 Black, Cooper;FLA;;G;25.0;;;875000.0;875000;UFA;0;0
-undefined, undefined;FLA;;;;;;;;;;
 Panarin, Artemi;LAK;;LW;34.0;;;11000000.0;11000000;UFA;0;0.0
 Kempe, Adrian;LAK;;LW,C;29.0;;;10625000.0;10625000;10625000;10625000;10625000.0
 Fiala, Kevin;LAK;;LW;30.0;;;7875000.0;7875000;7875000;UFA;0.0
@@ -611,7 +599,6 @@ Perunovich, Scott;LAK;;D;28.0;;;850000.0;UFA;0;0;0.0
 Slukynsky, Hampton;LAK;ELC;G;21.0;2026-27|2027-28|2028-29;;1075000.0;1075000;1075000;RFA;0.0
 George, Carter;LAK;ELC;G;20.0;2026-27|2027-28|2028-29;;929166.0;929166;929166;RFA;0.0
 Portillo, Erik;LAK;;G;25.0;;;833333.0;0;0;0;0.0
-undefined, undefined;LAK;;;;;;;;;;
 Kaprizov, Kirill;MIN;;LW;29.0;;;17000000.0;17000000;17000000;17000000;17000000
 Boldy, Matt;MIN;;LW,RW;25.0;;;7000000.0;7000000;7000000;7000000;UFA
 Eriksson Ek, Joel;MIN;;C;29.0;;;5250000.0;5250000;5250000;UFA;0
@@ -659,7 +646,6 @@ Spacek, David;MIN;;RD,LD;23.0;;;850000.0;RFA;0;0;0
 Ruzicka, Filip;MIN;ELC;G;18.0;2026-27|2027-28|2028-29;;987500.0;987500;987500;RFA;0
 Wutzke, Chase;MIN;ELC;G;20.0;2026-27|2027-28|2028-29;;958333.0;958333;958333;RFA;0
 Mercer, Riley;MIN;ELC;G;22.0;2026-27|2027-28;;920000.0;920000;RFA;0;0
-undefined, undefined;MIN;;;;;;;;;;
 Dobson, Noah;MTL;;RD;26.0;;;9500000;9500000;9500000;9500000;9500000
 Hutson, Lane;MTL;;LD,RD;22.0;;;8850000;8850000;8850000;8850000;8850000
 Suzuki, Nick;MTL;;C;27.0;;;7875000;7875000;7875000;7875000;UFA
@@ -705,7 +691,6 @@ Davidson, Jared;MTL;;C;24.0;;;850000;RFA;0;0;0
 Samson, Ethan;MTL;;D;23.0;;;850000;RFA;0;0;0
 Bolduc, Zack;MTL;;RW,LW;23.0;;;RFA;0;0;0;0
 Xhekaj, Arber;MTL;;LD,RD;25.0;;;RFA;0;0;0;0
-undefined, undefined;MTL;;;;;;;;;;
 Meier, Timo;NJD;;RW,LW;29.0;;;8800000.0;8800000;8800000;8800000;8800000
 Hughes, Jack;NJD;;C;25.0;;;8000000.0;8000000;8000000;8000000;UFA
 Bratt, Jesper;NJD;;LW,RW;28.0;;;7875000.0;7875000;7875000;7875000;7875000
@@ -749,7 +734,6 @@ Hanzel, Jeremy;NJD;ELC;D;23.0;2026-27;;926667.0;RFA;0;0;0
 Kolyachonok, Vladislav;NJD;;LD;25.0;;;850000.0;RFA;0;0;0
 Vilen, Topias;NJD;;LD;23.0;;;850000.0;RFA;0;0;0
 Málek, Jakub;NJD;;G;24.0;;;875000.0;875000;RFA;0;0
-undefined, undefined;NJD;;;;;;;;;;
 Forsberg, Filip;NSH;;LW,RW;32.0;;;8500000.0;8500000;8500000;8500000;UFA
 Stamkos, Steven;NSH;;RW,C;36.0;;;8000000.0;8000000;UFA;0;0
 Marchessault, Jonathan;NSH;;RW,LW;35.0;;;5500000.0;5500000;5500000;UFA;0
@@ -797,7 +781,6 @@ Ahcan, Jack;NSH;;LD;29.0;;;875000.0;875000;UFA;0;0
 Skinner, Hunter;NSH;;D;25.0;;;850000.0;0;0;0;0
 Posch, Isak;NSH;ELC;G;24.0;2026-27;;947500.0;RFA;0;0;0
 Murray, Matthew;NSH;;G;28.0;;;850000.0;UFA;0;0;0
-undefined, undefined;NSH;;;;;;;;;;
 Barzal, Mathew;NYI;;C,RW;29.0;;;9150000;9150000;9150000;9150000;9150000
 Horvat, Bo;NYI;;C;31.0;;;8500000;8500000;8500000;8500000;8500000
 Sorokin, Ilya;NYI;;G;31.0;;;8250000;8250000;8250000;8250000;8250000
@@ -844,7 +827,6 @@ Bear, Ethan;NYI;;D;29.0;;;850000;UFA;0;0;0
 Tikkanen, Henrik;NYI;;G;25.0;;;850000;RFA;0;0;0
 Kessel, Matthew;NYI;;RD;26.0;;;850000;UFA;0;0;0
 Iskhakov, Ruslan;NYI;;C,LW;26.0;;;RFA;0;0;0;0
-undefined, undefined;NYI;;;;;;;;;;
 Shesterkin, Igor;NYR;;G;30.0;;;11567857;11567857;11567857;11567857;11567857
 Dorofeyev, Pavel;NYR;;LW,RW;25.0;;;11000000;11000000;11000000;11000000;11000000
 Fox, Adam;NYR;;RD;28.0;;;9500000;9500000;9500000;UFA;0
@@ -894,7 +876,6 @@ Dowling, Justin;NYR;;C,W;35.0;;;850000;UFA;0;0;0
 Martin, Spencer;NYR;;G;31.0;;;850000;UFA;0;0;0
 Pajuniemi, Lauri;NYR;;RW;26.0;;;RFA;0;0;0;0
 Henriksson, Karl;NYR;;C,LW;25.0;;;RFA;0;0;0;0
-undefined, undefined;NYR;;;;;;;;;;
 Stutzle, Tim;OTT;;C,LW;24.0;;;8350000.0;8350000;8350000;8350000;8350000
 Pinto, Shane;OTT;;C;25.0;;;7500000.0;7500000;7500000;7500000;UFA
 Cozens, Dylan;OTT;;C;25.0;;;7100000.0;7100000;7100000;7100000;UFA
@@ -945,7 +926,6 @@ Crotty, Cameron;OTT;;RD;27.0;;;812500.0;UFA;0;0;0
 Beckman, Lucas;OTT;ELC;G;19.0;2026-27|2027-28|2028-29;;1028333.0;1028333;1028333;RFA;0
 Reidler, Kevin;OTT;ELC;G;21.0;2026-27|2027-28;;946250.0;946250;RFA;0;0
 Parsons, Jackson;OTT;ELC;G;21.0;2026-27|2027-28;;929167.0;929167;RFA;0;0
-undefined, undefined;OTT;;;;;;;;;;
 Zegras, Trevor;PHI;;C,LW;25.0;;;9125000.0;9125000;9125000;9125000;UFA
 Konecny, Travis;PHI;;RW,LW;29.0;;;8750000.0;8750000;8750000;8750000;8750000
 Couturier, Sean;PHI;;C,LW;33.0;;;7750000.0;7750000;7750000;7750000;UFA
@@ -992,7 +972,6 @@ Dineen, Cam;PHI;;LD;28.0;;;875000.0;875000;UFA;0;0
 Grans, Helge;PHI;;D;24.0;;;837500.0;0;0;0;0
 Bjarnason, Carson;PHI;ELC;G;21.0;2026-27|2027-28;;885000.0;885000;RFA;0;0
 Kolosov, Alexei;PHI;;G;24.0;;;850000.0;0;0;0;0
-undefined, undefined;PHI;;;;;;;;;;
 Karlsson, Erik;PIT;;RD;36.0;;2026-27;11500000;UFA;0;0;0
 Crosby, Sidney;PIT;;C;39.0;;;8700000;UFA;0;0;0
 Chinakhov, Egor;PIT;;LW;25.0;;;6250000;6250000;6250000;UFA;0
@@ -1045,7 +1024,6 @@ Kemp, Philip;PIT;;D;27.0;;;850000;UFA;0;0;0
 Solovyov, Ilya;PIT;;LD;26.0;;;850000;0;0;0;0
 Ponomarev, Vasiliy;PIT;;C,LW;24.0;;;RFA;0;0;0;0
 Alexeyev, Alexander;PIT;;D;26.0;;;RFA;0;0;0;0
-undefined, undefined;PIT;;;;;;;;;;
 Dunn, Vince;SEA;;LD;29.0;;;7350000;UFA;0;0;0
 Montour, Brandon;SEA;;RD;32.0;;;7142857;7142857;7142857;7142857;7142857
 Beniers, Matthew;SEA;;C;23.0;;;7142857;7142857;7142857;7142857;7142857
@@ -1096,7 +1074,6 @@ Morrison, Logan;SEA;;C;24.0;;;850000;RFA;0;0;0
 Veleno, Joseph;SEA;;C,LW;26.0;;;379167;0;0;0;0
 Melanson, Jacob;SEA;;RW;23.0;;;RFA;0;0;0;0
 Seppala, Peetro;SEA;;D;26.0;;;RFA;0;0;0;0
-undefined, undefined;SEA;;;;;;;;;;
 Karlsson, Erik;SJS;;RD;36.0;;2026-27;11500000;0;0;0;0
 Nurse, Darnell;SJS;;LD;31.0;;;9250000;9250000;9250000;9250000;UFA
 Trouba, Jacob;SJS;;RD;32.0;;;8250000;8250000;8250000;8250000;UFA
@@ -1144,7 +1121,6 @@ Huntington, Jimmy;SJS;;C,LW;27.0;;;850000;UFA;0;0;0
 Keyser, Kyle;SJS;;G;27.0;;;850000;UFA;0;0;0
 Hajek, Libor;SJS;;D;28.0;;;850000;UFA;0;0;0
 Kaut, Martin;SJS;;RW;26.0;;;RFA;0;0;0;0
-undefined, undefined;SJS;;;;;;;;;;
 Thomas, Robert;STL;;C;27.0;;;8125000;8125000;8125000;8125000;8125000
 Buchnevich, Pavel;STL;;LW,C;31.0;;;8000000;8000000;8000000;8000000;8000000
 Broberg, Philip;STL;;LD;25.0;;;8000000;8000000;8000000;8000000;8000000
@@ -1196,7 +1172,6 @@ Peterson, Dylan;STL;;C,RW;24.0;;;850000;RFA;0;0;0
 Cranley, Will;STL;;G;24.0;;;850000;0;0;0;0
 Abramov, Mikhail;STL;;C,W;25.0;;;RFA;0;0;0;0
 Loof, Leo;STL;;D;24.0;;;RFA;0;0;0;0
-undefined, undefined;STL;;;;;;;;;;
 Kucherov, Nikita;TBL;;RW;33.0;;;9500000;UFA;0;0;0
 Point, Brayden;TBL;;C;30.0;;;9500000;9500000;9500000;9500000;UFA
 Vasilevskiy, Andrei;TBL;;G;32.0;;;9500000;9500000;UFA;0;0
@@ -1247,7 +1222,6 @@ Lundmark, Simon;TBL;;D;25.0;;;850000;0;0;0;0
 Sogaard, Mads;TBL;;G;25.0;;;850000;0;0;0;0
 Hildeby, Dennis;TBL;;G;25.0;;;841667;841667;RFA;0;0
 Alnefelt, Hugo;TBL;;G;25.0;;;RFA;0;0;0;0
-undefined, undefined;TBL;;;;;;;;;;
 Matthews, Auston;TOR;;C;28.0;;;13250000;13250000;UFA;0;0
 Nylander, William;TOR;;C,RW;30.0;;;11500000;11500000;11500000;11500000;11500000
 Raddysh, Darren;TOR;;RD;30.0;;;8500000;8500000;8500000;8500000;8500000
@@ -1300,7 +1274,6 @@ Groulx, Bo;TOR;;C,LW;26.0;;;812500;UFA;0;0;0
 Der-Arguchintsev, Semyon;TOR;;C;25.0;;;RFA;0;0;0;0
 Hirvonen, Roni;TOR;;W,C;24.0;;;RFA;0;0;0;0
 Niemela, Topi;TOR;;D;24.0;;;RFA;0;0;0;0
-undefined, undefined;TOR;;;;;;;;;;
 Cooley, Logan;UTA;;C,LW;22.0;;;10000000.0;10000000;10000000;10000000;10000000
 Schmaltz, Nick;UTA;;C,LW;30.0;;;8000000.0;8000000;8000000;8000000;8000000
 Keller, Clayton;UTA;;RW,LW;28.0;;;7150000.0;7150000;UFA;0;0
@@ -1349,7 +1322,6 @@ Jones, Zachary;UTA;;LD;25.0;;;875000.0;875000;UFA;0;0
 Onyebuchi, Montana;UTA;;D;26.0;;;850000.0;UFA;0;0;0
 Hrabal, Michael;UTA;ELC;G;21.0;2026-27|2027-28|2028-29;;1075000.0;1075000;1075000;RFA;0
 Stauber, Jaxson;UTA;;G;27.0;;;850000.0;UFA;0;0;0
-undefined, undefined;UTA;;;;;;;;;;
 Pettersson, Elias;VAN;;C,LW;27.0;;;11600000.0;11600000;11600000;11600000;11600000
 Boeser, Brock;VAN;;RW,LW;29.0;;;7250000.0;7250000;7250000;7250000;7250000
 DeBrusk, Jake;VAN;;LW,RW;29.0;;;5500000.0;5500000;5500000;5500000;5500000
@@ -1397,7 +1369,6 @@ Medvedev, Aleksei;VAN;ELC;G;18.0;2026-27|2027-28|2028-29;;965000.0;965000;965000
 Koskenvuo, Aku;VAN;ELC;G;23.0;2026-27;;925000.0;RFA;0;0;0
 Young, Ty;VAN;ELC;G;21.0;2026-27;;900000.0;RFA;0;0;0
 Tolopilo, Nikita;VAN;;G;26.0;;;850000.0;UFA;0;0;0
-undefined, undefined;VAN;;;;;;;;;;
 Eichel, Jack;VGK;;C;29.0;;;13500000;13500000;13500000;13500000;13500000
 Marner, Mitch;VGK;;RW,C;29.0;;;12000000;12000000;12000000;12000000;12000000
 Stone, Mark;VGK;;RW;34.0;;;9500000;UFA;0;0;0
@@ -1449,7 +1420,6 @@ Heinola, Ville;VGK;;LD;25.0;;;850000;0;0;0;0
 Holtz, Alexander;VGK;;RW,LW;24.0;;;835352;RFA;0;0;0
 Brabenec, Jakub;VGK;;LW,C;22.0;;;RFA;0;0;0;0
 Morozov, Ivan;VGK;;C;26.0;;;RFA;0;0;0;0
-undefined, undefined;VGK;;;;;;;;;;
 Connor, Kyle;WPG;;LW;29.0;;;12000000;12000000;12000000;12000000;12000000.0
 Scheifele, Mark;WPG;;C;33.0;;;8500000;8500000;8500000;8500000;8500000.0
 Hellebuyck, Connor;WPG;;G;33.0;;;8500000;8500000;8500000;8500000;8500000.0
@@ -1494,7 +1464,6 @@ Thrun, Henry;WPG;;LD;25.0;;;850000;RFA;0;0;0.0
 Phillips, Isaak;WPG;;D;24.0;;;812500;0;0;0;0.0
 Ford, Parker;WPG;;C,RW;26.0;;;812500;0;0;0;0.0
 Kupari, Rasmus;WPG;;C,RW;26.0;;;RFA;0;0;0;0.0
-undefined, undefined;WPG;;;;;;;;;;
 Tuch, Alex;WSH;;RW,C;30.0;;;10500000.0;10500000;10500000;10500000;10500000
 Dubois, Pierre-Luc;WSH;;C,LW;28.0;;;8500000.0;8500000;8500000;8500000;8500000
 Kyrou, Jordan;WSH;;RW;28.0;;;8125000.0;8125000;8125000;8125000;8125000
@@ -1543,4 +1512,3 @@ Belpedio, Louie;WSH;;D;30.0;;;850000.0;UFA;0;0;0
 MacDonald, Jacob;WSH;;D,LW;33.0;;;850000.0;UFA;0;0;0
 Stevenson, Clay;WSH;;G;27.0;;;850000.0;UFA;0;0;0
 Gibson, Mitchell;WSH;;G;27.0;;;812500.0;UFA;0;0;0
-undefined, undefined;WSH;;;;;;;;;;
