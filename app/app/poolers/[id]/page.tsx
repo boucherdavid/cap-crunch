@@ -7,7 +7,7 @@ import PlayerLink from '@/components/PlayerLink'
 import { buildStandings } from '@/lib/standings'
 import { fetchStreaks, DEFAULT_INDICATOR_CONFIG } from '@/lib/streaks'
 import type { StreakInfo } from '@/lib/streaks'
-import { fetchActiveNhlSeasonId } from '@/lib/nhl-stats'
+import { fetchActiveNhlSeasonId } from '@/lib/nhl-active-season'
 import { getEffectiveCap } from '@/lib/capUtils'
 
 const DASH = '\u2014'

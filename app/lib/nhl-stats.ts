@@ -3,12 +3,13 @@
  * Utilisé par /classement et /pool-series (playoffs).
  */
 
-import { createClient } from '@/lib/supabase/server'
-
 const NHL_REST = 'https://api.nhle.com/stats/rest/en'
 // Repli seulement — utilisé quand aucune saison active n'est trouvée en base.
-// Ne pas bumper à la main chaque année : voir fetchActiveNhlSeasonId ci-dessous,
-// qui dérive dynamiquement l'id NHL depuis pool_seasons.is_active.
+// Ne pas bumper à la main chaque année : voir fetchActiveNhlSeasonId dans
+// lib/nhl-active-season.ts, qui dérive dynamiquement l'id NHL depuis
+// pool_seasons.is_active. Cette constante reste ici (pas de dépendance
+// serveur) car ce fichier est aussi importé côté client (ResultatsManager.tsx
+// via daily-recap.ts) — voir SUIVI_PROJET.md 2026-09-09 pour l'incident.
 export const NHL_SEASON = '20252026'
 
 /** "2025-26" → "20252026", "2026-PO" → "20252026" (les séries d'avril-juin 2026 concluent la saison 2025-26) */
@@ -19,23 +20,6 @@ export function toNhlSeasonId(season: string): string {
   }
   const start = parseInt(season.split('-')[0], 10)
   return String(start * 10000 + (start + 1))
-}
-
-/** Lit la saison active depuis pool_seasons et retourne l'id NHL (ex: "20262027"). Fallback sur NHL_SEASON. */
-export async function fetchActiveNhlSeasonId(isPlayoff: boolean): Promise<string> {
-  try {
-    const supabase = await createClient()
-    const { data } = await supabase
-      .from('pool_seasons')
-      .select('season')
-      .eq('is_active', true)
-      .eq('is_playoff', isPlayoff)
-      .single()
-    if (data?.season) return toNhlSeasonId(data.season)
-    return NHL_SEASON
-  } catch {
-    return NHL_SEASON
-  }
 }
 
 export type NhlSkaterStat = {

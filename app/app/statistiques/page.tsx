@@ -5,7 +5,8 @@ import { fetchStreaks, DEFAULT_INDICATOR_CONFIG, type StreakInfo } from '@/lib/s
 export const metadata = { title: 'Statistiques LNH' }
 export const dynamic = 'force-dynamic'
 
-import { NHL_SEASON, fetchActiveNhlSeasonId } from '@/lib/nhl-stats'
+import { NHL_SEASON } from '@/lib/nhl-stats'
+import { fetchActiveNhlSeasonId } from '@/lib/nhl-active-season'
 const REST = 'https://api.nhle.com/stats/rest/en'
 
 export type SkaterStat = {

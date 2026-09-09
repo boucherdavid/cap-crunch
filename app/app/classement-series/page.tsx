@@ -3,7 +3,7 @@ import {
   getPlayoffPoolStandingsAction,
 } from '@/app/gestion-series/playoff-pool-actions'
 import { fetchStreaks } from '@/lib/streaks'
-import { fetchActiveNhlSeasonId } from '@/lib/nhl-stats'
+import { fetchActiveNhlSeasonId } from '@/lib/nhl-active-season'
 import ClassementSeriesTable from './ClassementSeriesTable'
 import type { StreakInfo } from '@/lib/streaks'
 
