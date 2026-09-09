@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-08
+Derniere mise a jour: 2026-09-09
 
 ## Role du fichier
 
@@ -21,7 +21,80 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
-### 2026-09-08 (suite 11) — NON COMMITÉ, à reprendre la prochaine session
+### 2026-09-09
+
+**[Fix] — Nettoyage du scraping PuckPedia (lignes fantômes "undefined, undefined")**
+(`python_script/scrape_puckpedia.py`, `python_script/teams_offline/*.csv` (32 fichiers),
+`PuckPedia_offline.csv`, `PuckPedia_update.csv`) :
+- Chaque page d'équipe PuckPedia contient une ligne de tableau non hydratée côté JS (nom
+  littéral "undefined, undefined") que le scraper interprétait comme un joueur — 32 joueurs
+  fantômes en base (un par équipe), sans `nhl_id`, jamais référencés ailleurs. Filtre ajouté
+  dans `scraper_depuis_html`. Les 32 lignes `players` correspondantes supprimées manuellement
+  en staging et prod après vérification qu'aucune autre table ne les référençait.
+- Poussé directement sur `main` (CSV pipeline, convention section 2 du CLAUDE.md), en plus de
+  `staging`. Commit prod : `03710ae`.
+
+**[Fix] — Transition de saison 2026-27 en prod : sync staging→prod + deux bugs corrigés**
+(`python_script/sync_staging_to_prod.py`) :
+- David a préparé les alignements 2026-27 en staging pendant les tests de pré-saison ; objectif
+  était de migrer cet état vers prod plutôt que de tout ressaisir à la main.
+- **Bug 1 (bloquant)** : le script assumait `pool_draft_picks.id` identique entre staging et
+  prod (vrai historiquement). Staging avait dérivé (réinitialisations de repêchage pendant les
+  tests) — `--apply` a planté sur une violation FK (`pooler_rosters_draft_pick_id_fkey`).
+  Aucune écriture n'avait eu lieu en prod (insert atomique, échec avant complétion — vérifié
+  directement en base avant de continuer). Corrigé en mappant par la clé naturelle
+  `(pool_season_id, original_owner_id, round)` (garantie unique en base), comme pour le mapping
+  des joueurs par `nhl_id`/nom.
+- **Bug 2 (données)** : staging contenait aussi des artefacts de test non voulus en prod :
+  - 64 lignes `pooler_rosters` marquées `is_active=false` (libérations de test faites en
+    testant le nouveau panneau admin/libre-service, toutes horodatées 2026-09-08 18h44-20h29,
+    sur les 8 poolers) — réactivées (`is_active=true`, `removed_at=null`) avant le sync.
+  - Les 14 transactions/64 `transaction_items` correspondant à ces libérations de test
+    (notes 'Ajustement pré-saison') supprimées en staging pour que "Activité récente" sur
+    `/repechage-agents-libres` ne les montre plus (jamais synchronisées vers prod — hors
+    scope du script par design).
+  - 32 recrues "repêchées" lors d'un repêchage AL de test (vrai repêchage pas encore fait) —
+    lignes `pooler_rosters` supprimées, les 32 `pool_draft_picks` de la saison remis à
+    `is_used=false` (ownership réelle des 6 picks échangés conservée, confirmé avec David).
+  - Sync final appliqué avec succès : 326 lignes `pooler_rosters`, 32 picks (ownership +
+    `is_used=false`), 0 lignes `roster_change_log` (rien journalisé en pré-saison, normal).
+- Commit du fix de mapping : `staging` seulement (script admin, pas de convention CSV).
+
+**[Feature] — "Passer" configurable en direct + fix avancement de file**
+(voir entrée 2026-09-08 suite 11 ci-dessus pour le détail) — migration `pass_skip_one`
+exécutée par David en staging et prod, committé et promu vers `main` (commit `b142734` puis
+merge `51fa2c7`).
+
+**[Fix] — Résolution dynamique de `NHL_SEASON` partout (fini le repli codé en dur)**
+(`app/lib/nhl-stats.ts`, `app/app/statistiques/page.tsx`, `app/app/classement-series/page.tsx`,
+`app/app/poolers/[id]/page.tsx`) :
+- David a demandé un état des lieux : contrats/stats/"autres" étaient-ils bien ancrés sur la
+  saison active en prod ? Contrats (`/joueurs`) : le fix (`buildSeasons()`, déjà fait le
+  2026-09-08) dormait sur `staging`, jamais promu. Statistiques (`/statistiques`, section
+  saison régulière) : déjà dynamique via `fetchActiveNhlSeasonId()`, rien à faire.
+- "Autres" : 3 derniers appels à `fetchStreaks()` retombaient silencieusement sur la constante
+  `NHL_SEASON='20252026'` codée en dur — badges de séquence sur `/poolers/[id]`, séquences
+  playoffs sur `/classement-series`, et section playoffs de `/statistiques` (qui calculait déjà
+  `nhlSeason` dynamiquement mais oubliait de le passer à `fetchStreaks` — oubli distinct,
+  corrigé au passage). `toNhlSeasonId()`/`fetchActiveNhlSeasonId()` déplacées de
+  `/statistiques` vers `lib/nhl-stats.ts` (partagé, évite la duplication) et branchées aux 3
+  endroits. `buildStandings()` (calcul des points, le plus critique) n'était pas touché — dérive
+  déjà sa saison de `pool_seasons` indépendamment de `NHL_SEASON`.
+- Pas urgent aujourd'hui (aucun match 2026-27 joué avant mi-octobre), mais évite d'avoir à y
+  repenser au moment venu.
+
+**[Promotion] — `staging` → `main`** : après validation de David sur les points ci-dessus,
+fusion complète de `staging` vers `main` (commit `51fa2c7`) — inclut la refonte du repêchage
+agents libres pré-saison (panneau admin rétractable, phase de libération, déclaration
+"alignement prêt", bac à sable soumettable, libération admin en masse, pause/reprise du chrono,
+"Passer" configurable), les fix `/joueurs` et `NHL_SEASON`, et le fix du scraping. Tout est
+maintenant en prod.
+
+**[Memory] — Préférence de communication en français** (`~/.claude/CLAUDE.md`, nouveau) :
+David a demandé où enregistrer la préférence de toujours communiquer en français — fichier
+global créé (s'applique à tous ses projets), en plus d'une mémoire de feedback dans ce projet.
+
+### 2026-09-08 (suite 11) — committé le 2026-09-09 (voir session suivante)
 
 **[Feature] — Comportement de "Passer" configurable ; bug de signature corrigé**
 (`schema.sql`, `admin/presaison/types.ts`, `admin/presaison/actions.ts`,
@@ -51,11 +124,8 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   radio) ajouté dans la section "Ordre du repêchage" des **deux** pages qui la montrent
   (`AdminPanel.tsx` et `PresaisonManager.tsx`, pour rester cohérent — le second reste le
   filet de sécurité).
-- **Pas encore commité** (touche `schema.sql`, exception qui demande confirmation avant de
-  committer) — `npx tsc --noEmit` et `eslint` passent, aucune nouvelle dette.
-- **À faire la prochaine session** : (1) David exécute la migration ci-dessus en staging,
-  (2) commit + push sur `staging`, (3) tester les deux comportements de "Passer" en direct
-  et confirmer que la signature fait maintenant bien avancer la file dans le panneau admin.
+- Migration exécutée par David en staging **et prod** le 2026-09-09 ; commité et poussé sur
+  `staging` puis promu vers `main` le même jour (voir session 2026-09-09 ci-dessous).
 
 ### 2026-09-08 (suite 10)
 
