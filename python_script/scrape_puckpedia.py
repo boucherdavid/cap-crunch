@@ -345,6 +345,11 @@ def scraper_depuis_html(fichier_html, sigle, headless=True, driver=None):
                 name = name_only.get_text(strip=True)
             if not name or not any(c.isalpha() for c in name):
                 continue
+            # Ligne fantôme en fin de tableau sur PuckPedia : un <tr> dont le nom
+            # ne s'est pas hydraté côté JS et reste litteralement "undefined,
+            # undefined" — jamais un vrai joueur, à ignorer.
+            if "undefined" in name.lower():
+                continue
 
             player_href = a_tag.get("href", "") if a_tag else ""
             player_url = f"{PUCKPEDIA_BASE_URL}{player_href}" if player_href.startswith("/") else (player_href or None)
