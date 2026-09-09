@@ -519,17 +519,22 @@ function MonAlignement({
   }
   const [releaseMode, setReleaseMode] = useState(false)
   const [selectedForRelease, setSelectedForRelease] = useState<Set<number>>(new Set())
+  // Remettre en banque soi-même (David, 2026-09-09) — même geste que l'admin (PoolerCard),
+  // pour un joueur encore sous protection recrue malgré son statut actif/réserviste. Même
+  // patron que la sélection de libération ci-dessus (checkboxes puis un seul bouton).
+  const [banqueMode, setBanqueMode] = useState(false)
+  const [selectedForBanque, setSelectedForBanque] = useState<Set<number>>(new Set())
   const [recruePlayers, setRecruePlayers] = useState<RecrueOption[]>([])
   const [recrueLoading, setRecrueLoading] = useState(!seasonStarted)
   const [selectedRecrueId, setSelectedRecrueId] = useState('')
   const [recrueNewType, setRecrueNewType] = useState<'actif' | 'reserviste'>('actif')
 
-  // Signale au parent qu'une sélection de libération est en cours, pour mettre en pause
-  // AutoReload le temps que le pooler coche ses joueurs (voir AgentsLibresDashboard).
+  // Signale au parent qu'une sélection de libération/mise en banque est en cours, pour mettre
+  // en pause AutoReload le temps que le pooler coche ses joueurs (voir AgentsLibresDashboard).
   useEffect(() => {
-    onReleaseSelectionChange?.(releaseMode)
+    onReleaseSelectionChange?.(releaseMode || banqueMode)
     return () => onReleaseSelectionChange?.(false)
-  }, [releaseMode, onReleaseSelectionChange])
+  }, [releaseMode, banqueMode, onReleaseSelectionChange])
 
   useEffect(() => {
     if (seasonStarted) return
@@ -547,6 +552,17 @@ function MonAlignement({
     })
   }
   const cancelRelease = () => { setReleaseMode(false); setSelectedForRelease(new Set()); setSelfErr(null) }
+  const startRelease = () => { setReleaseMode(true); setBanqueMode(false); setSelectedForBanque(new Set()); setSelfErr(null) }
+
+  const toggleBanqueSelect = (playerId: number) => {
+    setSelectedForBanque(prev => {
+      const next = new Set(prev)
+      next.has(playerId) ? next.delete(playerId) : next.add(playerId)
+      return next
+    })
+  }
+  const cancelBanque = () => { setBanqueMode(false); setSelectedForBanque(new Set()); setSelfErr(null) }
+  const startBanque = () => { setBanqueMode(true); setReleaseMode(false); setSelectedForRelease(new Set()); setSelfErr(null) }
 
   // Toutes les actions de libre-service ci-dessous passaient par submitSelfServiceAction sans
   // try/catch : une exception inattendue (pas une simple {error} renvoyée) laissait busy=true
@@ -572,6 +588,25 @@ function MonAlignement({
     setBusy(true); setSelfErr(null)
     try {
       const items = Array.from(selectedForRelease).map(playerId => ({ action_type: 'release' as const, player_id: playerId }))
+      const result = await submitSelfServiceAction(saisonId, items)
+      if (result.error) { setBusy(false); setSelfErr(result.error) } else { window.location.reload() }
+    } catch {
+      setBusy(false); setSelfErr('Erreur inattendue — réessaie.')
+    }
+  }
+
+  const handleConfirmBanque = async () => {
+    if (selectedForBanque.size === 0 || !myPooler) return
+    setBusy(true); setSelfErr(null)
+    try {
+      const items = Array.from(selectedForBanque).map(playerId => {
+        const entry = myPooler.roster.find(e => e.player_id === playerId)
+        return {
+          action_type: 'type_change' as const, player_id: playerId,
+          old_player_type: entry?.player_type as 'actif' | 'reserviste',
+          new_player_type: 'recrue' as const,
+        }
+      })
       const result = await submitSelfServiceAction(saisonId, items)
       if (result.error) { setBusy(false); setSelfErr(result.error) } else { window.location.reload() }
     } catch {
@@ -750,17 +785,31 @@ function MonAlignement({
               </p>
             )}
             {!seasonStarted && releasePhaseOpen && (
-              <div className="flex items-center justify-end mb-2">
-                {!releaseMode ? (
-                  <button
-                    onClick={() => setReleaseMode(true)}
-                    disabled={busy}
-                    className="text-xs px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded disabled:opacity-40"
-                  >
-                    Libérer des joueurs
+              <div className="flex items-center justify-end gap-2 mb-2">
+                {!releaseMode && !banqueMode && (
+                  <>
+                    <button
+                      onClick={startRelease}
+                      disabled={busy}
+                      className="text-xs px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded disabled:opacity-40"
+                    >
+                      Libérer des joueurs
+                    </button>
+                    {myPooler.roster.some(e => e.rookieType && (e.player_type === 'actif' || e.player_type === 'reserviste')) && (
+                      <button
+                        onClick={startBanque}
+                        disabled={busy}
+                        className="text-xs px-2 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded disabled:opacity-40"
+                      >
+                        Remettre en banque
+                      </button>
+                    )}
+                  </>
+                )}
+                {(releaseMode || banqueMode) && (
+                  <button onClick={releaseMode ? cancelRelease : cancelBanque} className="text-xs text-gray-400 hover:text-gray-600">
+                    Annuler
                   </button>
-                ) : (
-                  <button onClick={cancelRelease} className="text-xs text-gray-400 hover:text-gray-600">Annuler la libération</button>
                 )}
               </div>
             )}
@@ -773,15 +822,18 @@ function MonAlignement({
                     {group.entries.map(e => {
                       const canToggleType = !seasonStarted && (e.player_type === 'actif' || e.player_type === 'reserviste')
                       const canRelease = canToggleType && releasePhaseOpen
+                      const banqueEligible = canToggleType && !!e.rookieType && releasePhaseOpen
                       const selected = selectedForRelease.has(e.player_id)
+                      const banqueSelected = selectedForBanque.has(e.player_id)
                       return (
-                        <div key={e.roster_id} className={`flex items-center justify-between text-xs py-1 gap-2 ${selected ? 'bg-red-50 rounded px-1' : ''}`}>
+                        <div key={e.roster_id} className={`flex items-center justify-between text-xs py-1 gap-2 ${selected ? 'bg-red-50 rounded px-1' : banqueSelected ? 'bg-amber-50 rounded px-1' : ''}`}>
                           <span className="flex-1 text-gray-600">
                             <span className="text-gray-400 mr-1">{e.position ?? DASH}</span>
                             {e.playerName}
+                            {banqueMode && banqueEligible && <span className="ml-1 text-amber-500" title="Encore sous protection recrue — éligible">★</span>}
                           </span>
                           <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
-                          {canToggleType && !releaseMode && (
+                          {canToggleType && !releaseMode && !banqueMode && (
                             <button
                               onClick={() => handleToggleType(e)}
                               disabled={busy}
@@ -797,6 +849,14 @@ function MonAlignement({
                               className={`w-5 h-5 rounded border text-[10px] shrink-0 flex items-center justify-center ${selected ? 'bg-red-500 text-white border-red-500' : 'text-gray-400 hover:text-red-600'}`}
                             >
                               {selected ? '✓' : ''}
+                            </button>
+                          )}
+                          {banqueEligible && banqueMode && (
+                            <button
+                              onClick={() => toggleBanqueSelect(e.player_id)}
+                              className={`w-5 h-5 rounded border text-[10px] shrink-0 flex items-center justify-center ${banqueSelected ? 'bg-amber-500 text-white border-amber-500' : 'text-gray-400 hover:text-amber-600'}`}
+                            >
+                              {banqueSelected ? '✓' : ''}
                             </button>
                           )}
                         </div>
@@ -818,6 +878,21 @@ function MonAlignement({
                   className="text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-40"
                 >
                   {busy ? '...' : `Libérer (${selectedForRelease.size})`}
+                </button>
+              </div>
+            )}
+
+            {banqueMode && (
+              <div className="flex items-center gap-3 pt-2 mt-2 border-t">
+                <span className="text-xs text-gray-500 flex-1">
+                  {selectedForBanque.size > 0 ? `${selectedForBanque.size} sélectionné(s)` : 'Coche les recrues (★) à remettre en banque'}
+                </span>
+                <button
+                  onClick={handleConfirmBanque}
+                  disabled={busy || selectedForBanque.size === 0}
+                  className="text-xs px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-40"
+                >
+                  {busy ? '...' : `Remettre en banque (${selectedForBanque.size})`}
                 </button>
               </div>
             )}
