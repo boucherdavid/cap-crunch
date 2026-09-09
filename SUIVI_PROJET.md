@@ -21,6 +21,35 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-09 (suite)
+
+**[Incident/Fix] — Les deux derniers déploiements (staging + prod) avaient échoué**
+(`app/lib/nhl-stats.ts`, `app/lib/nhl-active-season.ts` (nouveau),
+`app/app/statistiques/page.tsx`, `app/app/classement-series/page.tsx`,
+`app/app/poolers/[id]/page.tsx`) :
+- David a remarqué que les déploiements récents échouaient. Confirmé via
+  `gh api repos/boucherdavid/cap-crunch/commits/main/status` (les deux contextes Vercel en
+  `failure`) — pas d'accès direct aux logs Vercel (pas de token/CLI configuré localement), donc
+  reproduit avec `npm run build` en local.
+- Cause : le fix `NHL_SEASON` de la session précédente (voir entrée du dessus) avait ajouté un
+  import de `lib/supabase/server` (dépend de `next/headers`) dans `nhl-stats.ts` — un module
+  aussi importé par un **composant client** (`ResultatsManager.tsx` via `daily-recap.ts`, pour
+  la seule constante `NHL_SEASON`). Turbopack refuse ce mélange, même derrière un import
+  dynamique (essayé en premier, insuffisant — l'analyse de graphe de modules trace quand même
+  à travers `import()`).
+- Fix définitif : `fetchActiveNhlSeasonId()` déplacée dans un nouveau fichier dédié
+  `lib/nhl-active-season.ts` (dépendance serveur, jamais réimporté depuis un fichier accessible
+  côté client). `nhl-stats.ts` redevient pur (fetch API publique + `NHL_SEASON`/
+  `toNhlSeasonId`), exactement comme avant le fix `NHL_SEASON`. Les 3 appelants
+  (`/statistiques`, `/classement-series`, `/poolers/[id]`) importent désormais
+  `fetchActiveNhlSeasonId` depuis ce nouveau fichier.
+- Vérifié avec `npm run build` (succès) et `tsc --noEmit` avant de pousser. Déploiements Vercel
+  confirmés au vert après coup (staging et prod) via `gh api .../commits/<sha>/status`.
+- **Leçon** : un fichier `lib/` importé (même transitivement) par un composant client doit
+  rester libre de toute dépendance server-only (`next/headers`, `lib/supabase/server`) — un
+  import dynamique à l'intérieur d'une fonction ne suffit pas à contourner la vérification
+  de Turbopack ; il faut isoler la dépendance dans un fichier séparé, jamais importé côté client.
+
 ### 2026-09-09
 
 **[Fix] — Nettoyage du scraping PuckPedia (lignes fantômes "undefined, undefined")**
