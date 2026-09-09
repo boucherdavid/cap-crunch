@@ -12,6 +12,13 @@ export type RosterEntry = {
   position: string | null
   cap_number: number
   isEstimatedCap: boolean
+  // Non-null seulement si le joueur est encore sous protection recrue (ELC actif, ou plafond
+  // 5 saisons pour un repêché) malgré son player_type actif/réserviste — condition pour être
+  // remis en banque par l'admin (voir "Remettre en banque" dans PoolerCard). Une recrue à
+  // protection expirée a déjà rookie_type=null (syncExpiredRookieProtection), donc n'est
+  // jamais éligible — cohérent avec le fait qu'elle ne peut plus redevenir recrue nulle part
+  // ailleurs dans l'app.
+  rookieType: string | null
 }
 
 export type PoolerCapInfo = {

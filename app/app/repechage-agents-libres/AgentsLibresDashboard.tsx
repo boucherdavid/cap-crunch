@@ -10,6 +10,7 @@ type Me = { id: string; name: string; isAdmin: boolean }
 type RosterEntry = {
   roster_id: number; player_id: number; player_type: string; playerName: string
   position: string | null; cap_number: number; isEstimatedCap: boolean
+  rookieType: string | null
 }
 type PoolerInfo = {
   id: string; name: string; capUsed: number; capSpace: number; isCompliant: boolean
@@ -240,12 +241,22 @@ function PoolerCard({
   const [releaseMode, setReleaseMode] = useState(false)
   const [selectedForRelease, setSelectedForRelease] = useState<Set<number>>(new Set())
 
+  // Remettre en banque au nom d'un pooler (David, 2026-09-09) — même filet de sécurité que
+  // "Libérer au nom d'un pooler", pour le cas où un pooler ne peut pas s'en charger lui-même
+  // pendant le repêchage AL. Restreint aux joueurs encore sous protection recrue
+  // (rookieType non-null malgré player_type actif/réserviste) — c'est le seul cas où repasser
+  // en 'recrue' a un sens ; un vétéran normal n'a pas de banque à retourner.
+  const [banquing, setBanquing] = useState(false)
+  const [banqueErr, setBanqueErr] = useState<string | null>(null)
+  const [banqueMode, setBanqueMode] = useState(false)
+  const [selectedForBanque, setSelectedForBanque] = useState<Set<number>>(new Set())
+
   // Même correctif que MonAlignement (voir AgentsLibresDashboard) — AutoReload coupait une
-  // sélection de libération admin en cours (David, 2026-09-09).
+  // sélection de libération/mise en banque admin en cours (David, 2026-09-09).
   useEffect(() => {
-    onReleaseSelectionChange?.(pooler.id, releaseMode)
+    onReleaseSelectionChange?.(pooler.id, releaseMode || banqueMode)
     return () => onReleaseSelectionChange?.(pooler.id, false)
-  }, [releaseMode, pooler.id, onReleaseSelectionChange])
+  }, [releaseMode, banqueMode, pooler.id, onReleaseSelectionChange])
 
   const remain = poolCap - pooler.capUsed
   const pct = poolCap > 0 ? Math.min(100, (pooler.capUsed / poolCap) * 100) : 0
@@ -260,6 +271,17 @@ function PoolerCard({
     })
   }
   const cancelReleaseMode = () => { setReleaseMode(false); setSelectedForRelease(new Set()); setReleaseErr(null) }
+  const startReleaseMode = () => { setReleaseMode(true); setBanqueMode(false); setSelectedForBanque(new Set()); setBanqueErr(null) }
+
+  const toggleBanqueSelect = (playerId: number) => {
+    setSelectedForBanque(prev => {
+      const next = new Set(prev)
+      next.has(playerId) ? next.delete(playerId) : next.add(playerId)
+      return next
+    })
+  }
+  const cancelBanqueMode = () => { setBanqueMode(false); setSelectedForBanque(new Set()); setBanqueErr(null) }
+  const startBanqueMode = () => { setBanqueMode(true); setReleaseMode(false); setSelectedForRelease(new Set()); setReleaseErr(null) }
 
   // Libérer au nom d'un pooler (David, 2026-09-08) — filet de sécurité pratique pour les
   // tests et pour un pooler qui ne peut pas se connecter pendant le pool ; admin seulement
@@ -280,6 +302,31 @@ function PoolerCard({
       if (result.error) { setReleasing(false); setReleaseErr(result.error) } else { window.location.reload() }
     } catch {
       setReleasing(false); setReleaseErr('Erreur inattendue — réessaie.')
+    }
+  }
+
+  // Remettre en banque au nom d'un pooler (David, 2026-09-09) — type_change vers 'recrue',
+  // même mécanique que "Libérer au nom d'un pooler" ci-dessus (même notes, même exclusion du
+  // reset de repêchage). rookieType/pool_draft_year ne sont pas touchés par applyTransactionItems
+  // pour un type_change — ils restent intacts, exactement comme une vraie ligne de banque.
+  const handleConfirmAdminBanque = async () => {
+    if (selectedForBanque.size === 0) return
+    setBanquing(true); setBanqueErr(null)
+    try {
+      const items = Array.from(selectedForBanque).map(playerId => {
+        const entry = pooler.roster.find(e => e.player_id === playerId)
+        return {
+          action_type: 'type_change' as const,
+          from_pooler_id: pooler.id, to_pooler_id: pooler.id,
+          player_id: playerId,
+          old_player_type: entry?.player_type,
+          new_player_type: 'recrue',
+        }
+      })
+      const result = await submitTransactionAction(saisonId, 'Ajustement pré-saison', items)
+      if (result.error) { setBanquing(false); setBanqueErr(result.error) } else { window.location.reload() }
+    } catch {
+      setBanquing(false); setBanqueErr('Erreur inattendue — réessaie.')
     }
   }
 
@@ -324,16 +371,27 @@ function PoolerCard({
       {open && (
         <div className="mt-2 pt-2 border-t space-y-2">
           {isAdmin && pooler.roster.length > 0 && (
-            <div className="flex items-center justify-end -mt-1">
-              {!releaseMode ? (
-                <button
-                  onClick={() => setReleaseMode(true)}
-                  className="text-xs px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded"
-                >
-                  Libérer des joueurs
-                </button>
-              ) : (
-                <button onClick={cancelReleaseMode} className="text-xs text-gray-400 hover:text-gray-600">
+            <div className="flex items-center justify-end gap-2 -mt-1">
+              {!releaseMode && !banqueMode && (
+                <>
+                  <button
+                    onClick={startReleaseMode}
+                    className="text-xs px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded"
+                  >
+                    Libérer des joueurs
+                  </button>
+                  {pooler.roster.some(e => e.rookieType) && (
+                    <button
+                      onClick={startBanqueMode}
+                      className="text-xs px-2 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded"
+                    >
+                      Remettre en banque
+                    </button>
+                  )}
+                </>
+              )}
+              {(releaseMode || banqueMode) && (
+                <button onClick={releaseMode ? cancelReleaseMode : cancelBanqueMode} className="text-xs text-gray-400 hover:text-gray-600">
                   Annuler
                 </button>
               )}
@@ -347,11 +405,14 @@ function PoolerCard({
               <div className="space-y-0.5">
                 {group.entries.map(e => {
                   const selected = selectedForRelease.has(e.player_id)
+                  const banqueEligible = !!e.rookieType
+                  const banqueSelected = selectedForBanque.has(e.player_id)
                   return (
-                    <div key={e.roster_id} className={`flex items-center justify-between text-xs text-gray-600 py-0.5 gap-2 ${selected ? 'bg-red-50 rounded px-1' : ''}`}>
+                    <div key={e.roster_id} className={`flex items-center justify-between text-xs text-gray-600 py-0.5 gap-2 ${selected ? 'bg-red-50 rounded px-1' : banqueSelected ? 'bg-amber-50 rounded px-1' : ''}`}>
                       <span className="flex-1">
                         <span className="text-gray-400 mr-1">{e.position ?? DASH}</span>
                         {e.playerName}
+                        {banqueMode && banqueEligible && <span className="ml-1 text-amber-500" title="Encore sous protection recrue — éligible">★</span>}
                       </span>
                       <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
                       {isAdmin && releaseMode && (
@@ -360,6 +421,14 @@ function PoolerCard({
                           className={`w-5 h-5 rounded border text-[10px] shrink-0 flex items-center justify-center ${selected ? 'bg-red-500 text-white border-red-500' : 'text-gray-400 hover:text-red-600'}`}
                         >
                           {selected ? '✓' : ''}
+                        </button>
+                      )}
+                      {isAdmin && banqueMode && banqueEligible && (
+                        <button
+                          onClick={() => toggleBanqueSelect(e.player_id)}
+                          className={`w-5 h-5 rounded border text-[10px] shrink-0 flex items-center justify-center ${banqueSelected ? 'bg-amber-500 text-white border-amber-500' : 'text-gray-400 hover:text-amber-600'}`}
+                        >
+                          {banqueSelected ? '✓' : ''}
                         </button>
                       )}
                     </div>
@@ -383,6 +452,21 @@ function PoolerCard({
             </div>
           )}
           {releaseErr && <p className="text-xs text-red-600 mt-1">{releaseErr}</p>}
+          {banqueMode && (
+            <div className="flex items-center gap-3 pt-2 border-t">
+              <span className="text-xs text-gray-500 flex-1">
+                {selectedForBanque.size > 0 ? `${selectedForBanque.size} sélectionné(s)` : 'Coche les recrues (★) à remettre en banque'}
+              </span>
+              <button
+                onClick={handleConfirmAdminBanque}
+                disabled={banquing || selectedForBanque.size === 0}
+                className="text-xs px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-40"
+              >
+                {banquing ? '...' : `Remettre en banque (${selectedForBanque.size})`}
+              </button>
+            </div>
+          )}
+          {banqueErr && <p className="text-xs text-red-600 mt-1">{banqueErr}</p>}
         </div>
       )}
     </div>
