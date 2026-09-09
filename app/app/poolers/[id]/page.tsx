@@ -7,6 +7,7 @@ import PlayerLink from '@/components/PlayerLink'
 import { buildStandings } from '@/lib/standings'
 import { fetchStreaks, DEFAULT_INDICATOR_CONFIG } from '@/lib/streaks'
 import type { StreakInfo } from '@/lib/streaks'
+import { fetchActiveNhlSeasonId } from '@/lib/nhl-stats'
 import { getEffectiveCap } from '@/lib/capUtils'
 
 const DASH = '\u2014'
@@ -583,10 +584,13 @@ export default async function PoolerPage({ params }: { params: Promise<{ id: str
     goalieGaaThreshold:    (saison as any)?.indicator_goalie_gaa            ?? DEFAULT_INDICATOR_CONFIG.goalieGaaThreshold,
     goalieMinGames:        (saison as any)?.indicator_goalie_min_games      ?? DEFAULT_INDICATOR_CONFIG.goalieMinGames,
   }
+  const nhlSeason = await fetchActiveNhlSeasonId(false)
   const streaksMap = await fetchStreaks(
     alignementPlayers.map(p => ({ nhlId: p.nhlId, isGoalie: p.position === 'G' })),
     2,
     indicatorConfig,
+    undefined,
+    nhlSeason,
   )
   const streaks: Record<number, StreakInfo> = {}
   streaksMap.forEach((v, k) => { streaks[k] = v })

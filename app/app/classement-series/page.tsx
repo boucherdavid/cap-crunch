@@ -3,6 +3,7 @@ import {
   getPlayoffPoolStandingsAction,
 } from '@/app/gestion-series/playoff-pool-actions'
 import { fetchStreaks } from '@/lib/streaks'
+import { fetchActiveNhlSeasonId } from '@/lib/nhl-stats'
 import ClassementSeriesTable from './ClassementSeriesTable'
 import type { StreakInfo } from '@/lib/streaks'
 
@@ -54,8 +55,9 @@ export default async function ClassementSeriesPage() {
     }
     const players = [...unique.entries()].map(([nhlId, isGoalie]) => ({ nhlId, isGoalie }))
     try {
+      const nhlSeason = await fetchActiveNhlSeasonId(true)
       const map = await Promise.race([
-        fetchStreaks(players, 3, undefined, 5),
+        fetchStreaks(players, 3, undefined, 5, nhlSeason),
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000)),
       ])
       for (const [nhlId, info] of map) streaks[nhlId] = info

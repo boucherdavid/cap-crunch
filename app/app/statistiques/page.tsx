@@ -5,35 +5,8 @@ import { fetchStreaks, DEFAULT_INDICATOR_CONFIG, type StreakInfo } from '@/lib/s
 export const metadata = { title: 'Statistiques LNH' }
 export const dynamic = 'force-dynamic'
 
-import { NHL_SEASON } from '@/lib/nhl-stats'
+import { NHL_SEASON, fetchActiveNhlSeasonId } from '@/lib/nhl-stats'
 const REST = 'https://api.nhle.com/stats/rest/en'
-
-/** "2025-26" → "20252026", "2026-PO" → "20252026" */
-function toNhlSeasonId(season: string): string {
-  if (season.endsWith('-PO')) {
-    const endYear = parseInt(season.replace('-PO', ''), 10)
-    return String((endYear - 1) * 10000 + endYear)
-  }
-  const start = parseInt(season.split('-')[0], 10)
-  return String(start * 10000 + (start + 1))
-}
-
-/** Lit la saison active depuis pool_seasons et retourne l'ID NHL (ex: "20252026"). Fallback sur NHL_SEASON. */
-async function fetchActiveNhlSeasonId(isPlayoff: boolean): Promise<string> {
-  try {
-    const supabase = await createClient()
-    const { data } = await supabase
-      .from('pool_seasons')
-      .select('season')
-      .eq('is_active', true)
-      .eq('is_playoff', isPlayoff)
-      .single()
-    if (data?.season) return toNhlSeasonId(data.season)
-    return NHL_SEASON
-  } catch {
-    return NHL_SEASON
-  }
-}
 
 export type SkaterStat = {
   id: number
@@ -373,7 +346,7 @@ async function fetchStreaksForStats(gameType: number, nhlSeason = NHL_SEASON): P
           seen.set(p.nhl_id, { nhlId: p.nhl_id, isGoalie: p.position === 'G' })
       }
 
-      const map = await fetchStreaks([...seen.values()], 3, DEFAULT_INDICATOR_CONFIG, 5)
+      const map = await fetchStreaks([...seen.values()], 3, DEFAULT_INDICATOR_CONFIG, 5, nhlSeason)
       const result: Record<number, StreakInfo> = {}
       map.forEach((v, k) => { result[k] = v })
       return result
