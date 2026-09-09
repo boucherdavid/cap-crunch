@@ -117,8 +117,14 @@ export default async function NouvelleSaisonPage({
     {
       n: 6,
       title: 'Pré-saison',
-      description: 'Décisions ELC, libérations/ajustements, et repêchage guidé des agents libres.',
-      href: id => `/admin/init?tab=presaison&saisonId=${id}`,
+      description: 'Décisions ELC, libérations/ajustements, et repêchage guidé des agents libres — ordre du repêchage et phase de libération se gèrent depuis le panneau admin de cette page (visible seulement des admins).',
+      // Pointe vers le tableau de bord partagé plutôt que /admin/init?tab=presaison (David,
+      // 2026-09-08) — le panneau admin rétractable y a été ajouté pour éviter de jongler entre
+      // deux pages. Pas de &saisonId= ici : cette page ne gère que la saison régulière active,
+      // ce qui est déjà le cas normalement à cette étape (voir carte "Activer la saison" plus
+      // haut). /admin/init?tab=presaison reste fonctionnelle en filet de sécurité, notamment
+      // pour préparer une saison pas encore activée.
+      href: () => '/repechage-agents-libres',
       status: null,
     },
   ]

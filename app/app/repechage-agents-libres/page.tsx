@@ -101,13 +101,16 @@ export default async function AgentsLibresPage() {
       poolCap={dataResult.poolCap ?? 0}
       nhlMinimumSalary={dataResult.nhlMinimumSalary ?? 850_000}
       draftState={stateResult.state ?? {
+        pool_season_id: saison.id,
         is_active: false, queue: [],
         turn_started_at: null, turn_duration_seconds: 90, ended_at: null,
+        release_phase_open: false, pass_skip_one: false,
       }}
       recentActivity={recentActivity}
       saisonId={saison.id}
       season={saison.season}
       seasonStarted={saison.season_started ?? true}
+      draftOrder={dataResult.draftOrder ?? []}
     />
   )
 }

@@ -103,7 +103,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
 
   await syncExpiredRookieProtection(supabase, saisonId, saisonRow.season, seasonStartYear)
 
-  const [{ data: saison }, { data: poolers }, { data: rosters }, { data: settings }] = await Promise.all([
+  const [{ data: saison }, { data: poolers }, { data: rosters }, { data: settings }, { data: readyRows }] = await Promise.all([
     supabase
       .from('pool_seasons')
       .select('season, pool_cap, presaison_draft_order')
@@ -118,11 +118,14 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
       .eq('pool_season_id', saisonId)
       .eq('is_active', true),
     supabase.from('app_settings').select('unsigned_player_cap_multiplier, nhl_minimum_salary').eq('id', 1).maybeSingle(),
+    supabase.from('presaison_pooler_ready').select('pooler_id, ready_at').eq('pool_season_id', saisonId),
   ])
 
   if (!saison) return { error: 'Saison introuvable.' }
   const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
   const nhlMinimumSalary = settings?.nhl_minimum_salary ?? DEFAULT_NHL_MINIMUM_SALARY
+
+  const readyMap = new Map<string, string | null>((readyRows ?? []).map(r => [r.pooler_id, r.ready_at]))
 
   const poolerMap = new Map<string, PoolerCapInfo>()
   for (const p of (poolers ?? [])) {
@@ -138,6 +141,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
       slotsManquants: 0,
       capNeededForReady: 0,
       isReadyForDraft: true,
+      readyAt: readyMap.get(p.id) ?? null,
     })
   }
 
@@ -318,46 +322,53 @@ export async function resetPresaisonDraftAction(
     .eq('pool_season_id', saisonId)
     .eq('notes', 'Repêchage pré-saison')
   if (txErr) return { error: txErr.message }
-  if (!txs || txs.length === 0) return { reversed: 0 }
 
-  const txIds = txs.map(t => t.id)
+  // Bug corrigé le 2026-09-08 (David, repéré en staging) : un retour anticipé ici quand il n'y
+  // avait aucune transaction à annuler (cas le plus fréquent en test — le repêchage n'a jamais
+  // vraiment tourné) sautait complètement la remise à plat de presaison_draft_state plus bas.
+  // Le bouton "Réinitialiser le repêchage" semblait alors ne rien faire : `ended_at` restait en
+  // place et "Repêchage terminé" continuait de s'afficher. La remise à plat doit toujours
+  // s'exécuter, peu importe qu'il y ait eu des signatures à annuler ou non.
+  const txIds = (txs ?? []).map(t => t.id)
 
-  // 2. Get the sign items to know which players to deactivate
-  const { data: items, error: itemErr } = await supabase
-    .from('transaction_items')
-    .select('player_id, to_pooler_id')
-    .in('transaction_id', txIds)
-    .eq('action', 'sign')
-  if (itemErr) return { error: itemErr.message }
+  if (txIds.length > 0) {
+    // 2. Get the sign items to know which players to deactivate
+    const { data: items, error: itemErr } = await supabase
+      .from('transaction_items')
+      .select('player_id, to_pooler_id')
+      .in('transaction_id', txIds)
+      .eq('action', 'sign')
+    if (itemErr) return { error: itemErr.message }
 
-  // 3. Deactivate those pooler_roster entries
-  if (items && items.length > 0) {
-    const playerIds = items.map((i: any) => i.player_id)
-    const { error: rosterErr } = await supabase
-      .from('pooler_rosters')
-      .update({ is_active: false, removed_at: new Date().toISOString() })
-      .eq('pool_season_id', saisonId)
-      .in('player_id', playerIds)
-      .eq('is_active', true)
-    if (rosterErr) return { error: rosterErr.message }
+    // 3. Deactivate those pooler_roster entries
+    if (items && items.length > 0) {
+      const playerIds = items.map((i: any) => i.player_id)
+      const { error: rosterErr } = await supabase
+        .from('pooler_rosters')
+        .update({ is_active: false, removed_at: new Date().toISOString() })
+        .eq('pool_season_id', saisonId)
+        .in('player_id', playerIds)
+        .eq('is_active', true)
+      if (rosterErr) return { error: rosterErr.message }
+    }
+
+    // 4. Delete transaction_items then transactions
+    const { error: delItemErr } = await supabase
+      .from('transaction_items')
+      .delete()
+      .in('transaction_id', txIds)
+    if (delItemErr) return { error: delItemErr.message }
+
+    const { error: delTxErr } = await supabase
+      .from('transactions')
+      .delete()
+      .in('id', txIds)
+    if (delTxErr) return { error: delTxErr.message }
   }
-
-  // 4. Delete transaction_items then transactions
-  const { error: delItemErr } = await supabase
-    .from('transaction_items')
-    .delete()
-    .in('transaction_id', txIds)
-  if (delItemErr) return { error: delItemErr.message }
-
-  const { error: delTxErr } = await supabase
-    .from('transactions')
-    .delete()
-    .in('id', txIds)
-  if (delTxErr) return { error: delTxErr.message }
 
   // Remet aussi la file d'attente partagée à plat — un reset de test doit permettre de
   // relancer "Démarrer le repêchage" proprement, pas juste vider les transactions.
-  await supabase.from('presaison_draft_state').upsert({
+  const { error: stateErr } = await supabase.from('presaison_draft_state').upsert({
     pool_season_id: saisonId,
     is_active: false,
     queue: [],
@@ -366,6 +377,7 @@ export async function resetPresaisonDraftAction(
     ended_at: null,
     updated_at: new Date().toISOString(),
   })
+  if (stateErr) return { error: stateErr.message }
 
   revalidatePath('/admin/presaison')
   revalidatePath('/repechage-agents-libres')
@@ -438,7 +450,7 @@ export async function loadPresaisonDraftStateAction(saisonId: number): Promise<{
 
   const { data, error } = await supabase
     .from('presaison_draft_state')
-    .select('pool_season_id, is_active, queue, turn_started_at, turn_duration_seconds, ended_at')
+    .select('pool_season_id, is_active, queue, turn_started_at, turn_duration_seconds, ended_at, release_phase_open, pass_skip_one')
     .eq('pool_season_id', saisonId)
     .maybeSingle()
   if (error) return { error: error.message }
@@ -452,10 +464,57 @@ export async function loadPresaisonDraftStateAction(saisonId: number): Promise<{
         turn_started_at: null,
         turn_duration_seconds: TURN_DURATION_DEFAULT,
         ended_at: null,
+        release_phase_open: false,
+        pass_skip_one: false,
       },
     }
   }
   return { state: data as DraftState }
+}
+
+// Comportement de "Passer" (David, 2026-09-08), choisi par l'admin avant de démarrer le
+// repêchage (voir DraftOrderEditor) — voir advancePresaisonQueueAction pour l'effet réel.
+export async function setPassModeAction(saisonId: number, skipOne: boolean): Promise<{ error?: string; state?: DraftState }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  if (!me?.is_admin) return { error: 'Accès refusé.' }
+
+  const { error } = await supabase.from('presaison_draft_state').upsert({
+    pool_season_id: saisonId, pass_skip_one: skipOne, updated_at: new Date().toISOString(),
+  })
+  if (error) return { error: error.message }
+
+  revalidatePath('/admin/presaison')
+  revalidatePath('/repechage-agents-libres')
+  return loadPresaisonDraftStateAction(saisonId)
+}
+
+// Bascule la phase "libération de joueurs" (David, 2026-09-08) — tant qu'elle est ouverte,
+// les poolers peuvent libérer n'importe quel joueur signé en libre-service et le repêchage AL
+// ne peut pas démarrer (voir startPresaisonDraftAction). L'admin la ferme une fois que tout le
+// monde a ajusté sa masse salariale ; à partir de là, seules les recrues de banque restent
+// libérables/activables (voir submitSelfServiceAction, repechage-agents-libres/actions.ts).
+export async function setReleasePhaseAction(saisonId: number, open: boolean): Promise<{ error?: string; state?: DraftState }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  if (!me?.is_admin) return { error: 'Accès refusé.' }
+
+  const { error } = await supabase.from('presaison_draft_state').upsert({
+    pool_season_id: saisonId,
+    release_phase_open: open,
+    updated_at: new Date().toISOString(),
+  })
+  if (error) return { error: error.message }
+
+  revalidatePath('/admin/presaison')
+  revalidatePath('/repechage-agents-libres')
+  return loadPresaisonDraftStateAction(saisonId)
 }
 
 export async function startPresaisonDraftAction(saisonId: number): Promise<{ error?: string; state?: DraftState }> {
@@ -466,40 +525,62 @@ export async function startPresaisonDraftAction(saisonId: number): Promise<{ err
   const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
   if (!me?.is_admin) return { error: 'Accès refusé.' }
 
+  // Défense en profondeur — le bouton est déjà désactivé côté client tant que la phase de
+  // libération est ouverte (voir PresaisonManager.tsx), mais un Server Action reste un
+  // endpoint appelable directement.
+  const { data: stateRow } = await supabase
+    .from('presaison_draft_state')
+    .select('release_phase_open')
+    .eq('pool_season_id', saisonId)
+    .maybeSingle()
+  if (stateRow?.release_phase_open ?? false) {
+    return { error: 'La phase de libération de joueurs est encore ouverte — ferme-la avant de démarrer le repêchage.' }
+  }
+
   const fresh = await loadPresaisonDataAction(saisonId)
   if (fresh.error || !fresh.poolers) return { error: fresh.error ?? 'Impossible de charger les données.' }
-  const queue = eligibleQueueIds(fresh.poolers, fresh.draftOrder ?? [], fresh.nhlMinimumSalary ?? DEFAULT_NHL_MINIMUM_SALARY)
+  const threshold = fresh.nhlMinimumSalary ?? DEFAULT_NHL_MINIMUM_SALARY
+  const queue = eligibleQueueIds(fresh.poolers, fresh.draftOrder ?? [], threshold)
+
+  // Personne n'a d'espace cap suffisant : le repêchage ne peut pas démarrer du tout — ce
+  // n'est pas la même chose qu'un repêchage qui a tourné puis s'est terminé (voir
+  // advancePresaisonQueueAction). Ne pas écrire ended_at ici, sinon l'UI (admin et
+  // /repechage-agents-libres) affiche "Terminé" alors qu'aucun pooler n'a jamais eu son tour.
+  if (queue.length === 0) {
+    return { error: `Aucun pooler n'a au moins ${threshold.toLocaleString('fr-CA')} $ d'espace cap. Les poolers doivent d'abord libérer des joueurs avant de démarrer le repêchage.` }
+  }
 
   const nowIso = new Date().toISOString()
-  const isActive = queue.length > 0
   const { error } = await supabase.from('presaison_draft_state').upsert({
     pool_season_id: saisonId,
-    is_active: isActive,
+    is_active: true,
     queue,
-    turn_started_at: isActive ? nowIso : null,
+    turn_started_at: nowIso,
     turn_duration_seconds: TURN_DURATION_DEFAULT,
-    ended_at: isActive ? null : nowIso,
+    ended_at: null,
     updated_at: nowIso,
   })
   if (error) return { error: error.message }
 
-  if (isActive) {
-    const { sendPushToUser } = await import('@/lib/push')
-    sendPushToUser(queue[0], {
-      title: 'Repêchage agents libres',
-      body: "C'est ton tour de signer un agent libre.",
-      url: '/repechage-agents-libres',
-    }).catch(() => {})
-  }
+  const { sendPushToUser } = await import('@/lib/push')
+  sendPushToUser(queue[0], {
+    title: 'Repêchage agents libres',
+    body: "C'est ton tour de signer un agent libre.",
+    url: '/repechage-agents-libres',
+  }).catch(() => {})
 
   revalidatePath('/repechage-agents-libres')
   return loadPresaisonDraftStateAction(saisonId)
 }
 
 // Appelée après une signature réussie ("Signer") ou pour "Passer" (aucune transaction dans
-// ce second cas) — fait tourner queue[0] en fin de file puis refiltre par cap frais, exactement
-// comme l'ancien advanceQueue() local, mais persisté.
-export async function advancePresaisonQueueAction(saisonId: number): Promise<{ error?: string; state?: DraftState }> {
+// ce second cas) — fait tourner queue[0] puis refiltre par cap frais, exactement comme
+// l'ancien advanceQueue() local, mais persisté.
+// isPass distingue les deux cas (David, 2026-09-08) : une signature va TOUJOURS en fin de
+// file (comme un vrai tour de repêchage), peu importe pass_skip_one — seul un "Passer"
+// explicite (isPass=true) peut bénéficier du retour rapide "juste après le suivant" si
+// l'admin l'a activé (voir setPassModeAction).
+export async function advancePresaisonQueueAction(saisonId: number, isPass = false): Promise<{ error?: string; state?: DraftState }> {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -509,7 +590,7 @@ export async function advancePresaisonQueueAction(saisonId: number): Promise<{ e
 
   const { data: current } = await supabase
     .from('presaison_draft_state')
-    .select('queue')
+    .select('queue, pass_skip_one')
     .eq('pool_season_id', saisonId)
     .maybeSingle()
   const prevQueue = (current?.queue as string[] | undefined) ?? []
@@ -519,7 +600,10 @@ export async function advancePresaisonQueueAction(saisonId: number): Promise<{ e
   if (fresh.error || !fresh.poolers) return { error: fresh.error ?? 'Impossible de charger les données.' }
 
   const threshold = fresh.nhlMinimumSalary ?? DEFAULT_NHL_MINIMUM_SALARY
-  const rotated = [...prevQueue.slice(1), prevQueue[0]]
+  const useSkipOne = isPass && (current?.pass_skip_one ?? false) && prevQueue.length >= 2
+  const rotated = useSkipOne
+    ? [prevQueue[1], prevQueue[0], ...prevQueue.slice(2)]
+    : [...prevQueue.slice(1), prevQueue[0]]
   const nextQueue = rotated.filter(id => {
     const p = fresh.poolers!.find(pp => pp.id === id)
     return p !== undefined && p.capSpace >= threshold
@@ -616,6 +700,59 @@ export async function resetPresaisonTimerAction(saisonId: number): Promise<{ err
   const { error } = await supabase
     .from('presaison_draft_state')
     .update({ turn_started_at: nowIso, turn_duration_seconds: TURN_DURATION_DEFAULT, updated_at: nowIso })
+    .eq('pool_season_id', saisonId)
+  if (error) return { error: error.message }
+
+  revalidatePath('/repechage-agents-libres')
+  return loadPresaisonDraftStateAction(saisonId)
+}
+
+// Pause/Reprendre le chrono du tour en cours (David, 2026-09-08) — aucune colonne ajoutée :
+// `turn_started_at=null` pendant que `is_active=true` sert de signal "en pause", avec
+// `turn_duration_seconds` gelé au nombre de secondes qui restaient au moment de la pause.
+// Reprendre remet juste `turn_started_at=now()` — la durée gelée devient la nouvelle base de
+// calcul du décompte, exactement comme au tout début d'un tour. Sans lien avec "Passer" —
+// la file n'avance pas, seul le chrono s'arrête.
+export async function pausePresaisonTimerAction(saisonId: number): Promise<{ error?: string; state?: DraftState }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  if (!me?.is_admin) return { error: 'Accès refusé.' }
+
+  const { data: current } = await supabase
+    .from('presaison_draft_state')
+    .select('turn_started_at, turn_duration_seconds')
+    .eq('pool_season_id', saisonId)
+    .maybeSingle()
+  if (!current?.turn_started_at) return loadPresaisonDraftStateAction(saisonId)
+
+  const elapsed = Math.floor((Date.now() - new Date(current.turn_started_at).getTime()) / 1000)
+  const remaining = Math.max(0, current.turn_duration_seconds - elapsed)
+
+  const { error } = await supabase
+    .from('presaison_draft_state')
+    .update({ turn_started_at: null, turn_duration_seconds: remaining, updated_at: new Date().toISOString() })
+    .eq('pool_season_id', saisonId)
+  if (error) return { error: error.message }
+
+  revalidatePath('/repechage-agents-libres')
+  return loadPresaisonDraftStateAction(saisonId)
+}
+
+export async function resumePresaisonTimerAction(saisonId: number): Promise<{ error?: string; state?: DraftState }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  if (!me?.is_admin) return { error: 'Accès refusé.' }
+
+  const nowIso = new Date().toISOString()
+  const { error } = await supabase
+    .from('presaison_draft_state')
+    .update({ turn_started_at: nowIso, updated_at: nowIso })
     .eq('pool_season_id', saisonId)
   if (error) return { error: error.message }
 

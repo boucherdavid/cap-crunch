@@ -16,7 +16,7 @@ export async function checkSeasonConformity(
   supabase: SupabaseClient,
   saisonId: number,
 ): Promise<{ error?: string; issues: ConformityIssue[]; totalPoolers: number }> {
-  const [{ data: saison }, { data: poolers }, { data: rosters }, { data: settings }] = await Promise.all([
+  const [{ data: saison }, { data: poolers }, { data: rosters }, { data: settings }, { data: readyRows }] = await Promise.all([
     supabase.from('pool_seasons').select('season, pool_cap').eq('id', saisonId).single(),
     supabase.from('poolers').select('id, name').order('name'),
     supabase
@@ -26,7 +26,9 @@ export async function checkSeasonConformity(
       .eq('pool_season_id', saisonId)
       .eq('is_active', true),
     supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
+    supabase.from('presaison_pooler_ready').select('pooler_id, ready_at').eq('pool_season_id', saisonId),
   ])
+  const readySet = new Set((readyRows ?? []).filter(r => r.ready_at != null).map(r => r.pooler_id))
 
   if (!saison) return { error: 'Saison introuvable.', issues: [], totalPoolers: 0 }
   const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
@@ -89,6 +91,12 @@ export async function checkSeasonConformity(
     }
     if (info.capUsed > saison.pool_cap) {
       reasons.push(`Cap dépassé (${fmtCap(info.capUsed)} / ${fmtCap(saison.pool_cap)})`)
+    }
+    // Déclaration "mon alignement est prêt" (David, 2026-09-08, presaison_pooler_ready) —
+    // distincte de la conformité ci-dessus : une intention du pooler, exigée en plus, pas à la
+    // place. Remise à zéro automatiquement dès qu'il retouche son alignement réel.
+    if (!readySet.has(poolerId)) {
+      reasons.push('Alignement pas encore déclaré prêt par le pooler')
     }
     if (reasons.length > 0) {
       issues.push({ poolerId, poolerName: info.name, reasons })

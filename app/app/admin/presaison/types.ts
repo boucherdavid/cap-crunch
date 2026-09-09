@@ -31,6 +31,10 @@ export type PoolerCapInfo = {
   slotsManquants: number
   capNeededForReady: number
   isReadyForDraft: boolean
+  // Déclaration "mon alignement est prêt" (David, 2026-09-08, presaison_pooler_ready) —
+  // distincte d'isCompliant : une intention du pooler, pas un calcul. Remise à null dès que le
+  // pooler soumet un changement réel via le libre-service (submitSelfServiceAction).
+  readyAt: string | null
 }
 
 // État partagé (en base) de la file d'attente du repêchage des agents libres — remplace
@@ -43,4 +47,13 @@ export type DraftState = {
   turn_started_at: string | null
   turn_duration_seconds: number
   ended_at: string | null
+  // Phase "libération de joueurs" — tant que true, le libre-service pooler peut libérer
+  // n'importe quel joueur signé ; une fois fermée, seules les recrues de banque restent
+  // libérables/activables, et le repêchage AL peut démarrer. Voir schema.sql.
+  release_phase_open: boolean
+  // Comportement de "Passer" (David, 2026-09-08), choisi par l'admin avant de démarrer le
+  // repêchage — false (défaut) : retour en fin de file ; true : repasse juste après le
+  // suivant. Ne s'applique jamais à une signature réussie (toujours fin de file). Voir
+  // advancePresaisonQueueAction, schema.sql.
+  pass_skip_one: boolean
 }

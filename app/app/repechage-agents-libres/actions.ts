@@ -55,6 +55,32 @@ export async function submitSelfServiceAction(
     return { error: 'La saison est démarrée — utilise Gestion d\'effectifs pour ajuster ton alignement.' }
   }
 
+  // Phase "libération de joueurs" (David, 2026-09-08) — une fois fermée par l'admin (avant de
+  // démarrer le repêchage AL), seules les recrues de banque restent libérables/activables ;
+  // libérer un joueur déjà signé (actif/réserviste) redevient admin-only (/admin/transactions).
+  // type_change et promote (activer une recrue) restent toujours permis, peu importe la phase.
+  const releaseIds = items.filter(it => it.action_type === 'release').map(it => it.player_id)
+  if (releaseIds.length > 0) {
+    const { data: stateRow } = await supabase
+      .from('presaison_draft_state')
+      .select('release_phase_open')
+      .eq('pool_season_id', saisonId)
+      .maybeSingle()
+    if (!(stateRow?.release_phase_open ?? false)) {
+      const { data: rosterRows } = await supabase
+        .from('pooler_rosters')
+        .select('player_id, player_type')
+        .eq('pooler_id', user.id)
+        .eq('pool_season_id', saisonId)
+        .eq('is_active', true)
+        .in('player_id', releaseIds)
+      const releasingSignedPlayer = (rosterRows ?? []).some(r => r.player_type !== 'recrue')
+      if (releasingSignedPlayer) {
+        return { error: 'La phase de libération de joueurs est fermée — seules les recrues de ta banque peuvent encore être libérées.' }
+      }
+    }
+  }
+
   const txItems: TxItemPayload[] = items.map(item => ({
     action_type: item.action_type,
     from_pooler_id: user.id,
@@ -78,10 +104,44 @@ export async function submitSelfServiceAction(
     adminSupabase, user.id, saisonId, 'Ajustement pré-saison', txItems,
   )
   if (!result.error) {
+    // Un changement réel sur l'alignement invalide toute déclaration "prêt" antérieure (David,
+    // 2026-09-08) — le "prêt" ne sert qu'à confirmer que les actifs/réservistes sont placés
+    // comme voulu, donc toute modification doit le remettre à zéro plutôt que de laisser une
+    // déclaration caduque.
+    await adminSupabase.from('presaison_pooler_ready').upsert({
+      pool_season_id: saisonId, pooler_id: user.id, ready_at: null,
+    })
     revalidatePath('/repechage-agents-libres')
     revalidatePath('/admin/init')
   }
   return result
+}
+
+// Déclaration "mon alignement est prêt" (David, 2026-09-08) — confirme que le pooler a placé
+// ses actifs/réservistes comme il le désire avant le début de saison. Distinct de la
+// conformité (12/6/2 + cap, vérifiée séparément) : les deux doivent être vrais pour tout le
+// monde avant que "Démarrer la saison" se débloque (voir demarrerSaisonAction). Remis à zéro
+// automatiquement dès que submitSelfServiceAction s'exécute avec succès.
+export async function setReadyAction(saisonId: number, ready: boolean): Promise<{ error?: string; readyAt?: string | null }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+
+  const { data: saison } = await supabase.from('pool_seasons').select('season_started').eq('id', saisonId).single()
+  if (saison?.season_started) {
+    return { error: 'La saison est démarrée.' }
+  }
+
+  const readyAt = ready ? new Date().toISOString() : null
+  const adminSupabase = createAdminClient()
+  const { error } = await adminSupabase.from('presaison_pooler_ready').upsert({
+    pool_season_id: saisonId, pooler_id: user.id, ready_at: readyAt,
+  })
+  if (error) return { error: error.message }
+
+  revalidatePath('/repechage-agents-libres')
+  revalidatePath('/admin/init')
+  return { readyAt }
 }
 
 export async function loadOwnRecrueBankAction(saisonId: number): Promise<{

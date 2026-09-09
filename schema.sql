@@ -877,6 +877,19 @@ CREATE TABLE presaison_draft_state (
   turn_started_at TIMESTAMPTZ,
   turn_duration_seconds INTEGER NOT NULL DEFAULT 90,
   ended_at TIMESTAMPTZ,
+  -- Phase "libération de joueurs" (David, 2026-09-08) : fermée par défaut — l'admin l'ouvre
+  -- explicitement une fois prêt à démarrer le ménage pré-saison. Tant qu'ouverte, les poolers
+  -- peuvent libérer n'importe quel joueur signé en libre-service (/repechage-agents-libres).
+  -- L'admin la referme quand tout le monde a ajusté sa masse salariale — à partir de là,
+  -- seules les recrues de banque restent libérables/activables (submitSelfServiceAction), et
+  -- le repêchage d'agents libres peut démarrer (startPresaisonDraftAction le bloque sinon).
+  release_phase_open BOOLEAN NOT NULL DEFAULT false,
+  -- Comportement de "Passer" (David, 2026-09-08), choisi par l'admin avant de démarrer le
+  -- repêchage (voir l'éditeur d'ordre) — false (défaut) : retour en fin de file, le pooler
+  -- attend que tout le monde ait joué avant de rejouer. true : repasse juste après le
+  -- pooler suivant, sans attendre tout le monde. Ne s'applique jamais à une signature
+  -- réussie, qui va toujours en fin de file peu importe ce réglage (advancePresaisonQueueAction).
+  pass_skip_one BOOLEAN NOT NULL DEFAULT false,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -885,8 +898,62 @@ CREATE POLICY "Lecture publique presaison_draft_state" ON presaison_draft_state 
 CREATE POLICY "Admin gère presaison_draft_state" ON presaison_draft_state FOR ALL
   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
 
+-- Déclaration "mon alignement est prêt" par pooler (David, 2026-09-08) — une ligne par
+-- (saison, pooler) ; absence de ligne ou ready_at NULL = pas prêt. Sert uniquement à confirmer
+-- que le pooler a placé ses actifs/réservistes comme il le désire avant le début de saison —
+-- pas une conformité au sens strict (12/6/2 + cap), qui reste vérifiée séparément
+-- (app/lib/seasonConformity.ts). Remis à NULL automatiquement dès que le pooler soumet un
+-- changement réel via le libre-service (submitSelfServiceAction), pour éviter une déclaration
+-- caduque. Écriture via le client admin après authentification (même patron que
+-- transactions/transaction_items, RLS admin-only) — pas de politique "pooler gère sa propre
+-- ligne", pour rester cohérent avec le reste du libre-service dans ce projet.
+CREATE TABLE presaison_pooler_ready (
+  pool_season_id INTEGER REFERENCES pool_seasons(id) ON DELETE CASCADE,
+  pooler_id UUID REFERENCES poolers(id) ON DELETE CASCADE,
+  ready_at TIMESTAMPTZ,
+  PRIMARY KEY (pool_season_id, pooler_id)
+);
+ALTER TABLE presaison_pooler_ready ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Lecture publique presaison_pooler_ready" ON presaison_pooler_ready FOR SELECT USING (true);
+CREATE POLICY "Admin gère presaison_pooler_ready" ON presaison_pooler_ready FOR ALL
+  USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
 -- Migration 2026-09-04 : seuil de participation au repêchage AL corrigé (salaire minimum LNH
 -- réel, plus configurable qu'une constante codée en dur) — à exécuter une seule fois dans le
 -- SQL Editor Supabase (staging d'abord) :
 --
 -- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS nhl_minimum_salary INTEGER NOT NULL DEFAULT 850000;
+
+-- Migration 2026-09-08 : phase "libération de joueurs" du repêchage AL pré-saison, distincte
+-- de la phase repêchage elle-même (voir presaison_draft_state ci-dessus) — à exécuter une
+-- seule fois dans le SQL Editor Supabase (staging d'abord) :
+--
+-- ALTER TABLE presaison_draft_state ADD COLUMN IF NOT EXISTS release_phase_open BOOLEAN NOT NULL DEFAULT true;
+
+-- Migration 2026-09-08 (suite) : défaut inversé — la phase doit démarrer FERMÉE, l'admin
+-- l'ouvre explicitement (pas l'inverse). Remet aussi à false les lignes déjà créées pendant
+-- les tests (pas de saison réelle en cours à cette étape) — à exécuter une seule fois dans le
+-- SQL Editor Supabase (staging d'abord, puis prod) :
+--
+-- ALTER TABLE presaison_draft_state ALTER COLUMN release_phase_open SET DEFAULT false;
+-- UPDATE presaison_draft_state SET release_phase_open = false;
+
+-- Migration 2026-09-08 (suite 2) : table presaison_pooler_ready (voir définition plus haut) —
+-- à exécuter une seule fois dans le SQL Editor Supabase (staging d'abord, puis prod) :
+--
+-- CREATE TABLE presaison_pooler_ready (
+--   pool_season_id INTEGER REFERENCES pool_seasons(id) ON DELETE CASCADE,
+--   pooler_id UUID REFERENCES poolers(id) ON DELETE CASCADE,
+--   ready_at TIMESTAMPTZ,
+--   PRIMARY KEY (pool_season_id, pooler_id)
+-- );
+-- ALTER TABLE presaison_pooler_ready ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Lecture publique presaison_pooler_ready" ON presaison_pooler_ready FOR SELECT USING (true);
+-- CREATE POLICY "Admin gère presaison_pooler_ready" ON presaison_pooler_ready FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- Migration 2026-09-08 (suite 3) : comportement de "Passer" choisi par l'admin (voir
+-- presaison_draft_state ci-dessus) — à exécuter une seule fois dans le SQL Editor Supabase
+-- (staging d'abord, puis prod) :
+--
+-- ALTER TABLE presaison_draft_state ADD COLUMN IF NOT EXISTS pass_skip_one BOOLEAN NOT NULL DEFAULT false;

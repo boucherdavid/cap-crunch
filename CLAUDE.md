@@ -179,6 +179,8 @@ Hockey_Pool_App/
 - `presaison_draft_state` (file d'attente partagée du repêchage des agents libres pré-saison —
   une ligne par saison régulière, lue par `/admin/init?tab=presaison` et
   `/repechage-agents-libres` — voir section 5)
+- `presaison_pooler_ready` (déclaration "mon alignement est prêt" par pooler, une ligne par
+  saison+pooler — voir section 5)
 
 **Conventions :**
 - Statuts joueurs : `ELC`, `RFA`, `UFA`
@@ -210,23 +212,128 @@ commentables par les poolers ; notifie les poolers abonnés aux push à chaque n
 communication, et les admins à chaque commentaire — distinct du babillard de `/planification`
 ci-dessus). Publication réservée à l'admin, sur `/admin/communaute?tab=babillard`.
 `/repechage-agents-libres` (tableau de bord partagé du repêchage des agents libres pré-saison
-— vue de chaque pooler : masse salariale, alignement dépliable de n'importe qui, badges de
-composition/cap (voir `isOverLimits`/`pendingRecrueActivation` ci-dessous), file
-d'attente/tour/chronomètre indicatif, "Activité récente" (signatures ET libérations
-pré-saison confondues), et un panneau personnel "Mon alignement" à deux onglets : **Actuel**
-— libre-service réel depuis le 2026-09-06 (`repechage-agents-libres/actions.ts`,
-`submitSelfServiceAction`) : basculer un joueur actif↔réserviste, le libérer, activer une
-recrue de sa propre banque — restreint à ses propres joueurs, désactivé dès que
+— vue de chaque pooler : masse salariale, alignement dépliable de n'importe qui, badge
+`isOverLimits`, file d'attente/tour/chronomètre indicatif, "Activité récente" (signatures ET
+libérations pré-saison confondues), et un panneau personnel "Mon alignement" à deux onglets :
+**Actuel** — libre-service réel depuis le 2026-09-06 (`repechage-agents-libres/actions.ts`,
+`submitSelfServiceAction`) : basculer un joueur actif↔réserviste, le libérer, activer/libérer
+une recrue de sa propre banque — restreint à ses propres joueurs, désactivé dès que
 `season_started=true` (place alors à `/gestion-effectifs`) ; et **Bac à sable** — simulation
-locale non sauvegardée, pour tester l'ajout d'un agent libre pas encore signé. La signature
-réelle d'un agent libre (pendant son tour) reste admin-only sur `/admin/init?tab=presaison`
-(`ComplianceCard`, redevenu un suivi en lecture seule le 2026-09-06 — les anciens boutons
-Libérer/Changer type y faisaient double emploi avec le libre-service ; `/admin/transactions`
-reste le filet de sécurité pour agir au nom d'un pooler). Rafraîchissement automatique —
-`AutoReload`, `app/components/AutoReload.tsx`, composant partagé avec `/repechage-recrues`.
-État "à qui le tour" persisté dans `presaison_draft_state` (section 4), remplace l'ancien état
-100% local de `PresaisonManager.tsx` — survit à une navigation de l'admin vers
-`/admin/transactions` (ex: traiter un échange) et retour.
+locale non sauvegardée, pour tester l'ajout d'un agent libre pas encore signé (toujours actif,
+peu importe la phase, aucune écriture serveur). La signature réelle d'un agent libre (pendant
+son tour) reste admin-only, peu importe où l'admin la déclenche — panneau admin rétractable de
+cette page (voir plus bas) ou `/admin/init?tab=presaison` (`ComplianceCard`, redevenu un
+suivi en lecture seule le 2026-09-06 — les anciens boutons Libérer/Changer type y faisaient
+double emploi avec le libre-service ; `/admin/transactions` reste le filet de sécurité pour
+agir au nom d'un pooler). Rafraîchissement automatique — `AutoReload`,
+`app/components/AutoReload.tsx`, composant partagé avec `/repechage-recrues`. État "à qui le
+tour" persisté dans `presaison_draft_state` (section 4), remplace l'ancien état 100% local de
+`PresaisonManager.tsx` — survit à une navigation de l'admin vers `/admin/transactions` (ex:
+traiter un échange) et retour.
+
+**Panneau admin rétractable sur `/repechage-agents-libres` (David, 2026-09-08)** — David
+trouvait confus de devoir jongler entre cette page et `/admin/init?tab=presaison` pour gérer
+son propre alignement (l'admin est aussi un pooler). `AdminPanel.tsx`
+(`repechage-agents-libres/AdminPanel.tsx`), visible seulement si `me.isAdmin`, replié par
+défaut, porte maintenant tout le contrôle admin directement ici : phase de libération, ordre
+du repêchage, tour de repêchage en cours (signature d'agent libre, Passer, chrono), et Zone de
+test (Réinitialiser le repêchage) — réutilise les mêmes Server Actions que
+`/admin/init?tab=presaison` (`DraftOrderEditor`/`FreeAgentSigner` extraits en composants
+partagés, `admin/presaison/DraftOrderEditor.tsx` et `FreeAgentSigner.tsx`), aucune logique
+dupliquée. **`/admin/init?tab=presaison` reste pleinement fonctionnelle, inchangée** — filet
+de sécurité volontaire (David), et seule option pour préparer une saison pas encore activée
+(le panneau de `/repechage-agents-libres` ne lit que la saison régulière active). La carte
+"Pré-saison" du hub `/admin/nouvelle-saison` pointe désormais vers `/repechage-agents-libres`
+plutôt que vers l'ancienne page.
+
+**Phase "libération de joueurs"** — `presaison_draft_state.release_phase_open`, **fermée par
+défaut** (l'admin l'ouvre explicitement, jamais l'inverse — premier bouton visible = "Ouvrir
+la libération de joueurs"), distincte du repêchage AL lui-même. Tant qu'ouverte, libérer
+n'importe quel joueur signé est permis en libre-service comme décrit plus haut, y compris
+depuis le bac à sable (voir plus bas). L'admin la ferme (bandeau du panneau admin ci-dessus,
+`setReleasePhaseAction`) une fois que tout le monde a ajusté sa masse salariale — à partir de
+là, "Libérer des joueurs" (vétérans) disparaît de `/repechage-agents-libres`, mais
+actif↔réserviste et activer/libérer une recrue de banque restent toujours permis (jamais
+gatés par cette phase), tout comme le bac à sable. `submitSelfServiceAction` revalide côté
+serveur (le `player_type` réel en base, pas l'état client) : une libération n'est bloquée que
+si le joueur visé n'est pas une `recrue`. "Démarrer le repêchage"
+(`startPresaisonDraftAction`) reste désactivé — client et serveur — tant que la phase est
+ouverte.
+
+**Transition entre les tours du repêchage AL — toujours manuelle** (David, 2026-09-08) :
+le chrono est purement indicatif, rien ne se passe automatiquement à 00:00 — l'admin doit
+cliquer "Passer" ou attendre une signature réussie. Volontairement manuel : un auto-passage à
+0 risquerait de sauter un pooler à cause d'un simple délai réseau. Le panneau admin
+(`AdminPanel.tsx`, `repechage-agents-libres`) s'ouvre désormais automatiquement dès qu'un tour
+est actif au chargement de la page (`expanded` initialisé à `draftState.is_active`) — avant,
+il fallait deviner qu'il fallait le déplier pour trouver le formulaire de signature.
+
+**Comportement de "Passer" — configurable (David, 2026-09-08, ⚠ pas encore commité/migré, voir
+SUIVI_PROJET.md session 2026-09-08 suite 11)** — `presaison_draft_state.pass_skip_one`
+(BOOLEAN, défaut `false`), choisi par l'admin avant de démarrer le repêchage (sélecteur dans
+"Ordre du repêchage", `AdminPanel.tsx` et `PresaisonManager.tsx`) :
+- `false` (défaut) : "Passer" remet le pooler courant en fin de file — il attend que tout le
+  monde ait joué avant de rejouer.
+- `true` : "Passer" le réinsère juste après le pooler suivant (`[next, current, ...rest]`),
+  sans attendre tout le monde.
+- Une signature réussie va **toujours** en fin de file, peu importe ce réglage — décision
+  volontaire (confirmée avec David) : pas de pénalité réduite pour quelqu'un qui vient de
+  signer. `advancePresaisonQueueAction(saisonId, isPass)` — `isPass=true` seulement pour un
+  vrai clic "Passer", `isPass=false` (ou omis) pour une signature.
+
+**Pause du chrono (David, 2026-09-08)** — `pausePresaisonTimerAction`/
+`resumePresaisonTimerAction` (`admin/presaison/actions.ts`), sans nouvelle colonne :
+`turn_started_at=null` pendant que `is_active=true` sert de signal "en pause", avec
+`turn_duration_seconds` gelé au nombre de secondes qui restaient. Reprendre remet juste
+`turn_started_at=now()`. Affiché dans les 3 endroits qui montrent le chrono (`AdminPanel.tsx`,
+`AgentsLibresDashboard.tsx` — badge "⏸ En pause" pour tous, pas juste l'admin —, et
+`PresaisonManager.tsx`). `adjustPresaisonTimerAction` a aussi un bouton "-30s" en plus de
+"+30s" (la fonction acceptait déjà un delta négatif, seul le bouton manquait).
+
+**Déclaration "mon alignement est prêt" (David, 2026-09-08)** — table `presaison_pooler_ready`
+(`pool_season_id, pooler_id, ready_at` — absence de ligne ou `ready_at` NULL = pas prêt).
+Chaque pooler confirme lui-même, depuis `/repechage-agents-libres` (bouton dans "Mon
+alignement", `setReadyAction`), avoir placé ses actifs/réservistes comme il le veut — une
+intention, pas un calcul, distincte de la conformité 12/6/2 + cap. Remise à zéro
+**automatiquement** dès que `submitSelfServiceAction` s'exécute avec succès (tout changement
+réel invalide la déclaration précédente). "Démarrer la saison" (`/admin/nouvelle-saison`,
+`checkSeasonConformity`, `app/lib/seasonConformity.ts`) exige maintenant les deux : conformité
+ET déclaration "prêt", pour tout le monde — un pooler pas encore prêt apparaît dans la liste
+des non-conformes avec le motif "Alignement pas encore déclaré prêt par le pooler". Tant que
+"Démarrer la saison" n'est pas cliqué, le libre-service reste réutilisable à volonté, peu
+importe la phase.
+
+**Bac à sable soumettable (David, 2026-09-08)** — dans `MonAlignement` (onglet Bac à sable de
+`/repechage-agents-libres`), les retraits testés (`removed`, joueurs déjà possédés) peuvent
+être soumis pour vrai via un bouton "Soumettre la libération (N)"
+(`handleSubmitSandboxReleases`) — même `action_type='release'` et même garde-fou de phase que
+le flux "Libérer des joueurs" de l'onglet Actuel, juste une seconde porte d'entrée après avoir
+exploré l'impact salarial dans le bac à sable. Les agents libres ajoutés (`added`) restent en
+revanche une simulation pure, jamais soumissibles — signer un agent libre reste réservé à
+l'admin pendant le tour du pooler ; seul le retrait de joueurs déjà possédés peut être soumis.
+Depuis le 2026-09-08, le bac à sable permet aussi d'ajouter une recrue de sa propre banque
+(`addedRecrueIds`) pour voir l'impact réel sur la masse (contrairement à un agent libre, une
+recrue est déjà signée — son `cap_number` est réellement déduit dans la simulation, pas juste
+indicatif) ; reste une simulation, pas soumissible (l'activation réelle passe par "Activer ou
+libérer une recrue" dans l'onglet Actuel).
+
+**Libérer au nom d'un pooler, depuis `/repechage-agents-libres` (David, 2026-09-08)** — chaque
+ligne de l'alignement déplié (`PoolerCard`, "Voir l'alignement de X") a maintenant un bouton
+✕ admin-only qui appelle `submitTransactionAction` (`action_type='release'`,
+`from_pooler_id=` ce pooler) — même notes `'Ajustement pré-saison'` que le libre-service, capté
+par "Activité récente", jamais annulé par "Réinitialiser le repêchage" (Zone de test). Sert de
+filet de sécurité pour les tests et pour un pooler qui ne peut pas se connecter pendant le
+pool — contourne volontairement la phase de libération (comme tout `/admin/transactions`,
+l'admin n'est jamais bloqué par les garde-fous du libre-service).
+
+Corrige au passage un bug où l'UI affichait "Repêchage terminé" dès le premier clic sur
+"Démarrer" si personne n'avait encore d'espace cap (aucun pooler n'avait pourtant eu son
+tour) — `startPresaisonDraftAction` ne marque plus `ended_at` dans ce cas, il retourne une
+erreur ; et un second où le bloc "Ordre du repêchage" disparaissait complètement dès qu'un
+repêchage précédent était marqué terminé (`isDraftDone`), avec un bouton "Recommencer"
+redondant dont l'erreur ne s'affichait nulle part — fusionné en un seul bouton
+"Démarrer/Relancer le repêchage", toujours visible avec l'éditeur d'ordre tant que le
+repêchage n'est pas activement en cours.
 
 **Menu pooler (`Navbar.tsx`) — réorganisé le 2026-08-30, ordre/regroupement affinés le
 2026-09-01 :**
@@ -369,6 +476,15 @@ existants) — pas des pages à part entière.
 **Mécanique de `buildStandings()` (`app/lib/standings.ts`) :**
 - Fenêtre de base par ligne `pooler_rosters` : `added_at → removed_at` (`null` = toujours actif).
   Aucun match hors de cette fenêtre n'est considéré, peu importe `roster_change_log`.
+- **Joueur libéré sans avoir jamais eu de `added_at` réel** (David, 2026-09-08) — Mode init
+  crée les lignes avec `added_at=null` ; il ne devient réel qu'au clic sur "Démarrer la
+  saison" (`demarrerSaisonAction`). Un joueur libéré en pré-saison avant ce moment (ex: via le
+  libre-service de `/repechage-agents-libres`) n'a donc jamais eu de fenêtre valide —
+  `buildStandings()` l'exclut complètement de la liste retournée (`stillRostered=false` et
+  `added_at===null` sur sa dernière ligne) plutôt que de l'afficher "PARTI" avec 0 partout.
+  Distinct d'un joueur relâché après un vrai début de saison (`added_at` non nul) : celui-là
+  garde sa trace normalement, même si `periods` est vide pour une autre raison (ex: jamais
+  activé, resté réserviste tout du long).
 - À l'intérieur de la fenêtre, `statusAt()` détermine le statut réel du joueur à l'heure de
   chaque match à partir de `roster_change_log` (événements avec `new_type` non nul, triés par
   `changed_at` — la date **effective**, pas la date de saisie). Seuls les matchs où le statut
@@ -430,6 +546,13 @@ existants) — pas des pages à part entière.
   `roster_change_log`, avec le même vocabulaire `change_type` que `/gestion-effectifs` et
   `/admin/rosters` (`activation`/`deactivation`/`ajout_reserviste`/`ajout_recrue`/`retrait`/
   `ltir`/`retour_ltir`/`changement_type`).
+
+**Saisons de contrats sur `/joueurs` (David, 2026-09-08)** — `JoueursTable.tsx` calcule
+dynamiquement ses 5 colonnes de saisons à partir de `pool_seasons.season` (saison active,
+passée en prop par `page.tsx`) via `buildSeasons()`, plutôt qu'une liste codée en dur — un
+ancien `CURRENT_SEASON = '2025-26'` figé se désynchronisait à chaque transition de saison.
+Si une page affiche une saison NHL en dur ailleurs, vérifier qu'elle dérive bien de
+`pool_seasons.is_active` avant de la reproduire.
 
 **Protection recrue (`app/lib/rookieProtection.ts`) — David, 2026-09-07 :**
 - `isRookieProtectionExpired(rookieType, poolDraftYear, isElcActive, seasonStartYear)` : la

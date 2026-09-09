@@ -148,17 +148,47 @@ def main():
     ).eq('pool_season_id', staging_season_id).execute().data
 
     picks = staging_db.table('pool_draft_picks').select(
-        'id, current_owner_id, is_used'
+        'id, original_owner_id, current_owner_id, round, is_used'
     ).eq('pool_season_id', staging_season_id).execute().data
+
+    # ── Construire le mapping des choix de repêchage ─────────────────────────
+    # pool_draft_picks.id N'EST PAS garanti identique entre staging et prod
+    # (contrairement à poolers.id) — les deux bases génèrent leurs picks
+    # indépendamment (trigger create_picks_for_new_pooler / création de saison),
+    # et staging a par ailleurs subi des réinitialisations de repêchage pendant
+    # les tests de pré-saison qui ont fait dériver ses ids. La clé stable entre
+    # les deux bases est (original_owner_id, round) — original_owner_id est un
+    # UUID pooler, identique des deux côtés, et UNIQUE(pool_season_id,
+    # original_owner_id, round) en base garantit qu'il n'y a qu'un seul candidat.
+    # Bug réel rencontré le 2026-09-09 : insertion en prod plantée sur
+    # "violates foreign key constraint pooler_rosters_draft_pick_id_fkey" faute
+    # de ce mapping (le --apply avait échoué avant d'écrire quoi que ce soit,
+    # donc sans danger, mais aurait pu réussir dans un état incohérent si les
+    # ids s'étaient chevauchés par coïncidence).
+    prod_picks = prod_db.table('pool_draft_picks').select(
+        'id, original_owner_id, round'
+    ).eq('pool_season_id', prod_season_id).execute().data
+    prod_pick_by_key = {(p['original_owner_id'], p['round']): p['id'] for p in prod_picks}
+    pick_map = {}
+    pick_problems = []
+    for p in picks:
+        key = (p['original_owner_id'], p['round'])
+        if key in prod_pick_by_key:
+            pick_map[p['id']] = prod_pick_by_key[key]
+        else:
+            pick_problems.append(f'  INTROUVABLE en prod : ronde {p["round"]}, original_owner_id={p["original_owner_id"]} (staging pick id={p["id"]})')
 
     # Vérifier que tous les joueurs référencés sont mappés
     referenced_ids = {r['player_id'] for r in rosters} | {c['player_id'] for c in changelog if c['player_id']}
     unmapped_referenced = referenced_ids - set(player_map.keys())
-    relevant_problems = [p for p in problems if any(str(pid) in p for pid in unmapped_referenced)]
+
+    # Vérifier que tous les choix référencés (recrues repêchées, transferts de picks) sont mappés
+    referenced_pick_ids = {r['draft_pick_id'] for r in rosters if r['draft_pick_id']} | {c['pick_id'] for c in changelog if c.get('pick_id')}
+    unmapped_pick_refs = referenced_pick_ids - set(pick_map.keys())
 
     print(f'\n[INFO] {len(rosters)} lignes pooler_rosters a synchroniser.')
     print(f'[INFO] {len(changelog)} lignes roster_change_log a synchroniser.')
-    print(f'[INFO] {len(picks)} choix de repechage (ownership) a synchroniser.')
+    print(f'[INFO] {len(picks)} choix de repechage (ownership) a synchroniser, {len(pick_map)} mappes.')
 
     if unmapped_referenced:
         print(f'\n[ERREUR] {len(unmapped_referenced)} joueur(s) reference(s) par le roster staging sans correspondance fiable en prod :')
@@ -167,6 +197,14 @@ def main():
         print('\n[ERREUR] Abandon — aucune ecriture effectuee.')
         print('  Piste : rouler le pipeline prod (scrape + import + drafts) pour que ces')
         print('  joueurs existent bien dans players en prod avant de relancer ce script.')
+        sys.exit(1)
+
+    if unmapped_pick_refs:
+        print(f'\n[ERREUR] {len(unmapped_pick_refs)} choix de repechage reference(s) par le roster staging sans correspondance en prod :')
+        for p in pick_problems:
+            print(p)
+        print('\n[ERREUR] Abandon — aucune ecriture effectuee.')
+        print('  Piste : verifier que la saison a bien ete initialisee (choix de repechage) cote prod.')
         sys.exit(1)
 
     if problems:
@@ -207,7 +245,7 @@ def main():
         'removed_at':      r['removed_at'],
         'rookie_type':     r['rookie_type'],
         'pool_draft_year': r['pool_draft_year'],
-        'draft_pick_id':   r['draft_pick_id'],
+        'draft_pick_id':   pick_map[r['draft_pick_id']] if r['draft_pick_id'] else None,
     } for r in rosters]
     for i in range(0, len(roster_payload), 500):
         prod_db.table('pooler_rosters').insert(roster_payload[i:i + 500]).execute()
@@ -224,7 +262,7 @@ def main():
         'changed_at':        c['changed_at'],
         'is_admin_override': c['is_admin_override'],
         'created_at':        c['created_at'],
-        'pick_id':           c['pick_id'],
+        'pick_id':           pick_map[c['pick_id']] if c.get('pick_id') else None,
     } for c in changelog]
     for i in range(0, len(changelog_payload), 500):
         prod_db.table('roster_change_log').insert(changelog_payload[i:i + 500]).execute()
@@ -234,7 +272,7 @@ def main():
         prod_db.table('pool_draft_picks').update({
             'current_owner_id': p['current_owner_id'],
             'is_used':          p['is_used'],
-        }).eq('id', p['id']).execute()
+        }).eq('id', pick_map[p['id']]).execute()
 
     elapsed = time.time() - start
     print(f'\n[OK] Synchronisation terminee en {elapsed:.1f}s.')

@@ -36,7 +36,7 @@ export default async function JoueursPage() {
   // Saison active
   const { data: saison } = await supabase
     .from('pool_seasons')
-    .select('id')
+    .select('id, season')
     .eq('is_active', true)
     .eq('is_playoff', false)
     .single()
@@ -71,5 +71,10 @@ export default async function JoueursPage() {
     is_available: !takenSet.has(p.id),
   }))
 
-  return <JoueursTable players={players} />
+  // Ancre les colonnes de contrats sur la saison active du pool (David, 2026-09-08) —
+  // auparavant codée en dur ('2025-26'), donc désynchronisée dès la transition suivante.
+  // Repli sur '2025-26' seulement si aucune saison active n'existe (ne devrait pas arriver).
+  const currentSeason = saison?.season ?? '2025-26'
+
+  return <JoueursTable players={players} currentSeason={currentSeason} />
 }

@@ -6,9 +6,12 @@ import {
   resetLtirToActifAction, demoteSurplusToReserveAction, resetPresaisonDraftAction,
   loadPresaisonDraftStateAction, startPresaisonDraftAction, advancePresaisonQueueAction,
   endPresaisonDraftAction, adjustPresaisonTimerAction, resetPresaisonTimerAction,
+  setReleasePhaseAction, pausePresaisonTimerAction, resumePresaisonTimerAction,
+  setPassModeAction,
 } from './actions'
 import { DEFAULT_NHL_MINIMUM_SALARY, type PoolerCapInfo, type RosterEntry, type DraftState } from './types'
-import { submitTransactionAction, searchFreeAgentsAction } from '../transactions/actions'
+import DraftOrderEditor from './DraftOrderEditor'
+import FreeAgentSigner from './FreeAgentSigner'
 
 type Saison = { id: number; season: string; is_active: boolean }
 
@@ -39,12 +42,14 @@ function ComplianceCard({
 }) {
   const [expanded, setExpanded] = useState(!!startExpanded)
 
-  // Groupes par position/type
-  const forwards   = pooler.roster.filter(e => e.player_type === 'actif' && posBucket(e.position) === 'forward')
-  const defense    = pooler.roster.filter(e => e.player_type === 'actif' && posBucket(e.position) === 'defense')
-  const goalies    = pooler.roster.filter(e => e.player_type === 'actif' && posBucket(e.position) === 'goalie')
-  const reservistes = pooler.roster.filter(e => e.player_type === 'reserviste')
-  const ltir       = pooler.roster.filter(e => e.player_type === 'ltir')
+  // Groupes par position/type, triés par salaire décroissant dans chaque groupe (David,
+  // 2026-09-08) — facilite le repérage visuel des plus gros contrats à libérer en premier.
+  const byCapDesc = (a: RosterEntry, b: RosterEntry) => b.cap_number - a.cap_number
+  const forwards   = pooler.roster.filter(e => e.player_type === 'actif' && posBucket(e.position) === 'forward').sort(byCapDesc)
+  const defense    = pooler.roster.filter(e => e.player_type === 'actif' && posBucket(e.position) === 'defense').sort(byCapDesc)
+  const goalies    = pooler.roster.filter(e => e.player_type === 'actif' && posBucket(e.position) === 'goalie').sort(byCapDesc)
+  const reservistes = pooler.roster.filter(e => e.player_type === 'reserviste').sort(byCapDesc)
+  const ltir       = pooler.roster.filter(e => e.player_type === 'ltir').sort(byCapDesc)
 
   const renderGroup = (title: string, entries: RosterEntry[]) => {
     if (entries.length === 0) return null
@@ -150,203 +155,6 @@ function ComplianceCard({
   )
 }
 
-// ── Draft Order Editor ────────────────────────────────────────────────────────
-
-function DraftOrderEditor({
-  poolers, order, onChange, onSave, saving,
-}: {
-  poolers: PoolerCapInfo[]
-  order: string[]
-  onChange: (order: string[]) => void
-  onSave: () => void
-  saving: boolean
-}) {
-  const poolerMap = new Map(poolers.map(p => [p.id, p.name]))
-  const unordered = poolers.filter(p => !order.includes(p.id))
-
-  const move = (idx: number, dir: -1 | 1) => {
-    const next = [...order]
-    const target = idx + dir
-    if (target < 0 || target >= next.length) return
-    ;[next[idx], next[target]] = [next[target], next[idx]]
-    onChange(next)
-  }
-
-  return (
-    <div className="space-y-2">
-      <p className="text-xs text-gray-500 mb-2">
-        Le pooler en position 1 signe en premier. L'ordre est séquentiel et cyclique.
-      </p>
-
-      {order.map((id, idx) => (
-        <div key={id} className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded border">
-          <span className="text-xs text-gray-400 w-5 text-right font-mono">{idx + 1}</span>
-          <span className="flex-1 text-sm text-gray-800">{poolerMap.get(id) ?? id}</span>
-          <div className="flex gap-1">
-            <button
-              onClick={() => move(idx, -1)}
-              disabled={idx === 0}
-              className="text-gray-400 hover:text-gray-700 disabled:opacity-20 px-1 text-xs"
-            >▲</button>
-            <button
-              onClick={() => move(idx, 1)}
-              disabled={idx === order.length - 1}
-              className="text-gray-400 hover:text-gray-700 disabled:opacity-20 px-1 text-xs"
-            >▼</button>
-            <button
-              onClick={() => onChange(order.filter(x => x !== id))}
-              className="text-red-300 hover:text-red-500 px-1 text-xs ml-1"
-            >✕</button>
-          </div>
-        </div>
-      ))}
-
-      {unordered.length > 0 && (
-        <div className="pt-2 space-y-1">
-          <p className="text-xs text-gray-400">Non inclus :</p>
-          {unordered.map(p => (
-            <div key={p.id} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded border border-dashed">
-              <span className="text-sm text-gray-500">{p.name}</span>
-              <button
-                onClick={() => onChange([...order, p.id])}
-                className="text-xs text-blue-600 hover:underline"
-              >
-                Ajouter
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <button
-        onClick={onSave}
-        disabled={saving || order.length === 0}
-        className="w-full mt-3 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-40"
-      >
-        {saving ? 'Sauvegarde...' : 'Sauvegarder l\'ordre'}
-      </button>
-    </div>
-  )
-}
-
-// ── Free Agent Signer ─────────────────────────────────────────────────────────
-
-function FreeAgentSigner({
-  pooler, saisonId, season, onSign, threshold,
-}: {
-  pooler: PoolerCapInfo
-  saisonId: number
-  season: string
-  onSign: () => Promise<void>
-  threshold: number
-}) {
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState<any[]>([])
-  const [loadingSearch, setLoadingSearch] = useState(false)
-  const [selectedId, setSelectedId] = useState('')
-  const [newType, setNewType] = useState('actif')
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
-
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (query.trim().length < 2) { setResults([]); return }
-      setLoadingSearch(true)
-      const res = await searchFreeAgentsAction(saisonId, query)
-      setResults(res.players)
-      setLoadingSearch(false)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [query, saisonId])
-
-  const getCap = (p: any) =>
-    p.player_contracts?.find((c: any) => c.season === season)?.cap_number ?? 0
-
-  const handleSign = async () => {
-    const fa = results.find(p => String(p.id) === selectedId)
-    if (!fa) return
-    setBusy(true)
-    setErr(null)
-    const result = await submitTransactionAction(saisonId, 'Repêchage pré-saison', [{
-      action_type: 'sign',
-      to_pooler_id: pooler.id,
-      player_id: fa.id,
-      new_player_type: newType,
-    }])
-    setBusy(false)
-    if (result.error) {
-      setErr(result.error)
-    } else {
-      setQuery('')
-      setResults([])
-      setSelectedId('')
-      await onSign()
-    }
-  }
-
-  return (
-    <div className="space-y-3">
-      <p className="text-xs text-gray-500">
-        Espace disponible :{' '}
-        <span className={`font-semibold ${pooler.capSpace < threshold ? 'text-amber-600' : 'text-green-700'}`}>
-          {fmt(pooler.capSpace)}
-        </span>
-        {pooler.capSpace < threshold && (
-          <span className="text-amber-600"> — sous le seuil de {fmt(threshold)}</span>
-        )}
-      </p>
-
-      <input
-        type="text"
-        value={query}
-        onChange={e => setQuery(e.target.value)}
-        placeholder="Rechercher un agent libre..."
-        className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
-
-      {loadingSearch && <p className="text-xs text-gray-400">Recherche...</p>}
-
-      {results.length > 0 && (
-        <select
-          value={selectedId}
-          onChange={e => setSelectedId(e.target.value)}
-          size={Math.min(results.length, 6)}
-          className="w-full border rounded-lg text-sm focus:outline-none"
-        >
-          <option value="">— Sélectionner —</option>
-          {results.map(p => (
-            <option key={p.id} value={String(p.id)}>
-              {p.last_name}, {p.first_name} ({p.teams?.code ?? DASH}) {p.position}
-              {getCap(p) > 0 ? ` — ${fmt(getCap(p))}` : ''}
-            </option>
-          ))}
-        </select>
-      )}
-
-      {selectedId && (
-        <select
-          value={newType}
-          onChange={e => setNewType(e.target.value)}
-          className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none"
-        >
-          <option value="actif">Actif</option>
-          <option value="reserviste">Réserviste</option>
-        </select>
-      )}
-
-      {err && <p className="text-xs text-red-600">{err}</p>}
-
-      <button
-        onClick={handleSign}
-        disabled={busy || !selectedId}
-        className="w-full px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-40"
-      >
-        {busy ? 'Signature en cours...' : 'Signer'}
-      </button>
-    </div>
-  )
-}
-
 // ── Main PresaisonManager ─────────────────────────────────────────────────────
 
 type Data = {
@@ -380,6 +188,9 @@ export default function PresaisonManager({
   // Draft state — persisté en base (presaison_draft_state), partagé avec /repechage-agents-libres
   const [draftState, setDraftState] = useState<DraftState | null>(null)
   const [starting, setStarting] = useState(false)
+  const [startErr, setStartErr] = useState<string | null>(null)
+  const [togglingReleasePhase, setTogglingReleasePhase] = useState(false)
+  const [togglingPassMode, setTogglingPassMode] = useState(false)
   const [now, setNow] = useState(() => Date.now())
 
   // LTIR reset
@@ -457,20 +268,39 @@ export default function PresaisonManager({
 
   const startDraft = async () => {
     setStarting(true)
+    setStartErr(null)
     const result = await startPresaisonDraftAction(saisonId)
     setStarting(false)
+    if (result.error) { setStartErr(result.error); return }
+    if (result.state) setDraftState(result.state)
+  }
+
+  const handleSetReleasePhase = async (open: boolean) => {
+    setTogglingReleasePhase(true)
+    const result = await setReleasePhaseAction(saisonId, open)
+    setTogglingReleasePhase(false)
+    if (result.state) setDraftState(result.state)
+  }
+
+  const handleSetPassMode = async (skipOne: boolean) => {
+    setTogglingPassMode(true)
+    const result = await setPassModeAction(saisonId, skipOne)
+    setTogglingPassMode(false)
     if (result.state) setDraftState(result.state)
   }
 
   // Après une signature ("Signer") ou "Passer" : le serveur recalcule l'éligibilité à partir
   // de données fraîches et fait tourner la file — remplace l'ancien advanceQueue() local.
-  const advanceAfterAction = async () => {
-    const [stateResult] = await Promise.all([advancePresaisonQueueAction(saisonId), refreshData()])
+  // isPass distingue les deux (David, 2026-09-08) : seul "Passer" peut bénéficier du retour
+  // rapide "juste après le suivant" si l'admin l'a activé — une signature va toujours en fin
+  // de file, peu importe ce réglage.
+  const advanceAfterAction = async (isPass: boolean) => {
+    const [stateResult] = await Promise.all([advancePresaisonQueueAction(saisonId, isPass), refreshData()])
     if (stateResult.state) setDraftState(stateResult.state)
   }
 
-  const handleSign = advanceAfterAction
-  const handlePass = advanceAfterAction
+  const handleSign = () => advanceAfterAction(false)
+  const handlePass = () => advanceAfterAction(true)
 
   const handleEndDraft = async () => {
     const result = await endPresaisonDraftAction(saisonId)
@@ -484,6 +314,13 @@ export default function PresaisonManager({
 
   const handleTimerReset = async () => {
     const result = await resetPresaisonTimerAction(saisonId)
+    if (result.state) setDraftState(result.state)
+  }
+
+  const handlePauseToggle = async () => {
+    const result = isPaused
+      ? await resumePresaisonTimerAction(saisonId)
+      : await pausePresaisonTimerAction(saisonId)
     if (result.state) setDraftState(result.state)
   }
 
@@ -518,9 +355,12 @@ export default function PresaisonManager({
   const currentPoolerId = queue[0] ?? null
   const currentPooler = data.poolers.find(p => p.id === currentPoolerId) ?? null
   const nextPoolerName = queue[1] ? (data.poolers.find(p => p.id === queue[1])?.name ?? '?') : null
+  // turn_started_at=null pendant que is_active=true = chrono en pause — voir AdminPanel.tsx
+  // (repechage-agents-libres), même mécanique, même presaison_draft_state.
+  const isPaused = isDraftActive && draftState?.turn_started_at === null
   const remainingSeconds = draftState?.turn_started_at
     ? Math.max(0, draftState.turn_duration_seconds - Math.floor((now - new Date(draftState.turn_started_at).getTime()) / 1000))
-    : null
+    : isPaused ? (draftState?.turn_duration_seconds ?? null) : null
 
   const ltirCount = data.poolers.reduce(
     (sum, p) => sum + p.roster.filter(e => e.player_type === 'ltir').length, 0,
@@ -643,13 +483,74 @@ export default function PresaisonManager({
         </div>
       </div>
 
-      {/* Draft section */}
-      {!isDraftActive && !isDraftDone && (
+      {/* Phase de libération de joueurs — David, 2026-09-08 : distincte du repêchage AL
+          lui-même. Tant qu'elle est ouverte, chaque pooler peut libérer n'importe quel joueur
+          signé en libre-service ; une fois fermée, seules les recrues de banque restent
+          libérables/activables, et le repêchage AL peut démarrer. */}
+      {(() => {
+        const releaseOpen = draftState?.release_phase_open ?? false
+        return (
+          <div className={`rounded-lg shadow p-5 flex items-center justify-between flex-wrap gap-3 ${releaseOpen ? 'bg-amber-50 border border-amber-200' : 'bg-white'}`}>
+            <div>
+              <h2 className="font-semibold text-gray-800">Phase de libération de joueurs</h2>
+              <p className="text-xs text-gray-500 mt-1 max-w-2xl">
+                {releaseOpen
+                  ? 'Ouverte — chaque pooler peut libérer n’importe quel joueur signé, basculer actif/réserviste, et activer/libérer une recrue depuis /repechage-agents-libres. Ferme-la une fois que tout le monde a ajusté sa masse salariale.'
+                  : 'Fermée — les poolers ne peuvent plus libérer de joueurs signés (les recrues de banque restent activables/libérables). Le repêchage d’agents libres peut démarrer.'}
+              </p>
+            </div>
+            <button
+              onClick={() => handleSetReleasePhase(!releaseOpen)}
+              disabled={togglingReleasePhase}
+              className={`text-sm px-4 py-2 rounded-lg font-medium disabled:opacity-40 shrink-0 ${releaseOpen ? 'bg-amber-600 text-white hover:bg-amber-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+            >
+              {togglingReleasePhase ? '...' : releaseOpen ? 'Fermer la libération de joueurs' : 'Rouvrir la libération de joueurs'}
+            </button>
+          </div>
+        )
+      })()}
+
+      {/* Draft section — l'éditeur d'ordre + "Démarrer" reste visible même après un
+          repêchage terminé (isDraftDone), pour pouvoir en relancer un sans devoir passer par
+          la Zone de test tout en bas. Un seul bouton "Démarrer/Relancer", pas de doublon. */}
+      {!isDraftActive && (
         <div className="bg-white rounded-lg shadow p-5">
           <h2 className="font-semibold text-gray-800 mb-1">Ordre du repêchage</h2>
+          {isDraftDone && (
+            <p className="text-xs mb-3 rounded-lg px-2 py-1.5 bg-emerald-50 text-emerald-700">
+              ✓ Dernier repêchage terminé — tous les poolers éligibles ont complété leur tour ou n&apos;ont plus d&apos;espace suffisant.
+            </p>
+          )}
           <p className="text-xs text-gray-400 mb-4">
             Seuil de participation : {fmt(data.nhlMinimumSalary)} d'espace cap. En dessous, le pooler est retiré automatiquement de la file.
           </p>
+
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+            <p className="text-xs font-semibold text-gray-700 mb-1.5">Comportement de « Passer »</p>
+            <div className="space-y-1.5">
+              <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+                <input
+                  type="radio"
+                  checked={!(draftState?.pass_skip_one ?? false)}
+                  disabled={togglingPassMode}
+                  onChange={() => handleSetPassMode(false)}
+                  className="mt-0.5"
+                />
+                <span><strong>Retour en fin de file</strong> (défaut) — le pooler attend que tout le monde ait joué avant de rejouer.</span>
+              </label>
+              <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+                <input
+                  type="radio"
+                  checked={draftState?.pass_skip_one ?? false}
+                  disabled={togglingPassMode}
+                  onChange={() => handleSetPassMode(true)}
+                  className="mt-0.5"
+                />
+                <span><strong>Repasse juste après le suivant</strong> — sans attendre tout le monde. Ne s&apos;applique jamais à une signature réussie.</span>
+              </label>
+            </div>
+          </div>
+
           <button
             onClick={handleInitOrderFromStandings}
             disabled={initializingOrder}
@@ -675,33 +576,23 @@ export default function PresaisonManager({
           <div className="border-t pt-4 mt-4">
             <button
               onClick={startDraft}
-              disabled={draftOrder.length === 0 || starting}
+              disabled={draftOrder.length === 0 || starting || (draftState?.release_phase_open ?? false)}
               className="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-40 text-sm"
             >
-              {starting ? 'Démarrage...' : 'Démarrer le repêchage'}
+              {starting ? 'Démarrage...' : isDraftDone ? 'Relancer le repêchage' : 'Démarrer le repêchage'}
             </button>
+            {(draftState?.release_phase_open ?? false) && (
+              <p className="text-xs text-amber-600 mt-2">Ferme d’abord la phase de libération de joueurs ci-dessus.</p>
+            )}
             {draftOrder.length > 0 && (
               <p className="text-xs text-gray-400 mt-2">
                 {eligibleIds(data.poolers, draftOrder, data.nhlMinimumSalary).length} pooler{eligibleIds(data.poolers, draftOrder, data.nhlMinimumSalary).length > 1 ? 's' : ''} éligibles (≥ {fmt(data.nhlMinimumSalary)} d'espace) · visible en direct par les poolers sur /repechage-agents-libres
               </p>
             )}
+            {startErr && (
+              <p className="text-sm text-red-600 mt-2">{startErr}</p>
+            )}
           </div>
-        </div>
-      )}
-
-      {isDraftDone && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-5">
-          <p className="text-green-700 font-semibold">Repêchage terminé.</p>
-          <p className="text-sm text-green-600 mt-1">
-            Tous les poolers éligibles ont complété leur repêchage ou n'ont plus d'espace suffisant.
-          </p>
-          <button
-            onClick={startDraft}
-            disabled={starting}
-            className="mt-3 text-sm text-blue-600 hover:underline disabled:opacity-40"
-          >
-            {starting ? 'Démarrage...' : 'Recommencer un repêchage'}
-          </button>
         </div>
       )}
 
@@ -711,7 +602,8 @@ export default function PresaisonManager({
             <div>
               <h2 className="font-semibold text-gray-800 text-lg">
                 Tour de : <span className="text-blue-700">{currentPooler.name}</span>
-                {remainingSeconds !== null && (
+                {isPaused && <span className="ml-3 text-sm font-medium align-middle text-amber-600">⏸ En pause</span>}
+                {remainingSeconds !== null && !isPaused && (
                   <span className={`ml-3 text-sm font-mono align-middle ${
                     remainingSeconds <= 10 ? 'text-red-600' : remainingSeconds <= 30 ? 'text-amber-600' : 'text-gray-400'
                   }`}>
@@ -723,6 +615,12 @@ export default function PresaisonManager({
                 File : {queue.map(id => data.poolers.find(p => p.id === id)?.name ?? id).join(' → ')}
               </p>
               <div className="flex items-center gap-2 mt-1.5">
+                <button onClick={handlePauseToggle} className="text-xs text-gray-400 hover:text-gray-700 border rounded px-2 py-0.5">
+                  {isPaused ? '▶ Reprendre' : '⏸ Pause'}
+                </button>
+                <button onClick={() => handleTimerAdjust(-30)} className="text-xs text-gray-400 hover:text-gray-700 border rounded px-2 py-0.5">
+                  -30s
+                </button>
                 <button onClick={() => handleTimerAdjust(30)} className="text-xs text-gray-400 hover:text-gray-700 border rounded px-2 py-0.5">
                   +30s
                 </button>
