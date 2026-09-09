@@ -109,6 +109,12 @@ export default function AgentsLibresDashboard({
 
   const myPooler = poolers.find(p => p.id === me.id) ?? null
 
+  // AutoReload (rechargement complet toutes les 8s pendant un tour actif) coupait
+  // net une sélection de libération en cours dans MonAlignement — le pooler n'avait
+  // jamais le temps de cocher des joueurs avant que la page ne se recharge sous lui
+  // (David, 2026-09-09). En pause tant qu'une sélection est en cours.
+  const [releaseSelectionActive, setReleaseSelectionActive] = useState(false)
+
   return (
     <div className="max-w-6xl mx-auto py-8 px-4">
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
@@ -125,7 +131,7 @@ export default function AgentsLibresDashboard({
             )}
           </p>
         </div>
-        <AutoReload enabled={draftState.is_active} intervalMs={8000} />
+        <AutoReload enabled={draftState.is_active && !releaseSelectionActive} intervalMs={8000} />
       </div>
 
       {me.isAdmin && !seasonStarted && (
@@ -204,6 +210,7 @@ export default function AgentsLibresDashboard({
             nhlMinimumSalary={nhlMinimumSalary}
             seasonStarted={seasonStarted}
             releasePhaseOpen={draftState.release_phase_open}
+            onReleaseSelectionChange={setReleaseSelectionActive}
           />
         </div>
       </div>
@@ -366,7 +373,7 @@ function PoolerCard({
 type RecrueOption = { roster_id: number; player_id: number; name: string; position: string | null; cap_number: number }
 
 function MonAlignement({
-  me, myPooler, poolCap, saisonId, nhlMinimumSalary, seasonStarted, releasePhaseOpen,
+  me, myPooler, poolCap, saisonId, nhlMinimumSalary, seasonStarted, releasePhaseOpen, onReleaseSelectionChange,
 }: {
   me: Me
   myPooler: PoolerInfo | null
@@ -375,6 +382,7 @@ function MonAlignement({
   nhlMinimumSalary: number
   seasonStarted: boolean
   releasePhaseOpen: boolean
+  onReleaseSelectionChange?: (active: boolean) => void
 }) {
   const [tab, setTab] = useState<'actuel' | 'sandbox'>('actuel')
   const [removed, setRemoved] = useState<Set<number>>(new Set())
@@ -412,6 +420,13 @@ function MonAlignement({
   const [recrueLoading, setRecrueLoading] = useState(!seasonStarted)
   const [selectedRecrueId, setSelectedRecrueId] = useState('')
   const [recrueNewType, setRecrueNewType] = useState<'actif' | 'reserviste'>('actif')
+
+  // Signale au parent qu'une sélection de libération est en cours, pour mettre en pause
+  // AutoReload le temps que le pooler coche ses joueurs (voir AgentsLibresDashboard).
+  useEffect(() => {
+    onReleaseSelectionChange?.(releaseMode)
+    return () => onReleaseSelectionChange?.(false)
+  }, [releaseMode, onReleaseSelectionChange])
 
   useEffect(() => {
     if (seasonStarted) return
