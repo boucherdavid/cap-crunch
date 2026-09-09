@@ -112,8 +112,18 @@ export default function AgentsLibresDashboard({
   // AutoReload (rechargement complet toutes les 8s pendant un tour actif) coupait
   // net une sélection de libération en cours dans MonAlignement — le pooler n'avait
   // jamais le temps de cocher des joueurs avant que la page ne se recharge sous lui
-  // (David, 2026-09-09). En pause tant qu'une sélection est en cours.
+  // (David, 2026-09-09). En pause tant qu'une sélection est en cours. Même problème
+  // repéré côté admin (PoolerCard, "Libérer au nom d'un pooler") le même jour — un
+  // Set plutôt qu'un booléen puisque plusieurs PoolerCard existent (une par pooler).
   const [releaseSelectionActive, setReleaseSelectionActive] = useState(false)
+  const [adminReleaseSelectionIds, setAdminReleaseSelectionIds] = useState<Set<string>>(new Set())
+  const setAdminReleaseSelectionFor = (poolerId: string, active: boolean) => {
+    setAdminReleaseSelectionIds(prev => {
+      const next = new Set(prev)
+      active ? next.add(poolerId) : next.delete(poolerId)
+      return next
+    })
+  }
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4">
@@ -131,7 +141,7 @@ export default function AgentsLibresDashboard({
             )}
           </p>
         </div>
-        <AutoReload enabled={draftState.is_active && !releaseSelectionActive} intervalMs={8000} />
+        <AutoReload enabled={draftState.is_active && !releaseSelectionActive && adminReleaseSelectionIds.size === 0} intervalMs={8000} />
       </div>
 
       {me.isAdmin && !seasonStarted && (
@@ -172,7 +182,7 @@ export default function AgentsLibresDashboard({
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Les 8 poolers</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {poolers.map(p => (
-                <PoolerCard key={p.id} pooler={p} poolCap={poolCap} isCurrentDrafter={p.id === currentPoolerId} isAdmin={me.isAdmin} saisonId={saisonId} />
+                <PoolerCard key={p.id} pooler={p} poolCap={poolCap} isCurrentDrafter={p.id === currentPoolerId} isAdmin={me.isAdmin} saisonId={saisonId} onReleaseSelectionChange={setAdminReleaseSelectionFor} />
               ))}
             </div>
           </div>
@@ -219,15 +229,24 @@ export default function AgentsLibresDashboard({
 }
 
 function PoolerCard({
-  pooler, poolCap, isCurrentDrafter, isAdmin, saisonId,
+  pooler, poolCap, isCurrentDrafter, isAdmin, saisonId, onReleaseSelectionChange,
 }: {
   pooler: PoolerInfo; poolCap: number; isCurrentDrafter: boolean; isAdmin: boolean; saisonId: number
+  onReleaseSelectionChange?: (poolerId: string, active: boolean) => void
 }) {
   const [open, setOpen] = useState(false)
   const [releasing, setReleasing] = useState(false)
   const [releaseErr, setReleaseErr] = useState<string | null>(null)
   const [releaseMode, setReleaseMode] = useState(false)
   const [selectedForRelease, setSelectedForRelease] = useState<Set<number>>(new Set())
+
+  // Même correctif que MonAlignement (voir AgentsLibresDashboard) — AutoReload coupait une
+  // sélection de libération admin en cours (David, 2026-09-09).
+  useEffect(() => {
+    onReleaseSelectionChange?.(pooler.id, releaseMode)
+    return () => onReleaseSelectionChange?.(pooler.id, false)
+  }, [releaseMode, pooler.id, onReleaseSelectionChange])
+
   const remain = poolCap - pooler.capUsed
   const pct = poolCap > 0 ? Math.min(100, (pooler.capUsed / poolCap) * 100) : 0
   const fOk = pooler.counts.forward <= 12, dOk = pooler.counts.defense <= 6, gOk = pooler.counts.goalie <= 2, resOk = pooler.counts.reserviste >= 2
