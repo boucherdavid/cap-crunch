@@ -16,9 +16,13 @@ export type MovementEvent = {
 // Historique compact pour le panneau latéral de /gestion-effectifs et /admin/transactions —
 // même source de données que l'onglet Suivi (roster_change_log + transactions), mais
 // filtrable sur un pooler précis pour suivre ses propres mouvements pendant la saisie.
+// Filtré par saisonId (David, 2026-09-09) — sans ça, le panneau montrait les derniers
+// mouvements de TOUTES les saisons, y compris des saisons passées (confusion en pré-saison,
+// avant que la nouvelle saison ait le moindre mouvement réel). Voir SUIVI_PROJET.md.
 export async function getMovementHistoryAction(
   poolerId: string | null,
   limit = 30,
+  saisonId?: number,
 ): Promise<MovementEvent[]> {
   const supabase = await createClient()
   const events: MovementEvent[] = []
@@ -29,6 +33,7 @@ export async function getMovementHistoryAction(
     .order('changed_at', { ascending: false })
     .limit(limit)
   if (poolerId) rosterQuery = rosterQuery.eq('pooler_id', poolerId)
+  if (saisonId) rosterQuery = rosterQuery.eq('pool_season_id', saisonId)
   const { data: rcr } = await rosterQuery
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -70,6 +75,7 @@ export async function getMovementHistoryAction(
     .order('created_at', { ascending: false })
     .limit(limit)
   if (txIds) txQuery = txQuery.in('id', txIds)
+  if (saisonId) txQuery = txQuery.eq('pool_season_id', saisonId)
   const { data: txr } = await txQuery
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

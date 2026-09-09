@@ -880,7 +880,7 @@ export default function GestionEffectifsManager({
   return (
     <div className="flex gap-6 items-start">
       {mainContent}
-      <MovementHistoryPanel poolerId={poolerId || null} poolerName={poolerName} refreshKey={historyRefresh} />
+      <MovementHistoryPanel poolerId={poolerId || null} poolerName={poolerName} refreshKey={historyRefresh} saisonId={saisonId} />
     </div>
   )
 }
