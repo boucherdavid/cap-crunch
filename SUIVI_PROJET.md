@@ -21,6 +21,29 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-09 (suite 2)
+
+**[Fix] — Panneau "Historique des mouvements" affichait des saisons passées**
+(`app/components/movement-history-actions.ts`, `app/components/MovementHistoryPanel.tsx`,
+`app/app/gestion-effectifs/GestionEffectifsManager.tsx`,
+`app/app/admin/transactions/TransactionBuilder.tsx`) :
+- David a d'abord cru que le blocage de `/gestion-effectifs` avait été affecté par la migration
+  staging→prod (non — vérifié, le script ne touche jamais `pool_seasons`/`season_started`/
+  `gestion_effectifs_ouvert`, confirmés à `false`/`true` identiques des deux côtés ; le
+  "déblocage" qu'il observait venait du fait que l'admin n'est jamais soumis à ces deux
+  verrous, par design — pas un bug).
+- Vrai problème trouvé via capture d'écran : le panneau latéral "Historique des mouvements"
+  montrait des mouvements datés du 12 mai (saison 2025-26) alors qu'il naviguait la saison
+  2026-27. Cause : `getMovementHistoryAction()` ne filtrait jamais par `pool_season_id` —
+  montrait simplement les 30-50 derniers mouvements tous temps confondus.
+- Fix : paramètre `saisonId` optionnel ajouté à `getMovementHistoryAction()` et
+  `MovementHistoryPanel`, propagé depuis les deux appelants (`GestionEffectifsManager.tsx`,
+  `TransactionBuilder.tsx`). `npm run build` + `tsc --noEmit` vérifiés avant de pousser.
+- Les 42 lignes `roster_change_log` de la saison 2025-26 en prod étaient elles-mêmes des
+  données de test (confirmé avec David, pas un vrai historique de saison) — supprimées
+  manuellement en prod après vérification qu'aucune table ne les référençait.
+- Déploiements Vercel (staging + prod) confirmés au vert après coup.
+
 ### 2026-09-09 (suite)
 
 **[Incident/Fix] — Les deux derniers déploiements (staging + prod) avaient échoué**
