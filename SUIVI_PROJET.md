@@ -21,6 +21,56 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-10 (suite — activité récente élargie + Bac à sable filtrable)
+
+**[Feature/Fix] — Activité récente : activations de recrue, limite, position en haut**
+(`app/app/repechage-agents-libres/page.tsx`, `AgentsLibresDashboard.tsx`,
+`app/components/AutoReload.tsx`) :
+- Fil remonté en haut de page (pleine largeur), bornée avec défilement au lieu de s'allonger
+  indéfiniment. Intervalle d'auto-rafraîchissement allongé à 5 min (8s faisait clignoter la
+  page en continu) + bouton "↻ Rafraîchir" manuel toujours visible (composant `AutoReload`
+  partagé, profite aussi à `/repechage-recrues`).
+- Deux trous trouvés et corrigés dans la requête du fil : les remises en banque et les
+  activations de recrue par les poolers (`action_type` `type_change`/`promote`) n'étaient
+  jamais incluses (seuls `sign`/`release` l'étaient) ; et chaque catégorie était limitée à 15
+  lignes puis retronquée à 15 au total, alors que 63 vraies libérations existaient déjà pour la
+  seule saison en cours — la grande majorité jamais chargée du serveur. Limites remontées à 60.
+  Activations automatiques du système (protection recrue expirée, `created_by=null`) exclues
+  du fil — pas une vraie activité d'un pooler.
+- Panneau admin (`AdminPanel.tsx`) : "expanded" se remettait à `draftState.is_active` à chaque
+  rechargement auto, rouvrant le panneau même après une fermeture manuelle — persisté via
+  `localStorage`, même patron que l'alignement déplié d'un pooler (`PoolerCard`, session
+  précédente).
+
+**[Feature/Fix] — Bac à sable : filtres, tri équipe/salaire, impact réel sur le cap**
+(`app/app/repechage-agents-libres/actions.ts`, `AgentsLibresDashboard.tsx`) :
+- Recherche d'agent libre filtrable par position, salaire max et ELC — nouvelle action
+  `searchSandboxFreeAgentsAction`, séparée de `searchFreeAgentsAction` (partagée avec la
+  signature en direct pendant le repêchage — rien risqué là-dessus). Filtre équipe ajouté
+  ensuite (`listTeamsAction`), puis tri équipe → salaire décroissant → alphabétique.
+- Recrues de banque converties en liste déroulante (prenait trop de place à plat).
+- Cap des agents libres ajoutés au bac à sable maintenant réellement déduit de la masse
+  salariale simulée — ils ont un vrai contrat NHL connu (contrairement à l'hypothèse de
+  l'ancienne note "contrat pas encore signé"), donc l'exclure allait à l'encontre du but même
+  de l'outil (voir l'impact avant de décider).
+- Plusieurs correctifs itératifs suite aux retours de David en testant en direct : filtre
+  salaire inopérant (attendait des millions, David tapait le montant complet), joueurs sans
+  salaire connu affichés (un contrat peut exister pour la saison avec `cap_number` null),
+  liste vide tant qu'aucun filtre n'était choisi (corrigé — parcourt maintenant par défaut),
+  limite de résultats trop basse pour un filtre large (montée à 150 hors équipe, indicateur
+  "plus de résultats" ajouté).
+- **Vrai bug supabase-js trouvé en creusant le dernier signalement** ("toujours pareil après
+  hard refresh") : `.order('code', { referencedTable: 'teams' })` génère
+  `teams.order=code.asc` — trie l'intérieur d'une relation imbriquée (pensé pour un
+  un-à-plusieurs), pas les lignes principales par la relation ; no-op silencieux, aucune
+  erreur. Découvert en interceptant la vraie requête HTTP du client `supabase-js` (pas
+  seulement `curl` sur l'API REST, qui avait donné un faux positif avec la syntaxe
+  `order=teams(code).asc,last_name.asc`). Fix réel : passer `'teams(code)'` comme chaîne
+  littérale (colonne), pas via l'option `referencedTable`.
+- **Leçon** : pour ce genre de requête Postgrest imbriquée, valider avec le vrai client JS
+  utilisé par l'app (en interceptant l'URL réelle), pas seulement `curl` sur l'API REST —
+  les deux peuvent diverger silencieusement sur la syntaxe générée.
+
 ### 2026-09-10 (suite — vrai repêchage AL en direct)
 
 **[Fix] — Série de correctifs trouvés en testant le premier vrai repêchage agents libres**
