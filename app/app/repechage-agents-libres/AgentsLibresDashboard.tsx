@@ -537,6 +537,7 @@ function MonAlignement({
   const [filterPosition, setFilterPosition] = useState<'' | 'forward' | 'defense' | 'goalie'>('')
   const [filterMaxSalary, setFilterMaxSalary] = useState('')
   const [filterElcOnly, setFilterElcOnly] = useState(false)
+  const [selectedSandboxRecrueId, setSelectedSandboxRecrueId] = useState('')
 
   // Libre-service (ménage pré-saison) — actions réelles, distinctes du bac à sable ci-dessous.
   const [busy, setBusy] = useState(false)
@@ -693,7 +694,10 @@ function MonAlignement({
     if (query.trim().length < 2 && !hasSandboxFilters) { setResults([]); return }
     debounceRef.current = setTimeout(async () => {
       setSearching(true)
-      const maxSalary = filterMaxSalary.trim() ? Number(filterMaxSalary) * 1_000_000 : undefined
+      // Montant en dollars directement (ex: 2000000 pour 2 M$) — un premier essai multipliait
+      // par 1M en supposant une saisie "2" pour 2 M$, mais David tapait le montant complet,
+      // rendant le filtre inopérant (plafond de 2000 milliards $).
+      const maxSalary = filterMaxSalary.trim() ? Number(filterMaxSalary) : undefined
       const res = await searchSandboxFreeAgentsAction(saisonId, {
         query,
         position: filterPosition || undefined,
@@ -727,7 +731,7 @@ function MonAlignement({
       return next
     })
   }
-  const resetSandbox = () => { setRemoved(new Set()); setAdded([]); setAddedRecrueIds(new Set()); setQuery(''); setResults([]) }
+  const resetSandbox = () => { setRemoved(new Set()); setAdded([]); setAddedRecrueIds(new Set()); setQuery(''); setResults([]); setSelectedSandboxRecrueId('') }
 
   // Soumettre pour vrai les retraits testés dans le bac à sable (David, 2026-09-08) — même
   // action_type 'release' que le flux de l'onglet Actuel, donc soumis au même garde-fou
@@ -1065,17 +1069,37 @@ function MonAlignement({
             {recruePlayers.length > 0 && (
               <div className="mb-3">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ajouter une recrue de ta banque</p>
-                <div className="space-y-0.5">
-                  {recruePlayers.filter(r => !addedRecrueIds.has(r.player_id)).map(r => (
-                    <div key={r.player_id} onClick={() => toggleAddedRecrue(r.player_id)} className="flex justify-between text-xs px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer">
-                      <span><span className="text-gray-400 mr-1">{r.position ?? DASH}</span>{r.name}{r.cap_number > 0 ? ` — ${fmt(r.cap_number)}` : ''}</span>
-                      <span className="text-blue-600 font-medium">+</span>
-                    </div>
-                  ))}
-                  {recruePlayers.every(r => addedRecrueIds.has(r.player_id)) && (
-                    <p className="text-xs text-gray-400">Toutes tes recrues sont déjà ajoutées.</p>
-                  )}
-                </div>
+                {/* Liste déroulante plutôt qu'une liste à plat (David, 2026-09-10) — prenait
+                    trop de place à l'écran avec une grosse banque de recrues. */}
+                {recruePlayers.every(r => addedRecrueIds.has(r.player_id)) ? (
+                  <p className="text-xs text-gray-400">Toutes tes recrues sont déjà ajoutées.</p>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={selectedSandboxRecrueId}
+                      onChange={e => setSelectedSandboxRecrueId(e.target.value)}
+                      className="flex-1 border rounded-lg px-2 py-1.5 text-xs focus:outline-none"
+                    >
+                      <option value="">— Choisir une recrue —</option>
+                      {recruePlayers.filter(r => !addedRecrueIds.has(r.player_id)).map(r => (
+                        <option key={r.player_id} value={String(r.player_id)}>
+                          {r.position ?? DASH} · {r.name}{r.cap_number > 0 ? ` — ${fmt(r.cap_number)}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => {
+                        if (!selectedSandboxRecrueId) return
+                        toggleAddedRecrue(Number(selectedSandboxRecrueId))
+                        setSelectedSandboxRecrueId('')
+                      }}
+                      disabled={!selectedSandboxRecrueId}
+                      className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 shrink-0"
+                    >
+                      Ajouter
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1101,8 +1125,8 @@ function MonAlignement({
                 type="number"
                 value={filterMaxSalary}
                 onChange={e => setFilterMaxSalary(e.target.value)}
-                placeholder="Salaire max (M$)"
-                className="w-28 border rounded-lg px-2 py-1 text-xs focus:outline-none"
+                placeholder="Salaire max $ (ex: 2000000)"
+                className="w-40 border rounded-lg px-2 py-1 text-xs focus:outline-none"
               />
               <label className="flex items-center gap-1 text-xs text-gray-600">
                 <input type="checkbox" checked={filterElcOnly} onChange={e => setFilterElcOnly(e.target.checked)} />
