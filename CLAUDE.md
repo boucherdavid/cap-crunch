@@ -648,6 +648,21 @@ Si une page affiche une saison NHL en dur ailleurs, vérifier qu'elle dérive bi
 - `csv_path` doit être relatif à `BASE_DIR` (requis pour GitHub Actions)
 - L'environnement virtuel est dans `python_script/venv/` (ne pas committer)
 
+**Courriels (`app/lib/email.ts`) :**
+- Envoi via SMTP Gmail (compte personnel de David), pas un service transactionnel — décision du
+  2026-09-10 après avoir découvert que Resend en mode sandbox (aucun domaine vérifié) ne livrait
+  qu'à l'adresse du propriétaire du compte Resend, et que David ne souhaite ni acheter ni gérer
+  un domaine. Variables d'environnement `GMAIL_USER`/`GMAIL_APP_PASSWORD` (mot de passe
+  d'application Google, configurées séparément dans les deux projets Vercel).
+- Contrainte Gmail : le `from` doit obligatoirement être l'adresse authentifiée — les courriels
+  partent visiblement de l'adresse Gmail de David, pas d'une adresse "Cap Crunch" dédiée, et ce
+  n'est pas contournable sans un domaine "Send As" vérifié.
+- Toujours envoyer une version texte brut en parallèle du HTML (`htmlToText()`) — un courriel
+  HTML-only envoyé par script depuis un compte personnel est un signal antispam classique,
+  confirmé en pratique par un test tombé dans les pourriels avant ce correctif.
+- Limite connue et assumée : le risque de classement en pourriel n'est jamais nul avec un compte
+  personnel (contrairement à un domaine vérifié) — compromis accepté sciemment par David.
+
 ---
 
 ## 7. Standards de code
