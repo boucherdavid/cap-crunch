@@ -13,11 +13,15 @@ import { applyTransactionItems, type TxItemPayload } from '../admin/transactions
 // et from/to_pooler_id toujours forcés à l'utilisateur courant (jamais pris du client) —
 // impossible de toucher au roster de quelqu'un d'autre même en falsifiant la requête.
 export type SelfServiceItem =
-  | { action_type: 'type_change'; player_id: number; old_player_type: 'actif' | 'reserviste'; new_player_type: 'actif' | 'reserviste' }
+  // new_player_type 'recrue' (David, 2026-09-09) — remettre en banque un joueur encore sous
+  // protection recrue, même geste que le libre-service admin (PoolerCard) mais initié par le
+  // pooler lui-même. Revérifié côté serveur (rookie_type non-null) — voir plus bas.
+  | { action_type: 'type_change'; player_id: number; old_player_type: 'actif' | 'reserviste'; new_player_type: 'actif' | 'reserviste' | 'recrue' }
   | { action_type: 'release'; player_id: number }
   | { action_type: 'promote'; player_id: number; new_player_type: 'actif' | 'reserviste' }
 
 const ACTIF_OU_RESERVISTE = new Set(['actif', 'reserviste'])
+const ACTIF_RESERVISTE_OU_RECRUE = new Set(['actif', 'reserviste', 'recrue'])
 
 // Le type SelfServiceItem ne protège que l'appelant TypeScript de ce projet — un Server
 // Action reste un endpoint HTTP appelable avec n'importe quel payload. Sans cette validation
@@ -33,7 +37,7 @@ function isValidSelfServiceItem(item: unknown): item is SelfServiceItem {
   if (it.action_type === 'promote') return typeof it.new_player_type === 'string' && ACTIF_OU_RESERVISTE.has(it.new_player_type)
   if (it.action_type === 'type_change') {
     return typeof it.old_player_type === 'string' && ACTIF_OU_RESERVISTE.has(it.old_player_type)
-      && typeof it.new_player_type === 'string' && ACTIF_OU_RESERVISTE.has(it.new_player_type)
+      && typeof it.new_player_type === 'string' && ACTIF_RESERVISTE_OU_RECRUE.has(it.new_player_type)
   }
   return false
 }
@@ -55,10 +59,34 @@ export async function submitSelfServiceAction(
     return { error: 'La saison est démarrée — utilise Gestion d\'effectifs pour ajuster ton alignement.' }
   }
 
+  // Remettre en banque (David, 2026-09-09) — seulement un joueur encore sous protection
+  // recrue (rookie_type non-null malgré player_type actif/réserviste). Vérifié ici plutôt que
+  // de faire confiance au client — un item forgé pourrait viser n'importe quel vétéran sinon.
+  const demoteToRecrueIds = items
+    .filter((it): it is Extract<SelfServiceItem, { action_type: 'type_change' }> => it.action_type === 'type_change' && it.new_player_type === 'recrue')
+    .map(it => it.player_id)
+  if (demoteToRecrueIds.length > 0) {
+    const { data: rosterRows } = await supabase
+      .from('pooler_rosters')
+      .select('player_id, rookie_type')
+      .eq('pooler_id', user.id)
+      .eq('pool_season_id', saisonId)
+      .eq('is_active', true)
+      .in('player_id', demoteToRecrueIds)
+    const rookieMap = new Map((rosterRows ?? []).map(r => [r.player_id, r.rookie_type]))
+    const ineligible = demoteToRecrueIds.some(id => !rookieMap.get(id))
+    if (ineligible) {
+      return { error: 'Un des joueurs sélectionnés n\'est plus sous protection recrue — impossible de le remettre en banque.' }
+    }
+  }
+
   // Phase "libération de joueurs" (David, 2026-09-08) — une fois fermée par l'admin (avant de
   // démarrer le repêchage AL), seules les recrues de banque restent libérables/activables ;
   // libérer un joueur déjà signé (actif/réserviste) redevient admin-only (/admin/transactions).
-  // type_change et promote (activer une recrue) restent toujours permis, peu importe la phase.
+  // type_change (actif↔réserviste ET remise en banque) et promote (activer une recrue) restent
+  // toujours permis, peu importe la phase (David, 2026-09-09 — remettre en banque devait
+  // rester possible aussi longtemps que le changement de statut, contrairement à un premier
+  // essai qui l'avait soumis au même verrou que "libérer" ; voir SUIVI_PROJET.md).
   const releaseIds = items.filter(it => it.action_type === 'release').map(it => it.player_id)
   if (releaseIds.length > 0) {
     const { data: stateRow } = await supabase

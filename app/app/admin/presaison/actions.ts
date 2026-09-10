@@ -167,6 +167,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
       position: pos,
       cap_number: capNum,
       isEstimatedCap: capIsEstimated,
+      rookieType: entry.rookie_type ?? null,
     })
 
     if (type === 'actif' || type === 'reserviste') info.capUsed += capNum
