@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-09
+Derniere mise a jour: 2026-09-10
 
 ## Role du fichier
 
@@ -20,6 +20,34 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-09-10
+
+**[Feature] — Remettre une recrue en banque, admin et libre-service**
+(`app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`,
+`app/app/repechage-agents-libres/actions.ts`, `app/app/admin/presaison/actions.ts`,
+`app/app/admin/presaison/types.ts`) :
+- David : même filet de sécurité que "Libérer au nom d'un pooler" (2026-09-08), mais pour
+  remettre en banque un joueur actif/réserviste encore sous protection recrue
+  (`rookie_type` non-null) — utile si un pooler ne peut pas s'en charger lui-même pendant le
+  repêchage AL. Demandé d'abord côté admin (`PoolerCard`), puis étendu au libre-service
+  (`MonAlignement`) "de la même façon", sur confirmation explicite.
+- `rookieType` ajouté à `RosterEntry` (n'était pas exposé au client même si déjà chargé côté
+  serveur) et propagé depuis `loadPresaisonDataAction`.
+- Mécanique : `type_change` vers `'recrue'` (mêmes notes `'Ajustement pré-saison'` que le
+  reste du libre-service — capté par "Activité récente", jamais touché par "Réinitialiser le
+  repêchage"). Admin : `submitTransactionAction`. Pooler : `submitSelfServiceAction`, avec
+  vérification serveur que le joueur est bien encore protégé (jamais confiance au client).
+- **Piège trouvé en testant avec le compte de Nicolas** : un premier essai soumettait aussi
+  "remettre en banque" au verrou `release_phase_open` (même catégorie que "libérer" dans ma
+  tête — retire un joueur signé de l'alignement actif). David a corrigé : contrairement à
+  "libérer", ça doit rester **toujours permis**, comme le changement actif↔réserviste — le
+  verrou de phase ne s'applique qu'à "libérer". Retiré côté serveur et côté client (bouton +
+  checkbox visibles indépendamment de `releasePhaseOpen`).
+- UI : bouton "Remettre en banque" (mode de sélection exclusif avec "Libérer des joueurs",
+  joueurs éligibles marqués ★), même patron checkbox + confirmation dans les deux endroits.
+- Validé par David en staging (compte Nicolas — Schaefer, Celebrini éligibles), promu vers
+  `main` (déploiements staging + prod confirmés au vert).
 
 ### 2026-09-09 (suite 3)
 
