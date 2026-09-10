@@ -9,6 +9,40 @@ function formatSeason(s: number): string {
   return `${str.slice(0, 4)}-${str.slice(6)}`
 }
 
+// Tendance pondérée sur les 3 dernières saisons NHL disponibles (poids 3/2/1, la plus récente
+// comptant le plus) — projette un rythme par match sur un calendrier complet de 82 matchs. Sert
+// de repère rapide pour les poolers en préparation de repêchage/agents libres, pas une vraie
+// projection statistique.
+type Trend = { projected: number; seasonsUsed: number }
+
+function computeSkaterTrend(seasons: NhlSeasonTotal[]): Trend | null {
+  const recent = seasons.slice(0, 3).filter(s => (s.gamesPlayed ?? 0) > 0)
+  if (recent.length === 0) return null
+  const weights = [3, 2, 1]
+  let weightedSum = 0
+  let weightTotal = 0
+  recent.forEach((s, i) => {
+    const ppg = ((s.goals ?? 0) + (s.assists ?? 0)) / (s.gamesPlayed ?? 1)
+    weightedSum += ppg * weights[i]
+    weightTotal += weights[i]
+  })
+  return { projected: Math.round((weightedSum / weightTotal) * 82), seasonsUsed: recent.length }
+}
+
+function computeGoalieTrend(seasons: NhlSeasonTotal[]): Trend | null {
+  const recent = seasons.slice(0, 3).filter(s => (s.gamesPlayed ?? 0) > 0)
+  if (recent.length === 0) return null
+  const weights = [3, 2, 1]
+  let weightedSum = 0
+  let weightTotal = 0
+  recent.forEach((s, i) => {
+    const winRate = (s.wins ?? 0) / (s.gamesPlayed ?? 1)
+    weightedSum += winRate * weights[i]
+    weightTotal += weights[i]
+  })
+  return { projected: Math.round((weightedSum / weightTotal) * 82), seasonsUsed: recent.length }
+}
+
 function SkaterRow({ s }: { s: NhlSeasonTotal }) {
   const pts = (s.goals ?? 0) + (s.assists ?? 0)
   return (
@@ -81,6 +115,7 @@ export default function PlayerSlideOver() {
     .filter(s => s.leagueAbbrev === 'NHL' && s.gameTypeId === 2)
     .sort((a, b) => b.season - a.season)
     .slice(0, 8)
+  const trend = isGoalie ? computeGoalieTrend(nhlSeasons) : computeSkaterTrend(nhlSeasons)
 
   return (
     <>
@@ -125,6 +160,18 @@ export default function PlayerSlideOver() {
               {Array.from({ length: 7 }).map((_, i) => (
                 <div key={i} className="h-8 bg-gray-100 rounded animate-pulse" />
               ))}
+            </div>
+          )}
+
+          {!loading && player && trend && (
+            <div className="mb-5 bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
+              <p className="text-xs font-semibold text-blue-400 uppercase tracking-wide mb-1">
+                Tendance ({trend.seasonsUsed} dernière{trend.seasonsUsed > 1 ? 's' : ''} saison{trend.seasonsUsed > 1 ? 's' : ''})
+              </p>
+              <p className="text-2xl font-bold text-blue-700">
+                {trend.projected} <span className="text-sm font-normal text-blue-500">{isGoalie ? 'victoires projetées' : 'points projetés'} sur 82 matchs</span>
+              </p>
+              <p className="text-xs text-blue-400 mt-1">Moyenne pondérée vers la saison la plus récente — repère rapide, pas une vraie projection.</p>
             </div>
           )}
 
