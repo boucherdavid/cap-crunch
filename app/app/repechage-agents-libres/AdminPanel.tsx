@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import DraftOrderEditor from '../admin/presaison/DraftOrderEditor'
 import FreeAgentSigner from '../admin/presaison/FreeAgentSigner'
 import {
@@ -22,7 +22,7 @@ const fmt = (n: number) =>
 // après chaque action mutante plutôt que de synchroniser un état local, même patron que le
 // reste de cette page (self-service, AutoReload).
 export default function AdminPanel({
-  saisonId, season, poolers, initialDraftOrder, draftState, nhlMinimumSalary,
+  saisonId, season, poolers, initialDraftOrder, draftState, nhlMinimumSalary, onSelectionChange,
 }: {
   saisonId: number
   season: string
@@ -30,6 +30,7 @@ export default function AdminPanel({
   initialDraftOrder: string[]
   draftState: DraftState
   nhlMinimumSalary: number
+  onSelectionChange?: (active: boolean) => void
 }) {
   // Replié par défaut, sauf si un tour est déjà en cours au chargement (David, 2026-09-08) —
   // sinon l'admin ne voit pas où entrer la signature d'un agent libre pour le pooler courant.
@@ -45,6 +46,18 @@ export default function AdminPanel({
   const [resetDraftMsg, setResetDraftMsg] = useState<string | null>(null)
   const [togglingPassMode, setTogglingPassMode] = useState(false)
   const [now] = useState(() => Date.now())
+  const [freeAgentSelecting, setFreeAgentSelecting] = useState(false)
+
+  // Signale au parent (AgentsLibresDashboard) qu'une interaction en cours ici devrait mettre
+  // AutoReload en pause — un agent libre sélectionné pas encore signé, ou un ordre de
+  // repêchage réordonné localement pas encore sauvegardé (David, 2026-09-10, même famille de
+  // bug que les libérations/mises en banque : un rechargement en plein milieu perdait le
+  // travail non soumis, sans message d'erreur).
+  const orderDirty = JSON.stringify(draftOrder) !== JSON.stringify(initialDraftOrder)
+  useEffect(() => {
+    onSelectionChange?.(freeAgentSelecting || orderDirty)
+    return () => onSelectionChange?.(false)
+  }, [freeAgentSelecting, orderDirty, onSelectionChange])
 
   const isDraftActive = draftState.is_active
   const isDraftDone = !isDraftActive && draftState.ended_at != null
@@ -174,8 +187,11 @@ export default function AdminPanel({
     }
   }
 
+  // Pas de overflow-hidden sur le conteneur ci-dessous (David, 2026-09-10) — coupait le
+  // dropdown flottant de FreeAgentSigner ; aucun enfant ici n'a besoin d'être clippé aux
+  // coins arrondis.
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-lg overflow-hidden mb-6">
+    <div className="bg-blue-50 border border-blue-200 rounded-lg mb-6">
       <button
         onClick={() => setExpanded(v => !v)}
         className="w-full flex items-center justify-between px-4 py-3 text-left"
@@ -317,6 +333,7 @@ export default function AdminPanel({
                 season={season}
                 onSign={handleSignAdvance}
                 threshold={nhlMinimumSalary}
+                onSelectionChange={setFreeAgentSelecting}
               />
 
               <div className="border-t pt-3 mt-3">

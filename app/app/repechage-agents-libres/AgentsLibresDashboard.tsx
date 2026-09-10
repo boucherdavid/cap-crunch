@@ -125,6 +125,10 @@ export default function AgentsLibresDashboard({
       return next
     })
   }
+  // Même correctif pour la sélection d'un agent libre en cours de signature (David,
+  // 2026-09-10, repéré en plein vrai repêchage — la sélection sautait sous l'admin avant
+  // même qu'il puisse cliquer "Signer").
+  const [adminSigningActive, setAdminSigningActive] = useState(false)
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4">
@@ -142,7 +146,10 @@ export default function AgentsLibresDashboard({
             )}
           </p>
         </div>
-        <AutoReload enabled={draftState.is_active && !releaseSelectionActive && adminReleaseSelectionIds.size === 0} intervalMs={8000} />
+        {/* Toujours actif (pas seulement pendant un tour, David, 2026-09-10) — sinon personne
+            ne peut détecter qu'un tour vient de démarrer : is_active passe de false à true
+            précisément au moment où on aurait besoin d'être déjà en train de sonder. */}
+        <AutoReload enabled={!draftState.ended_at && !releaseSelectionActive && adminReleaseSelectionIds.size === 0 && !adminSigningActive} intervalMs={8000} />
       </div>
 
       {me.isAdmin && !seasonStarted && (
@@ -153,6 +160,7 @@ export default function AgentsLibresDashboard({
           initialDraftOrder={draftOrder}
           draftState={draftState}
           nhlMinimumSalary={nhlMinimumSalary}
+          onSelectionChange={setAdminSigningActive}
         />
       )}
 
@@ -235,7 +243,23 @@ function PoolerCard({
   pooler: PoolerInfo; poolCap: number; isCurrentDrafter: boolean; isAdmin: boolean; saisonId: number
   onReleaseSelectionChange?: (poolerId: string, active: boolean) => void
 }) {
-  const [open, setOpen] = useState(false)
+  // Persisté via localStorage (David, 2026-09-10) — AutoReload fait un rechargement complet
+  // (window.location.reload(), voir AutoReload.tsx) qui perd tout état local, y compris ce
+  // qui n'a rien de dangereux à perdre comme "l'alignement de X est déplié". Contrairement aux
+  // sélections de libération/mise en banque/signature (mises en pause pendant qu'elles sont
+  // actives), ici on veut au contraire continuer à rafraîchir tout en gardant le panneau ouvert.
+  const openKey = `al-pooler-open-${pooler.id}`
+  const [open, setOpenState] = useState(() => {
+    if (typeof window === 'undefined') return false
+    try { return localStorage.getItem(openKey) === '1' } catch { return false }
+  })
+  const setOpen = (next: boolean | ((v: boolean) => boolean)) => {
+    setOpenState(prev => {
+      const value = typeof next === 'function' ? next(prev) : next
+      try { localStorage.setItem(openKey, value ? '1' : '0') } catch { /* stockage indisponible — pas grave */ }
+      return value
+    })
+  }
   const [releasing, setReleasing] = useState(false)
   const [releaseErr, setReleaseErr] = useState<string | null>(null)
   const [releaseMode, setReleaseMode] = useState(false)
@@ -529,12 +553,15 @@ function MonAlignement({
   const [selectedRecrueId, setSelectedRecrueId] = useState('')
   const [recrueNewType, setRecrueNewType] = useState<'actif' | 'reserviste'>('actif')
 
-  // Signale au parent qu'une sélection de libération/mise en banque est en cours, pour mettre
-  // en pause AutoReload le temps que le pooler coche ses joueurs (voir AgentsLibresDashboard).
+  // Signale au parent qu'une sélection de libération/mise en banque/recrue est en cours, pour
+  // mettre en pause AutoReload le temps que le pooler fasse son choix (voir
+  // AgentsLibresDashboard). selectedRecrueId ajouté le 2026-09-10 — même problème repéré par
+  // David en plein vrai repêchage sur "Activer ou libérer une recrue" (compte Jérôme) : la
+  // sélection dans le menu déroulant sautait avant qu'il ait cliqué Activer/Libérer.
   useEffect(() => {
-    onReleaseSelectionChange?.(releaseMode || banqueMode)
+    onReleaseSelectionChange?.(releaseMode || banqueMode || !!selectedRecrueId)
     return () => onReleaseSelectionChange?.(false)
-  }, [releaseMode, banqueMode, onReleaseSelectionChange])
+  }, [releaseMode, banqueMode, selectedRecrueId, onReleaseSelectionChange])
 
   useEffect(() => {
     if (seasonStarted) return

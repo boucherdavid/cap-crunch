@@ -338,7 +338,7 @@ export async function resetPresaisonDraftAction(
       .from('transaction_items')
       .select('player_id, to_pooler_id')
       .in('transaction_id', txIds)
-      .eq('action', 'sign')
+      .eq('action_type', 'sign')
     if (itemErr) return { error: itemErr.message }
 
     // 3. Deactivate those pooler_roster entries
