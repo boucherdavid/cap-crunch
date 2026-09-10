@@ -243,7 +243,23 @@ function PoolerCard({
   pooler: PoolerInfo; poolCap: number; isCurrentDrafter: boolean; isAdmin: boolean; saisonId: number
   onReleaseSelectionChange?: (poolerId: string, active: boolean) => void
 }) {
-  const [open, setOpen] = useState(false)
+  // Persisté via localStorage (David, 2026-09-10) — AutoReload fait un rechargement complet
+  // (window.location.reload(), voir AutoReload.tsx) qui perd tout état local, y compris ce
+  // qui n'a rien de dangereux à perdre comme "l'alignement de X est déplié". Contrairement aux
+  // sélections de libération/mise en banque/signature (mises en pause pendant qu'elles sont
+  // actives), ici on veut au contraire continuer à rafraîchir tout en gardant le panneau ouvert.
+  const openKey = `al-pooler-open-${pooler.id}`
+  const [open, setOpenState] = useState(() => {
+    if (typeof window === 'undefined') return false
+    try { return localStorage.getItem(openKey) === '1' } catch { return false }
+  })
+  const setOpen = (next: boolean | ((v: boolean) => boolean)) => {
+    setOpenState(prev => {
+      const value = typeof next === 'function' ? next(prev) : next
+      try { localStorage.setItem(openKey, value ? '1' : '0') } catch { /* stockage indisponible — pas grave */ }
+      return value
+    })
+  }
   const [releasing, setReleasing] = useState(false)
   const [releaseErr, setReleaseErr] = useState<string | null>(null)
   const [releaseMode, setReleaseMode] = useState(false)
