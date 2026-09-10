@@ -7147,3 +7147,28 @@ Commit: `984d652`.
 - `import_supabase.py`: `csv_path` rendu relatif à `BASE_DIR` (fix GitHub Actions).
 - Nouveau script `run_pipeline.py`: lance scrape → import_supabase → import_drafts en séquence. Option `--no-scrape` pour import seul.
 - Nouveau workflow `.github/workflows/import.yml`: import automatique chaque lundi 6h UTC + déclenchement manuel. Requiert les secrets `SUPABASE_URL` et `SUPABASE_SERVICE_KEY` dans GitHub.
+
+### 2026-09-10 (suite — rafraîchissement de /aide)
+
+**[Docs] — Guide d'utilisation et Règlements poolers mis à jour** (`app/app/aide/AideTabs.tsx`) :
+- Contenu périmé depuis avril 2026 : libellés de nav obsolètes ("Pool Saison" au lieu
+  d'"Alignements"), aucune mention de Gestion d'effectifs, Repêchage agents libres ni
+  Planification (toutes déployées depuis), règles de protection recrue non à jour (l'ancienne
+  version ne mentionnait pas l'expiration automatique du 2026-09-07).
+- **Pool des séries retiré** du Guide et des Règlements (`guide-series`/`regl-series`
+  supprimées) — cohérent avec son retrait de la nav pooler depuis le 2026-08-30 ; route et code
+  conservés, simplement plus documentés comme un flux actif pour les poolers.
+- Nouvelles sections Guide : **Gestion d'effectifs** (self-service post-démarrage de saison),
+  **Repêchage des agents libres** (tableau partagé, Mon alignement Actuel/Bac à sable,
+  déclaration "prêt"), **Planification** (sondage type Doodle). Notifications réécrite pour
+  couvrir push ET courriel (les deux boutons "Tester").
+  Nouvelles sections Règlements : **Repêchage des agents libres (pré-saison)** (phase de
+  libération, tours, passer) ; **Banque de recrues & protection** réécrite pour refléter
+  l'expiration automatique de la protection.
+- David : va faire lire le contenu par un pooler pour valider la clarté avant d'aller plus loin.
+  Question ouverte, pas encore tranchée : ajouter un panneau latéral contextuel façon
+  `AdminGuidePanel` mais pour les poolers (rappel "quoi faire ici" sur les pages qui le
+  justifient, probablement `/repechage-agents-libres` et `/gestion-effectifs` en priorité) —
+  mis en attente jusqu'à validation du contenu `/aide` actuel.
+- Poussé directement vers `main` sur demande de David ("c'est déjà mieux que c'était"), sans
+  attendre le retour du pooler test — les deux déploiements confirmés au vert.
