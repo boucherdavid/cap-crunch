@@ -537,12 +537,15 @@ function MonAlignement({
   const [selectedRecrueId, setSelectedRecrueId] = useState('')
   const [recrueNewType, setRecrueNewType] = useState<'actif' | 'reserviste'>('actif')
 
-  // Signale au parent qu'une sélection de libération/mise en banque est en cours, pour mettre
-  // en pause AutoReload le temps que le pooler coche ses joueurs (voir AgentsLibresDashboard).
+  // Signale au parent qu'une sélection de libération/mise en banque/recrue est en cours, pour
+  // mettre en pause AutoReload le temps que le pooler fasse son choix (voir
+  // AgentsLibresDashboard). selectedRecrueId ajouté le 2026-09-10 — même problème repéré par
+  // David en plein vrai repêchage sur "Activer ou libérer une recrue" (compte Jérôme) : la
+  // sélection dans le menu déroulant sautait avant qu'il ait cliqué Activer/Libérer.
   useEffect(() => {
-    onReleaseSelectionChange?.(releaseMode || banqueMode)
+    onReleaseSelectionChange?.(releaseMode || banqueMode || !!selectedRecrueId)
     return () => onReleaseSelectionChange?.(false)
-  }, [releaseMode, banqueMode, onReleaseSelectionChange])
+  }, [releaseMode, banqueMode, selectedRecrueId, onReleaseSelectionChange])
 
   useEffect(() => {
     if (seasonStarted) return

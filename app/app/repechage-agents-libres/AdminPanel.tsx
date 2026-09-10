@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import DraftOrderEditor from '../admin/presaison/DraftOrderEditor'
 import FreeAgentSigner from '../admin/presaison/FreeAgentSigner'
 import {
@@ -46,6 +46,18 @@ export default function AdminPanel({
   const [resetDraftMsg, setResetDraftMsg] = useState<string | null>(null)
   const [togglingPassMode, setTogglingPassMode] = useState(false)
   const [now] = useState(() => Date.now())
+  const [freeAgentSelecting, setFreeAgentSelecting] = useState(false)
+
+  // Signale au parent (AgentsLibresDashboard) qu'une interaction en cours ici devrait mettre
+  // AutoReload en pause — un agent libre sélectionné pas encore signé, ou un ordre de
+  // repêchage réordonné localement pas encore sauvegardé (David, 2026-09-10, même famille de
+  // bug que les libérations/mises en banque : un rechargement en plein milieu perdait le
+  // travail non soumis, sans message d'erreur).
+  const orderDirty = JSON.stringify(draftOrder) !== JSON.stringify(initialDraftOrder)
+  useEffect(() => {
+    onSelectionChange?.(freeAgentSelecting || orderDirty)
+    return () => onSelectionChange?.(false)
+  }, [freeAgentSelecting, orderDirty, onSelectionChange])
 
   const isDraftActive = draftState.is_active
   const isDraftDone = !isDraftActive && draftState.ended_at != null
@@ -321,7 +333,7 @@ export default function AdminPanel({
                 season={season}
                 onSign={handleSignAdvance}
                 threshold={nhlMinimumSalary}
-                onSelectionChange={onSelectionChange}
+                onSelectionChange={setFreeAgentSelecting}
               />
 
               <div className="border-t pt-3 mt-3">
