@@ -186,6 +186,38 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   "Tester le courriel" (`/compte`) continuera de fonctionner pour David uniquement, ce qui est
   attendu et ne doit pas être repris comme un bug. Les notifications push restent le canal
   fonctionnel pour tous les poolers.
+  **⚠ Rouvert et résolu différemment le même jour — voir entrée suivante.**
+
+### 2026-09-10 (suite — courriel finalement résolu via SMTP Gmail, sans domaine)
+
+**[Fix] — Remplacement de Resend par un envoi SMTP direct via le compte Gmail de David**
+(`app/lib/email.ts`, `app/package.json`) :
+- Rouvert quelques minutes après la fermeture ci-dessus : David a demandé s'il ne pouvait pas
+  utiliser sa propre adresse comme expéditeur sans passer par un service tiers. Précision faite :
+  impossible avec `@hotmail.com` (appartient à Microsoft, aucun accès DNS), mais possible avec un
+  compte Gmail personnel via SMTP + mot de passe d'application (nécessite la validation en deux
+  étapes, déjà active sur son compte depuis 2021) — aucun domaine à vérifier, aucun coût.
+- `resend` (package + `RESEND_API_KEY`/`RESEND_FROM_EMAIL`) remplacé par `nodemailer` avec
+  `service: 'gmail'`, authentifié via `GMAIL_USER`/`GMAIL_APP_PASSWORD` (nouvelles variables
+  d'environnement Secret, ajoutées par David dans les deux projets Vercel). Le `from` est
+  obligatoirement l'adresse Gmail authentifiée (contrainte Gmail, pas contournable sans domaine
+  "Send As" vérifié) — donc les courriels partiront visiblement de l'adresse Gmail de David,
+  pas d'une adresse "Cap Crunch" dédiée.
+- **Premier test en staging tombé dans les pourriels** (Outlook) même si légitimement envoyé par
+  les serveurs Google avec authentification correcte — cause : un compte Gmail personnel qui
+  envoie du HTML généré par script, sans version texte brut, ressemble à un pattern spam/newsletter
+  aux yeux des filtres, peu importe que SPF/DKIM passent réellement. Fix : génération automatique
+  d'une version texte brut (`htmlToText()`) envoyée en parallèle du HTML sur chaque envoi — retesté
+  en staging, reçu directement en boîte de réception. Confirmé aussi fonctionnel en prod après
+  ajout des mêmes variables côté `cap-crunch`.
+- **Limite connue, assumée** : le risque de classement en pourriel n'est jamais nul avec un compte
+  Gmail personnel (contrairement à un service transactionnel avec domaine vérifié) — s'améliore
+  avec le temps si les destinataires marquent "Pas un pourriel"/ajoutent l'adresse à leurs
+  contacts. Compromis accepté par David en échange de zéro domaine à acheter/gérer.
+- `RESEND_API_KEY`/`RESEND_FROM_EMAIL` laissées en place dans les deux projets Vercel (inertes,
+  plus lues par le code) — David a choisi de ne pas les supprimer immédiatement, pas bloquant.
+- Validé par David en staging puis en prod. Commits : `55d0fbc` (bascule Gmail), `29c3161`
+  (version texte), fusionnés vers `main` en `a613bf9`.
 
 ### 2026-09-10
 
