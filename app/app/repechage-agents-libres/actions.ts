@@ -277,18 +277,18 @@ export async function searchSandboxFreeAgentsAction(
   // un premier essai triait seulement côté client après réception, avec order('last_name')
   // seul côté serveur : la limite s'appliquait donc sur une tranche alphabétique de noms de
   // famille toutes équipes confondues (~A à C), donnant l'impression de "quelques joueurs par
-  // équipe" au lieu de rosters complets. teams est plusieurs-à-un (contrairement à
-  // player_contracts, un-à-plusieurs, où order() est refusé par PostgREST — PGRST118, déjà
-  // vérifié) — un order() dessus fonctionne, vérifié en direct. Le tri par salaire décroissant
-  // à l'intérieur de chaque équipe reste fait côté client ci-dessous.
-  // Limite : 40 suffit dès qu'une équipe est choisie (un roster fait ~23 joueurs) ; sans ça,
-  // un filtre large ("moins de 2M$", toute la ligue) matche facilement plusieurs centaines de
-  // joueurs (968 vérifiés en direct pour ce seul exemple) — 150 montre un échantillon utile
-  // (plusieurs rosters d'équipe complets) sans rendre une liste ingérable ; truncated signale
-  // au client qu'il y en a plus.
+  // équipe" au lieu de rosters complets. Le tri par salaire décroissant à l'intérieur de chaque
+  // équipe reste fait côté client ci-dessous.
+  // Piège supabase-js (vérifié en direct, deux essais) : .order('code', { referencedTable:
+  // 'teams' }) génère "teams.order=code.asc" — trie l'INTÉRIEUR d'une relation imbriquée
+  // (utile pour un un-à-plusieurs, ex: trier les commentaires d'un post), pas les lignes
+  // players PAR la relation. teams est plusieurs-à-un ici (contrairement à player_contracts,
+  // où order() est carrément refusé par PostgREST — PGRST118, déjà établi) : passer la chaîne
+  // littérale 'teams(code)' comme nom de colonne (au lieu de l'option referencedTable) génère
+  // la vraie syntaxe PostgREST "order=teams(code).asc" et trie bien les lignes principales.
   const limit = q.length >= 2 ? 15 : (opts.teamCode ? 40 : 150)
   dbQuery = dbQuery
-    .order('code', { referencedTable: 'teams', ascending: true })
+    .order('teams(code)', { ascending: true })
     .order('last_name')
     .limit(limit)
 
