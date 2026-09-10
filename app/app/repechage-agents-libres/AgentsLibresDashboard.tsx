@@ -185,6 +185,32 @@ export default function AgentsLibresDashboard({
         </div>
       )}
 
+      {/* Remontée en haut de page et bornée avec défilement (David, 2026-09-10) — pour que les
+          poolers puissent suivre le repêchage en direct sans descendre toute la page, et sans
+          que la liste s'allonge indéfiniment. */}
+      <div className="bg-white rounded-lg shadow mb-6">
+        <div className="px-5 py-3 border-b flex items-center justify-between flex-wrap gap-1">
+          <h2 className="text-sm font-semibold text-gray-700">Activité récente</h2>
+          <p className="text-xs text-gray-400">Signatures d&apos;agents libres et libérations du ménage pré-saison</p>
+        </div>
+        {recentActivity.length === 0 ? (
+          <p className="text-gray-400 text-sm text-center px-5 py-6">Aucune activité pour l&apos;instant.</p>
+        ) : (
+          <div className="max-h-72 overflow-y-auto divide-y">
+            {recentActivity.map(r => (
+              <div key={`${r.kind}-${r.id}`} className="px-5 py-2.5 text-sm flex items-center gap-2">
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${r.kind === 'sign' ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                <span className="font-medium text-gray-800">{r.poolerName}</span>
+                <span className="text-gray-500">{r.kind === 'sign' ? 'a signé' : 'a libéré'}</span>
+                <span className="font-medium text-gray-800">{r.playerName}</span>
+                {r.position && <span className="text-gray-400 text-xs">({r.position})</span>}
+                <span className="ml-auto text-xs text-gray-400">{fmtDateTime(r.at)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div>
@@ -194,29 +220,6 @@ export default function AgentsLibresDashboard({
                 <PoolerCard key={p.id} pooler={p} poolCap={poolCap} isCurrentDrafter={p.id === currentPoolerId} isAdmin={me.isAdmin} saisonId={saisonId} onReleaseSelectionChange={setAdminReleaseSelectionFor} />
               ))}
             </div>
-          </div>
-
-          <div>
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Activité récente</h2>
-            <p className="text-xs text-gray-400 mb-3 -mt-2">Signatures d&apos;agents libres et libérations du ménage pré-saison.</p>
-            {recentActivity.length === 0 ? (
-              <div className="bg-white rounded-lg shadow p-6 text-center text-gray-400 text-sm">
-                Aucune activité pour l&apos;instant.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {recentActivity.map(r => (
-                  <div key={`${r.kind}-${r.id}`} className="bg-white rounded-lg shadow px-4 py-2.5 text-sm flex items-center gap-2">
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${r.kind === 'sign' ? 'bg-emerald-400' : 'bg-red-400'}`} />
-                    <span className="font-medium text-gray-800">{r.poolerName}</span>
-                    <span className="text-gray-500">{r.kind === 'sign' ? 'a signé' : 'a libéré'}</span>
-                    <span className="font-medium text-gray-800">{r.playerName}</span>
-                    {r.position && <span className="text-gray-400 text-xs">({r.position})</span>}
-                    <span className="ml-auto text-xs text-gray-400">{fmtDateTime(r.at)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
 
