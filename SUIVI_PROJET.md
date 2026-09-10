@@ -166,6 +166,27 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   explicitement au parent qu'elle est "en cours" (comme `releaseMode`/`selected`/dirty-check),
   sinon le prochain cycle d'AutoReload la fera sauter silencieusement, sans message d'erreur.
 
+### 2026-09-10 (suite — notifications par courriel fermées, limite sandbox Resend confirmée)
+
+**[Décision] — Courriel babillard non fonctionnel pour les autres poolers, fermé volontairement**
+- Point ouvert de l'entrée précédente vérifié : David a testé avec le compte de Paule, erreur
+  Resend explicite : "You can only send testing emails to your own email address
+  (david.boucher@hotmail.com). To send emails to other recipients, please verify a domain at
+  resend.com/domains...". Confirme que le compte Resend est en mode sandbox — l'adresse
+  `onboarding@resend.dev` ne livre qu'au propriétaire du compte, peu importe la clé API ou le
+  code de l'app.
+- Seule vraie solution : vérifier un domaine personnalisé dans Resend (David en contrôle les
+  DNS) et configurer `RESEND_FROM_EMAIL` en conséquence dans les deux projets Vercel. Impossible
+  d'utiliser l'adresse personnelle de David (`@hotmail.com`) comme domaine d'envoi — appartient à
+  Microsoft, aucun accès DNS possible.
+- **David : ne veut ni acheter ni gérer un domaine pour ça.** Chantier fermé volontairement —
+  décision assumée, pas un oubli. Les notifications par courriel du babillard (et plus
+  généralement `sendEmailToAll`/`sendEmailToIds`, `app/lib/email.ts`) resteront silencieusement
+  sans effet pour tout pooler autre que David tant qu'aucun domaine n'est vérifié — le bouton
+  "Tester le courriel" (`/compte`) continuera de fonctionner pour David uniquement, ce qui est
+  attendu et ne doit pas être repris comme un bug. Les notifications push restent le canal
+  fonctionnel pour tous les poolers.
+
 ### 2026-09-10
 
 **[Feature] — Remettre une recrue en banque, admin et libre-service**
