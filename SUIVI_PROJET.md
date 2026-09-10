@@ -218,6 +218,10 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   plus lues par le code) — David a choisi de ne pas les supprimer immédiatement, pas bloquant.
 - Validé par David en staging puis en prod. Commits : `55d0fbc` (bascule Gmail), `29c3161`
   (version texte), fusionnés vers `main` en `a613bf9`.
+- **Confirmation finale** : David a testé avec le compte d'un autre pooler (pas seulement le
+  sien) — courriel bien reçu. Confirme que le problème d'origine (courriels invisibles pour tout
+  pooler autre que David, dû au mode sandbox Resend) est réellement réglé, pas juste contourné
+  pour un seul compte. Chantier clos.
 
 ### 2026-09-10
 
