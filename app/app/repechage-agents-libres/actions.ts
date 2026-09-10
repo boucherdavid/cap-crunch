@@ -273,17 +273,24 @@ export async function searchSandboxFreeAgentsAction(
   if (opts.elcOnly) dbQuery = dbQuery.eq('player_contracts.is_elc', true)
   if (opts.teamCode) dbQuery = dbQuery.eq('teams.code', opts.teamCode)
   if (takenIds.length > 0) dbQuery = dbQuery.not('id', 'in', `(${takenIds.join(',')})`)
-  // players -> player_contracts est un-à-plusieurs : PostgREST refuse un order() sur la table
-  // liée ("PGRST118 — related order not possible"), vérifié en direct — le vrai tri (équipe,
-  // salaire décroissant, alphabétique) se fait donc côté client une fois les résultats reçus
-  // (teams est plusieurs-à-un, un order() dessus fonctionnerait, mais autant tout faire au
-  // même endroit plutôt que de scinder la logique de tri en deux).
+  // Tri par équipe fait au niveau de la base (David, 2026-09-10, correction d'un vrai bug) —
+  // un premier essai triait seulement côté client après réception, avec order('last_name')
+  // seul côté serveur : la limite s'appliquait donc sur une tranche alphabétique de noms de
+  // famille toutes équipes confondues (~A à C), donnant l'impression de "quelques joueurs par
+  // équipe" au lieu de rosters complets. teams est plusieurs-à-un (contrairement à
+  // player_contracts, un-à-plusieurs, où order() est refusé par PostgREST — PGRST118, déjà
+  // vérifié) — un order() dessus fonctionne, vérifié en direct. Le tri par salaire décroissant
+  // à l'intérieur de chaque équipe reste fait côté client ci-dessous.
   // Limite : 40 suffit dès qu'une équipe est choisie (un roster fait ~23 joueurs) ; sans ça,
   // un filtre large ("moins de 2M$", toute la ligue) matche facilement plusieurs centaines de
   // joueurs (968 vérifiés en direct pour ce seul exemple) — 150 montre un échantillon utile
-  // sans rendre une liste ingérable ; truncated signale au client qu'il y en a plus.
+  // (plusieurs rosters d'équipe complets) sans rendre une liste ingérable ; truncated signale
+  // au client qu'il y en a plus.
   const limit = q.length >= 2 ? 15 : (opts.teamCode ? 40 : 150)
-  dbQuery = dbQuery.order('last_name').limit(limit)
+  dbQuery = dbQuery
+    .order('code', { referencedTable: 'teams', ascending: true })
+    .order('last_name')
+    .limit(limit)
 
   const { data } = await dbQuery
   const truncated = (data ?? []).length >= limit
