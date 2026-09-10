@@ -34,7 +34,25 @@ export default function AdminPanel({
 }) {
   // Replié par défaut, sauf si un tour est déjà en cours au chargement (David, 2026-09-08) —
   // sinon l'admin ne voit pas où entrer la signature d'un agent libre pour le pooler courant.
-  const [expanded, setExpanded] = useState(draftState.is_active)
+  // Persisté via localStorage (David, 2026-09-10) — AutoReload fait un rechargement complet à
+  // intervalle régulier, qui remettait "expanded" à draftState.is_active à chaque fois, rouvrant
+  // le panneau même après une fermeture manuelle. Une fois un choix explicite fait, il prime sur
+  // le défaut automatique ; sans choix stocké (première visite), le défaut d'origine s'applique.
+  const expandedKey = `al-admin-panel-expanded-${saisonId}`
+  const [expanded, setExpandedState] = useState(() => {
+    if (typeof window === 'undefined') return draftState.is_active
+    try {
+      const stored = localStorage.getItem(expandedKey)
+      return stored === null ? draftState.is_active : stored === '1'
+    } catch { return draftState.is_active }
+  })
+  const setExpanded = (next: boolean | ((v: boolean) => boolean)) => {
+    setExpandedState(prev => {
+      const value = typeof next === 'function' ? next(prev) : next
+      try { localStorage.setItem(expandedKey, value ? '1' : '0') } catch { /* stockage indisponible — pas grave */ }
+      return value
+    })
+  }
   const [draftOrder, setDraftOrder] = useState(initialDraftOrder)
   const [savingOrder, setSavingOrder] = useState(false)
   const [orderMsg, setOrderMsg] = useState<string | null>(null)

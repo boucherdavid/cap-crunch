@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import AutoReload from '@/components/AutoReload'
-import { searchFreeAgentsAction, submitTransactionAction } from '../admin/transactions/actions'
-import { submitSelfServiceAction, loadOwnRecrueBankAction, setReadyAction } from './actions'
+import { submitTransactionAction } from '../admin/transactions/actions'
+import { submitSelfServiceAction, loadOwnRecrueBankAction, setReadyAction, searchSandboxFreeAgentsAction, listTeamsAction, type SandboxFreeAgentResult } from './actions'
 import AdminPanel from './AdminPanel'
 
 type Me = { id: string; name: string; isAdmin: boolean }
@@ -29,10 +29,10 @@ type DraftState = {
   pass_skip_one: boolean
 }
 type RecentActivity = {
-  id: number; kind: 'sign' | 'release'; poolerName: string; playerName: string
+  id: number; kind: 'sign' | 'release' | 'banque' | 'promote'; poolerName: string; playerName: string
   position: string | null; at: string
 }
-type FreeAgent = { id: number; first_name: string; last_name: string; position: string | null }
+type FreeAgent = { id: number; first_name: string; last_name: string; position: string | null; cap_number: number }
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
@@ -149,7 +149,10 @@ export default function AgentsLibresDashboard({
         {/* Toujours actif (pas seulement pendant un tour, David, 2026-09-10) — sinon personne
             ne peut détecter qu'un tour vient de démarrer : is_active passe de false à true
             précisément au moment où on aurait besoin d'être déjà en train de sonder. */}
-        <AutoReload enabled={!draftState.ended_at && !releaseSelectionActive && adminReleaseSelectionIds.size === 0 && !adminSigningActive} intervalMs={8000} />
+        {/* Intervalle allongé à 5 min (David, 2026-09-10) — 8s faisait clignoter la page en
+            continu ; le bouton "Rafraîchir" manuel (toujours visible, voir AutoReload.tsx)
+            couvre le besoin de voir un changement tout de suite sans attendre. */}
+        <AutoReload enabled={!draftState.ended_at && !releaseSelectionActive && adminReleaseSelectionIds.size === 0 && !adminSigningActive} intervalMs={300000} />
       </div>
 
       {me.isAdmin && !seasonStarted && (
@@ -185,6 +188,36 @@ export default function AgentsLibresDashboard({
         </div>
       )}
 
+      {/* Remontée en haut de page et bornée avec défilement (David, 2026-09-10) — pour que les
+          poolers puissent suivre le repêchage en direct sans descendre toute la page, et sans
+          que la liste s'allonge indéfiniment. */}
+      <div className="bg-white rounded-lg shadow mb-6">
+        <div className="px-5 py-3 border-b flex items-center justify-between flex-wrap gap-1">
+          <h2 className="text-sm font-semibold text-gray-700">Activité récente</h2>
+          <p className="text-xs text-gray-400">Signatures, libérations, remises en banque et activations de recrue du ménage pré-saison</p>
+        </div>
+        {recentActivity.length === 0 ? (
+          <p className="text-gray-400 text-sm text-center px-5 py-6">Aucune activité pour l&apos;instant.</p>
+        ) : (
+          <div className="max-h-72 overflow-y-auto divide-y">
+            {recentActivity.map(r => (
+              <div key={`${r.kind}-${r.id}`} className="px-5 py-2.5 text-sm flex items-center gap-2">
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                  r.kind === 'sign' ? 'bg-emerald-400' : r.kind === 'banque' ? 'bg-amber-400' : r.kind === 'promote' ? 'bg-blue-400' : 'bg-red-400'
+                }`} />
+                <span className="font-medium text-gray-800">{r.poolerName}</span>
+                <span className="text-gray-500">
+                  {r.kind === 'sign' ? 'a signé' : r.kind === 'banque' ? 'a remis en banque' : r.kind === 'promote' ? 'a activé' : 'a libéré'}
+                </span>
+                <span className="font-medium text-gray-800">{r.playerName}</span>
+                {r.position && <span className="text-gray-400 text-xs">({r.position})</span>}
+                <span className="ml-auto text-xs text-gray-400">{fmtDateTime(r.at)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div>
@@ -194,29 +227,6 @@ export default function AgentsLibresDashboard({
                 <PoolerCard key={p.id} pooler={p} poolCap={poolCap} isCurrentDrafter={p.id === currentPoolerId} isAdmin={me.isAdmin} saisonId={saisonId} onReleaseSelectionChange={setAdminReleaseSelectionFor} />
               ))}
             </div>
-          </div>
-
-          <div>
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Activité récente</h2>
-            <p className="text-xs text-gray-400 mb-3 -mt-2">Signatures d&apos;agents libres et libérations du ménage pré-saison.</p>
-            {recentActivity.length === 0 ? (
-              <div className="bg-white rounded-lg shadow p-6 text-center text-gray-400 text-sm">
-                Aucune activité pour l&apos;instant.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {recentActivity.map(r => (
-                  <div key={`${r.kind}-${r.id}`} className="bg-white rounded-lg shadow px-4 py-2.5 text-sm flex items-center gap-2">
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${r.kind === 'sign' ? 'bg-emerald-400' : 'bg-red-400'}`} />
-                    <span className="font-medium text-gray-800">{r.poolerName}</span>
-                    <span className="text-gray-500">{r.kind === 'sign' ? 'a signé' : 'a libéré'}</span>
-                    <span className="font-medium text-gray-800">{r.playerName}</span>
-                    {r.position && <span className="text-gray-400 text-xs">({r.position})</span>}
-                    <span className="ml-auto text-xs text-gray-400">{fmtDateTime(r.at)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
 
@@ -519,9 +529,23 @@ function MonAlignement({
   // réellement déduit dans la simulation, pas juste affiché à titre indicatif.
   const [addedRecrueIds, setAddedRecrueIds] = useState<Set<number>>(new Set())
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<FreeAgent[]>([])
+  const [results, setResults] = useState<SandboxFreeAgentResult[]>([])
+  const [resultsTruncated, setResultsTruncated] = useState(false)
   const [searching, setSearching] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Filtres de recherche du bac à sable (David, 2026-09-10) — "un défenseur à moins de X$"
+  // revient souvent sans que le pooler connaisse un nom précis.
+  const [filterPosition, setFilterPosition] = useState<'' | 'forward' | 'defense' | 'goalie'>('')
+  const [filterMaxSalary, setFilterMaxSalary] = useState('')
+  const [filterElcOnly, setFilterElcOnly] = useState(false)
+  const [filterTeam, setFilterTeam] = useState('')
+  const [teams, setTeams] = useState<{ code: string; name: string }[]>([])
+  const [selectedSandboxRecrueId, setSelectedSandboxRecrueId] = useState('')
+
+  useEffect(() => {
+    if (seasonStarted) return
+    listTeamsAction().then(res => setTeams(res.teams))
+  }, [seasonStarted])
 
   // Libre-service (ménage pré-saison) — actions réelles, distinctes du bac à sable ci-dessous.
   const [busy, setBusy] = useState(false)
@@ -672,18 +696,33 @@ function MonAlignement({
     }
   }
 
+  const hasSandboxFilters = !!filterPosition || filterMaxSalary.trim() !== '' || filterElcOnly || !!filterTeam
+  // Toujours chercher, même sans rien taper ni filtrer (David, 2026-09-10) — un pooler qui ne
+  // sait pas encore ce qu'il cherche doit pouvoir parcourir la liste par défaut plutôt que de
+  // voir un champ vide tant qu'il n'a pas décidé d'un filtre. Le serveur ignore déjà lui-même
+  // une recherche de moins de 2 caractères (pas de condition ilike ajoutée) — rien à répliquer
+  // ici, juste ne plus bloquer l'appel.
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (query.trim().length < 2) { setResults([]); return }
     debounceRef.current = setTimeout(async () => {
       setSearching(true)
-      const res = await searchFreeAgentsAction(saisonId, query)
+      // Montant en dollars directement (ex: 2000000 pour 2 M$) — un premier essai multipliait
+      // par 1M en supposant une saisie "2" pour 2 M$, mais David tapait le montant complet,
+      // rendant le filtre inopérant (plafond de 2000 milliards $).
+      const maxSalary = filterMaxSalary.trim() ? Number(filterMaxSalary) : undefined
+      const res = await searchSandboxFreeAgentsAction(saisonId, {
+        query,
+        position: filterPosition || undefined,
+        maxSalary: maxSalary && !Number.isNaN(maxSalary) ? maxSalary : undefined,
+        elcOnly: filterElcOnly || undefined,
+        teamCode: filterTeam || undefined,
+      })
       setSearching(false)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setResults((res.players ?? []).map((p: any) => ({ id: p.id, first_name: p.first_name, last_name: p.last_name, position: p.position })))
+      setResults(res.players ?? [])
+      setResultsTruncated(res.truncated ?? false)
     }, 300)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [query, saisonId])
+  }, [query, saisonId, filterPosition, filterMaxSalary, filterElcOnly, filterTeam, hasSandboxFilters])
 
   const toggleRemove = (playerId: number) => {
     setRemoved(prev => {
@@ -706,7 +745,7 @@ function MonAlignement({
       return next
     })
   }
-  const resetSandbox = () => { setRemoved(new Set()); setAdded([]); setAddedRecrueIds(new Set()); setQuery(''); setResults([]) }
+  const resetSandbox = () => { setRemoved(new Set()); setAdded([]); setAddedRecrueIds(new Set()); setQuery(''); setResults([]); setSelectedSandboxRecrueId('') }
 
   // Soumettre pour vrai les retraits testés dans le bac à sable (David, 2026-09-08) — même
   // action_type 'release' que le flux de l'onglet Actuel, donc soumis au même garde-fou
@@ -737,7 +776,13 @@ function MonAlignement({
   const hasEligibleForBanque = myPooler.roster.some(e => e.rookieType && (e.player_type === 'actif' || e.player_type === 'reserviste'))
   const removedCap = myPooler.roster.filter(e => removed.has(e.player_id)).reduce((s, e) => s + e.cap_number, 0)
   const addedRecrueCap = recruePlayers.filter(r => addedRecrueIds.has(r.player_id)).reduce((s, r) => s + r.cap_number, 0)
-  const simulatedUsed = myPooler.capUsed - removedCap + addedRecrueCap
+  // Cap réel des agents libres ajoutés au bac à sable (David, 2026-09-10) — auparavant
+  // volontairement pas déduit ("contrat pas encore signé"), mais ces agents libres ont bel et
+  // bien un contrat NHL réel et connu (cap_number vient de player_contracts, voir
+  // searchSandboxFreeAgentsAction) ; le but même du bac à sable est de voir l'impact réel avant
+  // de décider, donc l'exclure ne servait à rien.
+  const addedFACap = added.reduce((s, fa) => s + (fa.cap_number ?? 0), 0)
+  const simulatedUsed = myPooler.capUsed - removedCap + addedRecrueCap + addedFACap
   const simulatedRemain = poolCap - simulatedUsed
   const touched = removed.size > 0 || added.length > 0 || addedRecrueIds.size > 0
 
@@ -1017,7 +1062,10 @@ function MonAlignement({
               {added.map(fa => (
                 <div key={fa.id} className="flex items-center justify-between text-xs py-1 text-emerald-700">
                   <span><span className="text-gray-400 mr-1">{fa.position ?? DASH}</span>{fa.last_name}, {fa.first_name} <span className="text-emerald-500">(ajouté)</span></span>
-                  <button onClick={() => removeAdded(fa.id)} className="w-5 h-5 rounded border text-gray-400 hover:text-red-600 text-[10px]">✕</button>
+                  <span className="flex items-center gap-2">
+                    <span>{fa.cap_number > 0 ? fmt(fa.cap_number) : DASH}</span>
+                    <button onClick={() => removeAdded(fa.id)} className="w-5 h-5 rounded border text-gray-400 hover:text-red-600 text-[10px]">✕</button>
+                  </span>
                 </div>
               ))}
             </div>
@@ -1044,17 +1092,37 @@ function MonAlignement({
             {recruePlayers.length > 0 && (
               <div className="mb-3">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ajouter une recrue de ta banque</p>
-                <div className="space-y-0.5">
-                  {recruePlayers.filter(r => !addedRecrueIds.has(r.player_id)).map(r => (
-                    <div key={r.player_id} onClick={() => toggleAddedRecrue(r.player_id)} className="flex justify-between text-xs px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer">
-                      <span><span className="text-gray-400 mr-1">{r.position ?? DASH}</span>{r.name}{r.cap_number > 0 ? ` — ${fmt(r.cap_number)}` : ''}</span>
-                      <span className="text-blue-600 font-medium">+</span>
-                    </div>
-                  ))}
-                  {recruePlayers.every(r => addedRecrueIds.has(r.player_id)) && (
-                    <p className="text-xs text-gray-400">Toutes tes recrues sont déjà ajoutées.</p>
-                  )}
-                </div>
+                {/* Liste déroulante plutôt qu'une liste à plat (David, 2026-09-10) — prenait
+                    trop de place à l'écran avec une grosse banque de recrues. */}
+                {recruePlayers.every(r => addedRecrueIds.has(r.player_id)) ? (
+                  <p className="text-xs text-gray-400">Toutes tes recrues sont déjà ajoutées.</p>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={selectedSandboxRecrueId}
+                      onChange={e => setSelectedSandboxRecrueId(e.target.value)}
+                      className="flex-1 border rounded-lg px-2 py-1.5 text-xs focus:outline-none"
+                    >
+                      <option value="">— Choisir une recrue —</option>
+                      {recruePlayers.filter(r => !addedRecrueIds.has(r.player_id)).map(r => (
+                        <option key={r.player_id} value={String(r.player_id)}>
+                          {r.position ?? DASH} · {r.name}{r.cap_number > 0 ? ` — ${fmt(r.cap_number)}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => {
+                        if (!selectedSandboxRecrueId) return
+                        toggleAddedRecrue(Number(selectedSandboxRecrueId))
+                        setSelectedSandboxRecrueId('')
+                      }}
+                      disabled={!selectedSandboxRecrueId}
+                      className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 shrink-0"
+                    >
+                      Ajouter
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1062,19 +1130,76 @@ function MonAlignement({
             <input
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Rechercher (2+ caractères)..."
+              placeholder="Rechercher par nom (2+ caractères, optionnel avec des filtres)..."
               className="w-full border rounded-lg px-2.5 py-1.5 text-xs mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <select
+                value={filterPosition}
+                onChange={e => setFilterPosition(e.target.value as typeof filterPosition)}
+                className="border rounded-lg px-2 py-1 text-xs focus:outline-none"
+              >
+                <option value="">Toutes positions</option>
+                <option value="forward">Attaquant</option>
+                <option value="defense">Défenseur</option>
+                <option value="goalie">Gardien</option>
+              </select>
+              <select
+                value={filterTeam}
+                onChange={e => setFilterTeam(e.target.value)}
+                className="border rounded-lg px-2 py-1 text-xs focus:outline-none"
+              >
+                <option value="">Toutes équipes</option>
+                {teams.map(t => (
+                  <option key={t.code} value={t.code}>{t.name}</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                value={filterMaxSalary}
+                onChange={e => setFilterMaxSalary(e.target.value)}
+                placeholder="Salaire max $ (ex: 2000000)"
+                className="w-40 border rounded-lg px-2 py-1 text-xs focus:outline-none"
+              />
+              <label className="flex items-center gap-1 text-xs text-gray-600">
+                <input type="checkbox" checked={filterElcOnly} onChange={e => setFilterElcOnly(e.target.checked)} />
+                ELC seulement
+              </label>
+              {hasSandboxFilters && (
+                <button
+                  onClick={() => { setFilterPosition(''); setFilterMaxSalary(''); setFilterElcOnly(false); setFilterTeam('') }}
+                  className="text-xs text-gray-400 hover:text-gray-600"
+                >
+                  Effacer les filtres
+                </button>
+              )}
+            </div>
             {searching && <p className="text-xs text-gray-400 mb-2">Recherche...</p>}
             {results.length > 0 && (
-              <div className="space-y-0.5 mb-3 max-h-40 overflow-y-auto">
+              <div className="space-y-0.5 mb-3 max-h-56 overflow-y-auto">
                 {results.map(fa => (
-                  <div key={fa.id} onClick={() => addFA(fa)} className="flex justify-between text-xs px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer">
-                    <span>{fa.last_name}, {fa.first_name} <span className="text-gray-400">{fa.position}</span></span>
-                    <span className="text-blue-600 font-medium">+</span>
+                  <div
+                    key={fa.id}
+                    onClick={() => addFA({ id: fa.id, first_name: fa.first_name, last_name: fa.last_name, position: fa.position, cap_number: fa.cap_number })}
+                    className="flex justify-between items-center text-xs px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer"
+                  >
+                    <span>
+                      {fa.last_name}, {fa.first_name} <span className="text-gray-400">{fa.position}</span>
+                      {fa.team_code && <span className="text-gray-400"> · {fa.team_code}</span>}
+                      {fa.is_elc && <span className="text-blue-500"> · ELC</span>}
+                    </span>
+                    <span className="flex items-center gap-2 shrink-0">
+                      {fa.cap_number > 0 && <span className="text-gray-500">{fmt(fa.cap_number)}</span>}
+                      <span className="text-blue-600 font-medium">+</span>
+                    </span>
                   </div>
                 ))}
               </div>
+            )}
+            {results.length > 0 && resultsTruncated && (
+              <p className="text-xs text-amber-600 -mt-2 mb-3">
+                Plus de résultats que ce qui est affiché — affine avec une équipe, une position ou un nom pour tout voir.
+              </p>
             )}
 
             <div className="border-t pt-2 mt-1 space-y-1">
@@ -1092,8 +1217,8 @@ function MonAlignement({
                 </p>
               )}
               {added.length > 0 && (
-                <p className="text-xs text-amber-600 mt-1">
-                  Le coût des joueurs ajoutés n&apos;est pas déduit ici (contrat pas encore signé) — sert à repérer les noms disponibles, pas à calculer leur impact exact. Jamais soumis d&apos;ici : signer un agent libre reste réservé à l&apos;admin, pendant ton tour.
+                <p className="text-xs text-gray-400 mt-1">
+                  Le cap des agents libres ajoutés est inclus dans la simulation ci-dessus. Jamais soumis d&apos;ici : signer un agent libre reste réservé à l&apos;admin, pendant ton tour.
                 </p>
               )}
             </div>

@@ -201,3 +201,129 @@ export async function loadOwnRecrueBankAction(saisonId: number): Promise<{
     })),
   }
 }
+
+export type SandboxFreeAgentResult = {
+  id: number
+  first_name: string
+  last_name: string
+  position: string | null
+  cap_number: number
+  is_elc: boolean
+  team_code: string | null
+}
+
+function posBucket(position: string | null): 'forward' | 'defense' | 'goalie' {
+  const pos = (position ?? '').toUpperCase()
+  if (pos.includes('G')) return 'goalie'
+  if (pos.includes('D')) return 'defense'
+  return 'forward'
+}
+
+// Recherche filtrable pour le Bac à sable (David, 2026-09-10) — les poolers cherchent souvent
+// "un défenseur à moins de X$" sans connaître de nom précis, ce que searchFreeAgentsAction
+// (admin/transactions/actions.ts, réutilisée par la signature en direct pendant le repêchage)
+// ne permet pas — action séparée exprès pour ne rien risquer sur ce chemin critique. Sans nom
+// (2+ caractères) ni filtre, retourne une liste vide comme avant.
+export async function searchSandboxFreeAgentsAction(
+  saisonId: number,
+  opts: { query?: string; position?: 'forward' | 'defense' | 'goalie'; maxSalary?: number; elcOnly?: boolean; teamCode?: string },
+): Promise<{ players: SandboxFreeAgentResult[]; truncated: boolean }> {
+  const supabase = await createClient()
+
+  const { data: saison } = await supabase.from('pool_seasons').select('season').eq('id', saisonId).single()
+  if (!saison) return { players: [], truncated: false }
+
+  const q = (opts.query ?? '').trim()
+
+  const { data: onRoster } = await supabase
+    .from('pooler_rosters')
+    .select('player_id')
+    .eq('pool_season_id', saisonId)
+    .eq('is_active', true)
+  const takenIds = (onRoster ?? []).map(r => r.player_id)
+
+  // player_contracts!inner + filtre de saison toujours actif (David, 2026-09-10) — un joueur
+  // sans contrat connu pour la saison courante n'a rien à montrer comme impact cap, donc rien
+  // à faire dans un outil dont le but est justement de voir cet impact ; les résultats sans
+  // salaire (auparavant affichés avec un montant vide) sont maintenant exclus d'office.
+  // teams!inner seulement si un filtre d'équipe est demandé (une équipe manquante serait un
+  // vrai problème de données, pas juste "rien à montrer").
+  const contractsSelect = 'player_contracts!inner (season, cap_number, is_elc)'
+  const teamsSelect = opts.teamCode ? 'teams!inner (code)' : 'teams (code)'
+  const selectStr = `id, first_name, last_name, position, ${teamsSelect}, ${contractsSelect}`
+
+  // Pas le RPC search_players_unaccent (utilisé par searchFreeAgentsAction) — PostgREST ne
+  // sait pas combiner un filtre sur une table liée (player_contracts) avec une requête basée
+  // sur un appel RPC ("column pgrst_call.cap_number does not exist", vérifié en direct). ilike
+  // simple à la place, moins tolérant aux accents mais fonctionne avec les filtres.
+  let dbQuery = supabase.from('players').select(selectStr)
+  if (q.length >= 2) {
+    // Virgules/parenthèses retirées — casseraient la syntaxe du filtre .or() de PostgREST
+    // (séparateurs de conditions / groupement), pas un risque de sécurité mais un échec de
+    // requête sinon.
+    const safeQ = q.replace(/[,()]/g, '')
+    dbQuery = dbQuery.or(`first_name.ilike.%${safeQ}%,last_name.ilike.%${safeQ}%`)
+  }
+
+  dbQuery = dbQuery.eq('player_contracts.season', saison.season)
+  // La ligne de contrat peut exister pour la saison avec cap_number à null (fin de contrat,
+  // donnée incomplète) — !inner seul ne suffit pas à exclure ces cas, vérifié en direct.
+  dbQuery = dbQuery.not('player_contracts.cap_number', 'is', null)
+  if (opts.maxSalary != null) dbQuery = dbQuery.lte('player_contracts.cap_number', opts.maxSalary)
+  if (opts.elcOnly) dbQuery = dbQuery.eq('player_contracts.is_elc', true)
+  if (opts.teamCode) dbQuery = dbQuery.eq('teams.code', opts.teamCode)
+  if (takenIds.length > 0) dbQuery = dbQuery.not('id', 'in', `(${takenIds.join(',')})`)
+  // Tri par équipe fait au niveau de la base (David, 2026-09-10, correction d'un vrai bug) —
+  // un premier essai triait seulement côté client après réception, avec order('last_name')
+  // seul côté serveur : la limite s'appliquait donc sur une tranche alphabétique de noms de
+  // famille toutes équipes confondues (~A à C), donnant l'impression de "quelques joueurs par
+  // équipe" au lieu de rosters complets. Le tri par salaire décroissant à l'intérieur de chaque
+  // équipe reste fait côté client ci-dessous.
+  // Piège supabase-js (vérifié en direct, deux essais) : .order('code', { referencedTable:
+  // 'teams' }) génère "teams.order=code.asc" — trie l'INTÉRIEUR d'une relation imbriquée
+  // (utile pour un un-à-plusieurs, ex: trier les commentaires d'un post), pas les lignes
+  // players PAR la relation. teams est plusieurs-à-un ici (contrairement à player_contracts,
+  // où order() est carrément refusé par PostgREST — PGRST118, déjà établi) : passer la chaîne
+  // littérale 'teams(code)' comme nom de colonne (au lieu de l'option referencedTable) génère
+  // la vraie syntaxe PostgREST "order=teams(code).asc" et trie bien les lignes principales.
+  const limit = q.length >= 2 ? 15 : (opts.teamCode ? 40 : 150)
+  dbQuery = dbQuery
+    .order('teams(code)', { ascending: true })
+    .order('last_name')
+    .limit(limit)
+
+  const { data } = await dbQuery
+  const truncated = (data ?? []).length >= limit
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const players = ((data ?? []) as any[]).map(p => {
+    const contract = (p.player_contracts ?? []).find((c: { season: string }) => c.season === saison.season)
+    return {
+      id: p.id,
+      first_name: p.first_name,
+      last_name: p.last_name,
+      position: p.position ?? null,
+      team_code: p.teams?.code ?? null,
+      cap_number: contract?.cap_number ?? 0,
+      is_elc: contract?.is_elc ?? false,
+    }
+  })
+
+  const filtered = opts.position ? players.filter(p => posBucket(p.position) === opts.position) : players
+
+  // Tri équipe (alphabétique) → salaire décroissant → alphabétique, demandé par David
+  // (2026-09-10) pour balayer un roster d'équipe visuellement plutôt qu'en vrac.
+  filtered.sort((a, b) =>
+    (a.team_code ?? '').localeCompare(b.team_code ?? '')
+    || b.cap_number - a.cap_number
+    || a.last_name.localeCompare(b.last_name),
+  )
+
+  return { players: filtered, truncated }
+}
+
+// Pour le filtre d'équipe du Bac à sable (David, 2026-09-10).
+export async function listTeamsAction(): Promise<{ teams: { code: string; name: string }[] }> {
+  const supabase = await createClient()
+  const { data } = await supabase.from('teams').select('code, name').order('code')
+  return { teams: data ?? [] }
+}
