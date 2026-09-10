@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { updatePasswordAction, updateProfileAction, updateNameAction, updateEmailAction } from './actions'
+import { updatePasswordAction, updateProfileAction, updateNameAction, updateEmailAction, testEmailAction } from './actions'
 import PushToggle from './PushToggle'
 
 type Profile = {
@@ -29,6 +29,8 @@ export default function CompteForm({ profile }: { profile: Profile }) {
   const [notifEmail, setNotifEmail] = useState(profile.notif_email)
   const [profileMsg, setProfileMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [profileBusy, setProfileBusy] = useState(false)
+  const [emailTestBusy, setEmailTestBusy] = useState(false)
+  const [emailTestMsg, setEmailTestMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
   const [isRecovery, setIsRecovery] = useState(false)
   useEffect(() => {
@@ -212,6 +214,27 @@ export default function CompteForm({ profile }: { profile: Profile }) {
                 <p className="text-xs text-gray-400">Recevoir les alertes du pool par courriel.</p>
               </div>
             </label>
+            <button
+              type="button"
+              onClick={async () => {
+                setEmailTestBusy(true)
+                setEmailTestMsg(null)
+                const res = await testEmailAction()
+                setEmailTestBusy(false)
+                setEmailTestMsg(
+                  res.error
+                    ? { type: 'err', text: `Erreur : ${res.error}` }
+                    : { type: 'ok', text: 'Courriel test envoyé — vérifiez votre boîte de réception (et les indésirables).' },
+                )
+              }}
+              disabled={emailTestBusy}
+              className="px-4 py-2 rounded text-sm font-medium bg-gray-50 border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50 transition-colors"
+            >
+              {emailTestBusy ? '...' : 'Tester le courriel'}
+            </button>
+            {emailTestMsg && (
+              <p className={`text-sm ${emailTestMsg.type === 'ok' ? 'text-green-600' : 'text-red-600'}`}>{emailTestMsg.text}</p>
+            )}
           </div>
 
           <button type="submit" disabled={profileBusy}
