@@ -36,9 +36,10 @@ async function sendToEmails(emails: string[], payload: EmailPayload) {
     return
   }
 
+  const text = htmlToText(payload.html)
   const results = await Promise.allSettled(
     emails.map(email =>
-      transporter.sendMail({ from: FROM_ADDRESS, to: email, subject: payload.subject, html: payload.html }),
+      transporter.sendMail({ from: FROM_ADDRESS, to: email, subject: payload.subject, html: payload.html, text }),
     ),
   )
   results.forEach((r, i) => {
@@ -89,17 +90,35 @@ export async function sendTestEmail(toEmail: string): Promise<{ error?: string }
     return { error: 'GMAIL_USER / GMAIL_APP_PASSWORD absents des variables d\'environnement (ce déploiement).' }
   }
 
+  const html = '<p>Les courriels fonctionnent correctement — ce message confirme que l\'envoi est bien configuré pour cet environnement.</p>'
   try {
     await transporter.sendMail({
       from: FROM_ADDRESS,
       to: toEmail,
       subject: 'Cap Crunch — Test de courriel',
-      html: '<p>Les courriels fonctionnent correctement — ce message confirme que l\'envoi est bien configuré pour cet environnement.</p>',
+      html,
+      text: htmlToText(html),
     })
     return {}
   } catch (e: unknown) {
     return { error: `Erreur d'envoi : ${e instanceof Error ? e.message : String(e)}` }
   }
+}
+
+// Version texte brut à côté du HTML — un courriel HTML-only est un signal antispam classique.
+function htmlToText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, '\'')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
 }
 
 export function escapeHtml(text: string): string {
