@@ -20,13 +20,14 @@ type FreeAgentResult = any
 // gestion-effectifs/GestionEffectifsManager.tsx (input + liste cliquable superposée, chip verte
 // une fois sélectionné).
 export default function FreeAgentSigner({
-  pooler, saisonId, season, onSign, threshold,
+  pooler, saisonId, season, onSign, threshold, onSelectionChange,
 }: {
   pooler: PoolerCapInfo
   saisonId: number
   season: string
   onSign: () => Promise<void>
   threshold: number
+  onSelectionChange?: (active: boolean) => void
 }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<FreeAgentResult[]>([])
@@ -46,6 +47,15 @@ export default function FreeAgentSigner({
     }, 300)
     return () => clearTimeout(timer)
   }, [query, saisonId])
+
+  // Signale au parent qu'un joueur est sélectionné (entre le clic sur un résultat et le clic
+  // sur "Signer") pour mettre en pause AutoReload — même correctif que pour les sélections de
+  // libération/mise en banque (David, 2026-09-10). Sans ça, un rechargement automatique en
+  // plein milieu perdait la sélection de l'admin sans aucun message d'erreur.
+  useEffect(() => {
+    onSelectionChange?.(!!selected)
+    return () => onSelectionChange?.(false)
+  }, [selected, onSelectionChange])
 
   const getCap = (p: FreeAgentResult) =>
     p.player_contracts?.find((c: { season: string; cap_number: number }) => c.season === season)?.cap_number ?? 0

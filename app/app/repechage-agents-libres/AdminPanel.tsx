@@ -22,7 +22,7 @@ const fmt = (n: number) =>
 // après chaque action mutante plutôt que de synchroniser un état local, même patron que le
 // reste de cette page (self-service, AutoReload).
 export default function AdminPanel({
-  saisonId, season, poolers, initialDraftOrder, draftState, nhlMinimumSalary,
+  saisonId, season, poolers, initialDraftOrder, draftState, nhlMinimumSalary, onSelectionChange,
 }: {
   saisonId: number
   season: string
@@ -30,6 +30,7 @@ export default function AdminPanel({
   initialDraftOrder: string[]
   draftState: DraftState
   nhlMinimumSalary: number
+  onSelectionChange?: (active: boolean) => void
 }) {
   // Replié par défaut, sauf si un tour est déjà en cours au chargement (David, 2026-09-08) —
   // sinon l'admin ne voit pas où entrer la signature d'un agent libre pour le pooler courant.
@@ -320,6 +321,7 @@ export default function AdminPanel({
                 season={season}
                 onSign={handleSignAdvance}
                 threshold={nhlMinimumSalary}
+                onSelectionChange={onSelectionChange}
               />
 
               <div className="border-t pt-3 mt-3">

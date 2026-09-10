@@ -125,6 +125,10 @@ export default function AgentsLibresDashboard({
       return next
     })
   }
+  // Même correctif pour la sélection d'un agent libre en cours de signature (David,
+  // 2026-09-10, repéré en plein vrai repêchage — la sélection sautait sous l'admin avant
+  // même qu'il puisse cliquer "Signer").
+  const [adminSigningActive, setAdminSigningActive] = useState(false)
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4">
@@ -145,7 +149,7 @@ export default function AgentsLibresDashboard({
         {/* Toujours actif (pas seulement pendant un tour, David, 2026-09-10) — sinon personne
             ne peut détecter qu'un tour vient de démarrer : is_active passe de false à true
             précisément au moment où on aurait besoin d'être déjà en train de sonder. */}
-        <AutoReload enabled={!draftState.ended_at && !releaseSelectionActive && adminReleaseSelectionIds.size === 0} intervalMs={8000} />
+        <AutoReload enabled={!draftState.ended_at && !releaseSelectionActive && adminReleaseSelectionIds.size === 0 && !adminSigningActive} intervalMs={8000} />
       </div>
 
       {me.isAdmin && !seasonStarted && (
@@ -156,6 +160,7 @@ export default function AgentsLibresDashboard({
           initialDraftOrder={draftOrder}
           draftState={draftState}
           nhlMinimumSalary={nhlMinimumSalary}
+          onSelectionChange={setAdminSigningActive}
         />
       )}
 
