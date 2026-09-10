@@ -149,7 +149,10 @@ export default function AgentsLibresDashboard({
         {/* Toujours actif (pas seulement pendant un tour, David, 2026-09-10) — sinon personne
             ne peut détecter qu'un tour vient de démarrer : is_active passe de false à true
             précisément au moment où on aurait besoin d'être déjà en train de sonder. */}
-        <AutoReload enabled={!draftState.ended_at && !releaseSelectionActive && adminReleaseSelectionIds.size === 0 && !adminSigningActive} intervalMs={8000} />
+        {/* Intervalle allongé à 5 min (David, 2026-09-10) — 8s faisait clignoter la page en
+            continu ; le bouton "Rafraîchir" manuel (toujours visible, voir AutoReload.tsx)
+            couvre le besoin de voir un changement tout de suite sans attendre. */}
+        <AutoReload enabled={!draftState.ended_at && !releaseSelectionActive && adminReleaseSelectionIds.size === 0 && !adminSigningActive} intervalMs={300000} />
       </div>
 
       {me.isAdmin && !seasonStarted && (
