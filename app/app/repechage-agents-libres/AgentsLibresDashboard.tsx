@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import AutoReload from '@/components/AutoReload'
 import { submitTransactionAction } from '../admin/transactions/actions'
 import { submitSelfServiceAction, loadOwnRecrueBankAction, setReadyAction, searchSandboxFreeAgentsAction, listTeamsAction, type SandboxFreeAgentResult } from './actions'
@@ -118,13 +118,23 @@ export default function AgentsLibresDashboard({
   // Set plutôt qu'un booléen puisque plusieurs PoolerCard existent (une par pooler).
   const [releaseSelectionActive, setReleaseSelectionActive] = useState(false)
   const [adminReleaseSelectionIds, setAdminReleaseSelectionIds] = useState<Set<string>>(new Set())
-  const setAdminReleaseSelectionFor = (poolerId: string, active: boolean) => {
+  // useCallback (David, 2026-09-10, correctif de performance) — une fonction recréée à chaque
+  // rendu ici cassait la stabilité de référence attendue par le useEffect de chacune des 8
+  // PoolerCard (dépendance [..., onReleaseSelectionChange]), qui refeu à chaque rendu du
+  // parent. Comme l'appel ci-dessous créait systématiquement un nouveau Set (même quand rien
+  // ne changeait réellement), ça déclenchait un nouveau rendu du parent, qui recréait cette
+  // fonction, qui refaisait tourner les 8 effets, etc. — boucle de rendu continue, ressentie
+  // comme une lenteur générale de l'app (repéré par David en plein repêchage). Le garde "prev
+  // a déjà cette valeur" ci-dessous coupe la boucle même si la fonction redevenait instable un
+  // jour ; useCallback empêche qu'elle le devienne en premier lieu.
+  const setAdminReleaseSelectionFor = useCallback((poolerId: string, active: boolean) => {
     setAdminReleaseSelectionIds(prev => {
+      if (prev.has(poolerId) === active) return prev
       const next = new Set(prev)
       active ? next.add(poolerId) : next.delete(poolerId)
       return next
     })
-  }
+  }, [])
   // Même correctif pour la sélection d'un agent libre en cours de signature (David,
   // 2026-09-10, repéré en plein vrai repêchage — la sélection sautait sous l'admin avant
   // même qu'il puisse cliquer "Signer").
