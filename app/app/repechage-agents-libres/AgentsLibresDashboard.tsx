@@ -29,7 +29,7 @@ type DraftState = {
   pass_skip_one: boolean
 }
 type RecentActivity = {
-  id: number; kind: 'sign' | 'release'; poolerName: string; playerName: string
+  id: number; kind: 'sign' | 'release' | 'banque'; poolerName: string; playerName: string
   position: string | null; at: string
 }
 type FreeAgent = { id: number; first_name: string; last_name: string; position: string | null }
@@ -194,7 +194,7 @@ export default function AgentsLibresDashboard({
       <div className="bg-white rounded-lg shadow mb-6">
         <div className="px-5 py-3 border-b flex items-center justify-between flex-wrap gap-1">
           <h2 className="text-sm font-semibold text-gray-700">Activité récente</h2>
-          <p className="text-xs text-gray-400">Signatures d&apos;agents libres et libérations du ménage pré-saison</p>
+          <p className="text-xs text-gray-400">Signatures d&apos;agents libres, libérations et remises en banque du ménage pré-saison</p>
         </div>
         {recentActivity.length === 0 ? (
           <p className="text-gray-400 text-sm text-center px-5 py-6">Aucune activité pour l&apos;instant.</p>
@@ -202,9 +202,9 @@ export default function AgentsLibresDashboard({
           <div className="max-h-72 overflow-y-auto divide-y">
             {recentActivity.map(r => (
               <div key={`${r.kind}-${r.id}`} className="px-5 py-2.5 text-sm flex items-center gap-2">
-                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${r.kind === 'sign' ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${r.kind === 'sign' ? 'bg-emerald-400' : r.kind === 'banque' ? 'bg-amber-400' : 'bg-red-400'}`} />
                 <span className="font-medium text-gray-800">{r.poolerName}</span>
-                <span className="text-gray-500">{r.kind === 'sign' ? 'a signé' : 'a libéré'}</span>
+                <span className="text-gray-500">{r.kind === 'sign' ? 'a signé' : r.kind === 'banque' ? 'a remis en banque' : 'a libéré'}</span>
                 <span className="font-medium text-gray-800">{r.playerName}</span>
                 {r.position && <span className="text-gray-400 text-xs">({r.position})</span>}
                 <span className="ml-auto text-xs text-gray-400">{fmtDateTime(r.at)}</span>

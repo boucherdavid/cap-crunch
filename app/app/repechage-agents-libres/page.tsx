@@ -6,6 +6,12 @@ import AgentsLibresDashboard from './AgentsLibresDashboard'
 export const metadata = { title: 'Repêchage — Agents libres' }
 export const dynamic = 'force-dynamic'
 
+// 15 était trop bas — avec 63 libérations pour la seule saison en cours, la plupart n'étaient
+// jamais chargées du serveur (le défilement du fil "Activité récente" ne peut rien révéler de
+// plus que ce qui a été fetché) — David, 2026-09-10.
+const ACTIVITY_LIMIT_PER_KIND = 60
+const ACTIVITY_LIMIT_TOTAL = 60
+
 export default async function AgentsLibresPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -30,7 +36,7 @@ export default async function AgentsLibresPage() {
     )
   }
 
-  const [dataResult, stateResult, signResult, releaseResult] = await Promise.all([
+  const [dataResult, stateResult, signResult, releaseResult, banqueResult] = await Promise.all([
     loadPresaisonDataAction(saison.id),
     loadPresaisonDraftStateAction(saison.id),
     supabase
@@ -45,7 +51,7 @@ export default async function AgentsLibresPage() {
       .eq('transactions.pool_season_id', saison.id)
       .eq('transactions.notes', 'Repêchage pré-saison')
       .order('created_at', { referencedTable: 'transactions', ascending: false })
-      .limit(15),
+      .limit(ACTIVITY_LIMIT_PER_KIND),
     // Libérations du ménage pré-saison (ComplianceCard, /admin/init?tab=presaison) — pour que
     // les poolers voient qui a été libéré, sans avoir à demander à l'admin.
     supabase
@@ -60,7 +66,26 @@ export default async function AgentsLibresPage() {
       .eq('transactions.pool_season_id', saison.id)
       .eq('transactions.notes', 'Ajustement pré-saison')
       .order('created_at', { referencedTable: 'transactions', ascending: false })
-      .limit(15),
+      .limit(ACTIVITY_LIMIT_PER_KIND),
+    // Remises en banque (David, 2026-09-10) — type_change vers 'recrue' (admin ou
+    // libre-service, voir repechage-agents-libres/actions.ts) manquait complètement du fil,
+    // signalé par David en plein repêchage. Les changements de statut actif↔réserviste
+    // (type_change vers autre chose) restent volontairement hors du fil — trop fréquents/peu
+    // pertinents pour un suivi collectif, contrairement à une vraie sortie de l'alignement actif.
+    supabase
+      .from('transaction_items')
+      .select(`
+        id, player_id, from_pooler_id,
+        players (first_name, last_name, position),
+        poolers!from_pooler_id (name),
+        transactions!inner (created_at, pool_season_id, notes)
+      `)
+      .eq('action_type', 'type_change')
+      .eq('new_player_type', 'recrue')
+      .eq('transactions.pool_season_id', saison.id)
+      .eq('transactions.notes', 'Ajustement pré-saison')
+      .order('created_at', { referencedTable: 'transactions', ascending: false })
+      .limit(ACTIVITY_LIMIT_PER_KIND),
   ])
 
   if (dataResult.error || !dataResult.poolers) {
@@ -90,9 +115,18 @@ export default async function AgentsLibresPage() {
     position: (item.players?.position as string | null) ?? null,
     at: (item.transactions?.created_at as string | undefined) ?? new Date().toISOString(),
   }))
-  const recentActivity = [...signs, ...releases]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const banques = ((banqueResult.data ?? []) as any[]).map(item => ({
+    id: item.id as number,
+    kind: 'banque' as const,
+    poolerName: (item.poolers?.name as string | undefined) ?? '?',
+    playerName: item.players ? `${item.players.last_name}, ${item.players.first_name}` : '?',
+    position: (item.players?.position as string | null) ?? null,
+    at: (item.transactions?.created_at as string | undefined) ?? new Date().toISOString(),
+  }))
+  const recentActivity = [...signs, ...releases, ...banques]
     .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
-    .slice(0, 15)
+    .slice(0, ACTIVITY_LIMIT_TOTAL)
 
   return (
     <AgentsLibresDashboard
