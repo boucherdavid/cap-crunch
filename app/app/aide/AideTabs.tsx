@@ -83,7 +83,7 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez à votre alignement via <strong>Pool Saison → Mon équipe</strong> dans la barre de navigation.
+          Accédez à votre alignement via <strong>Alignements → Mon équipe</strong> dans la barre de navigation.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• L&apos;onglet <strong>Organisation</strong> affiche votre roster complet : actifs, réservistes, recrues et joueurs LTIR.</li>
@@ -91,35 +91,58 @@ const SECTIONS: Section[] = [
           <li>• Vos <strong>choix de repêchage</strong> sont listés en bas, regroupés par saison.</li>
           <li>• Le <strong>sélecteur de pooler</strong> en haut vous permet de consulter l&apos;alignement d&apos;un autre pooler.</li>
         </ul>
-        <p className="text-xs text-gray-400 mt-3 italic">Modifications d&apos;alignement : effectuées par l&apos;administrateur seulement pour l&apos;instant.</p>
+        <p className="text-xs text-gray-400 mt-3 italic">Pour modifier vous-même votre alignement (actif/réserviste, libération, recrues), voir <strong>Gestion d&apos;effectifs</strong> ci-dessous.</p>
       </div>
     ),
   },
   {
-    id: 'guide-series',
+    id: 'guide-effectifs',
     tab: 'guide',
-    title: 'Pool des séries éliminatoires',
-    keywords: 'series playoff picks choix gardien attaquant defenseur ronde cap soumettre equipe eliminee remplacer self service',
+    title: 'Gestion d\'effectifs',
+    keywords: 'gestion effectifs self service actif reserviste liberer recrue banque promouvoir cap limite saison demarree',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Le pool des séries est <strong>self-service</strong> : chaque pooler fait ses propres sélections sans passer par l&apos;administrateur.
-          Accédez à vos choix via <strong>Pool Séries → Mes choix</strong>.
+          Accédez à votre outil de gestion via <strong>Alignements → Gestion d&apos;effectifs</strong>. C&apos;est ici que vous ajustez
+          vous-même votre alignement une fois la <strong>saison démarrée</strong> par l&apos;administrateur.
         </p>
-        <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Faire vos sélections</h4>
-        <ul className="text-sm text-gray-700 space-y-1.5 mb-4">
-          <li>• Choisissez <strong>3 attaquants, 2 défenseurs et 1 gardien</strong> pour la ronde en cours.</li>
-          <li>• Seuls les joueurs dont l&apos;équipe est encore active dans les séries apparaissent dans la liste.</li>
-          <li>• Votre sélection doit respecter le <strong>cap de la ronde</strong> (environ 25 M$).</li>
-          <li>• Les joueurs sont triés par équipe puis par salaire pour faciliter la navigation.</li>
-          <li>• Cliquez sur <strong>Soumettre mes choix</strong> pour confirmer. Vous pouvez modifier votre sélection tant que la ronde n&apos;est pas fermée.</li>
-        </ul>
-        <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Entre les rondes</h4>
         <ul className="text-sm text-gray-700 space-y-1.5">
-          <li>• Vous pouvez <strong>conserver ou remplacer</strong> vos joueurs au début de chaque nouvelle ronde.</li>
-          <li>• Si l&apos;équipe d&apos;un de vos joueurs est éliminée, l&apos;application le détecte automatiquement : le joueur apparaît en rouge et la sauvegarde est bloquée tant qu&apos;il n&apos;est pas remplacé.</li>
+          <li>• Basculez un joueur <strong>actif ↔ réserviste</strong> selon vos besoins.</li>
+          <li>• <strong>Libérez</strong> un joueur pour le retirer de votre alignement.</li>
+          <li>• <strong>Activez ou remettez en banque</strong> une recrue encore protégée, à tout moment.</li>
+          <li>• Vos changements doivent respecter les limites du pool (voir Règlements) : maximum 12 attaquants / 6 défenseurs / 2 gardiens actifs, minimum 2 réservistes, et votre masse salariale sous le cap.</li>
         </ul>
-        <p className="text-xs text-gray-400 mt-3 italic">La participation au pool des séries est optionnelle.</p>
+        <p className="text-xs text-gray-400 mt-3 italic">Avant le début officiel de la saison, ces mêmes ajustements se font plutôt depuis <strong>Repêchage agents libres</strong> (voir plus bas).</p>
+      </div>
+    ),
+  },
+  {
+    id: 'guide-agents-libres',
+    tab: 'guide',
+    title: 'Repêchage des agents libres (pré-saison)',
+    keywords: 'repechage agents libres presaison file attente tour signature admin bac a sable simulation liberer recrue pret alignement',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Accédez-y via <strong>Repêchage → Repêchage agents libres</strong>. C&apos;est l&apos;étape de préparation avant chaque
+          nouvelle saison, où chaque pooler ajuste son alignement et où des agents libres sont signés à tour de rôle.
+        </p>
+        <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Tableau de bord partagé</h4>
+        <ul className="text-sm text-gray-700 space-y-1.5 mb-4">
+          <li>• Votre masse salariale, l&apos;alignement de n&apos;importe quel pooler (dépliable), et la file d&apos;attente indiquant à qui le tour.</li>
+          <li>• Un fil <strong>Activité récente</strong> liste les signatures, libérations et changements de tous les poolers.</li>
+        </ul>
+        <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Mon alignement</h4>
+        <ul className="text-sm text-gray-700 space-y-1.5 mb-4">
+          <li>• Onglet <strong>Actuel</strong> : ajustez réellement votre alignement — actif ↔ réserviste, libération (quand la phase de libération est ouverte), activer/remettre en banque une recrue (toujours permis).</li>
+          <li>• Onglet <strong>Bac à sable</strong> : simulez l&apos;ajout d&apos;un agent libre ou d&apos;une recrue de votre banque pour voir l&apos;impact sur votre masse salariale <em>avant</em> de décider — rien n&apos;est enregistré tant que vous ne le soumettez pas. Filtrez par position, salaire maximum, équipe ou statut ELC pour trouver un joueur.</li>
+          <li>• Une fois satisfait de votre alignement, cliquez <strong>Mon alignement est prêt</strong> — l&apos;administrateur en a besoin pour démarrer la saison.</li>
+        </ul>
+        <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Signer un agent libre</h4>
+        <p className="text-sm text-gray-700">
+          Pendant votre tour, la signature d&apos;un agent libre repéré dans le bac à sable est effectuée par l&apos;administrateur en votre nom.
+          Vous pouvez aussi <strong>passer votre tour</strong> si vous n&apos;avez personne à signer.
+        </p>
       </div>
     ),
   },
@@ -143,18 +166,18 @@ const SECTIONS: Section[] = [
     ),
   },
   {
-    id: 'guide-transactions',
+    id: 'guide-journal-transactions',
     tab: 'guide',
-    title: 'Transactions',
-    keywords: 'transactions echanges ajustements joueurs picks historique mouvements admin',
+    title: 'Journal des transactions',
+    keywords: 'transactions echanges ajustements joueurs picks historique mouvements journal admin lecture seule',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Consultez l&apos;historique des mouvements via <strong>Pool Saison → Transactions</strong>.
+          Consultez l&apos;historique de tous les mouvements via <strong>Alignements → Journal des transactions</strong>.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Les transactions sont séparées en deux catégories : <strong>Échanges</strong> (joueurs et picks entre poolers) et <strong>Ajustements</strong> (signatures, libérations, changements de type).</li>
-          <li>• Toutes les transactions sont effectuées par l&apos;administrateur.</li>
+          <li>• C&apos;est un historique en <strong>lecture seule</strong> — vos propres ajustements se font depuis Gestion d&apos;effectifs, et les échanges entre poolers sont traités par l&apos;administrateur.</li>
         </ul>
       </div>
     ),
@@ -163,20 +186,23 @@ const SECTIONS: Section[] = [
     id: 'guide-notifications',
     tab: 'guide',
     title: 'Notifications',
-    keywords: 'notifications push alerte avertissement alignement series picks equipe eliminee admin compte appareil activer',
+    keywords: 'notifications push courriel email alerte avertissement alignement equipe eliminee admin compte appareil activer tester babillard',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Activez les notifications push depuis <strong>Mon compte</strong> pour être averti des événements importants sur votre appareil.
+          Depuis <strong>Mon compte</strong>, deux canaux indépendants sont disponibles pour être averti des événements importants.
         </p>
-        <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Vous recevez une notification quand :</h4>
+        <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Notifications push</h4>
         <ul className="text-sm text-gray-700 space-y-1.5 mb-4">
-          <li>• L&apos;administrateur modifie votre alignement (ajout, retrait, changement de type).</li>
-          <li>• Une nouvelle ronde des séries est démarrée — rappel de soumettre vos choix.</li>
-          <li>• La comptabilisation des points d&apos;une ronde est démarrée.</li>
-          <li>• Un ou plusieurs de vos joueurs appartiennent à une équipe éliminée — action requise.</li>
+          <li>• S&apos;activent par appareil (bouton <strong>Activer les notifications sur cet appareil</strong>) — à refaire sur chaque appareil utilisé.</li>
+          <li>• Un bouton <strong>Tester</strong> permet de vérifier que ça fonctionne sur l&apos;appareil courant.</li>
         </ul>
-        <p className="text-xs text-gray-400 italic">Les notifications s&apos;activent par appareil. Vous pouvez les désactiver à tout moment depuis Mon compte.</p>
+        <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Notifications par courriel</h4>
+        <ul className="text-sm text-gray-700 space-y-1.5 mb-4">
+          <li>• Case à cocher <strong>Notifications par courriel</strong> — reçoit les mêmes alertes par courriel, peu importe l&apos;appareil.</li>
+          <li>• Bouton <strong>Tester le courriel</strong> pour confirmer la réception.</li>
+        </ul>
+        <p className="text-xs text-gray-400 italic">Vous pouvez activer les deux, un seul, ou aucun — désactivable en tout temps depuis Mon compte.</p>
       </div>
     ),
   },
@@ -193,9 +219,27 @@ const SECTIONS: Section[] = [
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• L&apos;administrateur y publie des communications pour l&apos;ensemble du pool.</li>
           <li>• Chaque communication peut être commentée par les poolers.</li>
-          <li>• Si vous avez activé les notifications push (Mon compte), vous êtes avisé lors d&apos;une nouvelle communication.</li>
+          <li>• Si vous avez activé les notifications (push ou courriel, Mon compte), vous êtes avisé lors d&apos;une nouvelle communication.</li>
         </ul>
         <p className="text-xs text-gray-400 mt-3 italic">Distinct du babillard de la page Planification, propre au sondage de rencontre.</p>
+      </div>
+    ),
+  },
+  {
+    id: 'guide-planification',
+    tab: 'guide',
+    title: 'Planification',
+    keywords: 'planification sondage doodle rencontre disponibilites dates reunion vote babillard',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Accédez-y via <strong>Ressources → Planification</strong> — un sondage type Doodle pour trouver une date de rencontre du pool.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• Indiquez vos <strong>disponibilités</strong> pour chacune des dates proposées par l&apos;administrateur.</li>
+          <li>• Un résumé affiche la meilleure date selon les réponses de tous.</li>
+          <li>• Un babillard propre au sondage permet d&apos;échanger sur l&apos;organisation de la rencontre.</li>
+        </ul>
       </div>
     ),
   },
@@ -207,7 +251,7 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez au calendrier via <strong>Calendrier</strong> dans la barre de navigation.
+          Accédez au calendrier via <strong>LNH → Calendrier</strong>.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5 mb-4">
           <li>• La vue par défaut affiche les matchs de la <strong>semaine en cours</strong>, naviguez avec les boutons précédent/suivant ou le sélecteur de date.</li>
@@ -230,7 +274,7 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez aux statistiques via <strong>Statistiques → LNH</strong>.
+          Accédez aux statistiques via <strong>LNH → Statistiques</strong>.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Consultez les stats des patineurs (triés par points) et des gardiens (triés par victoires).</li>
@@ -247,13 +291,12 @@ const SECTIONS: Section[] = [
     id: 'regl-alignement',
     tab: 'reglements',
     title: 'Structure de l\'alignement',
-    keywords: 'alignement attaquants defenseurs gardiens reservistes minimum actif roster',
+    keywords: 'alignement attaquants defenseurs gardiens reservistes minimum actif roster maximum',
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
-        <li>• <strong>12 attaquants</strong> actifs</li>
-        <li>• <strong>6 défenseurs</strong> actifs</li>
-        <li>• <strong>2 gardiens</strong> actifs</li>
-        <li>• Minimum <strong>2 réservistes</strong> (toutes positions confondues)</li>
+        <li>• <strong>12 attaquants</strong>, <strong>6 défenseurs</strong> et <strong>2 gardiens</strong> actifs au maximum.</li>
+        <li>• Minimum <strong>2 réservistes</strong> (toutes positions confondues).</li>
+        <li>• Une fois la saison officiellement démarrée par l&apos;administrateur, votre alignement doit respecter exactement ces nombres (12/6/2 actifs) — en cours de saison, un sous-effectif temporaire est toléré tant que le maximum n&apos;est pas dépassé.</li>
       </ul>
     ),
   },
@@ -274,13 +317,15 @@ const SECTIONS: Section[] = [
   {
     id: 'regl-recrues',
     tab: 'reglements',
-    title: 'Banque de recrues',
-    keywords: 'recrue banque draft repeche elc agent libre protection saisons contrat masse salariale',
+    title: 'Banque de recrues & protection',
+    keywords: 'recrue banque draft repeche elc agent libre protection saisons contrat masse salariale expiration automatique activer liberer',
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
-        <li>• Un joueur <strong>repêché</strong> est protégé pendant <strong>5 saisons</strong> à partir de son année de repêchage.</li>
-        <li>• Un <strong>agent libre ELC</strong> est protégé uniquement pendant la durée de son contrat ELC.</li>
+        <li>• Un joueur <strong>repêché</strong> par le pool reste protégé au maximum <strong>5 saisons</strong> après son année de repêchage — mais perd la protection dès la fin de son contrat d&apos;entrée (ELC), même avant les 5 ans si l&apos;ELC se termine plus tôt.</li>
+        <li>• Un joueur signé comme <strong>agent libre</strong> reste protégé tant que son ELC est actif, sans limite de nombre de saisons.</li>
         <li>• Un joueur en banque de recrues ne compte pas dans la masse salariale, même s&apos;il joue dans la LNH.</li>
+        <li>• Quand la protection expire, la perte du statut recrue est <strong>automatique</strong> : s&apos;il était déjà actif ou réserviste, il reste où il est ; s&apos;il était encore en banque, il est activé automatiquement. Aucune action requise de votre part à ce moment précis.</li>
+        <li>• Vous pouvez vous-même <strong>activer ou remettre en banque</strong> n&apos;importe quelle recrue encore protégée en tout temps, depuis Gestion d&apos;effectifs ou le repêchage des agents libres.</li>
       </ul>
     ),
   },
@@ -288,27 +333,27 @@ const SECTIONS: Section[] = [
     id: 'regl-transactions',
     tab: 'reglements',
     title: 'Transactions & échanges',
-    keywords: 'transactions echanges admin nombre delai desactivation agent libre regles',
+    keywords: 'transactions echanges admin nombre delai desactivation agent libre regles gestion effectifs self service',
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
-        <li>• Les transactions sont effectuées par l&apos;administrateur.</li>
+        <li>• Les <strong>échanges entre poolers</strong> (joueurs, choix de repêchage) sont effectués par l&apos;administrateur.</li>
+        <li>• Les ajustements sur votre propre alignement (actif/réserviste, libération, recrues) se font en libre-service via <strong>Gestion d&apos;effectifs</strong> une fois la saison démarrée, ou via <strong>Repêchage agents libres</strong> avant le début de la saison.</li>
         <li>• <span className="italic text-gray-400">Règles additionnelles à venir (nombre d&apos;échanges permis, délai de désactivation, etc.)</span></li>
       </ul>
     ),
   },
   {
-    id: 'regl-series',
+    id: 'regl-agents-libres',
     tab: 'reglements',
-    title: 'Pool des séries éliminatoires',
-    keywords: 'series playoff attaquant defenseur gardien cap ronde eliminee remplacement pointage buts passes victoires prolongation optionnel participation',
+    title: 'Repêchage des agents libres (pré-saison)',
+    keywords: 'repechage agents libres presaison ordre tour phase liberation passer signature admin',
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
-        <li>• La participation au pool des séries est <strong>optionnelle</strong> — tous les poolers ne sont pas tenus d&apos;y participer.</li>
-        <li>• Chaque pooler participant sélectionne <strong>3 attaquants, 2 défenseurs et 1 gardien</strong> par ronde.</li>
-        <li>• Un cap s&apos;applique à la sélection active (montant fixé par l&apos;administrateur).</li>
-        <li>• Si l&apos;équipe d&apos;un joueur est éliminée, l&apos;application le détecte et bloque la sauvegarde tant que le joueur n&apos;est pas remplacé.</li>
-        <li>• Les poolers peuvent conserver ou changer leurs joueurs entre chaque ronde.</li>
-        <li>• Pointage : buts, passes, victoires de gardien, défaites en prolongation/fusillade.</li>
+        <li>• Se déroule avant le début de chaque nouvelle saison, une fois le repêchage des recrues terminé.</li>
+        <li>• Une <strong>phase de libération</strong> permet d&apos;abord à chaque pooler d&apos;ajuster sa masse salariale (libérer des joueurs signés) avant que le repêchage débute.</li>
+        <li>• Le repêchage se déroule ensuite <strong>à tour de rôle</strong>, selon un ordre déterminé par l&apos;administrateur — vous pouvez signer un agent libre pendant votre tour ou <strong>passer</strong>.</li>
+        <li>• Actif ↔ réserviste et l&apos;activation/retrait de vos recrues de banque restent toujours permis, peu importe la phase en cours.</li>
+        <li>• La saison ne peut démarrer que lorsque tous les poolers ont déclaré leur alignement <strong>prêt</strong> et respectent les limites du pool.</li>
       </ul>
     ),
   },
@@ -452,7 +497,7 @@ export default function AideTabs() {
             </div>
           )}
 
-          <p className="text-xs text-gray-400 text-right mt-8">Dernière mise à jour : avril 2026</p>
+          <p className="text-xs text-gray-400 text-right mt-8">Dernière mise à jour : septembre 2026</p>
         </>
       )}
     </div>
