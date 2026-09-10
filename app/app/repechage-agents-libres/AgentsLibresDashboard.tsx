@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import AutoReload from '@/components/AutoReload'
-import { searchFreeAgentsAction, submitTransactionAction } from '../admin/transactions/actions'
-import { submitSelfServiceAction, loadOwnRecrueBankAction, setReadyAction } from './actions'
+import { submitTransactionAction } from '../admin/transactions/actions'
+import { submitSelfServiceAction, loadOwnRecrueBankAction, setReadyAction, searchSandboxFreeAgentsAction, type SandboxFreeAgentResult } from './actions'
 import AdminPanel from './AdminPanel'
 
 type Me = { id: string; name: string; isAdmin: boolean }
@@ -29,7 +29,7 @@ type DraftState = {
   pass_skip_one: boolean
 }
 type RecentActivity = {
-  id: number; kind: 'sign' | 'release' | 'banque'; poolerName: string; playerName: string
+  id: number; kind: 'sign' | 'release' | 'banque' | 'promote'; poolerName: string; playerName: string
   position: string | null; at: string
 }
 type FreeAgent = { id: number; first_name: string; last_name: string; position: string | null }
@@ -194,7 +194,7 @@ export default function AgentsLibresDashboard({
       <div className="bg-white rounded-lg shadow mb-6">
         <div className="px-5 py-3 border-b flex items-center justify-between flex-wrap gap-1">
           <h2 className="text-sm font-semibold text-gray-700">Activité récente</h2>
-          <p className="text-xs text-gray-400">Signatures d&apos;agents libres, libérations et remises en banque du ménage pré-saison</p>
+          <p className="text-xs text-gray-400">Signatures, libérations, remises en banque et activations de recrue du ménage pré-saison</p>
         </div>
         {recentActivity.length === 0 ? (
           <p className="text-gray-400 text-sm text-center px-5 py-6">Aucune activité pour l&apos;instant.</p>
@@ -202,9 +202,13 @@ export default function AgentsLibresDashboard({
           <div className="max-h-72 overflow-y-auto divide-y">
             {recentActivity.map(r => (
               <div key={`${r.kind}-${r.id}`} className="px-5 py-2.5 text-sm flex items-center gap-2">
-                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${r.kind === 'sign' ? 'bg-emerald-400' : r.kind === 'banque' ? 'bg-amber-400' : 'bg-red-400'}`} />
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                  r.kind === 'sign' ? 'bg-emerald-400' : r.kind === 'banque' ? 'bg-amber-400' : r.kind === 'promote' ? 'bg-blue-400' : 'bg-red-400'
+                }`} />
                 <span className="font-medium text-gray-800">{r.poolerName}</span>
-                <span className="text-gray-500">{r.kind === 'sign' ? 'a signé' : r.kind === 'banque' ? 'a remis en banque' : 'a libéré'}</span>
+                <span className="text-gray-500">
+                  {r.kind === 'sign' ? 'a signé' : r.kind === 'banque' ? 'a remis en banque' : r.kind === 'promote' ? 'a activé' : 'a libéré'}
+                </span>
                 <span className="font-medium text-gray-800">{r.playerName}</span>
                 {r.position && <span className="text-gray-400 text-xs">({r.position})</span>}
                 <span className="ml-auto text-xs text-gray-400">{fmtDateTime(r.at)}</span>
@@ -525,9 +529,14 @@ function MonAlignement({
   // réellement déduit dans la simulation, pas juste affiché à titre indicatif.
   const [addedRecrueIds, setAddedRecrueIds] = useState<Set<number>>(new Set())
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<FreeAgent[]>([])
+  const [results, setResults] = useState<SandboxFreeAgentResult[]>([])
   const [searching, setSearching] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Filtres de recherche du bac à sable (David, 2026-09-10) — "un défenseur à moins de X$"
+  // revient souvent sans que le pooler connaisse un nom précis.
+  const [filterPosition, setFilterPosition] = useState<'' | 'forward' | 'defense' | 'goalie'>('')
+  const [filterMaxSalary, setFilterMaxSalary] = useState('')
+  const [filterElcOnly, setFilterElcOnly] = useState(false)
 
   // Libre-service (ménage pré-saison) — actions réelles, distinctes du bac à sable ci-dessous.
   const [busy, setBusy] = useState(false)
@@ -678,18 +687,24 @@ function MonAlignement({
     }
   }
 
+  const hasSandboxFilters = !!filterPosition || filterMaxSalary.trim() !== '' || filterElcOnly
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (query.trim().length < 2) { setResults([]); return }
+    if (query.trim().length < 2 && !hasSandboxFilters) { setResults([]); return }
     debounceRef.current = setTimeout(async () => {
       setSearching(true)
-      const res = await searchFreeAgentsAction(saisonId, query)
+      const maxSalary = filterMaxSalary.trim() ? Number(filterMaxSalary) * 1_000_000 : undefined
+      const res = await searchSandboxFreeAgentsAction(saisonId, {
+        query,
+        position: filterPosition || undefined,
+        maxSalary: maxSalary && !Number.isNaN(maxSalary) ? maxSalary : undefined,
+        elcOnly: filterElcOnly || undefined,
+      })
       setSearching(false)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setResults((res.players ?? []).map((p: any) => ({ id: p.id, first_name: p.first_name, last_name: p.last_name, position: p.position })))
+      setResults(res.players ?? [])
     }, 300)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [query, saisonId])
+  }, [query, saisonId, filterPosition, filterMaxSalary, filterElcOnly, hasSandboxFilters])
 
   const toggleRemove = (playerId: number) => {
     setRemoved(prev => {
@@ -1068,16 +1083,58 @@ function MonAlignement({
             <input
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Rechercher (2+ caractères)..."
+              placeholder="Rechercher par nom (2+ caractères, optionnel avec des filtres)..."
               className="w-full border rounded-lg px-2.5 py-1.5 text-xs mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <select
+                value={filterPosition}
+                onChange={e => setFilterPosition(e.target.value as typeof filterPosition)}
+                className="border rounded-lg px-2 py-1 text-xs focus:outline-none"
+              >
+                <option value="">Toutes positions</option>
+                <option value="forward">Attaquant</option>
+                <option value="defense">Défenseur</option>
+                <option value="goalie">Gardien</option>
+              </select>
+              <input
+                type="number"
+                value={filterMaxSalary}
+                onChange={e => setFilterMaxSalary(e.target.value)}
+                placeholder="Salaire max (M$)"
+                className="w-28 border rounded-lg px-2 py-1 text-xs focus:outline-none"
+              />
+              <label className="flex items-center gap-1 text-xs text-gray-600">
+                <input type="checkbox" checked={filterElcOnly} onChange={e => setFilterElcOnly(e.target.checked)} />
+                ELC seulement
+              </label>
+              {hasSandboxFilters && (
+                <button
+                  onClick={() => { setFilterPosition(''); setFilterMaxSalary(''); setFilterElcOnly(false) }}
+                  className="text-xs text-gray-400 hover:text-gray-600"
+                >
+                  Effacer les filtres
+                </button>
+              )}
+            </div>
             {searching && <p className="text-xs text-gray-400 mb-2">Recherche...</p>}
             {results.length > 0 && (
-              <div className="space-y-0.5 mb-3 max-h-40 overflow-y-auto">
+              <div className="space-y-0.5 mb-3 max-h-56 overflow-y-auto">
                 {results.map(fa => (
-                  <div key={fa.id} onClick={() => addFA(fa)} className="flex justify-between text-xs px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer">
-                    <span>{fa.last_name}, {fa.first_name} <span className="text-gray-400">{fa.position}</span></span>
-                    <span className="text-blue-600 font-medium">+</span>
+                  <div
+                    key={fa.id}
+                    onClick={() => addFA({ id: fa.id, first_name: fa.first_name, last_name: fa.last_name, position: fa.position })}
+                    className="flex justify-between items-center text-xs px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer"
+                  >
+                    <span>
+                      {fa.last_name}, {fa.first_name} <span className="text-gray-400">{fa.position}</span>
+                      {fa.team_code && <span className="text-gray-400"> · {fa.team_code}</span>}
+                      {fa.is_elc && <span className="text-blue-500"> · ELC</span>}
+                    </span>
+                    <span className="flex items-center gap-2 shrink-0">
+                      {fa.cap_number > 0 && <span className="text-gray-500">{fmt(fa.cap_number)}</span>}
+                      <span className="text-blue-600 font-medium">+</span>
+                    </span>
                   </div>
                 ))}
               </div>

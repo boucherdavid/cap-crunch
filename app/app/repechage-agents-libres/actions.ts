@@ -201,3 +201,99 @@ export async function loadOwnRecrueBankAction(saisonId: number): Promise<{
     })),
   }
 }
+
+export type SandboxFreeAgentResult = {
+  id: number
+  first_name: string
+  last_name: string
+  position: string | null
+  cap_number: number
+  is_elc: boolean
+  team_code: string | null
+}
+
+function posBucket(position: string | null): 'forward' | 'defense' | 'goalie' {
+  const pos = (position ?? '').toUpperCase()
+  if (pos.includes('G')) return 'goalie'
+  if (pos.includes('D')) return 'defense'
+  return 'forward'
+}
+
+// Recherche filtrable pour le Bac à sable (David, 2026-09-10) — les poolers cherchent souvent
+// "un défenseur à moins de X$" sans connaître de nom précis, ce que searchFreeAgentsAction
+// (admin/transactions/actions.ts, réutilisée par la signature en direct pendant le repêchage)
+// ne permet pas — action séparée exprès pour ne rien risquer sur ce chemin critique. Sans nom
+// (2+ caractères) ni filtre, retourne une liste vide comme avant.
+export async function searchSandboxFreeAgentsAction(
+  saisonId: number,
+  opts: { query?: string; position?: 'forward' | 'defense' | 'goalie'; maxSalary?: number; elcOnly?: boolean },
+): Promise<{ players: SandboxFreeAgentResult[] }> {
+  const supabase = await createClient()
+
+  const { data: saison } = await supabase.from('pool_seasons').select('season').eq('id', saisonId).single()
+  if (!saison) return { players: [] }
+
+  const q = (opts.query ?? '').trim()
+  const hasFilters = !!opts.position || opts.maxSalary != null || opts.elcOnly
+  if (q.length < 2 && !hasFilters) return { players: [] }
+
+  const { data: onRoster } = await supabase
+    .from('pooler_rosters')
+    .select('player_id')
+    .eq('pool_season_id', saisonId)
+    .eq('is_active', true)
+  const takenIds = (onRoster ?? []).map(r => r.player_id)
+
+  // player_contracts!inner + filtre de saison seulement si un filtre salaire/ELC est demandé —
+  // sinon ça exclurait à tort les joueurs sans ligne de contrat pour la saison courante (ex:
+  // prospect pas encore signé) alors que rien ne demande de filtrer là-dessus.
+  const needsContract = opts.maxSalary != null || opts.elcOnly
+  const contractsSelect = needsContract
+    ? 'player_contracts!inner (season, cap_number, is_elc)'
+    : 'player_contracts (season, cap_number, is_elc)'
+  const selectStr = `id, first_name, last_name, position, teams (code), ${contractsSelect}`
+
+  // Pas le RPC search_players_unaccent (utilisé par searchFreeAgentsAction) — PostgREST ne
+  // sait pas combiner un filtre sur une table liée (player_contracts) avec une requête basée
+  // sur un appel RPC ("column pgrst_call.cap_number does not exist", vérifié en direct). ilike
+  // simple à la place, moins tolérant aux accents mais fonctionne avec les filtres.
+  let dbQuery = supabase.from('players').select(selectStr)
+  if (q.length >= 2) {
+    // Virgules/parenthèses retirées — casseraient la syntaxe du filtre .or() de PostgREST
+    // (séparateurs de conditions / groupement), pas un risque de sécurité mais un échec de
+    // requête sinon.
+    const safeQ = q.replace(/[,()]/g, '')
+    dbQuery = dbQuery.or(`first_name.ilike.%${safeQ}%,last_name.ilike.%${safeQ}%`)
+  }
+
+  if (needsContract) {
+    dbQuery = dbQuery.eq('player_contracts.season', saison.season)
+    if (opts.maxSalary != null) dbQuery = dbQuery.lte('player_contracts.cap_number', opts.maxSalary)
+    if (opts.elcOnly) dbQuery = dbQuery.eq('player_contracts.is_elc', true)
+  }
+  if (takenIds.length > 0) dbQuery = dbQuery.not('id', 'in', `(${takenIds.join(',')})`)
+  // players -> player_contracts est un-à-plusieurs : PostgREST refuse un order() sur la table
+  // liée ("PGRST118 — related order not possible"), vérifié en direct — tri alphabétique dans
+  // tous les cas, le tri par salaire se fait donc côté client une fois les résultats reçus.
+  dbQuery = dbQuery.order('last_name').limit(q.length >= 2 ? 15 : 40)
+
+  const { data } = await dbQuery
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let players = ((data ?? []) as any[]).map(p => {
+    const contract = (p.player_contracts ?? []).find((c: { season: string }) => c.season === saison.season)
+    return {
+      id: p.id,
+      first_name: p.first_name,
+      last_name: p.last_name,
+      position: p.position ?? null,
+      team_code: p.teams?.code ?? null,
+      cap_number: contract?.cap_number ?? 0,
+      is_elc: contract?.is_elc ?? false,
+    }
+  })
+
+  if (opts.position) players = players.filter(p => posBucket(p.position) === opts.position)
+  if (needsContract) players = players.sort((a, b) => a.cap_number - b.cap_number)
+
+  return { players }
+}

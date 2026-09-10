@@ -36,7 +36,7 @@ export default async function AgentsLibresPage() {
     )
   }
 
-  const [dataResult, stateResult, signResult, releaseResult, banqueResult] = await Promise.all([
+  const [dataResult, stateResult, signResult, releaseResult, banqueResult, promoteResult] = await Promise.all([
     loadPresaisonDataAction(saison.id),
     loadPresaisonDraftStateAction(saison.id),
     supabase
@@ -86,6 +86,25 @@ export default async function AgentsLibresPage() {
       .eq('transactions.notes', 'Ajustement pré-saison')
       .order('created_at', { referencedTable: 'transactions', ascending: false })
       .limit(ACTIVITY_LIMIT_PER_KIND),
+    // Recrues activées par les poolers eux-mêmes (David, 2026-09-10) — promote depuis la
+    // banque. created_by IS NOT NULL exclut les promotions automatiques déclenchées par le
+    // système à l'expiration de la protection recrue (syncExpiredRookieProtection,
+    // admin/presaison/actions.ts, userId=null) — celles-ci ne sont pas une vraie "activité"
+    // d'un pooler, elles se produisent silencieusement en arrière-plan.
+    supabase
+      .from('transaction_items')
+      .select(`
+        id, player_id, to_pooler_id,
+        players (first_name, last_name, position),
+        poolers!transaction_items_to_pooler_id_fkey (name),
+        transactions!inner (created_at, pool_season_id, notes, created_by)
+      `)
+      .eq('action_type', 'promote')
+      .eq('transactions.pool_season_id', saison.id)
+      .eq('transactions.notes', 'Ajustement pré-saison')
+      .not('transactions.created_by', 'is', null)
+      .order('created_at', { referencedTable: 'transactions', ascending: false })
+      .limit(ACTIVITY_LIMIT_PER_KIND),
   ])
 
   if (dataResult.error || !dataResult.poolers) {
@@ -124,7 +143,16 @@ export default async function AgentsLibresPage() {
     position: (item.players?.position as string | null) ?? null,
     at: (item.transactions?.created_at as string | undefined) ?? new Date().toISOString(),
   }))
-  const recentActivity = [...signs, ...releases, ...banques]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const promotes = ((promoteResult.data ?? []) as any[]).map(item => ({
+    id: item.id as number,
+    kind: 'promote' as const,
+    poolerName: (item.poolers?.name as string | undefined) ?? '?',
+    playerName: item.players ? `${item.players.last_name}, ${item.players.first_name}` : '?',
+    position: (item.players?.position as string | null) ?? null,
+    at: (item.transactions?.created_at as string | undefined) ?? new Date().toISOString(),
+  }))
+  const recentActivity = [...signs, ...releases, ...banques, ...promotes]
     .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
     .slice(0, ACTIVITY_LIMIT_TOTAL)
 
