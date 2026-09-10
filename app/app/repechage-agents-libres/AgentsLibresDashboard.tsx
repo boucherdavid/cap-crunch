@@ -530,6 +530,7 @@ function MonAlignement({
   const [addedRecrueIds, setAddedRecrueIds] = useState<Set<number>>(new Set())
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SandboxFreeAgentResult[]>([])
+  const [resultsTruncated, setResultsTruncated] = useState(false)
   const [searching, setSearching] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Filtres de recherche du bac à sable (David, 2026-09-10) — "un défenseur à moins de X$"
@@ -698,7 +699,7 @@ function MonAlignement({
   const hasSandboxFilters = !!filterPosition || filterMaxSalary.trim() !== '' || filterElcOnly || !!filterTeam
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (query.trim().length < 2 && !hasSandboxFilters) { setResults([]); return }
+    if (query.trim().length < 2 && !hasSandboxFilters) { setResults([]); setResultsTruncated(false); return }
     debounceRef.current = setTimeout(async () => {
       setSearching(true)
       // Montant en dollars directement (ex: 2000000 pour 2 M$) — un premier essai multipliait
@@ -714,6 +715,7 @@ function MonAlignement({
       })
       setSearching(false)
       setResults(res.players ?? [])
+      setResultsTruncated(res.truncated ?? false)
     }, 300)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [query, saisonId, filterPosition, filterMaxSalary, filterElcOnly, filterTeam, hasSandboxFilters])
@@ -1180,6 +1182,11 @@ function MonAlignement({
                   </div>
                 ))}
               </div>
+            )}
+            {results.length > 0 && resultsTruncated && (
+              <p className="text-xs text-amber-600 -mt-2 mb-3">
+                Plus de résultats que ce qui est affiché — affine avec une équipe, une position ou un nom pour tout voir.
+              </p>
             )}
 
             <div className="border-t pt-2 mt-1 space-y-1">

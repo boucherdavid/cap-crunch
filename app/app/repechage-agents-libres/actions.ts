@@ -227,15 +227,15 @@ function posBucket(position: string | null): 'forward' | 'defense' | 'goalie' {
 export async function searchSandboxFreeAgentsAction(
   saisonId: number,
   opts: { query?: string; position?: 'forward' | 'defense' | 'goalie'; maxSalary?: number; elcOnly?: boolean; teamCode?: string },
-): Promise<{ players: SandboxFreeAgentResult[] }> {
+): Promise<{ players: SandboxFreeAgentResult[]; truncated: boolean }> {
   const supabase = await createClient()
 
   const { data: saison } = await supabase.from('pool_seasons').select('season').eq('id', saisonId).single()
-  if (!saison) return { players: [] }
+  if (!saison) return { players: [], truncated: false }
 
   const q = (opts.query ?? '').trim()
   const hasFilters = !!opts.position || opts.maxSalary != null || opts.elcOnly || !!opts.teamCode
-  if (q.length < 2 && !hasFilters) return { players: [] }
+  if (q.length < 2 && !hasFilters) return { players: [], truncated: false }
 
   const { data: onRoster } = await supabase
     .from('pooler_rosters')
@@ -280,9 +280,15 @@ export async function searchSandboxFreeAgentsAction(
   // salaire décroissant, alphabétique) se fait donc côté client une fois les résultats reçus
   // (teams est plusieurs-à-un, un order() dessus fonctionnerait, mais autant tout faire au
   // même endroit plutôt que de scinder la logique de tri en deux).
-  dbQuery = dbQuery.order('last_name').limit(q.length >= 2 ? 15 : 40)
+  // Limite : 40 suffit dès qu'une équipe est choisie (un roster fait ~23 joueurs) ; sans ça,
+  // un filtre large ("moins de 2M$", toute la ligue) matche facilement plusieurs centaines de
+  // joueurs (968 vérifiés en direct pour ce seul exemple) — 150 montre un échantillon utile
+  // sans rendre une liste ingérable ; truncated signale au client qu'il y en a plus.
+  const limit = q.length >= 2 ? 15 : (opts.teamCode ? 40 : 150)
+  dbQuery = dbQuery.order('last_name').limit(limit)
 
   const { data } = await dbQuery
+  const truncated = (data ?? []).length >= limit
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const players = ((data ?? []) as any[]).map(p => {
     const contract = (p.player_contracts ?? []).find((c: { season: string }) => c.season === saison.season)
@@ -307,7 +313,7 @@ export async function searchSandboxFreeAgentsAction(
     || a.last_name.localeCompare(b.last_name),
   )
 
-  return { players: filtered }
+  return { players: filtered, truncated }
 }
 
 // Pour le filtre d'équipe du Bac à sable (David, 2026-09-10).
