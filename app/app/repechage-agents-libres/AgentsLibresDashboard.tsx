@@ -32,7 +32,7 @@ type RecentActivity = {
   id: number; kind: 'sign' | 'release' | 'banque' | 'promote'; poolerName: string; playerName: string
   position: string | null; at: string
 }
-type FreeAgent = { id: number; first_name: string; last_name: string; position: string | null }
+type FreeAgent = { id: number; first_name: string; last_name: string; position: string | null; cap_number: number }
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
@@ -772,7 +772,13 @@ function MonAlignement({
   const hasEligibleForBanque = myPooler.roster.some(e => e.rookieType && (e.player_type === 'actif' || e.player_type === 'reserviste'))
   const removedCap = myPooler.roster.filter(e => removed.has(e.player_id)).reduce((s, e) => s + e.cap_number, 0)
   const addedRecrueCap = recruePlayers.filter(r => addedRecrueIds.has(r.player_id)).reduce((s, r) => s + r.cap_number, 0)
-  const simulatedUsed = myPooler.capUsed - removedCap + addedRecrueCap
+  // Cap réel des agents libres ajoutés au bac à sable (David, 2026-09-10) — auparavant
+  // volontairement pas déduit ("contrat pas encore signé"), mais ces agents libres ont bel et
+  // bien un contrat NHL réel et connu (cap_number vient de player_contracts, voir
+  // searchSandboxFreeAgentsAction) ; le but même du bac à sable est de voir l'impact réel avant
+  // de décider, donc l'exclure ne servait à rien.
+  const addedFACap = added.reduce((s, fa) => s + (fa.cap_number ?? 0), 0)
+  const simulatedUsed = myPooler.capUsed - removedCap + addedRecrueCap + addedFACap
   const simulatedRemain = poolCap - simulatedUsed
   const touched = removed.size > 0 || added.length > 0 || addedRecrueIds.size > 0
 
@@ -1052,7 +1058,10 @@ function MonAlignement({
               {added.map(fa => (
                 <div key={fa.id} className="flex items-center justify-between text-xs py-1 text-emerald-700">
                   <span><span className="text-gray-400 mr-1">{fa.position ?? DASH}</span>{fa.last_name}, {fa.first_name} <span className="text-emerald-500">(ajouté)</span></span>
-                  <button onClick={() => removeAdded(fa.id)} className="w-5 h-5 rounded border text-gray-400 hover:text-red-600 text-[10px]">✕</button>
+                  <span className="flex items-center gap-2">
+                    <span>{fa.cap_number > 0 ? fmt(fa.cap_number) : DASH}</span>
+                    <button onClick={() => removeAdded(fa.id)} className="w-5 h-5 rounded border text-gray-400 hover:text-red-600 text-[10px]">✕</button>
+                  </span>
                 </div>
               ))}
             </div>
@@ -1167,7 +1176,7 @@ function MonAlignement({
                 {results.map(fa => (
                   <div
                     key={fa.id}
-                    onClick={() => addFA({ id: fa.id, first_name: fa.first_name, last_name: fa.last_name, position: fa.position })}
+                    onClick={() => addFA({ id: fa.id, first_name: fa.first_name, last_name: fa.last_name, position: fa.position, cap_number: fa.cap_number })}
                     className="flex justify-between items-center text-xs px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer"
                   >
                     <span>
@@ -1204,8 +1213,8 @@ function MonAlignement({
                 </p>
               )}
               {added.length > 0 && (
-                <p className="text-xs text-amber-600 mt-1">
-                  Le coût des joueurs ajoutés n&apos;est pas déduit ici (contrat pas encore signé) — sert à repérer les noms disponibles, pas à calculer leur impact exact. Jamais soumis d&apos;ici : signer un agent libre reste réservé à l&apos;admin, pendant ton tour.
+                <p className="text-xs text-gray-400 mt-1">
+                  Le cap des agents libres ajoutés est inclus dans la simulation ci-dessus. Jamais soumis d&apos;ici : signer un agent libre reste réservé à l&apos;admin, pendant ton tour.
                 </p>
               )}
             </div>
