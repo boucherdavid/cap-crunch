@@ -67,6 +67,31 @@ export async function sendEmailToIds(ids: string[], payload: EmailPayload) {
   await sendToEmails(emails, payload)
 }
 
+// Envoi direct pour le bouton "Tester" de /compte (David, 2026-09-10) — contrairement à
+// sendEmailToAll/sendEmailToIds, ne filtre pas sur notif_email (un test manuel doit fonctionner
+// même si les alertes automatiques sont désactivées) et renvoie l'erreur réelle plutôt que de
+// seulement la logger — utile pour diagnostiquer en direct (RESEND_API_KEY absente/invalide,
+// domaine d'envoi non vérifié, adresse "onboarding@resend.dev" limitée à l'email du compte
+// Resend, etc.) sans avoir à aller fouiller les logs Vercel.
+export async function sendTestEmail(toEmail: string): Promise<{ error?: string }> {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) return { error: 'RESEND_API_KEY absente des variables d\'environnement (ce déploiement).' }
+
+  const resend = new Resend(apiKey)
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: toEmail,
+      subject: 'Cap Crunch — Test de courriel',
+      html: '<p>Les courriels fonctionnent correctement — ce message confirme que Resend est bien configuré pour cet environnement.</p>',
+    })
+    if (error) return { error: `Erreur Resend : ${error.message ?? JSON.stringify(error)}` }
+    return {}
+  } catch (e: unknown) {
+    return { error: `Exception : ${String(e)}` }
+  }
+}
+
 export function escapeHtml(text: string): string {
   return text
     .replace(/&/g, '&amp;')

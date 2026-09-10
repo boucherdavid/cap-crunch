@@ -85,3 +85,19 @@ export async function resetPasswordForPoolerAction(poolerId: string): Promise<{ 
   if (error) return { error: error.message }
   return {}
 }
+
+// Bouton "Tester" à côté de la case Notifications par courriel (David, 2026-09-10) — des
+// messages sont apparus sur le babillard en prod sans courriel reçu ; ce test envoie
+// directement (bypass notif_email, voir lib/email.ts) et renvoie la vraie erreur Resend s'il y
+// en a une, pour diagnostiquer sans avoir à aller chercher dans les logs Vercel.
+export async function testEmailAction(): Promise<{ error?: string; sent?: boolean }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non connecté.' }
+  if (!user.email) return { error: 'Aucune adresse courriel associée à ce compte.' }
+
+  const { sendTestEmail } = await import('@/lib/email')
+  const result = await sendTestEmail(user.email)
+  if (result.error) return { error: result.error }
+  return { sent: true }
+}
