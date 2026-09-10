@@ -21,6 +21,42 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-10 (suite — vrai repêchage AL en direct)
+
+**[Fix] — Série de correctifs trouvés en testant le premier vrai repêchage agents libres**
+(`app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`,
+`app/app/repechage-agents-libres/AdminPanel.tsx`, `app/app/admin/presaison/FreeAgentSigner.tsx`,
+`app/app/admin/presaison/actions.ts`) :
+- **AutoReload manquait le début d'un tour** : ne tournait que pendant `draftState.is_active`
+  — un pooler dont la page était déjà chargée ne voyait jamais que c'était à lui de jouer
+  (`is_active` passe de `false` à `true` précisément au moment où il faudrait déjà sonder).
+  Rendu actif tant que `!draftState.ended_at`.
+- **Recherche d'agent libre refaite** (`FreeAgentSigner.tsx`) : `<select size>` natif remplacé
+  par un dropdown flottant cliquable, même patron que `PlayerSearch` dans
+  `gestion-effectifs/GestionEffectifsManager.tsx`. `overflow-hidden` retiré du panneau admin
+  (`AdminPanel.tsx`) qui aurait coupé ce nouveau dropdown.
+- Rendre AutoReload plus agressif a rouvert la même classe de bug (sélection perdue en plein
+  milieu) à **quatre reprises** pendant les tests en direct — corrigées une à une au fil des
+  rapports de David : sélection de signature (agent libre choisi mais pas encore signé),
+  sélection dans "Activer ou libérer une recrue", réorganisation non sauvegardée de l'ordre du
+  repêchage (`DraftOrderEditor`, trouvée en anticipant plutôt que rapportée), et enfin — la
+  vraie cause du rapport initial — la fenêtre de **recherche elle-même** (taper, voir les
+  résultats), pas seulement après avoir cliqué un nom. Chaque interaction remonte maintenant
+  un signal "en cours" au parent, combiné dans la condition `enabled` d'`AutoReload`.
+- **Bug non lié, trouvé au passage** : `resetPresaisonDraftAction` (bouton "Réinitialiser le
+  repêchage") utilisait `.eq('action', 'sign')` sur `transaction_items` — la vraie colonne est
+  `action_type`. Plantait dès qu'il y avait au moins une signature à annuler.
+- **UX** : l'alignement déplié d'un pooler (`PoolerCard`, "Voir l'alignement de X") se
+  refermait à chaque rafraîchissement automatique — agaçant pour suivre un pooler en continu.
+  Persisté via `localStorage` par pooler plutôt que mis en pause (ici on veut continuer à
+  rafraîchir, juste sans perdre l'affichage).
+- Tous validés par David en staging pendant le vrai repêchage, promus vers `main` (staging +
+  prod confirmés au vert).
+- **Leçon** : `window.location.reload()` périodique + composants avec état d'interaction local
+  est une combinaison fragile — chaque nouvelle zone interactive de cette page doit signaler
+  explicitement au parent qu'elle est "en cours" (comme `releaseMode`/`selected`/dirty-check),
+  sinon le prochain cycle d'AutoReload la fera sauter silencieusement, sans message d'erreur.
+
 ### 2026-09-10
 
 **[Feature] — Remettre une recrue en banque, admin et libre-service**
