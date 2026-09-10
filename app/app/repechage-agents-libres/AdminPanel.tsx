@@ -174,8 +174,11 @@ export default function AdminPanel({
     }
   }
 
+  // Pas de overflow-hidden sur le conteneur ci-dessous (David, 2026-09-10) — coupait le
+  // dropdown flottant de FreeAgentSigner ; aucun enfant ici n'a besoin d'être clippé aux
+  // coins arrondis.
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-lg overflow-hidden mb-6">
+    <div className="bg-blue-50 border border-blue-200 rounded-lg mb-6">
       <button
         onClick={() => setExpanded(v => !v)}
         className="w-full flex items-center justify-between px-4 py-3 text-left"

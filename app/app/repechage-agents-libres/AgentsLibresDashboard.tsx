@@ -142,7 +142,10 @@ export default function AgentsLibresDashboard({
             )}
           </p>
         </div>
-        <AutoReload enabled={draftState.is_active && !releaseSelectionActive && adminReleaseSelectionIds.size === 0} intervalMs={8000} />
+        {/* Toujours actif (pas seulement pendant un tour, David, 2026-09-10) — sinon personne
+            ne peut détecter qu'un tour vient de démarrer : is_active passe de false à true
+            précisément au moment où on aurait besoin d'être déjà en train de sonder. */}
+        <AutoReload enabled={!draftState.ended_at && !releaseSelectionActive && adminReleaseSelectionIds.size === 0} intervalMs={8000} />
       </div>
 
       {me.isAdmin && !seasonStarted && (
