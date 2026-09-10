@@ -1,7 +1,24 @@
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL ?? 'Cap Crunch <onboarding@resend.dev>'
+// Envoi via SMTP Gmail (compte personnel de David) plutôt que Resend (David, 2026-09-10) —
+// Resend en mode sandbox (aucun domaine vérifié) ne livrait qu'à l'adresse du propriétaire du
+// compte Resend, ce qui rendait les notifications inutilisables pour les autres poolers ; David
+// ne souhaite ni acheter ni gérer un domaine. Gmail permet un envoi SMTP simple via un "mot de
+// passe d'application" (nécessite la validation en deux étapes), sans domaine à vérifier — le
+// `from` doit obligatoirement être l'adresse Gmail authentifiée (contrainte Gmail, pas
+// contournable sans un domaine "Send As" vérifié).
+const GMAIL_USER = process.env.GMAIL_USER
+const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD
+const FROM_ADDRESS = GMAIL_USER ? `Cap Crunch <${GMAIL_USER}>` : undefined
+
+function getTransporter() {
+  if (!GMAIL_USER || !GMAIL_APP_PASSWORD) return null
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD },
+  })
+}
 
 export type EmailPayload = {
   subject: string
@@ -9,30 +26,24 @@ export type EmailPayload = {
 }
 
 async function sendToEmails(emails: string[], payload: EmailPayload) {
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) {
-    console.warn('[email] RESEND_API_KEY absente — envoi ignoré.')
+  const transporter = getTransporter()
+  if (!transporter || !FROM_ADDRESS) {
+    console.warn('[email] GMAIL_USER/GMAIL_APP_PASSWORD absents — envoi ignoré.')
     return
   }
   if (emails.length === 0) {
     console.warn('[email] Aucun destinataire opt-in trouvé — envoi ignoré.')
     return
   }
-  const resend = new Resend(apiKey)
 
   const results = await Promise.allSettled(
     emails.map(email =>
-      resend.emails.send({ from: FROM_ADDRESS, to: email, subject: payload.subject, html: payload.html }),
+      transporter.sendMail({ from: FROM_ADDRESS, to: email, subject: payload.subject, html: payload.html }),
     ),
   )
-  // Le SDK Resend ne lance pas d'exception sur une erreur API (clé invalide, domaine non
-  // vérifié, etc.) — il retourne { data, error } sans throw — donc on doit vérifier `error`
-  // explicitement, pas seulement le statut de la promesse.
   results.forEach((r, i) => {
     if (r.status === 'rejected') {
-      console.error(`[email] Échec réseau vers ${emails[i]} :`, r.reason)
-    } else if (r.value.error) {
-      console.error(`[email] Erreur Resend vers ${emails[i]} :`, r.value.error)
+      console.error(`[email] Échec d'envoi vers ${emails[i]} :`, r.reason)
     }
   })
 }
@@ -70,25 +81,24 @@ export async function sendEmailToIds(ids: string[], payload: EmailPayload) {
 // Envoi direct pour le bouton "Tester" de /compte (David, 2026-09-10) — contrairement à
 // sendEmailToAll/sendEmailToIds, ne filtre pas sur notif_email (un test manuel doit fonctionner
 // même si les alertes automatiques sont désactivées) et renvoie l'erreur réelle plutôt que de
-// seulement la logger — utile pour diagnostiquer en direct (RESEND_API_KEY absente/invalide,
-// domaine d'envoi non vérifié, adresse "onboarding@resend.dev" limitée à l'email du compte
-// Resend, etc.) sans avoir à aller fouiller les logs Vercel.
+// seulement la logger — utile pour diagnostiquer en direct (identifiants Gmail absents/invalides,
+// etc.) sans avoir à aller fouiller les logs Vercel.
 export async function sendTestEmail(toEmail: string): Promise<{ error?: string }> {
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) return { error: 'RESEND_API_KEY absente des variables d\'environnement (ce déploiement).' }
+  const transporter = getTransporter()
+  if (!transporter || !FROM_ADDRESS) {
+    return { error: 'GMAIL_USER / GMAIL_APP_PASSWORD absents des variables d\'environnement (ce déploiement).' }
+  }
 
-  const resend = new Resend(apiKey)
   try {
-    const { error } = await resend.emails.send({
+    await transporter.sendMail({
       from: FROM_ADDRESS,
       to: toEmail,
       subject: 'Cap Crunch — Test de courriel',
-      html: '<p>Les courriels fonctionnent correctement — ce message confirme que Resend est bien configuré pour cet environnement.</p>',
+      html: '<p>Les courriels fonctionnent correctement — ce message confirme que l\'envoi est bien configuré pour cet environnement.</p>',
     })
-    if (error) return { error: `Erreur Resend : ${error.message ?? JSON.stringify(error)}` }
     return {}
   } catch (e: unknown) {
-    return { error: `Exception : ${String(e)}` }
+    return { error: `Erreur d'envoi : ${e instanceof Error ? e.message : String(e)}` }
   }
 }
 
