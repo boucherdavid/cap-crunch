@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import AutoReload from '@/components/AutoReload'
 import { submitTransactionAction } from '../admin/transactions/actions'
-import { submitSelfServiceAction, loadOwnRecrueBankAction, setReadyAction, searchSandboxFreeAgentsAction, type SandboxFreeAgentResult } from './actions'
+import { submitSelfServiceAction, loadOwnRecrueBankAction, setReadyAction, searchSandboxFreeAgentsAction, listTeamsAction, type SandboxFreeAgentResult } from './actions'
 import AdminPanel from './AdminPanel'
 
 type Me = { id: string; name: string; isAdmin: boolean }
@@ -537,7 +537,14 @@ function MonAlignement({
   const [filterPosition, setFilterPosition] = useState<'' | 'forward' | 'defense' | 'goalie'>('')
   const [filterMaxSalary, setFilterMaxSalary] = useState('')
   const [filterElcOnly, setFilterElcOnly] = useState(false)
+  const [filterTeam, setFilterTeam] = useState('')
+  const [teams, setTeams] = useState<{ code: string; name: string }[]>([])
   const [selectedSandboxRecrueId, setSelectedSandboxRecrueId] = useState('')
+
+  useEffect(() => {
+    if (seasonStarted) return
+    listTeamsAction().then(res => setTeams(res.teams))
+  }, [seasonStarted])
 
   // Libre-service (ménage pré-saison) — actions réelles, distinctes du bac à sable ci-dessous.
   const [busy, setBusy] = useState(false)
@@ -688,7 +695,7 @@ function MonAlignement({
     }
   }
 
-  const hasSandboxFilters = !!filterPosition || filterMaxSalary.trim() !== '' || filterElcOnly
+  const hasSandboxFilters = !!filterPosition || filterMaxSalary.trim() !== '' || filterElcOnly || !!filterTeam
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     if (query.trim().length < 2 && !hasSandboxFilters) { setResults([]); return }
@@ -703,12 +710,13 @@ function MonAlignement({
         position: filterPosition || undefined,
         maxSalary: maxSalary && !Number.isNaN(maxSalary) ? maxSalary : undefined,
         elcOnly: filterElcOnly || undefined,
+        teamCode: filterTeam || undefined,
       })
       setSearching(false)
       setResults(res.players ?? [])
     }, 300)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [query, saisonId, filterPosition, filterMaxSalary, filterElcOnly, hasSandboxFilters])
+  }, [query, saisonId, filterPosition, filterMaxSalary, filterElcOnly, filterTeam, hasSandboxFilters])
 
   const toggleRemove = (playerId: number) => {
     setRemoved(prev => {
@@ -1121,6 +1129,16 @@ function MonAlignement({
                 <option value="defense">Défenseur</option>
                 <option value="goalie">Gardien</option>
               </select>
+              <select
+                value={filterTeam}
+                onChange={e => setFilterTeam(e.target.value)}
+                className="border rounded-lg px-2 py-1 text-xs focus:outline-none"
+              >
+                <option value="">Toutes équipes</option>
+                {teams.map(t => (
+                  <option key={t.code} value={t.code}>{t.name}</option>
+                ))}
+              </select>
               <input
                 type="number"
                 value={filterMaxSalary}
@@ -1134,7 +1152,7 @@ function MonAlignement({
               </label>
               {hasSandboxFilters && (
                 <button
-                  onClick={() => { setFilterPosition(''); setFilterMaxSalary(''); setFilterElcOnly(false) }}
+                  onClick={() => { setFilterPosition(''); setFilterMaxSalary(''); setFilterElcOnly(false); setFilterTeam('') }}
                   className="text-xs text-gray-400 hover:text-gray-600"
                 >
                   Effacer les filtres
