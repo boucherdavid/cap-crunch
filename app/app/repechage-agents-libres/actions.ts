@@ -234,8 +234,6 @@ export async function searchSandboxFreeAgentsAction(
   if (!saison) return { players: [], truncated: false }
 
   const q = (opts.query ?? '').trim()
-  const hasFilters = !!opts.position || opts.maxSalary != null || opts.elcOnly || !!opts.teamCode
-  if (q.length < 2 && !hasFilters) return { players: [], truncated: false }
 
   const { data: onRoster } = await supabase
     .from('pooler_rosters')
@@ -244,14 +242,13 @@ export async function searchSandboxFreeAgentsAction(
     .eq('is_active', true)
   const takenIds = (onRoster ?? []).map(r => r.player_id)
 
-  // player_contracts!inner + filtre de saison seulement si un filtre salaire/ELC est demandé —
-  // sinon ça exclurait à tort les joueurs sans ligne de contrat pour la saison courante (ex:
-  // prospect pas encore signé) alors que rien ne demande de filtrer là-dessus. Même logique
-  // pour teams!inner — nécessaire seulement si un filtre d'équipe est demandé.
-  const needsContract = opts.maxSalary != null || opts.elcOnly
-  const contractsSelect = needsContract
-    ? 'player_contracts!inner (season, cap_number, is_elc)'
-    : 'player_contracts (season, cap_number, is_elc)'
+  // player_contracts!inner + filtre de saison toujours actif (David, 2026-09-10) — un joueur
+  // sans contrat connu pour la saison courante n'a rien à montrer comme impact cap, donc rien
+  // à faire dans un outil dont le but est justement de voir cet impact ; les résultats sans
+  // salaire (auparavant affichés avec un montant vide) sont maintenant exclus d'office.
+  // teams!inner seulement si un filtre d'équipe est demandé (une équipe manquante serait un
+  // vrai problème de données, pas juste "rien à montrer").
+  const contractsSelect = 'player_contracts!inner (season, cap_number, is_elc)'
   const teamsSelect = opts.teamCode ? 'teams!inner (code)' : 'teams (code)'
   const selectStr = `id, first_name, last_name, position, ${teamsSelect}, ${contractsSelect}`
 
@@ -268,11 +265,12 @@ export async function searchSandboxFreeAgentsAction(
     dbQuery = dbQuery.or(`first_name.ilike.%${safeQ}%,last_name.ilike.%${safeQ}%`)
   }
 
-  if (needsContract) {
-    dbQuery = dbQuery.eq('player_contracts.season', saison.season)
-    if (opts.maxSalary != null) dbQuery = dbQuery.lte('player_contracts.cap_number', opts.maxSalary)
-    if (opts.elcOnly) dbQuery = dbQuery.eq('player_contracts.is_elc', true)
-  }
+  dbQuery = dbQuery.eq('player_contracts.season', saison.season)
+  // La ligne de contrat peut exister pour la saison avec cap_number à null (fin de contrat,
+  // donnée incomplète) — !inner seul ne suffit pas à exclure ces cas, vérifié en direct.
+  dbQuery = dbQuery.not('player_contracts.cap_number', 'is', null)
+  if (opts.maxSalary != null) dbQuery = dbQuery.lte('player_contracts.cap_number', opts.maxSalary)
+  if (opts.elcOnly) dbQuery = dbQuery.eq('player_contracts.is_elc', true)
   if (opts.teamCode) dbQuery = dbQuery.eq('teams.code', opts.teamCode)
   if (takenIds.length > 0) dbQuery = dbQuery.not('id', 'in', `(${takenIds.join(',')})`)
   // players -> player_contracts est un-à-plusieurs : PostgREST refuse un order() sur la table

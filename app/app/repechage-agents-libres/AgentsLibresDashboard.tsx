@@ -697,9 +697,13 @@ function MonAlignement({
   }
 
   const hasSandboxFilters = !!filterPosition || filterMaxSalary.trim() !== '' || filterElcOnly || !!filterTeam
+  // Toujours chercher, même sans rien taper ni filtrer (David, 2026-09-10) — un pooler qui ne
+  // sait pas encore ce qu'il cherche doit pouvoir parcourir la liste par défaut plutôt que de
+  // voir un champ vide tant qu'il n'a pas décidé d'un filtre. Le serveur ignore déjà lui-même
+  // une recherche de moins de 2 caractères (pas de condition ilike ajoutée) — rien à répliquer
+  // ici, juste ne plus bloquer l'appel.
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (query.trim().length < 2 && !hasSandboxFilters) { setResults([]); setResultsTruncated(false); return }
     debounceRef.current = setTimeout(async () => {
       setSearching(true)
       // Montant en dollars directement (ex: 2000000 pour 2 M$) — un premier essai multipliait
