@@ -140,6 +140,27 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   rafraîchir, juste sans perdre l'affichage).
 - Tous validés par David en staging pendant le vrai repêchage, promus vers `main` (staging +
   prod confirmés au vert).
+
+### 2026-09-10 (suite — RESEND_API_KEY absente en prod)
+
+**[Fix] — Cause racine du babillard sans courriel en prod : clé Resend jamais configurée**
+- Suite au bouton "Tester le courriel" (voir entrée plus haut, même journée), David a testé en
+  prod : erreur explicite "RESEND_API_KEY absente des variables d'environnement (ce
+  déploiement)." — confirmait que la clé n'avait simplement jamais été ajoutée au projet Vercel
+  `cap-crunch` (seul `cap-crunch-staging` l'avait), pas un problème de code.
+- Pas d'accès Vercel/Resend de mon côté — David guidé pas à pas pour générer une nouvelle clé
+  Resend (permission "Sending access", moindre privilège) et l'ajouter comme variable
+  d'environnement Secret sur `cap-crunch`, scope Production. Redéploiement déclenché par un
+  commit vide (`b42fd12`) sur `main` une fois la variable confirmée sauvegardée.
+- Test refait par David en prod après déploiement : courriel bien reçu. Confirmé corrigé.
+- **Point ouvert, pas encore vérifié** : l'adresse d'envoi reste `onboarding@resend.dev`
+  (sandbox Resend, aucun domaine personnalisé vérifié dans `RESEND_FROM_EMAIL`) — cette adresse
+  ne livre généralement qu'à l'adresse du propriétaire du compte Resend. Le test de David valide
+  donc que *son* propre compte reçoit bien les courriels, pas nécessairement les autres
+  poolers. À vérifier : qu'un autre pooler clique "Tester le courriel" depuis son propre compte,
+  ou consulter les logs de livraison Resend. Si limité, la solution serait de vérifier un
+  domaine personnalisé dans Resend et de configurer `RESEND_FROM_EMAIL` en conséquence (pas
+  encore fait dans aucun des deux environnements).
 - **Leçon** : `window.location.reload()` périodique + composants avec état d'interaction local
   est une combinaison fragile — chaque nouvelle zone interactive de cette page doit signaler
   explicitement au parent qu'elle est "en cours" (comme `releaseMode`/`selected`/dirty-check),
