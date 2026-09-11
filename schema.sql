@@ -918,6 +918,27 @@ CREATE POLICY "Lecture publique presaison_pooler_ready" ON presaison_pooler_read
 CREATE POLICY "Admin gère presaison_pooler_ready" ON presaison_pooler_ready FOR ALL
   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
 
+-- Projections externes de points/victoires par joueur (David, 2026-09-11) — aide aux choix des
+-- poolers (préparation de repêchage/agents libres), importées ponctuellement (pas un pipeline
+-- récurrent) depuis NHL.com (scraping automatique) et ESPN (export manuel, JS/authentification
+-- côté ESPN). Une ligne par (joueur, saison, source) plutôt qu'une seule colonne, pour garder les
+-- projections des différentes sources visibles séparément au lieu de les fusionner en une seule
+-- valeur arbitraire.
+CREATE TABLE player_projections (
+  id SERIAL PRIMARY KEY,
+  player_id INTEGER REFERENCES players(id) ON DELETE CASCADE,
+  season VARCHAR(10) NOT NULL,      -- '2026-27'
+  source VARCHAR(20) NOT NULL,      -- 'nhl_com', 'espn'
+  projected_points INTEGER,         -- attaquants/défenseurs
+  projected_wins INTEGER,           -- gardiens
+  imported_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(player_id, season, source)
+);
+ALTER TABLE player_projections ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Lecture publique player_projections" ON player_projections FOR SELECT USING (true);
+CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
+  USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
 -- Migration 2026-09-04 : seuil de participation au repêchage AL corrigé (salaire minimum LNH
 -- réel, plus configurable qu'une constante codée en dur) — à exécuter une seule fois dans le
 -- SQL Editor Supabase (staging d'abord) :
