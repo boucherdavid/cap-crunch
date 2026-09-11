@@ -24,13 +24,14 @@ Usage:
 import argparse
 import os
 import sys
-import unicodedata
 
 sys.stdout.reconfigure(encoding='utf-8')
 
 import openpyxl
 from dotenv import load_dotenv
 from supabase import create_client
+
+from projections_common import build_player_lookup, match_player, get_active_season
 
 load_dotenv()
 
@@ -44,11 +45,6 @@ NHL_TEAM_CODES = {
     'PHI', 'PIT', 'SEA', 'SJS', 'STL', 'TBL', 'TOR', 'UTA', 'VAN', 'VGK',
     'WPG', 'WSH',
 }
-
-
-def normalize(s: str) -> str:
-    s = unicodedata.normalize('NFKD', s or '').encode('ascii', 'ignore').decode()
-    return s.strip().lower()
 
 
 def parse_raw_sheet(ws):
@@ -87,45 +83,6 @@ def parse_raw_sheet(ws):
     return records, errors
 
 
-def build_player_lookup(db):
-    all_players, offset, page = [], 0, 1000
-    while True:
-        r = db.table('players').select('id, first_name, last_name, teams(code)').range(offset, offset + page - 1).execute()
-        all_players.extend(r.data)
-        if len(r.data) < page:
-            break
-        offset += page
-
-    by_name_team, by_name = {}, {}
-    for p in all_players:
-        key = normalize(f"{p['first_name']} {p['last_name']}")
-        team = p['teams']['code'] if p.get('teams') else None
-        by_name_team[(key, team)] = p['id']
-        by_name.setdefault(key, []).append((p['id'], team))
-    return by_name_team, by_name
-
-
-def match_player(record, by_name_team, by_name):
-    key = normalize(record['name'])
-    pid = by_name_team.get((key, record['team']))
-    if pid:
-        return pid, None
-    candidates = by_name.get(key, [])
-    if len(candidates) == 1:
-        pid, db_team = candidates[0]
-        return pid, f'nom seul (équipe DB={db_team!r} ≠ ESPN={record["team"]!r})'
-    if len(candidates) > 1:
-        return None, f'{len(candidates)} joueurs du même nom, équipe ESPN {record["team"]!r} non trouvée'
-    return None, 'aucun joueur trouvé avec ce nom'
-
-
-def get_active_season(db) -> str:
-    r = db.table('pool_seasons').select('season').eq('is_active', True).eq('is_playoff', False).single().execute()
-    if not r.data:
-        raise SystemExit('[ERREUR] Aucune saison régulière active — utilisez --season.')
-    return r.data['season']
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('fichier')
@@ -155,11 +112,11 @@ def main():
     season = args.season or get_active_season(db)
     print(f'[INFO] Saison ciblée : {season}')
 
-    by_name_team, by_name = build_player_lookup(db)
+    by_name_team, by_name, by_lastname_team = build_player_lookup(db)
 
     matched, unmatched, ambiguous = [], [], []
     for rec in skaters:
-        pid, note = match_player(rec, by_name_team, by_name)
+        pid, note = match_player(rec['name'], rec['team'], by_name_team, by_name, by_lastname_team)
         if pid:
             matched.append((rec, pid, note))
         elif note and 'même nom' in note:
@@ -174,7 +131,7 @@ def main():
         print(f'  [AMBIGU] {rec["name"]} ({rec["team"]}) — {note}')
     approx = [rec for rec, _, note in matched if note]
     if approx:
-        print(f'\n[INFO] {len(approx)} jumelage(s) par nom seul (équipe différente en base, à vérifier) :')
+        print(f'\n[INFO] {len(approx)} jumelage(s) approximatif(s) (à vérifier) :')
         for rec, _, note in matched:
             if note:
                 print(f'  [~] {rec["name"]} ({rec["team"]}) — {note}')
