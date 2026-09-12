@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
 import { computeReverseStandingsOrder } from '@/lib/draftOrder'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { isRookieProtectionExpired, isElcActiveForSeason } from '@/lib/rookieProtection'
@@ -564,11 +565,12 @@ export async function startPresaisonDraftAction(saisonId: number): Promise<{ err
   if (error) return { error: error.message }
 
   const { sendPushToUser } = await import('@/lib/push')
-  sendPushToUser(queue[0], {
+  // after() : voir le commentaire dans lib/threadNotify.ts.
+  after(() => sendPushToUser(queue[0], {
     title: 'Repêchage agents libres',
     body: "C'est ton tour de signer un agent libre.",
     url: '/repechage-agents-libres',
-  }).catch(() => {})
+  }).catch(() => {}))
 
   revalidatePath('/repechage-agents-libres')
   return loadPresaisonDraftStateAction(saisonId)
@@ -627,11 +629,12 @@ export async function advancePresaisonQueueAction(saisonId: number, isPass = fal
 
   if (isActive && nextQueue[0] !== prevQueue[0]) {
     const { sendPushToUser } = await import('@/lib/push')
-    sendPushToUser(nextQueue[0], {
+    // after() : voir le commentaire dans lib/threadNotify.ts.
+    after(() => sendPushToUser(nextQueue[0], {
       title: 'Repêchage agents libres',
       body: "C'est ton tour de signer un agent libre.",
       url: '/repechage-agents-libres',
-    }).catch(() => {})
+    }).catch(() => {}))
   }
 
   revalidatePath('/repechage-agents-libres')

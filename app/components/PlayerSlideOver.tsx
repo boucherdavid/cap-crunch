@@ -3,6 +3,11 @@
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { fetchPlayerLanding, type NhlPlayerLanding, type NhlSeasonTotal } from '@/lib/nhl-player'
+import { createClient } from '@/lib/supabase/client'
+
+const SOURCE_LABEL: Record<string, string> = { nhl_com: 'NHL.com', espn: 'ESPN' }
+
+type Projection = { source: string; season: string; projected_points: number | null; projected_wins: number | null }
 
 function formatSeason(s: number): string {
   const str = String(s)
@@ -83,6 +88,7 @@ export default function PlayerSlideOver() {
 
   const [player, setPlayer] = useState<NhlPlayerLanding | null>(null)
   const [loading, setLoading] = useState(false)
+  const [projections, setProjections] = useState<Projection[]>([])
 
   useEffect(() => {
     if (!nhlId) { setPlayer(null); return }
@@ -92,6 +98,16 @@ export default function PlayerSlideOver() {
       setPlayer(data)
       setLoading(false)
     })
+  }, [nhlId])
+
+  useEffect(() => {
+    if (!nhlId) { setProjections([]); return }
+    const supabase = createClient()
+    supabase
+      .from('player_projections')
+      .select('source, season, projected_points, projected_wins, players!inner(nhl_id)')
+      .eq('players.nhl_id', nhlId)
+      .then(({ data }) => setProjections((data as unknown as Projection[]) ?? []))
   }, [nhlId])
 
   const close = () => {
@@ -160,6 +176,27 @@ export default function PlayerSlideOver() {
               {Array.from({ length: 7 }).map((_, i) => (
                 <div key={i} className="h-8 bg-gray-100 rounded animate-pulse" />
               ))}
+            </div>
+          )}
+
+          {!loading && player && projections.length > 0 && (
+            <div className="mb-5 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                Projections {projections[0].season}
+              </p>
+              <div className="flex flex-wrap gap-x-6 gap-y-1">
+                {projections.map(p => {
+                  const value = isGoalie ? p.projected_wins : p.projected_points
+                  if (value == null) return null
+                  return (
+                    <p key={p.source} className="text-sm text-gray-700">
+                      <span className="text-gray-400">{SOURCE_LABEL[p.source] ?? p.source} :</span>{' '}
+                      <span className="font-semibold">{value}</span>{' '}
+                      <span className="text-gray-400 text-xs">{isGoalie ? 'victoires' : 'pts'}</span>
+                    </p>
+                  )
+                })}
+              </div>
             </div>
           )}
 

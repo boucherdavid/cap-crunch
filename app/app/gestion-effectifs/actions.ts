@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { after } from 'next/server'
 
 import { sendPushToUser } from '@/lib/push'
 import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/rosterTypeChange'
@@ -652,13 +653,14 @@ export async function submitBatchAction(input: {
 
     if (isAdmin) {
       const n = input.actions.length
-      sendPushToUser(input.poolerId, {
+      // after() : voir le commentaire dans lib/threadNotify.ts.
+      after(() => sendPushToUser(input.poolerId, {
         title: 'Cap Crunch — Mouvements',
         body: n === 1
           ? "Votre alignement a été modifié par l'admin."
           : `${n} mouvements ont été appliqués à votre alignement.`,
         url: `/poolers/${input.poolerId}`,
-      }).catch(() => {})
+      }).catch(() => {}))
     }
 
     return { warning: warnings.length > 0 ? warnings.join(' ') : undefined }
