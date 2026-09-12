@@ -104,7 +104,16 @@ const result = await Promise.race([
   silencieusement ignoré (aucune erreur visible) — à vérifier en premier si les push ne
   partent pas.
 - Package `web-push` installé
-- Pattern : fire-and-forget (`sendPushToAdmins`) — ne pas awaiter dans les Server Actions critiques
+- Pattern : fire-and-forget (`sendPushToAdmins`) — ne pas awaiter dans les Server Actions
+  critiques, mais **toujours envelopper dans `after()`** (`next/server`, David 2026-09-12) :
+  `after(() => sendPushToAdmins(...).catch(() => {}))`, jamais `sendPushToAdmins(...).catch(() =>
+  {})` seul. Sur Vercel (serverless), la fonction peut être arrêtée dès que la réponse est
+  renvoyée au navigateur — un envoi non enveloppé (push ou courriel, `sendEmailToAll`/
+  `sendEmailToIds` inclus) risque d'être coupé en plein vol avant de se terminer, surtout le
+  courriel (SMTP plus lent qu'un push). Repéré via un commentaire de planification qui n'a
+  généré aucune notification pour l'admin malgré une config correcte — voir `SUIVI_PROJET.md`
+  (session 2026-09-12). `after()` garde la fonction vivante jusqu'à la fin du callback sans
+  faire attendre l'utilisateur, contrairement à un `await` direct.
 - L'admin doit activer les notifications dans `/compte` sur son appareil
 
 ---

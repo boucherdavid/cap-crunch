@@ -7172,3 +7172,93 @@ Commit: `984d652`.
   mis en attente jusqu'à validation du contenu `/aide` actuel.
 - Poussé directement vers `main` sur demande de David ("c'est déjà mieux que c'était"), sans
   attendre le retour du pooler test — les deux déploiements confirmés au vert.
+
+### 2026-09-11/12 — Aide aux choix des poolers : projections externes + tendance 3 saisons
+
+**[Feature] — Tendance pondérée 3 saisons dans le panneau détail joueur**
+(`app/components/PlayerSlideOver.tsx`) :
+- David : deux sites (NHL.com) donnent des projections de points/victoires pour la saison
+  courante ; il voulait en plus un calcul de tendance sur les 3 dernières saisons réelles.
+- Tendance calculée directement à partir des saisons déjà chargées dans le panneau (aucune
+  nouvelle donnée requise) : moyenne pondérée du rythme par match (poids 3/2/1, la plus récente
+  comptant le plus), projetée sur 82 matchs. Patineurs (buts+passes) et gardiens (taux de
+  victoires) traités séparément.
+
+**[Feature] — `player_projections` (nouvelle table) + import des projections externes**
+(`schema.sql`, `python_script/projections_common.py`, `python_script/scrape_nhl_projections.py`,
+`python_script/import_projections_espn.py`, `app/components/PlayerSlideOver.tsx`) :
+- Trois sources envisagées (NHL.com ×2, ESPN) — import **ponctuel** (une fois par saison), pas un
+  pipeline récurrent comme PuckPedia.
+- `player_projections` : une ligne par (joueur, saison, source) — projections gardées séparées
+  par source plutôt que fusionnées en une seule valeur arbitraire. RLS activée avec le même
+  patron que le reste du projet (lecture publique, écriture admin — les scripts écrivent via la
+  clé service, qui contourne RLS). Table créée directement par David dans Supabase (staging +
+  prod), documentée après coup dans `schema.sql`.
+- **`scrape_nhl_projections.py`** : les deux pages NHL.com (attaquants/défenseurs, gardiens)
+  intègrent leur texte complet dans le JSON-LD `NewsArticle` de la page (`articleBody`) — pas de
+  rendu JavaScript à gérer, contrairement à ce qu'un premier coup d'œil laissait craindre.
+  355/355 patineurs et 52/52 gardiens jumelés en dry-run puis importés en staging (407 lignes).
+  Bug d'encodage trouvé et corrigé au passage (`r.encoding = 'utf-8'` manquant, noms accentués
+  corrompus en mojibake).
+- **`projections_common.py`** : logique de jumelage joueur partagée entre les deux scripts
+  (évite la duplication). Trois paliers : nom+équipe exact, nom seul si unique, puis **nom de
+  famille+équipe** en dernier recours — ajouté après coup pour couvrir les surnoms usuels que
+  NHL.com utilise (Mitch, JJ, Josh, Matt...) alors que PuckPedia enregistre le prénom légal
+  (Mitchell, John-Jason, Joshua, Matthew...). A ramené les non-trouvés de 10 à 0 sur les
+  patineurs. Chaque jumelage approximatif reste listé dans le rapport pour vérification, jamais
+  appliqué silencieusement.
+- **`import_projections_espn.py`** : ESPN (fantasy.espn.com/hockey/players/projections) est
+  rendu en JavaScript et nécessite une connexion — pas scrapable directement. David colle le
+  tableau dans un fichier Excel, le script parse le format brut à 3 lignes/joueur (nom dupliqué +
+  stats, nom seul, équipe+position collées type "COLF"). Testé et validé sur un exemple fourni
+  par David avant d'attaquer le vrai tableau.
+  **Complication trouvée en pratique** : le tableau ESPN a un défilement interne virtualisé
+  (seuls ~20-30 joueurs existent dans le DOM à la fois) — une sélection unique noms+stats ne
+  fonctionne pas, et coller noms et stats séparément désynchronise les lignes au fil du
+  défilement. Solution retenue avec David : copier par petits blocs pleinement visibles à
+  l'écran (sans scroller pendant la sélection), coller à la suite dans la même feuille — le
+  script gère déjà des blocs multiples sans modification. Import ESPN pas encore exécuté pour
+  de vrai à la fin de cette session (David doit encore faire les copier-coller manuels).
+- Gardiens ESPN explicitement mis de côté pour l'instant (NHL.com couvre déjà cette partie) —
+  David a dit "plus tard", pas abandonné.
+- **UI** : nouveau bloc "Projections {saison}" dans `PlayerSlideOver.tsx`, au-dessus de la
+  tendance 3 saisons — lit `player_projections` par `nhl_id` via le client Supabase navigateur
+  (RLS lecture publique), affiche chaque source séparément.
+
+### 2026-09-12 — Notifications push/courriel non fiables : fire-and-forget coupé par Vercel
+
+**[Fix] — `after()` (next/server) sur tous les envois de notification fire-and-forget**
+(`app/lib/threadNotify.ts`, `app/app/babillard/actions.ts`, `app/app/gestion-effectifs/actions.ts`,
+`app/app/planification/actions.ts`, `app/app/signaler/actions.ts`,
+`app/app/gestion-series/playoff-pool-actions.ts`, `app/app/admin/presaison/actions.ts`,
+`app/app/admin/effectifs/cap-watch-actions.ts`) :
+- David : Vincent a commenté le sondage de planification en prod (10 sept., 19h04) — David
+  (admin, `notif_email=true`, appareil push enregistré) n'a reçu **ni** push **ni** courriel.
+- Vérifié en base : le commentaire est bien arrivé (23h04 UTC), après le déploiement du
+  correctif Gmail SMTP (16h47 le même jour) — pas un problème de timing/config. David a bien
+  `notif_email=true` (comme tous les poolers — déjà la valeur par défaut en base, sa suggestion
+  de l'activer par défaut était déjà la réalité) et un `push_subscriptions` actif.
+- **Cause racine** : tous les envois push/courriel du projet suivaient un patron
+  "fire-and-forget" documenté dans `app/CLAUDE.md` (`sendPushToAdmins(...).catch(() => {})`,
+  sans `await`, pour garder l'action instantanée côté UI). Sur Vercel (serverless), la fonction
+  peut être arrêtée dès que la réponse est renvoyée au navigateur — l'envoi réel (surtout le
+  courriel SMTP, plus lent qu'un push) peut ne jamais se terminer si la coupure survient avant.
+  Repéré sur ce cas précis, mais le même pattern existait dans **16 endroits** du code (babillard,
+  planification, gestion d'effectifs, signalements, pool des séries, pré-saison, suivi de cap).
+- **Fix** : `after()` de `next/server` (stable depuis Next 15, dispo en Next 16.2.1 ici) — garde
+  la fonction serverless vivante jusqu'à la fin du callback, sans faire attendre l'utilisateur
+  (la réponse HTTP part immédiatement quand même). Remplace `xxx(...).catch(() => {})` par
+  `after(() => xxx(...).catch(() => {}))` partout.
+- **Piège trouvé en généralisant** : `threadNotify.ts` (`notifyThreadParticipants`, utilisé par
+  babillard et planification pour les commentaires) fait un `await` (requête admins) *avant*
+  d'appeler son propre `after()` interne — donc les deux appelants devaient **aussi** envelopper
+  l'appel externe dans `after()`, sinon ce premier `await` pouvait être coupé avant même
+  d'atteindre le `after()` interne. Sans cette correction supplémentaire, le fix aurait semblé
+  complet en lecture de code mais n'aurait pas réglé le cas signalé (commentaires babillard/
+  planification, justement celui qui a déclenché l'investigation).
+- **Leçon** : le patron fire-and-forget documenté dans `app/CLAUDE.md` (section "Gestion des
+  erreurs et performance") est dangereux tel quel en environnement serverless — à corriger dans
+  ce fichier également (utiliser `after()` plutôt qu'un `.catch(() => {})` nu comme exemple de
+  référence), pour éviter qu'un futur endroit du code reproduise le même bug.
+- Poussé sur `staging`, en attente de validation par David (reproduire un commentaire de
+  planification/babillard et confirmer la réception push+courriel) avant promotion vers `main`.
