@@ -7306,3 +7306,19 @@ Commit: `984d652`.
   incomplètes) invisibles sur un exemple à 1 joueur. Concevoir pour se resynchroniser tout seul
   (chercher un marqueur reconnaissable) plutôt que de compter des positions fixes, dès qu'un
   format externe non contrôlé est en jeu.
+
+**Pause de session (2026-09-12)** — David reprendra plus tard. État courant, working tree propre,
+tout commité et synchronisé `staging`/`main` :
+- Aide aux choix des poolers (tendance 3 saisons + projections NHL.com/ESPN) : fonctionnelle en
+  staging et prod, 133 projections ESPN + 407 NHL.com importées dans les deux environnements.
+  David doit encore valider visuellement le rendu du bloc "Projections" dans `PlayerSlideOver`
+  (pas explicitement confirmé après le dernier import).
+- Reste en suspens, mentionné mais pas commencé : compléter la couverture ESPN (recopier les
+  sections avec cellules vides/`--`, surtout les joueurs de profondeur) si David le juge utile ;
+  gardiens ESPN étaient prévus "plus tard" mais ont finalement été inclus dans ce même import.
+- Question ouverte, non tranchée : panneau latéral contextuel façon `AdminGuidePanel` mais pour
+  les poolers (voir entrée `/aide` du 2026-09-11/12) — en attente de la validation du contenu
+  `/aide` par un pooler test avant d'y revenir.
+- Repêchage agents libres : reste à tester en staging la terminaison du repêchage et le
+  "Démarrer la saison" (conformité + déclarations "prêt") avant de considérer la transition de
+  saison 2026-27 complète — évoqué en discussion, pas encore fait.
