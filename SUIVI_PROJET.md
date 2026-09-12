@@ -7262,3 +7262,47 @@ Commit: `984d652`.
   référence), pour éviter qu'un futur endroit du code reproduise le même bug.
 - Poussé sur `staging`, en attente de validation par David (reproduire un commentaire de
   planification/babillard et confirmer la réception push+courriel) avant promotion vers `main`.
+- **Validé** : David a reproduit (nouveau commentaire en staging) et confirmé avoir reçu le push
+  ET le courriel. Fusionné vers `main` (déploiement prod confirmé au vert).
+
+### 2026-09-12 (suite) — Import ESPN réel : parseur cassé par les codes équipe à 2 lettres
+
+**[Fix] — `import_projections_espn.py` réécrit : auto-resynchronisation, plus fiable**
+- David a terminé de coller les projections ESPN réelles (3 onglets : Attaquants, Defenseurs,
+  Gardiens, ~800+ lignes) dans `excel/Import_Proj_ESPN_2026-2027.xlsx`. Premier essai avec le
+  script précédent (validé seulement sur un exemple à 1 joueur) : quasi tout désynchronisé après
+  les 2-3 premiers joueurs, jumelages incorrects.
+- **Cause racine réelle** (pas le défilement virtualisé initialement soupçonné) : ESPN abrège
+  certaines équipes sur 2 lettres au lieu de 3 (`TB`, `SJ`, `LA`, `NJ` au lieu de
+  `TBL`/`SJS`/`LAK`/`NJD`) — une validation de longueur (`len(teampos) < 4`) rejetait ces lignes
+  comme "mal formées" et le code avançait alors d'1 ligne au lieu de 3, désynchronisant
+  irrémédiablement tout le reste du fichier à partir de là. Un contrôle de cohérence ajouté au
+  passage (compare chaque projection de points patineur à celle déjà importée de NHL.com,
+  signale les écarts >40 pts) a permis de repérer concrètement que quelque chose clochait avant
+  d'importer des données silencieusement fausses.
+- **Parseur réécrit en profondeur** : au lieu de supposer un bloc fixe de 3 lignes/joueur,
+  récupère le nom en dédupliquant directement `"NomNomNom"` (`dedupe_name()`, plus besoin de
+  compter les lignes), puis **cherche activement** la prochaine ligne "ÉQUIPE+POSITION"
+  reconnaissable (regex + table d'alias ESPN→codes LNH standards) dans une fenêtre de lignes
+  suivantes, plutôt que de supposer une position fixe — un bloc de forme inattendue (ligne de
+  statut "DTD"/"IR" en plus pour un joueur blessé, cellules vides) ne fait dérailler que ce
+  bloc-là, pas tout le reste du fichier.
+- **Limite restante, acceptée** : environ la moitié des lignes du fichier (surtout les joueurs
+  de profondeur, plus loin dans chaque liste) n'ont aucun chiffre réel collé (`None`/`'--'`)
+  dans les 3 lignes de leur bloc — cause probable : le défilement interne virtualisé d'ESPN
+  n'avait pas fini de charger ces lignes au moment du copier-coller. Pas corrigible côté parseur
+  (aucune donnée à récupérer) — ces joueurs sont simplement absents du résultat, sans erreur ni
+  faux jumelage. David a choisi d'importer ce qui est propre maintenant (154 blocs reconnus,
+  137 patineurs + 17 gardiens jumelés) plutôt que d'attendre un recopiage plus soigneux des
+  sections manquantes.
+- **14 projections avec un grand écart vs NHL.com** (ex. Leon Draisaitl : ESPN 71 pts vs NHL.com
+  117) vérifiées individuellement dans les données brutes — cohérentes entre elles (pas un
+  symptôme de désalignement), donc probablement une vraie divergence d'opinion entre les deux
+  sites (joueurs avec un historique de blessures récent, qu'ESPN semble pénaliser plus). Importés
+  quand même, signalés dans le rapport pour référence.
+- Importé pour de vrai : 133 projections en staging, 133 en prod (`source='espn'`).
+- **Leçon** : ne jamais figer un parseur sur la base d'un seul exemple simplifié fourni avant
+  le vrai jeu de données — le format réel avait deux pièges (codes équipe à 2 lettres, lignes
+  incomplètes) invisibles sur un exemple à 1 joueur. Concevoir pour se resynchroniser tout seul
+  (chercher un marqueur reconnaissable) plutôt que de compter des positions fixes, dès qu'un
+  format externe non contrôlé est en jeu.
