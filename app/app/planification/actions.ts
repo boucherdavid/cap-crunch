@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
 
 async function requireAdmin() {
   const supabase = await createClient()
@@ -98,13 +99,14 @@ export async function submitAvailabilityAction(
   }
 
   const { sendPushToAdmins } = await import('@/lib/push')
-  sendPushToAdmins({
+  // after() : voir le commentaire dans lib/threadNotify.ts.
+  after(() => sendPushToAdmins({
     title: 'Planification — Nouvelle réponse',
     body: selectedDates.length > 0
       ? `${pooler?.name ?? 'Un pooler'} a soumis ses disponibilités (${selectedDates.length} date${selectedDates.length > 1 ? 's' : ''}).`
       : `${pooler?.name ?? 'Un pooler'} n'est disponible à aucune des dates proposées.`,
     url: '/planification',
-  }, user.id).catch(() => {})
+  }, user.id).catch(() => {}))
 
   revalidatePath('/planification')
   return {}
@@ -136,7 +138,10 @@ export async function addCommentAction(pollId: number, body: string): Promise<{ 
   const { notifyThreadParticipants } = await import('@/lib/threadNotify')
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
   const participantIds = [...new Set((priorComments ?? []).map(c => c.pooler_id as string))]
-  notifyThreadParticipants(
+  // after() : notifyThreadParticipants fait un await (requête admins) avant son propre after()
+  // interne — l'appel externe doit aussi être enveloppé. Voir lib/threadNotify.ts — c'est
+  // exactement ce chemin (commentaire de planification) qui n'a pas notifié David le 2026-09-10.
+  after(() => notifyThreadParticipants(
     participantIds,
     user.id,
     {
@@ -152,7 +157,7 @@ export async function addCommentAction(pollId: number, body: string): Promise<{ 
         <p><a href="${siteUrl}/planification">Voir sur Cap Crunch</a></p>
       `,
     },
-  ).catch(() => {})
+  ).catch(() => {}))
 
   revalidatePath('/planification')
   return {}

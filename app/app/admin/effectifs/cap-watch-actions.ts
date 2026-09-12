@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
 import { getEffectiveCap } from '@/lib/capUtils'
 
 async function requireAdmin() {
@@ -189,21 +190,22 @@ export async function checkSigningsAction(saisonId: number): Promise<{
           status: 'flagged', real_cap: realCapPlayer, flagged_at: new Date().toISOString(), deadline_at: deadlineAt,
         }).eq('id', w.id)
         newlyFlagged++
-        sendPushToUser(w.pooler_id, {
+        // after() : voir le commentaire dans lib/threadNotify.ts.
+        after(() => sendPushToUser(w.pooler_id, {
           title: 'Cap Crunch — Contrat signé, plafond dépassé',
           body: `${playerLabel} a maintenant un contrat réel et ta masse salariale dépasse le plafond. Tu as jusqu'au ${new Date(deadlineAt).toLocaleDateString('fr-CA')} pour ajuster ton alignement.`,
           url: '/gestion-effectifs',
-        }).catch(() => {})
+        }).catch(() => {}))
       } else {
         await supabase.from('cap_signing_watch').update({
           status: 'resolved', real_cap: realCapPlayer, resolved_at: new Date().toISOString(),
         }).eq('id', w.id)
         resolved++
-        sendPushToUser(w.pooler_id, {
+        after(() => sendPushToUser(w.pooler_id, {
           title: 'Cap Crunch — Contrat signé',
           body: `${playerLabel} a maintenant un contrat réel (${new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(realCapPlayer)}). Ta masse salariale reste dans le plafond.`,
           url: '/gestion-effectifs',
-        }).catch(() => {})
+        }).catch(() => {}))
       }
       void poolerRow
     } else if (w.status === 'flagged') {

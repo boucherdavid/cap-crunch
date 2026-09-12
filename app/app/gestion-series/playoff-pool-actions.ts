@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -465,11 +466,12 @@ export async function submitPlayoffPoolChangeAction(input: {
   if (!isAdmin && isLocked) {
     const { data: poolerRow } = await db.from('poolers').select('name').eq('id', input.poolerId).single()
     const { sendPushToAdmins } = await import('@/lib/push')
-    sendPushToAdmins({
+    // after() : voir le commentaire dans lib/threadNotify.ts.
+    after(() => sendPushToAdmins({
       title: 'Pool des séries — Changement d\'alignement',
       body: `${poolerRow?.name ?? 'Un pooler'} a modifié ses choix.`,
       url: '/admin/series',
-    }, user.id).catch(() => {})
+    }, user.id).catch(() => {}))
   }
 
   revalidatePath('/gestion-series')
@@ -624,13 +626,14 @@ export async function submitSeriesBatchAction(input: {
     const { data: poolerRow } = await db.from('poolers').select('name').eq('id', input.poolerId).single()
     const { sendPushToAdmins } = await import('@/lib/push')
     const n = input.removals.length + input.additions.length
-    sendPushToAdmins({
+    // after() : voir le commentaire dans lib/threadNotify.ts.
+    after(() => sendPushToAdmins({
       title: 'Pool des séries — Changement d\'alignement',
       body: n <= 2
         ? `${poolerRow?.name ?? 'Un pooler'} a modifié son alignement.`
         : `${poolerRow?.name ?? 'Un pooler'} a soumis ${Math.max(input.removals.length, input.additions.length)} changements.`,
       url: '/admin/series',
-    }, user.id).catch(() => {})
+    }, user.id).catch(() => {}))
   }
 
   revalidatePath('/gestion-series')
@@ -651,11 +654,12 @@ export async function confirmPlayoffAlignmentAction(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user || user.id !== poolerId) return { error: 'Non autorisé' }
   const { sendPushToAdmins } = await import('@/lib/push')
-  sendPushToAdmins({
+  // after() : voir le commentaire dans lib/threadNotify.ts.
+  after(() => sendPushToAdmins({
     title: 'Pool des séries — Alignement confirmé',
     body: `${poolerName} a confirmé son alignement.`,
     url: '/admin/series',
-  }, user.id).catch(() => {})
+  }, user.id).catch(() => {}))
   return {}
 }
 

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
 
 async function requireAdmin() {
   const supabase = await createClient()
@@ -32,22 +33,25 @@ export async function createPostAction(title: string, body: string): Promise<{ e
   const { data: author } = await supabase.from('poolers').select('name').eq('id', user.id).single()
 
   const { sendPushToAll } = await import('@/lib/push')
-  sendPushToAll({
-    title: `Babillard — ${trimmedTitle}`,
-    body: trimmedBody.slice(0, 150),
-    url: '/babillard',
-  }).catch(() => {})
-
   const { sendEmailToAll, escapeHtml } = await import('@/lib/email')
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
-  sendEmailToAll({
-    subject: `Babillard — ${trimmedTitle}`,
-    html: `
-      <p>Publié par <strong>${escapeHtml(author?.name ?? 'Admin')}</strong></p>
-      <p>${escapeHtml(trimmedBody).replace(/\n/g, '<br>')}</p>
-      <p><a href="${siteUrl}/babillard">Voir sur Cap Crunch</a></p>
-    `,
-  }).catch(() => {})
+  // after() : voir le commentaire dans lib/threadNotify.ts — un envoi fire-and-forget non
+  // enveloppé risque d'être coupé avant la fin sur Vercel.
+  after(() => Promise.all([
+    sendPushToAll({
+      title: `Babillard — ${trimmedTitle}`,
+      body: trimmedBody.slice(0, 150),
+      url: '/babillard',
+    }).catch(() => {}),
+    sendEmailToAll({
+      subject: `Babillard — ${trimmedTitle}`,
+      html: `
+        <p>Publié par <strong>${escapeHtml(author?.name ?? 'Admin')}</strong></p>
+        <p>${escapeHtml(trimmedBody).replace(/\n/g, '<br>')}</p>
+        <p><a href="${siteUrl}/babillard">Voir sur Cap Crunch</a></p>
+      `,
+    }).catch(() => {}),
+  ]))
 
   revalidatePath('/babillard')
   revalidatePath('/admin/communaute')
@@ -93,7 +97,10 @@ export async function addCommentAction(postId: number, body: string): Promise<{ 
   const { notifyThreadParticipants } = await import('@/lib/threadNotify')
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
   const participantIds = [...new Set((priorComments ?? []).map(c => c.pooler_id as string))]
-  notifyThreadParticipants(
+  // after() : notifyThreadParticipants fait un await (requête admins) avant son propre after()
+  // interne — l'appel externe doit aussi être enveloppé, sinon ce premier await peut être coupé
+  // avant même d'atteindre le after() interne. Voir le commentaire dans lib/threadNotify.ts.
+  after(() => notifyThreadParticipants(
     participantIds,
     user.id,
     {
@@ -109,7 +116,7 @@ export async function addCommentAction(postId: number, body: string): Promise<{ 
         <p><a href="${siteUrl}/babillard">Voir sur Cap Crunch</a></p>
       `,
     },
-  ).catch(() => {})
+  ).catch(() => {}))
 
   revalidatePath('/babillard')
   return {}

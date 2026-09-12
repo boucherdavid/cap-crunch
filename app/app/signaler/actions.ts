@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { sendPushToAdmins } from '@/lib/push'
+import { after } from 'next/server'
 
 export async function submitFeedbackAction(
   type: string,
@@ -25,11 +26,12 @@ export async function submitFeedbackAction(
   if (error) return { error: 'Erreur lors de l\'envoi. Réessayez.' }
 
   const TYPE_LABEL: Record<string, string> = { bug: 'Bug', suggestion: 'Suggestion', autre: 'Commentaire' }
-  sendPushToAdmins({
+  // after() : voir le commentaire dans lib/threadNotify.ts.
+  after(() => sendPushToAdmins({
     title: `Cap Crunch — ${TYPE_LABEL[type] ?? 'Retour'}`,
     body:  `${pooler?.name ?? 'Un pooler'} a soumis un retour : ${description.trim().slice(0, 80)}${description.length > 80 ? '…' : ''}`,
     url:   '/admin/communaute?tab=communication',
-  }).catch(() => {})
+  }).catch(() => {}))
 
   return {}
 }
