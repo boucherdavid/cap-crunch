@@ -7359,9 +7359,8 @@ tout commité et synchronisé `staging`/`main` :
   a "Aliaksei Protas" **et** un doublon suspect "Ilya Protas" aussi sur WSH, ce qui bloque le
   repli nom de famille+équipe (2 candidats) ; signalé à David, pas corrigé (possible donnée
   erronée dans `players`, à valider avant de toucher).
-- Importé en staging (367 lignes, `source='cbs'`) ; import prod en attente de confirmation de
-  David (écriture bloquée automatiquement par le classificateur de permissions, comme la
-  suppression des lignes `espn` en prod).
+- Importé en staging (367 lignes, `source='cbs'`) puis en **prod** (confirmé par David) : 133
+  lignes `espn` supprimées et 367 lignes `cbs` importées dans les deux environnements.
 
 **[Feature] — Nouvelle page `/statistiques/projections`**
 (`app/app/statistiques/projections/page.tsx`, `.../ProjectionsTable.tsx`,
@@ -7382,3 +7381,8 @@ tout commité et synchronisé `staging`/`main` :
   visuelle en navigateur** (pas de `chromium-cli`/Playwright disponible sur ce poste, et les
   identifiants de test `credentials/poolers-staging.md` ont échoué — probablement périmés) —
   à valider par David en ouvrant la page.
+- **Ajusté le jour même (David)** : onglets Patineurs/Gardiens remplacés par
+  Attaquants/Défenseurs/Gardiens (position LD/RD/D = défenseur, reste = attaquant) + point de
+  disponibilité (vert = libre, gris = dans un roster actif) identique à `/statistiques` et
+  `/joueurs` — `fetchTakenNames()` ajoutée dans `page.tsx`, même portée que celle de
+  `/statistiques/page.tsx`.
