@@ -7410,3 +7410,36 @@ tout commité et synchronisé `staging`/`main` :
   joueur — répond à la suggestion de David d'exposer le rythme par match plutôt que seulement
   le total extrapolé, sans casser la comparabilité directe avec les colonnes NHL.com/CBS
   (qui restent en points de saison).
+- **Second bug trouvé par David** ("pourquoi McDavid montre 2 saisons, il en a joué 3 ?") : les
+  "3 dernières saisons" étaient construites comme [saison active, active-1, active-2] — mais la
+  saison active 2026-27 n'a pas encore commencé (0 match pour tout le monde en ce 13 septembre),
+  donc cette case était toujours vide et gaspillait un rang pondéré, ne laissant que 2 vraies
+  saisons même pour un joueur avec un long historique. Corrigé des deux côtés
+  (`statistiques/projections/page.tsx` et `PlayerSlideOver.tsx`) : on va chercher une saison de
+  plus en réserve (4 au lieu de 3 en bulk ; jusqu'à 8 déjà disponibles côté panneau joueur) et on
+  prend les 3 premières qui passent le seuil de matchs, peu importe leur rang chronologique brut,
+  plutôt que de figer une fenêtre de 3 puis filtrer. Confirmé sur McDavid : `trendSeasons` passe
+  de 2 à 3 (225 matchs).
+
+**[Feature] — 3 colonnes ajoutées : Saison dernière, Pts/Match, Progression**
+(`app/app/statistiques/projections/page.tsx`, `.../ProjectionsTable.tsx`) :
+- David : afficher le rythme par match (déjà en infobulle) comme colonne à part, le total réel
+  de la saison dernière, et un indicateur de progression saison après saison.
+- **Saison dernière** : vrai total (buts+passes patineurs, victoires gardiens) de la saison
+  précédant la saison active — index fixe (`maps[1]`), pas filtré par le seuil de 10 matchs de
+  la tendance (c'est un fait, pas une extrapolation) ; `null` si le joueur n'a pas joué cette
+  saison-là (recrue, arrivée d'Europe...).
+- **Pts/Match** : le rythme pondéré déjà calculé pour la tendance, maintenant aussi affiché en
+  colonne (2 décimales) en plus de l'infobulle.
+- **Progression (↑/↓/→)** : compare le rythme par match des 2 saisons qualifiées (≥10 matchs)
+  les plus récentes utilisées par la tendance — bande de ±10% autour de l'ancien rythme pour
+  éviter qu'un micro-écart s'affiche comme une vraie tendance. `null` (—) si moins de 2 saisons
+  qualifiées (ex: Bonk, aucune saison ≥10 matchs).
+- Vérifié avec une session authentifiée locale (même méthode que les fixs précédents) :
+  McDavid → `lastSeasonValue:138, trendDirection:"up"` ; Bonk → `lastSeasonValue:2` (fait réel
+  malgré l'échantillon minuscule), `trend:null, trendDirection:null`.
+- **Piège rencontré pendant la vérification** : un `npm run build` lancé dans le même dossier
+  pendant que `next dev` tournait en arrière-plan a corrompu l'état du serveur dev (RSC payload
+  périmé, ne reflétait plus les derniers champs) — redémarrage propre du serveur dev nécessaire
+  après un build de validation. À éviter : ne pas lancer `next build` et `next dev` en parallèle
+  sur le même dossier `app/`.

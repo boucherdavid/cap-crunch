@@ -26,17 +26,26 @@ type Trend = { projected: number; perGame: number; seasonsUsed: number; gamesUse
 // app/statistiques/projections/page.tsx, même seuil.
 const MIN_GAMES_FOR_TREND = 10
 
+const WEIGHTS = [3, 2, 1]
+
+// `seasons` est déjà trié du plus récent au plus ancien (jusqu'à 8 saisons) — on prend les 3
+// premières qui passent le seuil de matchs, peu importe leur rang chronologique, plutôt que de
+// figer une fenêtre des 3 plus récentes puis filtrer : la saison en cours n'a souvent pas encore
+// de matchs joués (pré-saison/tout début d'année) et gaspillerait sinon un rang pondéré.
 function computeSkaterTrend(seasons: NhlSeasonTotal[]): Trend | null {
-  const recent = seasons.slice(0, 3).filter(s => (s.gamesPlayed ?? 0) >= MIN_GAMES_FOR_TREND)
+  const recent: NhlSeasonTotal[] = []
+  for (const s of seasons) {
+    if ((s.gamesPlayed ?? 0) >= MIN_GAMES_FOR_TREND) recent.push(s)
+    if (recent.length === WEIGHTS.length) break
+  }
   if (recent.length === 0) return null
-  const weights = [3, 2, 1]
   let weightedSum = 0
   let weightTotal = 0
   let gamesUsed = 0
   recent.forEach((s, i) => {
     const ppg = ((s.goals ?? 0) + (s.assists ?? 0)) / (s.gamesPlayed ?? 1)
-    weightedSum += ppg * weights[i]
-    weightTotal += weights[i]
+    weightedSum += ppg * WEIGHTS[i]
+    weightTotal += WEIGHTS[i]
     gamesUsed += s.gamesPlayed ?? 0
   })
   const perGame = weightedSum / weightTotal
@@ -44,16 +53,19 @@ function computeSkaterTrend(seasons: NhlSeasonTotal[]): Trend | null {
 }
 
 function computeGoalieTrend(seasons: NhlSeasonTotal[]): Trend | null {
-  const recent = seasons.slice(0, 3).filter(s => (s.gamesPlayed ?? 0) >= MIN_GAMES_FOR_TREND)
+  const recent: NhlSeasonTotal[] = []
+  for (const s of seasons) {
+    if ((s.gamesPlayed ?? 0) >= MIN_GAMES_FOR_TREND) recent.push(s)
+    if (recent.length === WEIGHTS.length) break
+  }
   if (recent.length === 0) return null
-  const weights = [3, 2, 1]
   let weightedSum = 0
   let weightTotal = 0
   let gamesUsed = 0
   recent.forEach((s, i) => {
     const winRate = (s.wins ?? 0) / (s.gamesPlayed ?? 1)
-    weightedSum += winRate * weights[i]
-    weightTotal += weights[i]
+    weightedSum += winRate * WEIGHTS[i]
+    weightTotal += WEIGHTS[i]
     gamesUsed += s.gamesPlayed ?? 0
   })
   const perGame = weightedSum / weightTotal

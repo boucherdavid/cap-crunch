@@ -7,7 +7,7 @@ import PlayerLink from '@/components/PlayerLink'
 import { normalizeSearch } from '@/lib/normalizeSearch'
 
 type Tab = 'forwards' | 'defense' | 'goalies'
-type SortKey = 'nhlCom' | 'cbs' | 'trend'
+type SortKey = 'nhlCom' | 'cbs' | 'lastSeasonValue' | 'trendPerGame' | 'trend'
 
 // position peut être multi-poste ("LD,RD", "C,LW"...) — jamais juste "D" seul dans nos données —
 // et nullable (`players.position`). Les codes attaquants (C/LW/RW) ne contiennent jamais la
@@ -27,6 +27,13 @@ function AvailDot({ available }: { available: boolean }) {
       className={`inline-block w-2 h-2 rounded-full shrink-0 ${available ? 'bg-green-500' : 'bg-slate-300'}`}
     />
   )
+}
+
+function DirectionIcon({ direction }: { direction: 'up' | 'down' | 'stable' | null }) {
+  if (direction === 'up') return <span className="text-green-600 font-bold" title="En hausse (dernières saisons réelles)">↑</span>
+  if (direction === 'down') return <span className="text-red-600 font-bold" title="En baisse (dernières saisons réelles)">↓</span>
+  if (direction === 'stable') return <span className="text-gray-400 font-bold" title="Stable (dernières saisons réelles)">→</span>
+  return <span className="text-gray-300">—</span>
 }
 
 export default function ProjectionsTable({
@@ -96,9 +103,11 @@ export default function ProjectionsTable({
       </div>
 
       <p className="text-sm text-gray-500 mb-4">
-        NHL.com et CBS Sports (projections externes collées manuellement) + tendance pondérée sur
-        les 3 dernières saisons réelles (repère rapide, pas une vraie projection) — mêmes chiffres
-        que le panneau détail joueur, regroupés ici pour comparer plus facilement.
+        NHL.com et CBS Sports (projections externes collées manuellement), la saison dernière
+        réelle, et une tendance pondérée sur les saisons réelles récentes (rythme par match projeté
+        sur 82 matchs — repère rapide, pas une vraie projection ; ignore les saisons à moins de 10
+        matchs) avec sa progression (↑/↓/→) — mêmes chiffres que le panneau détail joueur,
+        regroupés ici pour comparer plus facilement.
       </p>
 
       <div className="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-3 items-center">
@@ -156,13 +165,16 @@ export default function ProjectionsTable({
               <th className="text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Pos</th>
               <th className={sortHeaderClass('nhlCom')} onClick={() => setSortKey('nhlCom')}>NHL.com</th>
               <th className={sortHeaderClass('cbs')} onClick={() => setSortKey('cbs')}>CBS</th>
+              <th className={`${sortHeaderClass('lastSeasonValue')} hidden sm:table-cell`} onClick={() => setSortKey('lastSeasonValue')}>Saison dernière</th>
+              <th className={`${sortHeaderClass('trendPerGame')} hidden sm:table-cell`} onClick={() => setSortKey('trendPerGame')}>Pts/Match</th>
               <th className={sortHeaderClass('trend')} onClick={() => setSortKey('trend')}>Tendance 3 saisons</th>
+              <th className="text-center px-4 py-3 font-medium text-gray-600" title="Progression saison après saison">Prog.</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-12 text-gray-400">Aucun joueur ne correspond aux filtres.</td>
+                <td colSpan={11} className="text-center py-12 text-gray-400">Aucun joueur ne correspond aux filtres.</td>
               </tr>
             ) : (
               rows.map((p, i) => (
@@ -180,11 +192,20 @@ export default function ProjectionsTable({
                   <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900">
                     {p.cbs ?? '—'}
                   </td>
+                  <td className="px-4 py-2.5 text-right tabular-nums text-gray-600 hidden sm:table-cell">
+                    {p.lastSeasonValue ?? '—'}
+                  </td>
+                  <td className="px-4 py-2.5 text-right tabular-nums text-gray-600 hidden sm:table-cell">
+                    {p.trendPerGame != null ? p.trendPerGame.toFixed(2) : '—'}
+                  </td>
                   <td
                     className="px-4 py-2.5 text-right tabular-nums text-blue-700"
                     title={p.trend != null ? `${p.trendPerGame?.toFixed(2)} ${unit}/match — ${p.trendSeasons} saison${p.trendSeasons > 1 ? 's' : ''}, ${p.trendGames} matchs` : 'Échantillon trop petit (< 10 matchs par saison)'}
                   >
                     {p.trend ?? '—'}
+                  </td>
+                  <td className="px-4 py-2.5 text-center">
+                    <DirectionIcon direction={p.trendDirection} />
                   </td>
                 </tr>
               ))
