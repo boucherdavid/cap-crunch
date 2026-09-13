@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { fetchPlayerLanding, type NhlPlayerLanding, type NhlSeasonTotal } from '@/lib/nhl-player'
 import { createClient } from '@/lib/supabase/client'
 
-const SOURCE_LABEL: Record<string, string> = { nhl_com: 'NHL.com', espn: 'ESPN' }
+const SOURCE_LABEL: Record<string, string> = { nhl_com: 'NHL.com' }
 
 type Projection = { source: string; season: string; projected_points: number | null; projected_wins: number | null }
 
