@@ -9,7 +9,11 @@ import { normalizeSearch } from '@/lib/normalizeSearch'
 type Tab = 'forwards' | 'defense' | 'goalies'
 type SortKey = 'nhlCom' | 'cbs' | 'trend'
 
-const DEFENSE_POSITIONS = new Set(['D', 'LD', 'RD'])
+// position peut être multi-poste ("LD,RD", "C,LW"...) — jamais juste "D" seul dans nos données.
+// Les codes attaquants (C/LW/RW) ne contiennent jamais la lettre D, donc une sous-chaîne suffit.
+function isDefensePosition(position: string): boolean {
+  return position.includes('D')
+}
 
 function normName(s: string) {
   return (s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/-/g, ' ').trim()
@@ -37,8 +41,8 @@ export default function ProjectionsTable({
   const [availOnly, setAvailOnly] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('nhlCom')
 
-  const forwards = useMemo(() => players.filter(p => !p.isGoalie && !DEFENSE_POSITIONS.has(p.position)), [players])
-  const defense = useMemo(() => players.filter(p => !p.isGoalie && DEFENSE_POSITIONS.has(p.position)), [players])
+  const forwards = useMemo(() => players.filter(p => !p.isGoalie && !isDefensePosition(p.position)), [players])
+  const defense = useMemo(() => players.filter(p => !p.isGoalie && isDefensePosition(p.position)), [players])
   const goalies = useMemo(() => players.filter(p => p.isGoalie), [players])
 
   const teamOptions = useMemo(
