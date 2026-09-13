@@ -13,6 +13,7 @@ export type ProjectionRow = {
   team: string | null
   position: string
   isGoalie: boolean
+  available: boolean
   nhlCom: number | null
   cbs: number | null
   trend: number | null
@@ -31,6 +32,35 @@ type RawProjection = {
     position: string
     teams: { code: string } | null
   } | null
+}
+
+function normName(s: string) {
+  return (s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/-/g, ' ').trim()
+}
+
+/** Noms normalisés des joueurs dans un roster actif (même portée que /statistiques). */
+async function fetchTakenNames(): Promise<Set<string>> {
+  const supabase = await createClient()
+  const { data: season } = await supabase
+    .from('pool_seasons')
+    .select('id')
+    .eq('is_active', true)
+    .eq('is_playoff', false)
+    .single()
+  if (!season) return new Set()
+
+  const { data: rosters } = await supabase
+    .from('pooler_rosters')
+    .select('players(first_name, last_name)')
+    .eq('pool_season_id', season.id)
+  if (!rosters) return new Set()
+
+  return new Set(
+    rosters
+      .map(r => r.players as unknown as { first_name: string; last_name: string } | null)
+      .filter((p): p is { first_name: string; last_name: string } => !!p)
+      .map(p => normName(`${p.first_name} ${p.last_name}`)),
+  )
 }
 
 /** ["20262027", "20252026", "20242025"] à partir de la saison NHL courante */
@@ -95,7 +125,7 @@ export default async function ProjectionsPage() {
         .in('source', ['nhl_com', 'cbs'])
     : { data: null }
 
-  const byPlayer = new Map<number, Omit<ProjectionRow, 'trend' | 'trendSeasons'>>()
+  const byPlayer = new Map<number, Omit<ProjectionRow, 'trend' | 'trendSeasons' | 'available'>>()
   for (const r of (rows as unknown as RawProjection[] | null) ?? []) {
     const p = r.players
     if (!p) continue
@@ -113,14 +143,16 @@ export default async function ProjectionsPage() {
 
   const nhlSeasonId = await fetchActiveNhlSeasonId(false)
   const seasonIds = recentSeasonIds(nhlSeasonId, 3)
-  const [skaterMaps, goalieMaps] = await Promise.all([
+  const [skaterMaps, goalieMaps, takenNames] = await Promise.all([
     Promise.all(seasonIds.map(id => fetchNhlSkatersByNhlId(2, id))),
     Promise.all(seasonIds.map(id => fetchNhlGoaliesByNhlId(2, id))),
+    fetchTakenNames(),
   ])
 
   const players: ProjectionRow[] = Array.from(byPlayer.values()).map(p => {
     const trend = p.isGoalie ? computeGoalieTrend(p.nhlId, goalieMaps) : computeSkaterTrend(p.nhlId, skaterMaps)
-    return { ...p, trend: trend?.projected ?? null, trendSeasons: trend?.seasonsUsed ?? 0 }
+    const available = !takenNames.has(normName(`${p.firstName} ${p.lastName}`))
+    return { ...p, available, trend: trend?.projected ?? null, trendSeasons: trend?.seasonsUsed ?? 0 }
   })
 
   return (

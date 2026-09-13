@@ -6,11 +6,22 @@ import TeamBadge from '@/components/TeamBadge'
 import PlayerLink from '@/components/PlayerLink'
 import { normalizeSearch } from '@/lib/normalizeSearch'
 
-type Tab = 'skaters' | 'goalies'
+type Tab = 'forwards' | 'defense' | 'goalies'
 type SortKey = 'nhlCom' | 'cbs' | 'trend'
+
+const DEFENSE_POSITIONS = new Set(['D', 'LD', 'RD'])
 
 function normName(s: string) {
   return (s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/-/g, ' ').trim()
+}
+
+function AvailDot({ available }: { available: boolean }) {
+  return (
+    <span
+      title={available ? 'Disponible' : 'Dans un pool'}
+      className={`inline-block w-2 h-2 rounded-full shrink-0 ${available ? 'bg-green-500' : 'bg-slate-300'}`}
+    />
+  )
 }
 
 export default function ProjectionsTable({
@@ -20,12 +31,14 @@ export default function ProjectionsTable({
   players: ProjectionRow[]
   season: string | null
 }) {
-  const [tab, setTab] = useState<Tab>('skaters')
+  const [tab, setTab] = useState<Tab>('forwards')
   const [search, setSearch] = useState('')
   const [selectedTeam, setSelectedTeam] = useState('')
+  const [availOnly, setAvailOnly] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('nhlCom')
 
-  const skaters = useMemo(() => players.filter(p => !p.isGoalie), [players])
+  const forwards = useMemo(() => players.filter(p => !p.isGoalie && !DEFENSE_POSITIONS.has(p.position)), [players])
+  const defense = useMemo(() => players.filter(p => !p.isGoalie && DEFENSE_POSITIONS.has(p.position)), [players])
   const goalies = useMemo(() => players.filter(p => p.isGoalie), [players])
 
   const teamOptions = useMemo(
@@ -37,6 +50,7 @@ export default function ProjectionsTable({
     const q = normalizeSearch(search.trim())
     return list
       .filter(p => {
+        if (availOnly && !p.available) return false
         if (selectedTeam && p.team !== selectedTeam) return false
         if (q) {
           const name = normalizeSearch(`${p.firstName} ${p.lastName}`)
@@ -54,8 +68,9 @@ export default function ProjectionsTable({
       })
   }
 
-  const filteredSkaters = useMemo(() => filterAndSort(skaters), [skaters, search, selectedTeam, sortKey])
-  const filteredGoalies = useMemo(() => filterAndSort(goalies), [goalies, search, selectedTeam, sortKey])
+  const filteredForwards = useMemo(() => filterAndSort(forwards), [forwards, search, selectedTeam, availOnly, sortKey])
+  const filteredDefense = useMemo(() => filterAndSort(defense), [defense, search, selectedTeam, availOnly, sortKey])
+  const filteredGoalies = useMemo(() => filterAndSort(goalies), [goalies, search, selectedTeam, availOnly, sortKey])
 
   const tabClass = (t: Tab) =>
     `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
@@ -66,7 +81,7 @@ export default function ProjectionsTable({
     `text-right px-4 py-3 font-medium cursor-pointer select-none ${sortKey === key ? 'text-blue-700' : 'text-gray-600 hover:text-gray-800'}`
 
   const unit = tab === 'goalies' ? 'vict.' : 'pts'
-  const rows = tab === 'goalies' ? filteredGoalies : filteredSkaters
+  const rows = tab === 'goalies' ? filteredGoalies : tab === 'defense' ? filteredDefense : filteredForwards
 
   return (
     <div>
@@ -83,7 +98,8 @@ export default function ProjectionsTable({
 
       <div className="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-3 items-center">
         <div className="flex gap-1">
-          <button type="button" className={tabClass('skaters')} onClick={() => setTab('skaters')}>Patineurs</button>
+          <button type="button" className={tabClass('forwards')} onClick={() => setTab('forwards')}>Attaquants</button>
+          <button type="button" className={tabClass('defense')} onClick={() => setTab('defense')}>Défenseurs</button>
           <button type="button" className={tabClass('goalies')} onClick={() => setTab('goalies')}>Gardiens</button>
         </div>
         <input
@@ -101,10 +117,22 @@ export default function ProjectionsTable({
           <option value="">Toutes les équipes</option>
           {teamOptions.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
-        {(search || selectedTeam) && (
+        <button
+          type="button"
+          onClick={() => setAvailOnly(v => !v)}
+          className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
+            availOnly
+              ? 'border-green-500 bg-green-50 text-green-700 font-medium'
+              : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+          Disponibles
+        </button>
+        {(search || selectedTeam || availOnly) && (
           <button
             type="button"
-            onClick={() => { setSearch(''); setSelectedTeam('') }}
+            onClick={() => { setSearch(''); setSelectedTeam(''); setAvailOnly(false) }}
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
           >
             Effacer
@@ -117,6 +145,7 @@ export default function ProjectionsTable({
           <thead>
             <tr className="bg-gray-50 border-b">
               <th className="text-left px-4 py-3 font-medium text-gray-600 w-8">#</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600 w-5" title="Disponibilité" />
               <th className="text-left px-4 py-3 font-medium text-gray-600">{tab === 'goalies' ? 'Gardien' : 'Joueur'}</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Équipe</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Pos</th>
@@ -128,12 +157,13 @@ export default function ProjectionsTable({
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-12 text-gray-400">Aucun joueur ne correspond aux filtres.</td>
+                <td colSpan={8} className="text-center py-12 text-gray-400">Aucun joueur ne correspond aux filtres.</td>
               </tr>
             ) : (
               rows.map((p, i) => (
                 <tr key={`${normName(p.firstName + p.lastName)}-${i}`} className="border-b hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-2.5 text-gray-400 text-xs">{i + 1}</td>
+                  <td className="px-4 py-2.5"><AvailDot available={p.available} /></td>
                   <td className="px-4 py-2.5 font-medium text-gray-800">
                     <PlayerLink nhlId={p.nhlId}>{p.lastName}, {p.firstName}</PlayerLink>
                   </td>
