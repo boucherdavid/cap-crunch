@@ -180,7 +180,10 @@ export default function ProjectionsTable({
                   <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900">
                     {p.cbs ?? '—'}
                   </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-blue-700">
+                  <td
+                    className="px-4 py-2.5 text-right tabular-nums text-blue-700"
+                    title={p.trend != null ? `${p.trendPerGame?.toFixed(2)} ${unit}/match — ${p.trendSeasons} saison${p.trendSeasons > 1 ? 's' : ''}, ${p.trendGames} matchs` : 'Échantillon trop petit (< 10 matchs par saison)'}
+                  >
                     {p.trend ?? '—'}
                   </td>
                 </tr>

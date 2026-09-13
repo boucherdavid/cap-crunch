@@ -7399,3 +7399,14 @@ tout commité et synchronisé `staging`/`main` :
   corrigé (200 OK, 275 joueurs) avant de pousser. Le compte `david@staging.test` du fichier
   `credentials/poolers-staging.md` refuse maintenant ses identifiants (probablement changé
   depuis) ; `jerome@staging.test` fonctionne toujours.
+- **Dernier ajustement (David)** : Oliver Bonk (2 matchs en carrière) affichait une tendance de
+  164 points — un rythme par match sur un échantillon minuscule, extrapolé sur 82 matchs,
+  produit un chiffre absurde. `MIN_GAMES_FOR_TREND = 10` ajouté (une saison sous ce seuil est
+  ignorée par la tendance, comme une saison à 0 match) — appliqué à la fois dans
+  `statistiques/projections/page.tsx` (calcul bulk) et `PlayerSlideOver.tsx` (calcul par
+  joueur), pour que les deux restent cohérents. Confirmé sur Bonk : `trend` passe de `164` à
+  `null` (affiché `—`). Infobulle ajoutée sur la cellule Tendance du tableau (points/match,
+  nombre de saisons et de matchs utilisés) et complément similaire dans le panneau détail
+  joueur — répond à la suggestion de David d'exposer le rythme par match plutôt que seulement
+  le total extrapolé, sans casser la comparabilité directe avec les colonnes NHL.com/CBS
+  (qui restent en points de saison).

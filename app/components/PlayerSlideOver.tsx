@@ -18,34 +18,46 @@ function formatSeason(s: number): string {
 // comptant le plus) — projette un rythme par match sur un calendrier complet de 82 matchs. Sert
 // de repère rapide pour les poolers en préparation de repêchage/agents libres, pas une vraie
 // projection statistique.
-type Trend = { projected: number; seasonsUsed: number }
+type Trend = { projected: number; perGame: number; seasonsUsed: number; gamesUsed: number }
+
+// Une saison à 1-2 matchs (rappel éclair, blessure) donne un rythme par match extrapolé sur 82
+// matchs complètement absurde (ex: 2 matchs à 2 pts = 164 pts projetés) — ignorée comme une
+// saison à 0 match plutôt que de fausser la moyenne pondérée. Voir aussi
+// app/statistiques/projections/page.tsx, même seuil.
+const MIN_GAMES_FOR_TREND = 10
 
 function computeSkaterTrend(seasons: NhlSeasonTotal[]): Trend | null {
-  const recent = seasons.slice(0, 3).filter(s => (s.gamesPlayed ?? 0) > 0)
+  const recent = seasons.slice(0, 3).filter(s => (s.gamesPlayed ?? 0) >= MIN_GAMES_FOR_TREND)
   if (recent.length === 0) return null
   const weights = [3, 2, 1]
   let weightedSum = 0
   let weightTotal = 0
+  let gamesUsed = 0
   recent.forEach((s, i) => {
     const ppg = ((s.goals ?? 0) + (s.assists ?? 0)) / (s.gamesPlayed ?? 1)
     weightedSum += ppg * weights[i]
     weightTotal += weights[i]
+    gamesUsed += s.gamesPlayed ?? 0
   })
-  return { projected: Math.round((weightedSum / weightTotal) * 82), seasonsUsed: recent.length }
+  const perGame = weightedSum / weightTotal
+  return { projected: Math.round(perGame * 82), perGame, seasonsUsed: recent.length, gamesUsed }
 }
 
 function computeGoalieTrend(seasons: NhlSeasonTotal[]): Trend | null {
-  const recent = seasons.slice(0, 3).filter(s => (s.gamesPlayed ?? 0) > 0)
+  const recent = seasons.slice(0, 3).filter(s => (s.gamesPlayed ?? 0) >= MIN_GAMES_FOR_TREND)
   if (recent.length === 0) return null
   const weights = [3, 2, 1]
   let weightedSum = 0
   let weightTotal = 0
+  let gamesUsed = 0
   recent.forEach((s, i) => {
     const winRate = (s.wins ?? 0) / (s.gamesPlayed ?? 1)
     weightedSum += winRate * weights[i]
     weightTotal += weights[i]
+    gamesUsed += s.gamesPlayed ?? 0
   })
-  return { projected: Math.round((weightedSum / weightTotal) * 82), seasonsUsed: recent.length }
+  const perGame = weightedSum / weightTotal
+  return { projected: Math.round(perGame * 82), perGame, seasonsUsed: recent.length, gamesUsed }
 }
 
 function SkaterRow({ s }: { s: NhlSeasonTotal }) {
@@ -208,7 +220,9 @@ export default function PlayerSlideOver() {
               <p className="text-2xl font-bold text-blue-700">
                 {trend.projected} <span className="text-sm font-normal text-blue-500">{isGoalie ? 'victoires projetées' : 'points projetés'} sur 82 matchs</span>
               </p>
-              <p className="text-xs text-blue-400 mt-1">Moyenne pondérée vers la saison la plus récente — repère rapide, pas une vraie projection.</p>
+              <p className="text-xs text-blue-400 mt-1">
+                {trend.perGame.toFixed(2)} {isGoalie ? 'victoire' : 'point'}/match sur {trend.gamesUsed} matchs — moyenne pondérée vers la saison la plus récente, repère rapide, pas une vraie projection.
+              </p>
             </div>
           )}
 

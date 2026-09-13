@@ -18,6 +18,8 @@ export type ProjectionRow = {
   cbs: number | null
   trend: number | null
   trendSeasons: number
+  trendPerGame: number | null
+  trendGames: number
 }
 
 type RawProjection = {
@@ -77,32 +79,42 @@ function recentSeasonIds(nhlSeasonId: string, count: number): string[] {
 // pas d'un fetch par joueur (fetchPlayerLanding), pour rester rapide sur ~400 joueurs.
 const WEIGHTS = [3, 2, 1]
 
+// Une saison à 1-2 matchs (rappel éclair, blessure) donne un rythme par match extrapolé sur
+// 82 matchs complètement absurde (ex: 2 matchs à 2 pts = 164 pts projetés) — David a repéré le
+// cas d'Oliver Bonk. Une saison sous ce seuil est ignorée par la tendance, exactement comme une
+// saison à 0 match ; en dessous, aucune tendance n'est affichée plutôt qu'un chiffre trompeur.
+const MIN_GAMES_FOR_TREND = 10
+
 function computeSkaterTrend(nhlId: number | null, maps: Map<number, NhlSkaterStat>[]) {
   if (!nhlId) return null
-  let weightedSum = 0, weightTotal = 0, seasonsUsed = 0
+  let weightedSum = 0, weightTotal = 0, seasonsUsed = 0, gamesUsed = 0
   maps.forEach((map, i) => {
     const s = map.get(nhlId)
-    if (!s || s.gamesPlayed <= 0) return
+    if (!s || s.gamesPlayed < MIN_GAMES_FOR_TREND) return
     weightedSum += ((s.goals + s.assists) / s.gamesPlayed) * WEIGHTS[i]
     weightTotal += WEIGHTS[i]
     seasonsUsed++
+    gamesUsed += s.gamesPlayed
   })
   if (weightTotal === 0) return null
-  return { projected: Math.round((weightedSum / weightTotal) * 82), seasonsUsed }
+  const perGame = weightedSum / weightTotal
+  return { projected: Math.round(perGame * 82), perGame, seasonsUsed, gamesUsed }
 }
 
 function computeGoalieTrend(nhlId: number | null, maps: Map<number, NhlGoalieStat>[]) {
   if (!nhlId) return null
-  let weightedSum = 0, weightTotal = 0, seasonsUsed = 0
+  let weightedSum = 0, weightTotal = 0, seasonsUsed = 0, gamesUsed = 0
   maps.forEach((map, i) => {
     const s = map.get(nhlId)
-    if (!s || s.gamesStarted <= 0) return
+    if (!s || s.gamesStarted < MIN_GAMES_FOR_TREND) return
     weightedSum += (s.wins / s.gamesStarted) * WEIGHTS[i]
     weightTotal += WEIGHTS[i]
     seasonsUsed++
+    gamesUsed += s.gamesStarted
   })
   if (weightTotal === 0) return null
-  return { projected: Math.round((weightedSum / weightTotal) * 82), seasonsUsed }
+  const perGame = weightedSum / weightTotal
+  return { projected: Math.round(perGame * 82), perGame, seasonsUsed, gamesUsed }
 }
 
 export default async function ProjectionsPage() {
@@ -125,7 +137,7 @@ export default async function ProjectionsPage() {
         .in('source', ['nhl_com', 'cbs'])
     : { data: null }
 
-  const byPlayer = new Map<number, Omit<ProjectionRow, 'trend' | 'trendSeasons' | 'available'>>()
+  const byPlayer = new Map<number, Omit<ProjectionRow, 'trend' | 'trendSeasons' | 'trendPerGame' | 'trendGames' | 'available'>>()
   for (const r of (rows as unknown as RawProjection[] | null) ?? []) {
     const p = r.players
     if (!p) continue
@@ -152,7 +164,13 @@ export default async function ProjectionsPage() {
   const players: ProjectionRow[] = Array.from(byPlayer.values()).map(p => {
     const trend = p.isGoalie ? computeGoalieTrend(p.nhlId, goalieMaps) : computeSkaterTrend(p.nhlId, skaterMaps)
     const available = !takenNames.has(normName(`${p.firstName} ${p.lastName}`))
-    return { ...p, available, trend: trend?.projected ?? null, trendSeasons: trend?.seasonsUsed ?? 0 }
+    return {
+      ...p, available,
+      trend: trend?.projected ?? null,
+      trendSeasons: trend?.seasonsUsed ?? 0,
+      trendPerGame: trend?.perGame ?? null,
+      trendGames: trend?.gamesUsed ?? 0,
+    }
   })
 
   return (
