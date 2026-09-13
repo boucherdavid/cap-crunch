@@ -7386,3 +7386,16 @@ tout commité et synchronisé `staging`/`main` :
   disponibilité (vert = libre, gris = dans un roster actif) identique à `/statistiques` et
   `/joueurs` — `fetchTakenNames()` ajoutée dans `page.tsx`, même portée que celle de
   `/statistiques/page.tsx`.
+- **Bug trouvé par David** : tous les défenseurs (ex. Lane Hutson, position `"LD,RD"`)
+  apparaissaient dans l'onglet Attaquants — `players.position` est multi-valeurs
+  (`"LD,RD"`, `"C,LW"`...), jamais un code seul, donc la comparaison exacte contre un `Set`
+  ne matchait jamais. Corrigé par un test de sous-chaîne (`includes('D')` — aucun code
+  attaquant ne contient la lettre D, confirmé sur les 19 valeurs distinctes en base).
+- **Crash 500 trouvé juste après** (David : "la page n'est plus accessible") — un joueur a
+  `players.position = null` (colonne nullable), et le test de sous-chaîne plantait sur
+  `null.includes(...)`. Reproduit localement en simulant une vraie session connectée
+  (login API Supabase avec le compte `jerome@staging.test`, cookie `sb-<ref>-auth-token`
+  construit à la main, `curl` contre le serveur local) plutôt que de deviner — confirmé
+  corrigé (200 OK, 275 joueurs) avant de pousser. Le compte `david@staging.test` du fichier
+  `credentials/poolers-staging.md` refuse maintenant ses identifiants (probablement changé
+  depuis) ; `jerome@staging.test` fonctionne toujours.
