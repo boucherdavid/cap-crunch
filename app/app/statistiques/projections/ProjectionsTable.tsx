@@ -9,10 +9,11 @@ import { normalizeSearch } from '@/lib/normalizeSearch'
 type Tab = 'forwards' | 'defense' | 'goalies'
 type SortKey = 'nhlCom' | 'cbs' | 'trend'
 
-// position peut être multi-poste ("LD,RD", "C,LW"...) — jamais juste "D" seul dans nos données.
-// Les codes attaquants (C/LW/RW) ne contiennent jamais la lettre D, donc une sous-chaîne suffit.
-function isDefensePosition(position: string): boolean {
-  return position.includes('D')
+// position peut être multi-poste ("LD,RD", "C,LW"...) — jamais juste "D" seul dans nos données —
+// et nullable (`players.position`). Les codes attaquants (C/LW/RW) ne contiennent jamais la
+// lettre D, donc une sous-chaîne suffit.
+function isDefensePosition(position: string | null): boolean {
+  return (position ?? '').includes('D')
 }
 
 function normName(s: string) {
@@ -172,7 +173,7 @@ export default function ProjectionsTable({
                     <PlayerLink nhlId={p.nhlId}>{p.lastName}, {p.firstName}</PlayerLink>
                   </td>
                   <td className="px-4 py-2.5"><TeamBadge code={p.team} /></td>
-                  <td className="px-4 py-2.5 text-gray-500 hidden sm:table-cell">{p.position}</td>
+                  <td className="px-4 py-2.5 text-gray-500 hidden sm:table-cell">{p.position ?? '—'}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900">
                     {p.nhlCom ?? '—'}
                   </td>

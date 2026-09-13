@@ -11,7 +11,7 @@ export type ProjectionRow = {
   firstName: string
   lastName: string
   team: string | null
-  position: string
+  position: string | null
   isGoalie: boolean
   available: boolean
   nhlCom: number | null
@@ -29,7 +29,7 @@ type RawProjection = {
     nhl_id: number | null
     first_name: string
     last_name: string
-    position: string
+    position: string | null
     teams: { code: string } | null
   } | null
 }
