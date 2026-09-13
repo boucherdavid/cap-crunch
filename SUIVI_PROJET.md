@@ -7322,3 +7322,91 @@ tout commité et synchronisé `staging`/`main` :
 - Repêchage agents libres : reste à tester en staging la terminaison du repêchage et le
   "Démarrer la saison" (conformité + déclarations "prêt") avant de considérer la transition de
   saison 2026-27 complète — évoqué en discussion, pas encore fait.
+
+### 2026-09-13 — Projections ESPN abandonnées (parseur non fiable) → remplacées par CBS Sports
+
+**[Fix investigué puis abandonné] — `import_projections_espn.py`** :
+- David : les projections ESPN importées la session précédente (133 lignes, voir entrée
+  2026-09-12 suite) étaient fausses — vérifié concrètement sur Draisaitl (39B/69A attendu,
+  71 pts obtenus).
+- Un premier bug réel a été trouvé et corrigé en cours de route : quand la ligne 1 d'un bloc
+  joueur avait des stats manquantes (`'--'`, très fréquent), l'ancien parseur (déclenché sur
+  "la prochaine ligne avec un chiffre") perdait pied et pouvait avaler le joueur suivant en
+  entier (ex: `FLAF (PIT)` = en fait la ligne ÉQUPOS de Brad Marchand, mal interprétée comme
+  nom, faisant disparaître Rickard Rakell). Parseur réécrit pour s'ancrer sur les lignes
+  ÉQUPOS (toujours présentes, contrairement aux stats) — jumelage passé de 137 à 375+49
+  joueurs. Mais le vrai problème restait plus profond : **colonne nom (A) et colonnes stats
+  (D-K) proviennent de deux copier-coller séparés depuis deux widgets ESPN scrollés
+  indépendamment**, sans garantie d'alignement ligne-pour-ligne fiable une fois collés dans
+  la même feuille — David a confirmé qu'aucune des 3 lignes du bloc de Draisaitl ne
+  correspondait à ses vraies stats. Décision de David : abandonner ESPN comme source plutôt
+  que de continuer à rafistoler un alignement structurellement pas fiable.
+- Script supprimé (`python_script/import_projections_espn.py`), lignes `source='espn'`
+  supprimées de `player_projections` (staging + prod), `SOURCE_LABEL` dans
+  `PlayerSlideOver.tsx` nettoyé de l'entrée `espn`.
+
+**[Feature] — `import_projections_cbs.py` (nouveau script) remplace ESPN**
+(`python_script/import_projections_cbs.py`, `python_script/CBS_TEAM_ALIASES`) :
+- Fichier CBS Sports (`excel/CBS_Proj_2026-2027.xlsx`, 3 onglets Attaquants/Defenseurs/
+  Gardiens) : **une seule ligne par joueur**, colonne "Player" au format
+  `"Nom\xa0POS\xa0\xa0ÉQUIPE"` (espaces insécables) — aucun bloc multi-lignes à recomposer,
+  contrairement à ESPN. Colonne 'p' (patineurs, déjà buts+passes) ou 'w' (gardiens) retenue,
+  arrondie à l'entier (demande explicite de David), reste des colonnes (fpts, +/-, TOI, s%...)
+  ignoré. `CBS_TEAM_ALIASES` pour les codes qui diffèrent des codes LNH standards (LV→VGK,
+  MON→MTL, CLB→CBJ, TB→TBL, WAS→WSH, LA→LAK, NJ→NJD, SJ→SJS).
+- Résultat : 299/300 patineurs jumelés, 68/68 gardiens jumelés, **0 écart >40 pts vs
+  NHL.com** (bien plus propre que ESPN). Un seul non-jumelé : "Alexei Protas" (WSH) — la base
+  a "Aliaksei Protas" **et** un doublon suspect "Ilya Protas" aussi sur WSH, ce qui bloque le
+  repli nom de famille+équipe (2 candidats) ; signalé à David, pas corrigé (possible donnée
+  erronée dans `players`, à valider avant de toucher).
+- Importé en staging (367 lignes, `source='cbs'`) puis en **prod** (confirmé par David) : 133
+  lignes `espn` supprimées et 367 lignes `cbs` importées dans les deux environnements.
+
+**[Feature] — Nouvelle page `/statistiques/projections`**
+(`app/app/statistiques/projections/page.tsx`, `.../ProjectionsTable.tsx`,
+`app/components/Navbar.tsx`) :
+- David : plus facile pour les poolers de consulter les projections (NHL.com/CBS + tendance
+  3 saisons, déjà dans le panneau détail joueur) en un seul tableau plutôt que de cliquer
+  joueur par joueur.
+- Tendance 3 saisons recalculée en **bulk** (mêmes poids 3/2/1 et projection sur 82 matchs que
+  `PlayerSlideOver.tsx`) à partir de `lib/nhl-stats.ts` (3 appels, un par saison, tous les
+  joueurs à la fois) plutôt qu'un fetch par joueur (`fetchPlayerLanding`, ce que fait le
+  panneau latéral) — indispensable pour rester rapide sur ~400 joueurs plutôt que ~400 requêtes
+  individuelles à l'API NHL.
+- Liste des joueurs = ceux ayant au moins une projection (`nhl_com` ou `cbs`) pour la saison
+  active, pas toute la table `players` — même portée que ce que les poolers verraient déjà en
+  cliquant joueur par joueur.
+- Ajoutée au dropdown LNH (desktop + mobile) sous "Statistiques", juste après "LNH".
+- Vérifié : `tsc --noEmit` et `next build` passent, route générée. **Pas de vérification
+  visuelle en navigateur** (pas de `chromium-cli`/Playwright disponible sur ce poste, et les
+  identifiants de test `credentials/poolers-staging.md` ont échoué — probablement périmés) —
+  à valider par David en ouvrant la page.
+- **Ajusté le jour même (David)** : onglets Patineurs/Gardiens remplacés par
+  Attaquants/Défenseurs/Gardiens (position LD/RD/D = défenseur, reste = attaquant) + point de
+  disponibilité (vert = libre, gris = dans un roster actif) identique à `/statistiques` et
+  `/joueurs` — `fetchTakenNames()` ajoutée dans `page.tsx`, même portée que celle de
+  `/statistiques/page.tsx`.
+- **Bug trouvé par David** : tous les défenseurs (ex. Lane Hutson, position `"LD,RD"`)
+  apparaissaient dans l'onglet Attaquants — `players.position` est multi-valeurs
+  (`"LD,RD"`, `"C,LW"`...), jamais un code seul, donc la comparaison exacte contre un `Set`
+  ne matchait jamais. Corrigé par un test de sous-chaîne (`includes('D')` — aucun code
+  attaquant ne contient la lettre D, confirmé sur les 19 valeurs distinctes en base).
+- **Crash 500 trouvé juste après** (David : "la page n'est plus accessible") — un joueur a
+  `players.position = null` (colonne nullable), et le test de sous-chaîne plantait sur
+  `null.includes(...)`. Reproduit localement en simulant une vraie session connectée
+  (login API Supabase avec le compte `jerome@staging.test`, cookie `sb-<ref>-auth-token`
+  construit à la main, `curl` contre le serveur local) plutôt que de deviner — confirmé
+  corrigé (200 OK, 275 joueurs) avant de pousser. Le compte `david@staging.test` du fichier
+  `credentials/poolers-staging.md` refuse maintenant ses identifiants (probablement changé
+  depuis) ; `jerome@staging.test` fonctionne toujours.
+- **Dernier ajustement (David)** : Oliver Bonk (2 matchs en carrière) affichait une tendance de
+  164 points — un rythme par match sur un échantillon minuscule, extrapolé sur 82 matchs,
+  produit un chiffre absurde. `MIN_GAMES_FOR_TREND = 10` ajouté (une saison sous ce seuil est
+  ignorée par la tendance, comme une saison à 0 match) — appliqué à la fois dans
+  `statistiques/projections/page.tsx` (calcul bulk) et `PlayerSlideOver.tsx` (calcul par
+  joueur), pour que les deux restent cohérents. Confirmé sur Bonk : `trend` passe de `164` à
+  `null` (affiché `—`). Infobulle ajoutée sur la cellule Tendance du tableau (points/match,
+  nombre de saisons et de matchs utilisés) et complément similaire dans le panneau détail
+  joueur — répond à la suggestion de David d'exposer le rythme par match plutôt que seulement
+  le total extrapolé, sans casser la comparabilité directe avec les colonnes NHL.com/CBS
+  (qui restent en points de saison).
