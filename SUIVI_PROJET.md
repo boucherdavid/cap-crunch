@@ -7632,3 +7632,14 @@ CLAUDE.md) :
   éviter un chantier de renommage profond (et de casser des liens déjà partagés) pour un
   changement qui ne touche que l'affichage.
 - Vérifié : `tsc --noEmit`/`next build` passent.
+
+**[Docs] — `/aide` mise à jour (Guide + Règlements)** (`app/app/aide/AideTabs.tsx`) — David a
+demandé une mise à jour après la série de livraisons de la session :
+- Nouvelles sections Guide : **Simulation** (Mon alignement + Transaction) et **Projections**.
+- Libellés "Repêchage agents libres" → "Signatures des agents libres" partout (Guide et
+  Règlements), chemins de navigation mis à jour (Alignements, pas Repêchage).
+- **Correction de règle** dans Règlements → Banque de recrues & protection : l'ancien texte
+  disait encore que la fin de l'ELC coupe la protection d'un repêché avant ses 5 ans — mis à
+  jour pour refléter le correctif du jour même (5 ans purs pour un repêché, sans égard à
+  l'ELC ; inchangé pour un agent libre).
+- Vérifié : `tsc --noEmit`/`next build` passent.
