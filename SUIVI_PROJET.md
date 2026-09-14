@@ -7549,3 +7549,33 @@ tout commité et synchronisé `staging`/`main` :
   l'alignement du pooler validée directement contre les données réelles de Jérôme en staging.
 - Pas encore fait : appliquer `simulation_scenarios.sql` en **prod** (attend la validation de
   David sur staging, même flux que d'habitude).
+
+**[Fix] — Mise en page deux colonnes** (`SimulationTool.tsx`) : David — alignement à gauche,
+ajout/recherche/masse à droite (au lieu d'être tout empilé verticalement). `grid-cols-1
+md:grid-cols-2`, empilé sur mobile.
+
+**[Feature] — Statut actif/réserviste par ajout + distinction agents libres/joueurs possédés**
+(`SimulationTool.tsx`, `simulation/actions.ts`) — 2 demandes de David après test :
+- **Actif/Réserviste par ajout** : les recrues activées et agents libres ajoutés n'avaient pas
+  de statut, donc s'affichaient à part (liste plate hors des groupes de position) sans compter
+  dans les postes. Chaque ajout a maintenant un petit bouton à deux états (Actif/Rés.,
+  `TypeToggle`), et l'alignement simulé au complet (actuel + ajouts, moins les retraits) est
+  regroupé en une seule vue par position/réserve (`buildSimEntries`/`groupSimEntries`) — plus
+  de liste séparée. Ajoute aussi un résumé de comptage (X attaquants/défenseurs/gardiens/
+  réservistes) sous l'alignement, informationnel.
+- **Distinguer joueurs libres et possédés dans la recherche** : le bac à sable pré-saison
+  (`searchSandboxFreeAgentsAction`, `repechage-agents-libres/actions.ts`) exclut carrément tout
+  joueur déjà sur un roster — David voulait plutôt les garder visibles (pratique pour simuler
+  une transaction) mais clairement marqués non disponibles par défaut. Nouvelle fonction
+  séparée `searchSimulationPlayersAction` (gardée distincte pour ne rien changer au bac à sable
+  pré-saison) : exclut seulement les joueurs déjà dans l'alignement du pooler courant, annote
+  chaque résultat d'un `owner_name` (nom du pooler propriétaire, `null` = agent libre), trie
+  agents libres d'abord. Affiché en ambre "chez {pooler} (non disponible)" vs vert "agent
+  libre" dans les résultats, et repris dans le libellé de l'ajout côté alignement simulé.
+- `ScenarioData` étendu (`addedRecrueIds: number[]` → `addedRecrues: {id, playerType}[]`,
+  `added[].playerType`/`ownerName` ajoutés) — pas de souci de compatibilité, aucun scénario
+  réel sauvegardé avant ce changement (fonctionnalité livrée le jour même).
+- Vérifié : `tsc --noEmit`/`next build` passent ; page rechargée avec une session authentifiée
+  (200 OK) ; logique de mapping propriétaire (`owner_name`) validée directement contre les
+  rosters réels de staging (ex: Brandt Clarke correctement rattaché à Steve, joueurs de Jérôme
+  correctement identifiés pour exclusion).
