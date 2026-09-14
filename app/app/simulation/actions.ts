@@ -111,20 +111,24 @@ export type SimRosterEntry = {
   player_id: number
   player_type: string
   playerName: string
+  firstName: string
+  lastName: string
   position: string | null
   cap_number: number
   isEstimatedCap: boolean
 }
 
 // Version allégée de loadPresaisonDataAction (admin/presaison/actions.ts) — seulement
-// l'alignement et le cap du pooler courant, sans la mécanique de file d'attente/tour de
-// repêchage qui ne s'applique pas ici. Utilisable à l'année, contrairement à celle-là (voir
-// /simulation, David, 2026-09-14 : un pooler veut pouvoir tester des ajouts/retraits en cours
-// de saison, pas seulement en pré-saison).
-export async function loadMyRosterForSimulationAction(saisonId: number): Promise<{
+// l'alignement et le cap d'UN pooler (pas de mécanique de file d'attente/tour de repêchage,
+// qui ne s'applique pas ici). Utilisable à l'année (voir /simulation, David, 2026-09-14).
+// Paramétrée par poolerId plutôt que figée sur l'utilisateur courant (David, 2026-09-14 suite
+// — onglet Transaction) : un alignement de pooler est déjà consultable publiquement sur
+// /poolers/[id], donc aucun souci à le charger en lecture pour un autre pooler que soi-même.
+// Inclut désormais 'ltir' (exclu du cap, voir capUtils) — auparavant seulement actif/reserviste,
+// ce qui empêchait de simuler une mise sur IR.
+export async function loadRosterForSimulationAction(saisonId: number, poolerId: string): Promise<{
   error?: string
   roster?: SimRosterEntry[]
-  capUsed?: number
   poolCap?: number
   season?: string
 }> {
@@ -141,29 +145,74 @@ export async function loadMyRosterForSimulationAction(saisonId: number): Promise
   const { data: rows } = await supabase
     .from('pooler_rosters')
     .select('id, player_id, player_type, players (first_name, last_name, position, player_contracts (season, cap_number, is_elc))')
-    .eq('pooler_id', user.id)
+    .eq('pooler_id', poolerId)
     .eq('pool_season_id', saisonId)
     .eq('is_active', true)
-    .in('player_type', ['actif', 'reserviste'])
+    .in('player_type', ['actif', 'reserviste', 'ltir'])
 
-  let capUsed = 0
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const roster: SimRosterEntry[] = ((rows ?? []) as any[]).map(r => {
     const contracts = r.players?.player_contracts ?? []
     const { cap, isEstimated } = getEffectiveCap(contracts, saison.season, unsignedMultiplier)
-    capUsed += cap
     return {
       roster_id: r.id,
       player_id: r.player_id,
       player_type: r.player_type,
       playerName: `${r.players?.last_name}, ${r.players?.first_name}`,
+      firstName: r.players?.first_name ?? '',
+      lastName: r.players?.last_name ?? '',
       position: r.players?.position ?? null,
       cap_number: cap,
       isEstimatedCap: isEstimated,
     }
   })
 
-  return { roster, capUsed, poolCap: saison.pool_cap, season: saison.season }
+  return { roster, poolCap: saison.pool_cap, season: saison.season }
+}
+
+// Poolers autres que l'utilisateur courant — pour le sélecteur de l'onglet Transaction
+// (David, 2026-09-14).
+export async function listOtherPoolersAction(): Promise<{ poolers: { id: string; name: string }[] }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { poolers: [] }
+
+  const { data } = await supabase.from('poolers').select('id, name').neq('id', user.id).order('name')
+  return { poolers: data ?? [] }
+}
+
+// Même requête que loadOwnRecrueBankAction (repechage-agents-libres/actions.ts) mais
+// paramétrée par poolerId — pour afficher la banque de recrues de l'AUTRE pooler dans l'onglet
+// Transaction. Composition de banque déjà visible publiquement sur /poolers/[id], aucun souci
+// à la lire pour un autre pooler que soi-même.
+export async function loadRecrueBankForPoolerAction(saisonId: number, poolerId: string): Promise<{
+  players: { roster_id: number; player_id: number; name: string; position: string | null; cap_number: number }[]
+}> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { players: [] }
+
+  const { data } = await supabase
+    .from('pooler_rosters')
+    .select('id, player_id, players (first_name, last_name, position, player_contracts (season, cap_number))')
+    .eq('pooler_id', poolerId)
+    .eq('pool_season_id', saisonId)
+    .eq('player_type', 'recrue')
+    .eq('is_active', true)
+
+  const { data: saisonRow } = await supabase.from('pool_seasons').select('season').eq('id', saisonId).single()
+  const season = saisonRow?.season as string | undefined
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return {
+    players: ((data ?? []) as any[]).map(row => ({
+      roster_id: row.id,
+      player_id: row.player_id,
+      name: `${row.players?.last_name}, ${row.players?.first_name}`,
+      position: row.players?.position ?? null,
+      cap_number: row.players?.player_contracts?.find((c: any) => c.season === season)?.cap_number ?? 0,
+    })),
+  }
 }
 
 // ── Scénarios sauvegardés (simulation_scenarios) ────────────────────────────
@@ -175,9 +224,13 @@ export type ScenarioData = {
   removed: number[]
   added: {
     id: number; first_name: string; last_name: string; position: string | null; cap_number: number
-    playerType: 'actif' | 'reserviste'; ownerName: string | null
+    playerType: 'actif' | 'reserviste' | 'ltir'; ownerName: string | null
   }[]
-  addedRecrues: { id: number; playerType: 'actif' | 'reserviste' }[]
+  addedRecrues: { id: number; playerType: 'actif' | 'reserviste' | 'ltir' }[]
+  // Statuts actif/réserviste/ltir choisis pour des joueurs déjà dans l'alignement (David,
+  // 2026-09-14 suite) — absent des anciens scénarios sauvegardés avant cet ajout, `?? []`
+  // requis chez l'appelant.
+  currentTypeOverrides: { playerId: number; playerType: 'actif' | 'reserviste' | 'ltir' }[]
 }
 
 export async function listScenariosAction(saisonId: number): Promise<{ scenarios: { id: number; name: string; updated_at: string }[] }> {

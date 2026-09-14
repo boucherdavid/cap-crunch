@@ -7579,3 +7579,39 @@ md:grid-cols-2`, empilé sur mobile.
   (200 OK) ; logique de mapping propriétaire (`owner_name`) validée directement contre les
   rosters réels de staging (ex: Brandt Clarke correctement rattaché à Steve, joueurs de Jérôme
   correctement identifiés pour exclusion).
+
+**[Fix] — Affichage propriétaire simplifié** (`SimulationTool.tsx`) : David — juste le nom du
+pooler en orange, sans "chez"/"(non disponible)"/"agent libre" (moins chargé visuellement).
+
+**[Feature] — Onglet Transaction : simuler un échange entre deux poolers, LTIR**
+(`app/app/simulation/{useSimState.ts,SimPanel.tsx,SimulationTool.tsx,actions.ts}`) :
+- David : voulait un onglet pour choisir un autre pooler et faire une transaction fictive,
+  pas limitée à un simple 1-contre-1 — reproduire ce qui peut vraiment arriver (agent libre,
+  mouvement de recrue, IR) des deux côtés à la fois.
+- **Refonte en état partagé réutilisable** plutôt qu'un 2e outil séparé : nouveau hook
+  `useSimState(roster, recruePlayers)` (retirer/changer de statut/ajouter un agent libre ou
+  une recrue) et composant `SimPanel` (l'UI complète : liste groupée par poste, ajout recrue/
+  agent libre, résumé de masse) — un seul jeu de code, instancié une fois pour "Mon
+  alignement", deux fois (soi + l'autre pooler) pour "Transaction".
+- **LTIR ajouté comme 3e statut** (`TypeToggle` : Actif/Rés./IR) partout, pas seulement dans
+  Transaction — un pooler peut aussi tester "IR" tout seul dans "Mon alignement". Exclu du cap
+  simulé comme la banque de recrues (`capUsed` maintenant calculé en sommant les entrées
+  actif/réserviste actives, plus robuste que l'ancienne formule par différence qui ne gérait
+  pas un changement de statut d'un joueur déjà existant).
+- **"Envoyer à [pooler]" (→)** sur un joueur déjà réellement dans l'alignement (`canSend`,
+  jamais sur un agent libre/une recrue tout juste ajoutés en simulation — pas encore "à toi"
+  pour de vrai) : retire chez la source, arrive chez la destination avec le nom d'origine en
+  orange (même affichage que "possédé par un autre pooler"), statut par défaut Actif.
+- Nouvelles actions : `loadRosterForSimulationAction(saisonId, poolerId)` (généralise
+  l'ancienne `loadMyRosterForSimulationAction`, inclut maintenant 'ltir' dans le filtre),
+  `listOtherPoolersAction`, `loadRecrueBankForPoolerAction(saisonId, poolerId)` — lecture de
+  l'alignement/banque d'un AUTRE pooler, sans souci de confidentialité puisque déjà visible
+  publiquement sur `/poolers/[id]`.
+- Scénarios sauvegardés restent scopés à "Mon alignement" seulement (pas de sauvegarde de
+  transaction à deux poolers pour l'instant — pas demandé). `ScenarioData` étendu avec
+  `currentTypeOverrides` (statuts changés sur des joueurs déjà existants, absent des anciens
+  scénarios — `?? []` chez l'appelant).
+- Vérifié : `tsc --noEmit`/`next build` passent ; page rechargée avec une session authentifiée
+  (200 OK, aucune erreur) ; requêtes `loadRosterForSimulationAction` (incl. LTIR) et
+  `loadRecrueBankForPoolerAction` validées directement contre le roster réel de Steve en
+  staging (23 lignes actif/réserviste/ltir, 18 recrues en banque).
