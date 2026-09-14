@@ -122,11 +122,6 @@ export async function addCommentAction(pollId: number, body: string): Promise<{ 
 
   const { data: pooler } = await supabase.from('poolers').select('name').eq('id', user.id).single()
 
-  const { data: priorComments } = await supabase
-    .from('meeting_poll_comments')
-    .select('pooler_id')
-    .eq('poll_id', pollId)
-
   const { error } = await supabase.from('meeting_poll_comments').insert({
     poll_id: pollId,
     pooler_id: user.id,
@@ -137,7 +132,12 @@ export async function addCommentAction(pollId: number, body: string): Promise<{ 
   const { escapeHtml } = await import('@/lib/email')
   const { notifyThreadParticipants } = await import('@/lib/threadNotify')
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
-  const participantIds = [...new Set((priorComments ?? []).map(c => c.pooler_id as string))]
+  // Tous les poolers, pas seulement ceux ayant déjà commenté (David, 2026-09-14) — contrairement
+  // au babillard (fort volume, on limite volontairement aux participants du fil pour éviter le
+  // bruit), la planification vise un petit groupe fixe à coordonner pour une vraie rencontre :
+  // tout le monde doit être au courant d'un nouveau commentaire, même sans avoir déjà participé.
+  const { data: allPoolers } = await supabase.from('poolers').select('id')
+  const participantIds = (allPoolers ?? []).map(p => p.id as string)
   // after() : notifyThreadParticipants fait un await (requête admins) avant son propre after()
   // interne — l'appel externe doit aussi être enveloppé. Voir lib/threadNotify.ts — c'est
   // exactement ce chemin (commentaire de planification) qui n'a pas notifié David le 2026-09-10.

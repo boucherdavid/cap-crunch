@@ -7323,6 +7323,25 @@ tout commité et synchronisé `staging`/`main` :
   "Démarrer la saison" (conformité + déclarations "prêt") avant de considérer la transition de
   saison 2026-27 complète — évoqué en discussion, pas encore fait.
 
+### 2026-09-14 — Planification : les commentaires ne notifiaient que les poolers ayant déjà commenté
+
+**[Fix] — `addCommentAction` notifie maintenant tous les poolers** (`app/app/planification/actions.ts`) :
+- David : a commenté un sondage de planification, Paule (opt-in courriel) n'a rien reçu.
+- Investigation : `notifyThreadParticipants` (partagée avec le babillard) ne notifie que les
+  admins + les poolers ayant **déjà commenté ce fil** — volontaire pour le babillard (fort
+  volume, évite le bruit), mais Paule n'avait jamais commenté ce sondage, donc `participantIds`
+  ne la contenait pas, peu importe son réglage `notif_email`. Confirmé aussi au passage : créer
+  un sondage ou ajouter des dates candidates (`createPollAction`/`addCandidateDatesAction`) ne
+  notifie personne du tout — pas de bug, juste jamais implémenté ; laissé tel quel, David n'a
+  pas demandé de le changer pour l'instant.
+- David a confirmé vouloir que tout le pool soit averti d'un commentaire sur ce sondage, pas
+  seulement les participants du fil — la planification vise un petit groupe fixe pour une vraie
+  rencontre, contrairement au babillard où limiter aux participants du fil est voulu.
+- `participantIds` dans `addCommentAction` (planification uniquement, babillard inchangé) passe
+  d'une requête sur `meeting_poll_comments` (commentateurs précédents) à une requête sur tous
+  les `poolers`. `notifyThreadParticipants` fait déjà l'union avec les admins et exclut l'auteur,
+  donc aucun autre changement nécessaire.
+
 ### 2026-09-13 — Projections ESPN abandonnées (parseur non fiable) → remplacées par CBS Sports
 
 **[Fix investigué puis abandonné] — `import_projections_espn.py`** :
