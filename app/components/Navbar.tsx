@@ -191,7 +191,7 @@ export default function Navbar({
               {/* Alignements */}
               <div className="relative">
                 <button onClick={() => toggle('alignements')}
-                  className={navBtnClass(isActive('/dashboard', '/journal-transactions', '/poolers', '/gestion-effectifs'))}>
+                  className={navBtnClass(isActive('/dashboard', '/journal-transactions', '/poolers', '/gestion-effectifs', '/simulation'))}>
                   Alignements <Chevron open={openDropdown === 'alignements'} />
                 </button>
                 {openDropdown === 'alignements' && (
@@ -201,6 +201,7 @@ export default function Navbar({
                     <Link href="/journal-transactions"             className={dropdownLinkClass('/journal-transactions')}>{'Journal des transactions'}</Link>
                     {userName && <div className="border-t my-1" />}
                     {userName && <Link href="/gestion-effectifs"  className={dropdownLinkClass('/gestion-effectifs')}>Gestion d&apos;effectifs</Link>}
+                    {userName && <Link href="/simulation"          className={dropdownLinkClass('/simulation')}>Simulation</Link>}
                   </div>
                 )}
               </div>
@@ -402,6 +403,7 @@ export default function Navbar({
             <Link href="/poolers"                          className={mobileLinkClass('/poolers')}>Équipes</Link>
             <Link href="/journal-transactions"             className={mobileLinkClass('/journal-transactions')}>{'Journal des transactions'}</Link>
             {userName && <Link href="/gestion-effectifs"  className={mobileLinkClass('/gestion-effectifs')}>Gestion d&apos;effectifs</Link>}
+            {userName && <Link href="/simulation"          className={mobileLinkClass('/simulation')}>Simulation</Link>}
 
             <MobileSection label="Classement" />
             <Link href="/classement" className={mobileLinkClass('/classement')}>Saison complète</Link>

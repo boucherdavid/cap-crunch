@@ -7511,3 +7511,41 @@ tout commité et synchronisé `staging`/`main` :
   distinct, pas nécessairement en phase avec ces mêmes rosters ; laissé tel quel, staging n'est
   pas l'environnement réel où le problème a été signalé). Les 7 "non" (agents libres) laissés
   intacts — leur `rookie_type` null est déjà correct, aucune fenêtre de 5 ans pour eux.
+
+### 2026-09-14 (suite) — Nouvelle page /simulation : bac à sable utilisable toute l'année
+
+**[Fix] — Page Projections : clarifie "Pts/Match"** (`ProjectionsTable.tsx`) :
+- David : ambigu si c'était le rythme de la saison dernière ou de la tendance 3 saisons.
+  En-tête renommé "Pts/Match (tend.)" + infobulle explicite.
+
+**[Feature] — `/simulation`** (`app/app/simulation/{page.tsx,SimulationTool.tsx,actions.ts}`,
+`app/components/Navbar.tsx`, `supabase_migrations/simulation_scenarios.sql`) :
+- Demande d'un pooler (relayée par David) : le bac à sable du repêchage d'agents libres
+  (`/repechage-agents-libres`) est utile mais seulement disponible en pré-saison — voulait
+  la même chose utilisable toute l'année, avec la possibilité de sauvegarder des scénarios
+  testés pour garder une trace d'idées (ex: "Idée échange Steve").
+- Discussion de conception avec David : emplacement (nouvelle page dédiée, pas un onglet de
+  Mon équipe ni intégrée à `/joueurs`, ajoutée au menu Alignements), portée (**purement
+  preview**, jamais de soumission réelle — contrairement au bac à sable pré-saison qui permet
+  de soumettre un retrait pour vrai — pour garder un seul chemin pour les vrais changements,
+  `/gestion-effectifs`, et ne pas avoir à réconcilier l'historique entre deux outils), et le nom
+  ("Bac à sable" ne parlait pas aux poolers testés par David → "Simulation").
+- Réutilisé tel quel (déjà utilisable à l'année, jamais gatées par la pré-saison) :
+  `searchSandboxFreeAgentsAction` et `listTeamsAction`
+  (`repechage-agents-libres/actions.ts`) pour la recherche d'agents libres, et
+  `loadOwnRecrueBankAction` pour la banque de recrues du pooler.
+- Nouveau : `loadMyRosterForSimulationAction` — version allégée de `loadPresaisonDataAction`
+  (juste l'alignement + le cap du pooler courant, sans la mécanique de tour/file d'attente du
+  repêchage AL qui ne s'applique pas ici).
+- Nouvelle table `simulation_scenarios` (RLS admin-only, même patron que
+  push_subscriptions/transactions — tout accès passe par le client service role après
+  vérification d'appartenance en code) pour les scénarios sauvegardés : nom, saison, pooler,
+  contenu JSON (`removed`/`added`/`addedRecrueIds`, même forme que l'état client) — plusieurs
+  scénarios nommés en parallèle par pooler/saison (confirmé avec David), créer/charger/
+  sauvegarder/supprimer. SQL fourni à David, exécuté par lui dans Supabase staging (même
+  patron que `player_projections` — pas d'accès DDL direct depuis les scripts).
+- Vérifié : `tsc --noEmit`/`next build` passent ; table confirmée créée en staging ; page
+  `/simulation` testée avec une session authentifiée (200 OK, pas d'erreur) ; requête de
+  l'alignement du pooler validée directement contre les données réelles de Jérôme en staging.
+- Pas encore fait : appliquer `simulation_scenarios.sql` en **prod** (attend la validation de
+  David sur staging, même flux que d'habitude).
