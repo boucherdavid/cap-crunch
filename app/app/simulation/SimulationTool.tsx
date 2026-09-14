@@ -254,172 +254,180 @@ export default function SimulationTool({
           Ajoute ou retire librement pour tester — rien n&apos;affecte ton vrai alignement, jamais soumis d&apos;ici.
         </p>
 
-        <div className="space-y-2 mb-2">
-          {groupRosterByPosition(roster).map(group => (
-            <div key={group.label}>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{group.label}</p>
-              <div className="space-y-1">
-                {group.entries.map(e => (
-                  <div key={e.roster_id} className={`flex items-center justify-between text-sm py-1 ${removed.has(e.player_id) ? 'opacity-40 line-through' : 'text-gray-600'}`}>
-                    <span><span className="text-gray-400 mr-1">{e.position ?? DASH}</span>{e.playerName}</span>
-                    <span className="flex items-center gap-2">
-                      <span>{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
-                      <button onClick={() => toggleRemove(e.player_id)} className="w-5 h-5 rounded border text-gray-400 hover:text-red-600 text-xs">
-                        {removed.has(e.player_id) ? '↺' : '✕'}
-                      </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Alignement simulé */}
+          <div>
+            <div className="space-y-2 mb-2">
+              {groupRosterByPosition(roster).map(group => (
+                <div key={group.label}>
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{group.label}</p>
+                  <div className="space-y-1">
+                    {group.entries.map(e => (
+                      <div key={e.roster_id} className={`flex items-center justify-between text-sm py-1 ${removed.has(e.player_id) ? 'opacity-40 line-through' : 'text-gray-600'}`}>
+                        <span><span className="text-gray-400 mr-1">{e.position ?? DASH}</span>{e.playerName}</span>
+                        <span className="flex items-center gap-2">
+                          <span>{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
+                          <button onClick={() => toggleRemove(e.player_id)} className="w-5 h-5 rounded border text-gray-400 hover:text-red-600 text-xs">
+                            {removed.has(e.player_id) ? '↺' : '✕'}
+                          </button>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {recruePlayers.filter(r => addedRecrueIds.has(r.player_id)).map(r => (
+                <div key={r.player_id} className="flex items-center justify-between text-sm py-1 text-emerald-700">
+                  <span><span className="text-gray-400 mr-1">{r.position ?? DASH}</span>{r.name} <span className="text-emerald-500">(recrue activée)</span></span>
+                  <span className="flex items-center gap-2">
+                    <span>{r.cap_number > 0 ? fmt(r.cap_number) : DASH}</span>
+                    <button onClick={() => toggleAddedRecrue(r.player_id)} className="w-5 h-5 rounded border text-gray-400 hover:text-red-600 text-xs">✕</button>
+                  </span>
+                </div>
+              ))}
+              {added.map(fa => (
+                <div key={fa.id} className="flex items-center justify-between text-sm py-1 text-emerald-700">
+                  <span><span className="text-gray-400 mr-1">{fa.position ?? DASH}</span>{fa.last_name}, {fa.first_name} <span className="text-emerald-500">(ajouté)</span></span>
+                  <span className="flex items-center gap-2">
+                    <span>{fa.cap_number > 0 ? fmt(fa.cap_number) : DASH}</span>
+                    <button onClick={() => removeAdded(fa.id)} className="w-5 h-5 rounded border text-gray-400 hover:text-red-600 text-xs">✕</button>
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <button onClick={resetAll} className="w-full text-xs font-medium text-gray-500 border rounded-lg py-1.5 hover:bg-gray-50">
+              ↺ Réinitialiser (revenir à l&apos;actuel)
+            </button>
+          </div>
+
+          {/* Ajouts, recherche et impact sur la masse */}
+          <div>
+            {recruePlayers.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ajouter une recrue de ta banque</p>
+                {recruePlayers.every(r => addedRecrueIds.has(r.player_id)) ? (
+                  <p className="text-xs text-gray-400">Toutes tes recrues sont déjà ajoutées.</p>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={selectedRecrueId}
+                      onChange={e => setSelectedRecrueId(e.target.value)}
+                      className="flex-1 border rounded-lg px-2 py-1.5 text-xs focus:outline-none"
+                    >
+                      <option value="">— Choisir une recrue —</option>
+                      {recruePlayers.filter(r => !addedRecrueIds.has(r.player_id)).map(r => (
+                        <option key={r.player_id} value={String(r.player_id)}>
+                          {r.position ?? DASH} · {r.name}{r.cap_number > 0 ? ` — ${fmt(r.cap_number)}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => {
+                        if (!selectedRecrueId) return
+                        toggleAddedRecrue(Number(selectedRecrueId))
+                        setSelectedRecrueId('')
+                      }}
+                      disabled={!selectedRecrueId}
+                      className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 shrink-0"
+                    >
+                      Ajouter
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ajouter un agent libre</p>
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Rechercher par nom (2+ caractères, optionnel avec des filtres)..."
+              className="w-full border rounded-lg px-2.5 py-1.5 text-xs mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <select
+                value={filterPosition}
+                onChange={e => setFilterPosition(e.target.value as typeof filterPosition)}
+                className="border rounded-lg px-2 py-1 text-xs focus:outline-none"
+              >
+                <option value="">Toutes positions</option>
+                <option value="forward">Attaquant</option>
+                <option value="defense">Défenseur</option>
+                <option value="goalie">Gardien</option>
+              </select>
+              <select
+                value={filterTeam}
+                onChange={e => setFilterTeam(e.target.value)}
+                className="border rounded-lg px-2 py-1 text-xs focus:outline-none"
+              >
+                <option value="">Toutes équipes</option>
+                {teams.map(t => <option key={t.code} value={t.code}>{t.name}</option>)}
+              </select>
+              <input
+                type="number"
+                value={filterMaxSalary}
+                onChange={e => setFilterMaxSalary(e.target.value)}
+                placeholder="Salaire max $ (ex: 2000000)"
+                className="w-40 border rounded-lg px-2 py-1 text-xs focus:outline-none"
+              />
+              <label className="flex items-center gap-1 text-xs text-gray-600">
+                <input type="checkbox" checked={filterElcOnly} onChange={e => setFilterElcOnly(e.target.checked)} />
+                ELC seulement
+              </label>
+              {hasSandboxFilters && (
+                <button
+                  onClick={() => { setFilterPosition(''); setFilterMaxSalary(''); setFilterElcOnly(false); setFilterTeam('') }}
+                  className="text-xs text-gray-400 hover:text-gray-600"
+                >
+                  Effacer les filtres
+                </button>
+              )}
+            </div>
+            {searching && <p className="text-xs text-gray-400 mb-2">Recherche...</p>}
+            {results.length > 0 && (
+              <div className="space-y-0.5 mb-3 max-h-56 overflow-y-auto">
+                {results.map(fa => (
+                  <div
+                    key={fa.id}
+                    onClick={() => addFA({ id: fa.id, first_name: fa.first_name, last_name: fa.last_name, position: fa.position, cap_number: fa.cap_number })}
+                    className="flex justify-between items-center text-xs px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer"
+                  >
+                    <span>
+                      {fa.last_name}, {fa.first_name} <span className="text-gray-400">{fa.position}</span>
+                      {fa.team_code && <span className="text-gray-400"> · {fa.team_code}</span>}
+                      {fa.is_elc && <span className="text-blue-500"> · ELC</span>}
+                    </span>
+                    <span className="flex items-center gap-2 shrink-0">
+                      {fa.cap_number > 0 && <span className="text-gray-500">{fmt(fa.cap_number)}</span>}
+                      <span className="text-blue-600 font-medium">+</span>
                     </span>
                   </div>
                 ))}
               </div>
-            </div>
-          ))}
-          {recruePlayers.filter(r => addedRecrueIds.has(r.player_id)).map(r => (
-            <div key={r.player_id} className="flex items-center justify-between text-sm py-1 text-emerald-700">
-              <span><span className="text-gray-400 mr-1">{r.position ?? DASH}</span>{r.name} <span className="text-emerald-500">(recrue activée)</span></span>
-              <span className="flex items-center gap-2">
-                <span>{r.cap_number > 0 ? fmt(r.cap_number) : DASH}</span>
-                <button onClick={() => toggleAddedRecrue(r.player_id)} className="w-5 h-5 rounded border text-gray-400 hover:text-red-600 text-xs">✕</button>
-              </span>
-            </div>
-          ))}
-          {added.map(fa => (
-            <div key={fa.id} className="flex items-center justify-between text-sm py-1 text-emerald-700">
-              <span><span className="text-gray-400 mr-1">{fa.position ?? DASH}</span>{fa.last_name}, {fa.first_name} <span className="text-emerald-500">(ajouté)</span></span>
-              <span className="flex items-center gap-2">
-                <span>{fa.cap_number > 0 ? fmt(fa.cap_number) : DASH}</span>
-                <button onClick={() => removeAdded(fa.id)} className="w-5 h-5 rounded border text-gray-400 hover:text-red-600 text-xs">✕</button>
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <button onClick={resetAll} className="w-full text-xs font-medium text-gray-500 border rounded-lg py-1.5 mb-3 hover:bg-gray-50">
-          ↺ Réinitialiser (revenir à l&apos;actuel)
-        </button>
-
-        {recruePlayers.length > 0 && (
-          <div className="mb-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ajouter une recrue de ta banque</p>
-            {recruePlayers.every(r => addedRecrueIds.has(r.player_id)) ? (
-              <p className="text-xs text-gray-400">Toutes tes recrues sont déjà ajoutées.</p>
-            ) : (
-              <div className="flex items-center gap-2">
-                <select
-                  value={selectedRecrueId}
-                  onChange={e => setSelectedRecrueId(e.target.value)}
-                  className="flex-1 border rounded-lg px-2 py-1.5 text-xs focus:outline-none"
-                >
-                  <option value="">— Choisir une recrue —</option>
-                  {recruePlayers.filter(r => !addedRecrueIds.has(r.player_id)).map(r => (
-                    <option key={r.player_id} value={String(r.player_id)}>
-                      {r.position ?? DASH} · {r.name}{r.cap_number > 0 ? ` — ${fmt(r.cap_number)}` : ''}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => {
-                    if (!selectedRecrueId) return
-                    toggleAddedRecrue(Number(selectedRecrueId))
-                    setSelectedRecrueId('')
-                  }}
-                  disabled={!selectedRecrueId}
-                  className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 shrink-0"
-                >
-                  Ajouter
-                </button>
-              </div>
             )}
-          </div>
-        )}
+            {results.length > 0 && resultsTruncated && (
+              <p className="text-xs text-amber-600 -mt-2 mb-3">
+                Plus de résultats que ce qui est affiché — affine avec une équipe, une position ou un nom pour tout voir.
+              </p>
+            )}
 
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ajouter un agent libre</p>
-        <input
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="Rechercher par nom (2+ caractères, optionnel avec des filtres)..."
-          className="w-full border rounded-lg px-2.5 py-1.5 text-xs mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <div className="flex items-center gap-2 mb-2 flex-wrap">
-          <select
-            value={filterPosition}
-            onChange={e => setFilterPosition(e.target.value as typeof filterPosition)}
-            className="border rounded-lg px-2 py-1 text-xs focus:outline-none"
-          >
-            <option value="">Toutes positions</option>
-            <option value="forward">Attaquant</option>
-            <option value="defense">Défenseur</option>
-            <option value="goalie">Gardien</option>
-          </select>
-          <select
-            value={filterTeam}
-            onChange={e => setFilterTeam(e.target.value)}
-            className="border rounded-lg px-2 py-1 text-xs focus:outline-none"
-          >
-            <option value="">Toutes équipes</option>
-            {teams.map(t => <option key={t.code} value={t.code}>{t.name}</option>)}
-          </select>
-          <input
-            type="number"
-            value={filterMaxSalary}
-            onChange={e => setFilterMaxSalary(e.target.value)}
-            placeholder="Salaire max $ (ex: 2000000)"
-            className="w-40 border rounded-lg px-2 py-1 text-xs focus:outline-none"
-          />
-          <label className="flex items-center gap-1 text-xs text-gray-600">
-            <input type="checkbox" checked={filterElcOnly} onChange={e => setFilterElcOnly(e.target.checked)} />
-            ELC seulement
-          </label>
-          {hasSandboxFilters && (
-            <button
-              onClick={() => { setFilterPosition(''); setFilterMaxSalary(''); setFilterElcOnly(false); setFilterTeam('') }}
-              className="text-xs text-gray-400 hover:text-gray-600"
-            >
-              Effacer les filtres
-            </button>
-          )}
-        </div>
-        {searching && <p className="text-xs text-gray-400 mb-2">Recherche...</p>}
-        {results.length > 0 && (
-          <div className="space-y-0.5 mb-3 max-h-56 overflow-y-auto">
-            {results.map(fa => (
-              <div
-                key={fa.id}
-                onClick={() => addFA({ id: fa.id, first_name: fa.first_name, last_name: fa.last_name, position: fa.position, cap_number: fa.cap_number })}
-                className="flex justify-between items-center text-xs px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer"
-              >
-                <span>
-                  {fa.last_name}, {fa.first_name} <span className="text-gray-400">{fa.position}</span>
-                  {fa.team_code && <span className="text-gray-400"> · {fa.team_code}</span>}
-                  {fa.is_elc && <span className="text-blue-500"> · ELC</span>}
-                </span>
-                <span className="flex items-center gap-2 shrink-0">
-                  {fa.cap_number > 0 && <span className="text-gray-500">{fmt(fa.cap_number)}</span>}
-                  <span className="text-blue-600 font-medium">+</span>
-                </span>
+            <div className="border-t pt-2 mt-1 space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500">Masse salariale simulée</span>
+                <span className="font-medium">{fmt(simulatedUsed)}</span>
               </div>
-            ))}
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500">{simulatedRemain >= 0 ? 'Espace restant simulé' : 'Dépassement simulé'}</span>
+                <span className={`font-medium ${simulatedRemain < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{fmt(Math.abs(simulatedRemain))}</span>
+              </div>
+              {touched && (
+                <p className={`text-xs mt-1 rounded-lg px-2 py-1.5 ${simulatedRemain < 0 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                  {simulatedRemain < 0 ? '⚠ Dépasserait le plafond' : '✓ Combinaison conforme'}
+                </p>
+              )}
+            </div>
           </div>
-        )}
-        {results.length > 0 && resultsTruncated && (
-          <p className="text-xs text-amber-600 -mt-2 mb-3">
-            Plus de résultats que ce qui est affiché — affine avec une équipe, une position ou un nom pour tout voir.
-          </p>
-        )}
-
-        <div className="border-t pt-2 mt-1 space-y-1">
-          <div className="flex justify-between text-xs">
-            <span className="text-gray-500">Masse salariale simulée</span>
-            <span className="font-medium">{fmt(simulatedUsed)}</span>
-          </div>
-          <div className="flex justify-between text-xs">
-            <span className="text-gray-500">{simulatedRemain >= 0 ? 'Espace restant simulé' : 'Dépassement simulé'}</span>
-            <span className={`font-medium ${simulatedRemain < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{fmt(Math.abs(simulatedRemain))}</span>
-          </div>
-          {touched && (
-            <p className={`text-xs mt-1 rounded-lg px-2 py-1.5 ${simulatedRemain < 0 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
-              {simulatedRemain < 0 ? '⚠ Dépasserait le plafond' : '✓ Combinaison conforme'}
-            </p>
-          )}
         </div>
       </div>
     </div>
