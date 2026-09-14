@@ -346,9 +346,7 @@ export default function SimulationTool({
                         <span className="truncate">
                           <span className="text-gray-400 mr-1">{e.position ?? DASH}</span>{e.playerName}
                           {e.kind === 'recrue' && <span className="text-emerald-500"> (recrue activée)</span>}
-                          {e.kind === 'fa' && (
-                            <span className="text-emerald-500"> ({e.ownerName ? `de ${e.ownerName}` : 'agent libre'})</span>
-                          )}
+                          {e.kind === 'fa' && e.ownerName && <span className="text-amber-600"> ({e.ownerName})</span>}
                         </span>
                         <span className="flex items-center gap-2 shrink-0">
                           {e.kind !== 'current' && (
@@ -421,8 +419,8 @@ export default function SimulationTool({
 
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ajouter un joueur</p>
             <p className="text-[11px] text-gray-400 mb-1.5">
-              Les joueurs déjà possédés par un autre pooler apparaissent aussi (pour simuler une transaction) — ils
-              restent en réalité non disponibles, marqués <span className="text-amber-600">chez [pooler]</span>.
+              Les joueurs déjà possédés par un autre pooler apparaissent aussi (pour simuler une transaction) —
+              ils restent en réalité non disponibles, identifiés par le nom du pooler en <span className="text-amber-600">orange</span>.
             </p>
             <input
               value={query}
@@ -482,9 +480,7 @@ export default function SimulationTool({
                       {p.last_name}, {p.first_name} <span className="text-gray-400">{p.position}</span>
                       {p.team_code && <span className="text-gray-400"> · {p.team_code}</span>}
                       {p.is_elc && <span className="text-blue-500"> · ELC</span>}
-                      {p.owner_name
-                        ? <span className="text-amber-600"> · chez {p.owner_name} (non disponible)</span>
-                        : <span className="text-emerald-600"> · agent libre</span>}
+                      {p.owner_name && <span className="text-amber-600"> · {p.owner_name}</span>}
                     </span>
                     <span className="flex items-center gap-2 shrink-0">
                       {p.cap_number > 0 && <span className="text-gray-500">{fmt(p.cap_number)}</span>}
