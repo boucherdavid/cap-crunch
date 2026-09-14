@@ -7643,3 +7643,11 @@ demandé une mise à jour après la série de livraisons de la session :
   jour pour refléter le correctif du jour même (5 ans purs pour un repêché, sans égard à
   l'ELC ; inchangé pour un agent libre).
 - Vérifié : `tsc --noEmit`/`next build` passent.
+
+**[Fix] — Menu Recrues : réordonné et renommé** (`Navbar.tsx`, CLAUDE.md) — David, après avoir
+vu le résultat du menu scindé : nouvel ordre et libellés pour les 3 items restants (desktop et
+mobile) :
+1. Classement des prospects → **Classement pré-repêchage**
+2. Repêchage LNH — inchangé
+3. Repêchage recrues → **Repêchage interne**
+- Vérifié : `tsc --noEmit`/`next build` passent.

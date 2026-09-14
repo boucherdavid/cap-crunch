@@ -258,9 +258,9 @@ export default function Navbar({
                 </button>
                 {openDropdown === 'repechage' && (
                   <div className="absolute left-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
-                    <Link href="/repechage-recrues" className={dropdownLinkClass('/repechage-recrues')}>{'Repêchage recrues'}</Link>
-                    <Link href="/draft-center" className={dropdownLinkClass('/draft-center')}>{'Classement des prospects'}</Link>
+                    <Link href="/draft-center" className={dropdownLinkClass('/draft-center')}>{'Classement pré-repêchage'}</Link>
                     <Link href="/repechage" className={dropdownLinkClass('/repechage')}>{'Repêchage LNH'}</Link>
+                    <Link href="/repechage-recrues" className={dropdownLinkClass('/repechage-recrues')}>{'Repêchage interne'}</Link>
                   </div>
                 )}
               </div>
@@ -419,9 +419,9 @@ export default function Navbar({
             <Link href="/joueurs"    className={mobileLinkClass('/joueurs')}>Contrats LNH</Link>
 
             <MobileSection label={'Recrues'} />
-            <Link href="/repechage-recrues" className={mobileLinkClass('/repechage-recrues')}>{'Repêchage recrues'}</Link>
-            <Link href="/draft-center" className={mobileLinkClass('/draft-center')}>{'Classement des prospects'}</Link>
+            <Link href="/draft-center" className={mobileLinkClass('/draft-center')}>{'Classement pré-repêchage'}</Link>
             <Link href="/repechage"  className={mobileLinkClass('/repechage')}>{'Repêchage LNH'}</Link>
+            <Link href="/repechage-recrues" className={mobileLinkClass('/repechage-recrues')}>{'Repêchage interne'}</Link>
 
             <MobileSection label="Ressources" />
             <Link href="/babillard" className={mobileLinkClass('/babillard')}>Babillard</Link>

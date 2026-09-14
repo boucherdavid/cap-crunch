@@ -345,7 +345,7 @@ repêchage n'est pas activement en cours.
 | Alignements (ex-Pool Saison) | Mon équipe · Équipes · Journal des transactions — puis séparateur — Gestion d'effectifs · Simulation · Signatures des agents libres (les 3 premiers = consultation, les 3 derniers = action) |
 | Classement | Saison complète · Hebdomadaire (à venir) · Mensuel (à venir) — sorti d'Alignements pour son propre menu |
 | LNH | 3 sections : Statistiques (LNH, AHL à venir ; sous-item Projections) · Calendrier · Contrats (ex-"Contrats LNH", ex-item à plat) |
-| Recrues (ex-"Repêchage") | Repêchage recrues · Classement des prospects · Repêchage LNH |
+| Recrues (ex-"Repêchage") | Classement pré-repêchage (ex-"Classement des prospects") · Repêchage LNH · Repêchage interne (ex-"Repêchage recrues") — réordonné et renommé le 2026-09-14 (David) |
 | Ressources | Babillard (global, ajouté le 2026-09-02) · Planification · Aide & Règlements (déplacé du menu Compte/avatar) |
 
 **"Repêchage agents libres" déplacé d'Recrues vers Alignements, renommé "Signatures des
