@@ -191,7 +191,7 @@ export default function Navbar({
               {/* Alignements */}
               <div className="relative">
                 <button onClick={() => toggle('alignements')}
-                  className={navBtnClass(isActive('/dashboard', '/journal-transactions', '/poolers', '/gestion-effectifs', '/simulation'))}>
+                  className={navBtnClass(isActive('/dashboard', '/journal-transactions', '/poolers', '/gestion-effectifs', '/simulation', '/repechage-agents-libres'))}>
                   Alignements <Chevron open={openDropdown === 'alignements'} />
                 </button>
                 {openDropdown === 'alignements' && (
@@ -202,6 +202,7 @@ export default function Navbar({
                     {userName && <div className="border-t my-1" />}
                     {userName && <Link href="/gestion-effectifs"  className={dropdownLinkClass('/gestion-effectifs')}>Gestion d&apos;effectifs</Link>}
                     {userName && <Link href="/simulation"          className={dropdownLinkClass('/simulation')}>Simulation</Link>}
+                    {userName && <Link href="/repechage-agents-libres" className={dropdownLinkClass('/repechage-agents-libres')}>{'Signatures des agents libres'}</Link>}
                   </div>
                 )}
               </div>
@@ -249,16 +250,15 @@ export default function Navbar({
                 )}
               </div>
 
-              {/* Repêchage */}
+              {/* Recrues */}
               <div className="relative">
                 <button onClick={() => toggle('repechage')}
-                  className={navBtnClass(isActive('/repechage', '/repechage-recrues', '/repechage-agents-libres', '/draft-center'))}>
-                  {'Repêchage'} <Chevron open={openDropdown === 'repechage'} />
+                  className={navBtnClass(isActive('/repechage', '/repechage-recrues', '/draft-center'))}>
+                  {'Recrues'} <Chevron open={openDropdown === 'repechage'} />
                 </button>
                 {openDropdown === 'repechage' && (
                   <div className="absolute left-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
                     <Link href="/repechage-recrues" className={dropdownLinkClass('/repechage-recrues')}>{'Repêchage recrues'}</Link>
-                    <Link href="/repechage-agents-libres" className={dropdownLinkClass('/repechage-agents-libres')}>{'Repêchage agents libres'}</Link>
                     <Link href="/draft-center" className={dropdownLinkClass('/draft-center')}>{'Classement des prospects'}</Link>
                     <Link href="/repechage" className={dropdownLinkClass('/repechage')}>{'Repêchage LNH'}</Link>
                   </div>
@@ -404,6 +404,7 @@ export default function Navbar({
             <Link href="/journal-transactions"             className={mobileLinkClass('/journal-transactions')}>{'Journal des transactions'}</Link>
             {userName && <Link href="/gestion-effectifs"  className={mobileLinkClass('/gestion-effectifs')}>Gestion d&apos;effectifs</Link>}
             {userName && <Link href="/simulation"          className={mobileLinkClass('/simulation')}>Simulation</Link>}
+            {userName && <Link href="/repechage-agents-libres" className={mobileLinkClass('/repechage-agents-libres')}>{'Signatures des agents libres'}</Link>}
 
             <MobileSection label="Classement" />
             <Link href="/classement" className={mobileLinkClass('/classement')}>Saison complète</Link>
@@ -417,9 +418,8 @@ export default function Navbar({
             <Link href="/calendrier" className={mobileLinkClass('/calendrier')}>Calendrier</Link>
             <Link href="/joueurs"    className={mobileLinkClass('/joueurs')}>Contrats LNH</Link>
 
-            <MobileSection label={'Repêchage'} />
+            <MobileSection label={'Recrues'} />
             <Link href="/repechage-recrues" className={mobileLinkClass('/repechage-recrues')}>{'Repêchage recrues'}</Link>
-            <Link href="/repechage-agents-libres" className={mobileLinkClass('/repechage-agents-libres')}>{'Repêchage agents libres'}</Link>
             <Link href="/draft-center" className={mobileLinkClass('/draft-center')}>{'Classement des prospects'}</Link>
             <Link href="/repechage"  className={mobileLinkClass('/repechage')}>{'Repêchage LNH'}</Link>
 

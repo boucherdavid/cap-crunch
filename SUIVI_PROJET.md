@@ -7615,3 +7615,20 @@ pooler en orange, sans "chez"/"(non disponible)"/"agent libre" (moins chargé vi
   (200 OK, aucune erreur) ; requêtes `loadRosterForSimulationAction` (incl. LTIR) et
   `loadRecrueBankForPoolerAction` validées directement contre le roster réel de Steve en
   staging (23 lignes actif/réserviste/ltir, 18 recrues en banque).
+
+**[Fix] — Réorganisation nav : "Repêchage agents libres" → Alignements, menu "Repêchage" →
+"Recrues"** (`Navbar.tsx`, `repechage-agents-libres/page.tsx`, `AgentsLibresDashboard.tsx`,
+CLAUDE.md) :
+- David, en y repensant après avoir ajouté Simulation : `/repechage-agents-libres` est
+  désormais un vrai outil de gestion d'alignement (libre-service pré-saison complet), pas
+  juste un repêchage — déplacé du menu "Repêchage" vers "Alignements" (dernier de la liste,
+  desktop et mobile). Le menu "Repêchage" ne contenant plus que des pages centrées sur les
+  recrues/prospects (Repêchage recrues, Classement des prospects, Repêchage LNH), David a
+  proposé de le renommer **"Recrues"**.
+- Au passage, libellé visible renommé **"Signatures des agents libres"** (menu, titre de page,
+  `<h1>` — David : décrit mieux ce qu'un pooler fait concrètement sur cette page). Portée
+  volontairement limitée au texte affiché — route (`/repechage-agents-libres`), noms de
+  fonctions/tables (`presaison_draft_state`, etc.) et commentaires internes inchangés, pour
+  éviter un chantier de renommage profond (et de casser des liens déjà partagés) pour un
+  changement qui ne touche que l'affichage.
+- Vérifié : `tsc --noEmit`/`next build` passent.

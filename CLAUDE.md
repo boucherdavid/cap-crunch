@@ -338,15 +338,24 @@ redondant dont l'erreur ne s'affichait nulle part — fusionné en un seul bouto
 repêchage n'est pas activement en cours.
 
 **Menu pooler (`Navbar.tsx`) — réorganisé le 2026-08-30, ordre/regroupement affinés le
-2026-09-01 :**
+2026-09-01, "Repêchage" scindé en Alignements/Recrues le 2026-09-14 :**
 
 | Dropdown | Contenu |
 |---|---|
-| Alignements (ex-Pool Saison) | Mon équipe · Équipes · Journal des transactions — puis séparateur — Gestion d'effectifs (les 3 premiers = consultation, le dernier = action) |
+| Alignements (ex-Pool Saison) | Mon équipe · Équipes · Journal des transactions — puis séparateur — Gestion d'effectifs · Simulation · Signatures des agents libres (les 3 premiers = consultation, les 3 derniers = action) |
 | Classement | Saison complète · Hebdomadaire (à venir) · Mensuel (à venir) — sorti d'Alignements pour son propre menu |
-| LNH | 3 sections : Statistiques (LNH, AHL à venir) · Calendrier · Contrats (ex-"Contrats LNH", ex-item à plat) |
-| Repêchage | Repêchage recrues · Repêchage agents libres (ajouté le 2026-09-03) · Classement des prospects · Repêchage LNH — réordonné le 2026-09-01 (le repêchage du pool lui-même, plus pertinent au quotidien, remonté en premier — même principe que "Mon équipe" en tête d'Alignements) |
+| LNH | 3 sections : Statistiques (LNH, AHL à venir ; sous-item Projections) · Calendrier · Contrats (ex-"Contrats LNH", ex-item à plat) |
+| Recrues (ex-"Repêchage") | Repêchage recrues · Classement des prospects · Repêchage LNH |
 | Ressources | Babillard (global, ajouté le 2026-09-02) · Planification · Aide & Règlements (déplacé du menu Compte/avatar) |
+
+**"Repêchage agents libres" déplacé d'Recrues vers Alignements, renommé "Signatures des
+agents libres" (David, 2026-09-14)** — repositionné une fois `/repechage-agents-libres`
+devenu, avec le libre-service pré-saison, un vrai outil de gestion d'alignement plutôt qu'un
+simple repêchage ; le menu Recrues, lui, ne rassemblait plus que des pages centrées sur les
+recrues/prospects (d'où le renommage). Route (`/repechage-agents-libres`), noms de fonctions
+et de tables (`presaison_draft_state`, etc.) inchangés — seul le libellé visible (menu, titre
+de page `<h1>`) a changé, pour éviter un chantier de renommage profond à faible valeur pour un
+changement qui ne touche que l'affichage.
 
 **`/transactions` renommé `/journal-transactions` le 2026-09-01** (David) : c'est un historique
 en lecture seule (aucune saisie pooler), et le nom "Transactions" était réservé pour un futur

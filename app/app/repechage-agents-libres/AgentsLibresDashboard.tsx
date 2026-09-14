@@ -144,7 +144,7 @@ export default function AgentsLibresDashboard({
     <div className="max-w-6xl mx-auto py-8 px-4">
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Repêchage — Agents libres</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Signatures des agents libres</h1>
           <p className="text-gray-500 text-sm mt-1">
             {season}
             {draftState.is_active && <span className="ml-2 text-amber-600 font-medium">· En cours</span>}

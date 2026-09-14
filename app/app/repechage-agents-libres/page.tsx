@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { loadPresaisonDataAction, loadPresaisonDraftStateAction } from '../admin/presaison/actions'
 import AgentsLibresDashboard from './AgentsLibresDashboard'
 
-export const metadata = { title: 'Repêchage — Agents libres' }
+export const metadata = { title: 'Signatures des agents libres' }
 export const dynamic = 'force-dynamic'
 
 // 15 était trop bas — avec 63 libérations pour la seule saison en cours, la plupart n'étaient
@@ -30,7 +30,7 @@ export default async function AgentsLibresPage() {
   if (!saison) {
     return (
       <div className="max-w-6xl mx-auto py-8 px-4">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Repêchage — Agents libres</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-4">Signatures des agents libres</h1>
         <p className="text-gray-400">Aucune saison régulière active.</p>
       </div>
     )
@@ -110,7 +110,7 @@ export default async function AgentsLibresPage() {
   if (dataResult.error || !dataResult.poolers) {
     return (
       <div className="max-w-6xl mx-auto py-8 px-4">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Repêchage — Agents libres</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-4">Signatures des agents libres</h1>
         <p className="text-red-500 text-sm">{dataResult.error ?? 'Erreur de chargement.'}</p>
       </div>
     )
