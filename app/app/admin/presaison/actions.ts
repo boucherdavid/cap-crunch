@@ -27,13 +27,14 @@ function getPlayerBucket(position: string | null): 'forward' | 'defense' | 'goal
   return 'forward'
 }
 
-// Recrue dont la protection (ELC, ou plafond 5 saisons pour un repêché) a expiré : la perte
-// du statut recrue devient permanente et automatique, sans étape de décision séparée (David,
-// 2026-09-07 — remplace le passage par la banque de recrues + activation manuelle du
-// 2026-09-03, jugé trop de friction : le pooler gère son surplus de salaire lui-même, de A à
-// Z, via le libre-service actif↔réserviste/libération déjà en place sur
-// /repechage-agents-libres, plutôt que d'attendre une action de l'admin ou de cliquer
-// "Activer"). Deux cas, selon où le joueur se trouve au moment de l'expiration :
+// Recrue dont la protection (5 saisons depuis le repêchage pour un repêché, ELC pour un agent
+// libre — voir isRookieProtectionExpired) a expiré : la perte du statut recrue devient
+// permanente et automatique, sans étape de décision séparée (David, 2026-09-07 — remplace le
+// passage par la banque de recrues + activation manuelle du 2026-09-03, jugé trop de friction :
+// le pooler gère son surplus de salaire lui-même, de A à Z, via le libre-service
+// actif↔réserviste/libération/remise en banque déjà en place sur /repechage-agents-libres,
+// plutôt que d'attendre une action de l'admin ou de cliquer "Activer"). Deux cas, selon où le
+// joueur se trouve au moment de l'expiration :
 // - déjà actif/réserviste : reste exactement où il est, seuls rookie_type/pool_draft_year
 //   sont effacés (aucun changement de player_type, donc pas de transaction/roster_change_log
 //   — simple retrait d'un tag de protection devenu caduc).

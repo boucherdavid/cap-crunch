@@ -411,10 +411,14 @@ export async function applyTransactionItems(
       const { addedAtOverride, warning } = computeTypeChangeAddedAt(existingRow.added_at, txTs)
       if (warning) warnings.push(warning)
 
-      // Promouvoir une recrue dont la protection (ELC, ou plafond 5 saisons pour un
-      // repêché) est déjà expirée rend la perte du statut recrue permanente et automatique
-      // au moment même de l'activation — le pooler comprend qu'il ne pourra plus la
-      // remettre en banque ensuite (David, 2026-09-03).
+      // Promouvoir une recrue dont la protection (5 saisons depuis le repêchage pour un
+      // repêché, ELC pour un agent libre — voir isRookieProtectionExpired) est déjà expirée
+      // rend la perte du statut recrue permanente et automatique au moment même de
+      // l'activation — le pooler comprend qu'il ne pourra plus la remettre en banque ensuite
+      // (David, 2026-09-03). Si la protection n'est pas encore VRAIMENT expirée (ex: repêché
+      // encore dans ses 5 ans malgré un ELC terminé), rookie_type/pool_draft_year restent en
+      // place même après activation — le pooler garde l'option de le remettre en banque plus
+      // tard (David, 2026-09-14).
       let rookieClearFields = {}
       if (action_type === 'promote' && existingRow.rookie_type) {
         const { data: contract } = await supabase

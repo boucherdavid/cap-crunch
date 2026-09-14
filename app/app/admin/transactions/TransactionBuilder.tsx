@@ -133,7 +133,7 @@ function AdjustmentForm({
         player_id: entry.player_id,
         old_player_type: 'recrue',
         new_player_type: newType,
-        label: `${STAR} Promouvoir ${playerLabel} → ${typeLabel[newType]}${expired ? ' — ⚠ ELC expiré, statut recrue perdu définitivement' : ''}`,
+        label: `${STAR} Promouvoir ${playerLabel} → ${typeLabel[newType]}${expired ? ' — ⚠ Protection expirée, statut recrue perdu définitivement' : ''}`,
         sideLabel: poolerName,
       })
     } else if (action === 'reactivate') {
@@ -261,7 +261,7 @@ function AdjustmentForm({
           {sourceList.map(e => (
             <option key={e.id} value={String(e.id)}>
               {e.players.last_name}, {e.players.first_name} ({e.players.teams?.code ?? DASH}) — {typeLabel[e.player_type]}
-              {action === 'promote' ? (isRecruitExpired(e, season) ? ' — ⚠ ELC expiré' : ' — ELC actif') : ''}
+              {action === 'promote' ? (isRecruitExpired(e, season) ? ' — ⚠ Protection expirée' : ' — Protégée') : ''}
             </option>
           ))}
         </select>

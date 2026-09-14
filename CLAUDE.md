@@ -16,15 +16,17 @@ Application web pour gérer un pool de hockey long terme, en remplacement d'un f
 - La banque de recrues et les joueurs LTIR ne comptent pas dans la masse salariale
 - Transactions gérées côté admin
 - Historique conservé dans `transactions` et `transaction_items`
-- Protection recrue : la fin de l'ELC déclenche toujours la perte de protection — pour un
-  repêché par le pool, les 5 saisons depuis le repêchage ne sont qu'un plafond dur (jamais
-  protégé au-delà, même sur un ELC prolongé) ; pour un agent libre, protégé tant que l'ELC
-  est actif (`isRookieProtectionExpired()`, `app/lib/rookieProtection.ts`). Quand la
-  protection expire, la perte du statut recrue est automatique et permanente
+- Protection recrue : pour un repêché par le pool, les 5 saisons depuis le repêchage sont la
+  **seule** limite — la fin de l'ELC ne fait plus perdre la protection avant ces 5 ans (le
+  pooler garde l'option de laisser le joueur en banque même avec un ELC terminé) ; pour un
+  agent libre, protégé tant que l'ELC est actif, sans fenêtre de 5 ans
+  (`isRookieProtectionExpired()`, `app/lib/rookieProtection.ts`). Quand la protection expire
+  pour de vrai, la perte du statut recrue est automatique et permanente
   (`rookie_type`/`pool_draft_year` effacés), sans étape de décision séparée : un joueur déjà
   actif/réserviste reste où il est ; une recrue encore en banque (jamais promue) est activée
   automatiquement en Actif. Le pooler gère ensuite lui-même un éventuel surplus (réserve,
-  libération) via le libre-service de `/repechage-agents-libres`. Détails en section 6.
+  libération, remise en banque tant que la protection n'est pas vraiment expirée) via le
+  libre-service de `/repechage-agents-libres`. Détails en section 6.
 - Calcul des points (`buildStandings()`) : seules les fenêtres où le joueur est réellement
   `actif` comptent — `recrue`/`reserviste`/`ltir` ne rapportent aucun point. Un joueur peut
   être actif plusieurs fois non consécutives dans une même saison (ex: réserve puis rappelé) ;
@@ -554,11 +556,22 @@ ancien `CURRENT_SEASON = '2025-26'` figé se désynchronisait à chaque transiti
 Si une page affiche une saison NHL en dur ailleurs, vérifier qu'elle dérive bien de
 `pool_seasons.is_active` avant de la reproduire.
 
-**Protection recrue (`app/lib/rookieProtection.ts`) — David, 2026-09-07 :**
-- `isRookieProtectionExpired(rookieType, poolDraftYear, isElcActive, seasonStartYear)` : la
-  fin de l'ELC prime toujours ; pour `repeche`, `!isElcActive || (seasonStartYear -
-  poolDraftYear) >= 5` (le 5 ans est un plafond dur, pas une garantie de durée) ; pour
-  `agent_libre`, `!isElcActive` seul (inchangé).
+**Protection recrue (`app/lib/rookieProtection.ts`) — David, 2026-09-07, règle des 5 ans
+revue le 2026-09-14 :**
+- `isRookieProtectionExpired(rookieType, poolDraftYear, isElcActive, seasonStartYear)` : pour
+  `repeche`, `(seasonStartYear - poolDraftYear) >= 5` **seulement** — la fin de l'ELC ne compte
+  plus, contrairement à la version du 2026-09-07 (`!isElcActive || ...`). Trouvé en pratique
+  (David, 2026-09-14) : Leo Carlsson et Connor Bedard, repêchés par le pool en 2023, ELC
+  terminé et gros nouveau contrat (18M$/15M$) compté au complet contre le cap de leur pooler
+  dès la transition de saison, alors qu'ils étaient encore dans leur fenêtre de 5 ans — le
+  pooler doit garder l'option de les laisser en banque le temps de décider, sans se sentir
+  obligé de payer le plein salaire tout de suite juste parce que l'ELC est fini. Pour
+  `agent_libre`, `!isElcActive` seul (inchangé — pas de fenêtre de 5 ans pour un agent libre,
+  repêché par le pool seulement).
+- checkSeasonConformity, BanqueRecruesManager.tsx et poolers/[id]/page.tsx ont leur propre
+  copie divergente de cette règle (pré-existant, hors scope d'unifier) mais implémentaient déjà
+  les 5 ans purs pour un repêché — seule cette fonction centrale avait encore le vieux
+  comportement, d'où l'incohérence trouvée par David.
 - Quand la protection expire, la perte du statut recrue (`rookie_type`/`pool_draft_year`
   effacés) est **automatique et permanente**, sans étape de décision séparée — remplace le
   passage par la banque de recrues + activation manuelle du 2026-09-03 (jugé trop de
@@ -593,6 +606,17 @@ Si une page affiche une saison NHL en dur ailleurs, vérifier qu'elle dérive bi
   tout moment (pas seulement celles à protection expirée) depuis `/repechage-agents-libres`
   ("Activer ou libérer une recrue", `submitSelfServiceAction`, `action_type='promote'` ou
   `'release'`) — tracé comme une vraie transaction, comme le reste du libre-service.
+- **Remettre en banque un joueur actif/réserviste encore protégé** (David, 2026-09-09) :
+  `submitSelfServiceAction`, `action_type='type_change'` avec `new_player_type='recrue'` —
+  même geste que le libre-service admin (`PoolerCard`/`AgentsLibresDashboard.tsx`, marqueur ★
+  "banqueEligible"), mais initié par le pooler lui-même. Éligibilité revérifiée côté serveur :
+  `rookie_type` doit être non-null sur la ligne actuelle — donc dépend entièrement de
+  `isRookieProtectionExpired` ci-dessus pour rester disponible aussi longtemps que la
+  protection n'est pas vraiment expirée (c'est le bug trouvé par David le 2026-09-14 : la
+  vieille règle effaçait `rookie_type` dès la fin de l'ELC, faisant disparaître le bouton ★
+  avant les 5 ans). Comme tout le libre-service pré-saison, disparaît dès que
+  `season_started=true` — un joueur qui a déjà commencé la saison comme actif ne peut plus
+  être renvoyé en banque par ce chemin (choix délibéré, David).
 - L'ancien panneau "Décisions requises — Recrues hors ELC" (résolution manuelle
   garder-actif/remettre-en-banque, `resolveElcDecisionAction`) reste retiré (2026-09-03).
 

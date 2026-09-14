@@ -7462,3 +7462,43 @@ tout commité et synchronisé `staging`/`main` :
   périmé, ne reflétait plus les derniers champs) — redémarrage propre du serveur dev nécessaire
   après un build de validation. À éviter : ne pas lancer `next build` et `next dev` en parallèle
   sur le même dossier `app/`.
+
+### 2026-09-14 (suite) — Protection recrue : la fin de l'ELC ne devait pas tuer les 5 ans d'un repêché
+
+**[Fix] — `isRookieProtectionExpired()` : plus de vérification ELC pour un repêché**
+(`app/lib/rookieProtection.ts`, commentaires mis à jour dans `admin/config/actions.ts`,
+`admin/presaison/actions.ts`, `admin/transactions/actions.ts`, `TransactionBuilder.tsx`) :
+- Un pooler a signalé que Leo Carlsson (Steve) et Connor Bedard (Sébastien F.), tous deux
+  repêchés par le pool en 2023, se retrouvaient `actif` avec leur vrai nouveau contrat
+  (18M$/15M$) compté au complet contre le cap — vérifié en base, confirmé : `rookie_type`/
+  `pool_draft_year` déjà effacés par la transition de saison, alors qu'ils sont encore dans
+  leur fenêtre de 5 ans (repêchés 2023, saison 2026-27 = 3 ans écoulés).
+- Cause : `isRookieProtectionExpired()` traitait la fin de l'ELC comme un déclencheur immédiat
+  de perte de protection pour un repêché aussi (`!isElcActive || (seasonStartYear -
+  poolDraftYear) >= 5`), pas seulement le plafond de 5 ans. David a clarifié l'intention : le
+  pooler doit garder l'**option** de laisser le joueur en banque jusqu'à ce que les 5 ans
+  soient vraiment écoulés, sans se sentir obligé de payer le plein salaire juste parce que
+  l'ELC est fini. Pour un agent libre, la règle ELC reste inchangée (pas de fenêtre de 5 ans).
+- **Trouvaille en creusant** : la fonctionnalité "remettre en banque" (self-service, marqueur
+  ★ dans `AgentsLibresDashboard.tsx`, ajoutée le 2026-09-09) existait déjà et faisait déjà tout
+  ce que David demandait — son éligibilité dépend uniquement de `rookie_type` non-null sur la
+  ligne, donc elle se remet à fonctionner automatiquement pour ces cas dès que la fonction
+  centrale arrête d'effacer le tag trop tôt. Découvert aussi : `checkSeasonConformity`,
+  `BanqueRecruesManager.tsx` et `poolers/[id]/page.tsx` avaient chacun leur propre copie de
+  cette règle, et les 3 implémentaient déjà correctement "5 ans purs, sans ELC" pour un
+  repêché — seule la fonction centrale (utilisée par la transition annuelle et le sync
+  pré-saison) avait la vieille règle. Correctif chirurgical : une seule fonction changée, tout
+  le reste de l'app (bouton ★, avertissements admin, calcul de conformité) se remet en
+  cohérence automatiquement, sans autre changement de code.
+- **Portée confirmée avec David** : cette option de "remettre en banque" ne vit que dans le
+  libre-service pré-saison (`/repechage-agents-libres`, avant "Démarrer la saison") — jamais
+  en cours de saison réelle, puisque ce panneau disparaît complètement dès que
+  `season_started=true`. Un joueur qui a déjà commencé la saison comme actif ne peut donc
+  jamais être renvoyé en banque par ce chemin, conforme à ce que David voulait.
+- **Limite importante, pas corrigée** : Carlsson, Bedard et les ~18 cas similaires trouvés en
+  prod ont déjà perdu leur `rookie_type`/`pool_draft_year` — ce correctif empêche que ça se
+  reproduise mais ne restaure rien rétroactivement. David gère ces cas lui-même via
+  `/admin/transactions` (l'admin n'est jamais bloqué par ces règles).
+- Vérifié : `tsc --noEmit`/`next build` passent ; smoke test avec une session authentifiée sur
+  `/repechage-agents-libres` (200 OK, aucune erreur serveur) ; les 10 recrues repêchées encore
+  sous ELC actif en staging restent inchangées après le chargement (pas de régression).
