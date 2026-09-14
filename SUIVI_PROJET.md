@@ -7502,3 +7502,12 @@ tout commité et synchronisé `staging`/`main` :
 - Vérifié : `tsc --noEmit`/`next build` passent ; smoke test avec une session authentifiée sur
   `/repechage-agents-libres` (200 OK, aucune erreur serveur) ; les 10 recrues repêchées encore
   sous ELC actif en staging restent inchangées après le chargement (pas de régression).
+- **Restauration manuelle des cas déjà touchés** : liste de 34 candidats (ELC passé de actif à
+  terminé, `rookie_type` déjà effacé) générée dans `excel/protection_recrues_a_completer.xlsx`
+  (gitignored), complétée par David (repêché par le pool oui/non + année). 27 "oui" appliqués
+  en prod (`rookie_type='repeche'`, `pool_draft_year` restauré) — correspondance parfaite,
+  0 erreur. 21/27 aussi appliqués en staging (6 introuvables — Simon Nemec, Tyler Boucher, Leo
+  Carlsson, Pavel Mintyukov, Zach Benson, Brennan Othmann — staging est un environnement
+  distinct, pas nécessairement en phase avec ces mêmes rosters ; laissé tel quel, staging n'est
+  pas l'environnement réel où le problème a été signalé). Les 7 "non" (agents libres) laissés
+  intacts — leur `rookie_type` null est déjà correct, aucune fenêtre de 5 ans pour eux.
