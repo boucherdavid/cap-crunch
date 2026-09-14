@@ -166,7 +166,13 @@ export default function ProjectionsTable({
               <th className={sortHeaderClass('nhlCom')} onClick={() => setSortKey('nhlCom')}>NHL.com</th>
               <th className={sortHeaderClass('cbs')} onClick={() => setSortKey('cbs')}>CBS</th>
               <th className={`${sortHeaderClass('lastSeasonValue')} hidden sm:table-cell`} onClick={() => setSortKey('lastSeasonValue')}>Saison dernière</th>
-              <th className={`${sortHeaderClass('trendPerGame')} hidden sm:table-cell`} onClick={() => setSortKey('trendPerGame')}>Pts/Match</th>
+              <th
+                className={`${sortHeaderClass('trendPerGame')} hidden sm:table-cell`}
+                onClick={() => setSortKey('trendPerGame')}
+                title="Rythme par match de la tendance 3 saisons (colonne suivante) — pas celui de la saison dernière seule."
+              >
+                Pts/Match (tend.)
+              </th>
               <th className={sortHeaderClass('trend')} onClick={() => setSortKey('trend')}>Tendance 3 saisons</th>
               <th className="text-center px-4 py-3 font-medium text-gray-600" title="Progression saison après saison">Prog.</th>
             </tr>

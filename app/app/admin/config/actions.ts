@@ -184,8 +184,9 @@ export async function previewTransitionAction(
   const entries = (rosters ?? []) as any[]
   const noContract: { playerName: string; poolerName: string; playerType: string }[] = []
 
-  // Compte les joueurs actifs/réservistes dont la protection recrue (ELC, ou plafond 5
-  // saisons pour un repêché) sera expirée pour la saison cible — perdent alors rookie_type/
+  // Compte les joueurs actifs/réservistes dont la protection recrue (5 saisons depuis le
+  // repêchage pour un repêché, ELC pour un agent libre — voir isRookieProtectionExpired) sera
+  // expirée pour la saison cible — perdent alors rookie_type/
   // pool_draft_year immédiatement (transitionSeasonAction), mais restent actifs/réservistes
   // tels quels (David, 2026-09-07 — plus de passage par la banque de recrues, voir
   // transitionSeasonAction ci-dessous). Une recrue encore en banque à ce moment-là (jamais
@@ -266,14 +267,16 @@ export async function transitionSeasonAction(
 
       const contracts: any[] = e.players?.player_contracts ?? []
 
-      // Joueur actif/réserviste dont la protection recrue (ELC, ou plafond 5 saisons pour un
-      // repêché) vient d'expirer : reste exactement où il est (actif reste actif, réserviste
-      // reste réserviste) — seuls rookie_type/pool_draft_year sont effacés, rendant la perte
-      // du statut recrue immédiate et permanente. Le pooler gère ensuite lui-même un éventuel
-      // surplus de salaire via le libre-service (actif↔réserviste, libération) sur
-      // /repechage-agents-libres (David, 2026-09-07 — remplace le retour en banque du
-      // 2026-09-03, jugé trop de friction). Une recrue déjà en banque (jamais promue) n'est
-      // pas traitée ici — elle sera activée automatiquement en 'actif' au prochain chargement
+      // Joueur actif/réserviste dont la protection recrue (5 saisons depuis le repêchage pour
+      // un repêché, ELC pour un agent libre — voir isRookieProtectionExpired) vient d'expirer :
+      // reste exactement où il est (actif reste actif, réserviste reste réserviste) — seuls
+      // rookie_type/pool_draft_year sont effacés, rendant la perte du statut recrue immédiate
+      // et permanente. Le pooler gère ensuite lui-même un éventuel surplus de salaire via le
+      // libre-service (actif↔réserviste, libération, remise en banque tant que la protection
+      // n'est pas VRAIMENT expirée) sur /repechage-agents-libres (David, 2026-09-07 — remplace
+      // le retour en banque du 2026-09-03, jugé trop de friction). Une recrue déjà en banque
+      // (jamais promue) n'est pas traitée ici — elle sera activée automatiquement en 'actif'
+      // au prochain chargement
       // de la pré-saison (syncExpiredRookieProtection, admin/presaison/actions.ts). Même
       // définition que previewTransitionAction — l'avertissement affiché avant de confirmer
       // doit correspondre exactement à ce qui se passe ici.
