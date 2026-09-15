@@ -7651,3 +7651,66 @@ mobile) :
 2. Repêchage LNH — inchangé
 3. Repêchage recrues → **Repêchage interne**
 - Vérifié : `tsc --noEmit`/`next build` passent.
+
+### 2026-09-14 (suite) — Pause de session : état de préparation saison 2026-27 + chantier ballotage
+
+**État réel de la saison 2026-27 en prod (vérifié en base, pas juste les notes)** — David
+demandait où en était la préparation :
+- `pool_seasons.season_started = false`, `is_active = true` — saison consultable mais pas
+  démarrée.
+- **Tous les 8 poolers dépassent le cap de 129M$** (de +14M$ à +54M$ selon le pooler) — normal
+  à ce stade (avant ménage pré-saison), mais confirme qu'aucune libération n'a encore été faite
+  pour de vrai.
+- `presaison_draft_state` est **vide** — le repêchage des agents libres n'a même pas été
+  initialisé (pas d'ordre de repêchage défini).
+- **0/8 poolers** ont déclaré leur alignement "prêt" (`presaison_pooler_ready`).
+- Banque de recrues peuplée pour tout le monde (8 à 27 selon le pooler) — le repêchage des
+  recrues, lui, semble déjà fait.
+- **Conclusion** : les outils sont tous en place et fonctionnels (David confirme que c'est ce
+  qu'il voulait dire par "tout est fait") — ce qui reste est le vrai processus avec les 8
+  poolers : phase de libération → repêchage des agents libres → déclarations "prêt" →
+  "Démarrer la saison". Rien à coder ici, juste à dérouler avec le pool.
+
+**[Chantier identifié, pas commencé] — Processus et outil de réclamation au ballotage**
+(discussion seulement, aucun code écrit) :
+- David a signalé qu'il manque un vrai processus de ballotage. Vérifié dans le code : "Ballotage"
+  existe déjà comme **catégorie** dans `/gestion-effectifs`
+  (`gestion-effectifs/actions.ts`/`GestionEffectifsManager.tsx`, `ACTION_DEFS`, `adminOnly:
+  true`) — mais seulement une **saisie manuelle admin après coup** (l'admin cherche le joueur,
+  l'assigne à un pooler, étiquette "ballotage" dans l'historique). **Aucun vrai processus
+  interactif** n'existe : pas de file d'attente par priorité, pas de fenêtre de réclamation, pas
+  de notification — contrairement au repêchage des agents libres qui a tout ça.
+- **Réponses de David aux questions de cadrage :**
+  1. Déclencheur : quand un pooler **libère** un joueur (à confirmer : en cours de saison
+     seulement, ou aussi pendant le ménage pré-saison ? — voir question ouverte plus bas).
+  2. Priorité de réclamation : **ordre inverse du classement au moment où le joueur est
+     libéré** (donc un snapshot de l'ordre à cet instant, pas recalculé plus tard).
+  3. Fenêtre de temps : **paramétrable** — pas encore de valeur précise, à discuter avec les
+     poolers.
+  4. Réclamations multiples sur le même joueur : **seule la priorité tranche**, pas d'autre
+     critère.
+- **Questions encore ouvertes (posées à David, pas encore répondues, session terminée avant
+  réponse)** :
+  1. Portée : uniquement les libérations **en cours de saison** (Gestion d'effectifs, saison
+     démarrée), ou aussi les libérations en rafale de la pré-saison (phase de libération,
+     `/repechage-agents-libres`) ? Recommandation donnée : en cours de saison seulement — en
+     pré-saison ça ralentirait le ménage collectif de tout le monde pour un mécanisme qui n'a
+     pas vraiment sa place à cette étape.
+  2. Où les poolers réclament : nouvel onglet dans Gestion d'effectifs ("Joueurs au
+     ballotage"), ou une page à part sous Alignements ?
+  3. Notifications (push/courriel) quand un joueur est mis au ballotage — infrastructure déjà
+     en place (`sendPushToAdmins`/`sendPushToUsers`/`sendEmailToIds`, voir `threadNotify.ts`),
+     juste à la brancher si voulu.
+  4. Valeur par défaut de la fenêtre de réclamation (24h ? 48h ?) en attendant la vraie
+     discussion avec les poolers — un point de départ ajustable dans les réglages admin.
+  5. Mécanisme de résolution : recommandation donnée — même patron que l'expiration de la
+     protection recrue déjà dans l'app (`syncExpiredRookieProtection`,
+     `admin/presaison/actions.ts`) : la fenêtre expirée se résout automatiquement dès qu'une
+     page pertinente est chargée, sans tâche planifiée/cron à ajouter. À confirmer avec David.
+- **Ébauche de modèle de données envisagée** (pas validée, juste une piste) : nouvelle table
+  `waiver_claims` (joueur, pooler ayant libéré, horodatage, ordre de priorité snapshotté,
+  durée de fenêtre snapshottée, statut, résolu vers quel pooler) + `waiver_claim_requests`
+  (qui a réclamé) + un réglage `app_settings.waiver_claim_hours`. À revalider une fois les
+  questions ci-dessus répondues — rien de ceci n'est encore construit.
+- **Prochaine étape à la reprise** : répondre aux 5 questions ouvertes ci-dessus avant de
+  commencer à coder.
