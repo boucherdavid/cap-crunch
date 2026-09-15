@@ -9,6 +9,7 @@ import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/roste
 import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { validateRosterLimits } from '@/lib/rosterLimits'
+import { createWaiverClaimForRelease } from '@/lib/waiverClaims'
 
 export type PlayerType = 'actif' | 'reserviste' | 'ltir' | 'recrue'
 
@@ -643,6 +644,9 @@ export async function submitBatchAction(input: {
           await log(e.player_id, e.player_type === 'actif' ? 'deactivation' : 'retrait', e.player_type, null)
           await db.from('pooler_rosters')
             .update({ is_active: false, removed_at: changedAt }).eq('id', action.releaseEntryId)
+          // Ballotage (David, 2026-09-15) — no-op en pré-saison, createWaiverClaimForRelease
+          // revérifie season_started lui-même ; gate ici en plus pour éviter l'appel inutile.
+          if (!isPreseason) after(() => createWaiverClaimForRelease(input.saisonId, e.player_id, input.poolerId).catch(() => {}))
           break
         }
 

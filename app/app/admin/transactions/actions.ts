@@ -1,11 +1,13 @@
 'use server'
 
+import { after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/rosterTypeChange'
 import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
 import { validateRosterLimits } from '@/lib/rosterLimits'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { isRookieProtectionExpired } from '@/lib/rookieProtection'
+import { createWaiverClaimForRelease } from '@/lib/waiverClaims'
 
 export type ActionType = 'transfer' | 'promote' | 'sign' | 'reactivate' | 'release' | 'type_change'
 
@@ -487,6 +489,11 @@ export async function applyTransactionItems(
         .maybeSingle()
       if (error) return { error: error.message }
       await log(player_id!, from_pooler_id!, relRow?.player_type ?? old_player_type ?? null, null)
+      // Ballotage (David, 2026-09-15) — no-op en pré-saison (createWaiverClaimForRelease
+      // revérifie season_started lui-même), et déjà sauté ici en pré-saison via
+      // skipEnforcement plus bas de toute façon (l'admin peut appeler applyTransactionItems
+      // hors saison démarrée pour une correction historique, ce n'est pas une vraie libération).
+      if (!skipEnforcement) after(() => createWaiverClaimForRelease(saisonId, player_id!, from_pooler_id!).catch(() => {}))
       continue
     }
   }

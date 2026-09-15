@@ -111,8 +111,30 @@ const SECTIONS: Section[] = [
           <li>• <strong>Libérez</strong> un joueur pour le retirer de votre alignement.</li>
           <li>• <strong>Activez ou remettez en banque</strong> une recrue encore protégée, à tout moment.</li>
           <li>• Vos changements doivent respecter les limites du pool (voir Règlements) : maximum 12 attaquants / 6 défenseurs / 2 gardiens actifs, minimum 2 réservistes, et votre masse salariale sous le cap.</li>
+          <li>• Libérer un joueur en cours de saison le met automatiquement au <strong>ballotage</strong> (onglet Ballotage, voir plus bas) — les autres poolers ont un délai pour le réclamer.</li>
         </ul>
         <p className="text-xs text-gray-400 mt-3 italic">Avant le début officiel de la saison, ces mêmes ajustements se font plutôt depuis <strong>Signatures des agents libres</strong> (Alignements, voir plus bas).</p>
+      </div>
+    ),
+  },
+  {
+    id: 'guide-ballotage',
+    tab: 'guide',
+    title: 'Ballotage',
+    keywords: 'ballotage reclamer liberer joueur delai priorite classement onglet gestion effectifs',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Onglet <strong>Ballotage</strong> de Gestion d&apos;effectifs — quand un joueur est libéré
+          en cours de saison, il y apparaît et devient réclamable par n&apos;importe quel autre pooler
+          pendant un délai limité.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• Cliquez <strong>Réclamer</strong> pour signaler votre intérêt — vous pouvez réclamer plusieurs joueurs en même temps.</li>
+          <li>• Si plusieurs poolers réclament le même joueur, celui avec la <strong>priorité la plus haute</strong> (pire classé au moment de la libération) le remporte.</li>
+          <li>• Si personne ne réclame avant la fin du délai, le joueur redevient simplement un agent libre normal.</li>
+          <li>• Le joueur remporté arrive sur votre alignement en <strong>réserviste</strong> — activez-le ensuite vous-même si vous le souhaitez.</li>
+        </ul>
       </div>
     ),
   },
@@ -387,6 +409,20 @@ const SECTIONS: Section[] = [
         <li>• Les ajustements sur votre propre alignement (actif/réserviste, libération, recrues) se font en libre-service via <strong>Gestion d&apos;effectifs</strong> une fois la saison démarrée, ou via <strong>Signatures des agents libres</strong> avant le début de la saison.</li>
         <li>• Pour tester l&apos;impact d&apos;un changement ou d&apos;un échange avant de le faire pour de vrai, voir <strong>Simulation</strong> — disponible toute l&apos;année, purement en aperçu.</li>
         <li>• <span className="italic text-gray-400">Règles additionnelles à venir (nombre d&apos;échanges permis, délai de désactivation, etc.)</span></li>
+      </ul>
+    ),
+  },
+  {
+    id: 'regl-ballotage',
+    tab: 'reglements',
+    title: 'Ballotage',
+    keywords: 'ballotage reclamer liberer priorite classement delai',
+    content: (
+      <ul className="text-sm text-gray-700 space-y-1.5">
+        <li>• S&apos;applique uniquement aux libérations en <strong>cours de saison</strong> (pas aux libérations de la phase pré-saison).</li>
+        <li>• La priorité de réclamation est l&apos;<strong>ordre inverse du classement</strong> au moment précis de la libération — elle ne change pas même si le classement bouge ensuite.</li>
+        <li>• Le délai de réclamation est configurable par l&apos;administrateur (par défaut 3 jours).</li>
+        <li>• En cas de réclamations multiples sur le même joueur, seule la priorité tranche.</li>
       </ul>
     ),
   },

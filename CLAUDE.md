@@ -183,6 +183,8 @@ Hockey_Pool_App/
   `/repechage-agents-libres` — voir section 5)
 - `presaison_pooler_ready` (déclaration "mon alignement est prêt" par pooler, une ligne par
   saison+pooler — voir section 5)
+- `waiver_claims`/`waiver_claim_requests` (ballotage en cours de saison — une claim par
+  libération, une request par pooler l'ayant réclamée — voir section 6)
 
 **Conventions :**
 - Statuts joueurs : `ELC`, `RFA`, `UFA`
@@ -203,7 +205,9 @@ mettre à jour cette section dès qu'une route ou un onglet admin change (voir s
 saisie pooler ; distinct de `/admin/transactions`, l'outil admin) `/classement` `/resultats`
 (récap veille)
 `/gestion-series` (soumettre ses choix séries) `/classement-series` (classement séries)
-`/gestion-effectifs` `/draft-center` (classement des prospects, vue publique)
+`/gestion-effectifs` (2 onglets, David 2026-09-15 : **Mouvements**, l'outil existant ; et
+**Ballotage**, réclamer un joueur libéré en cours de saison — voir section 6) `/draft-center`
+(classement des prospects, vue publique)
 `/dashboard` (redirige vers son propre alignement) `/compte` `/signaler` `/aide` `/offline`
 `/planification` (sondage type Doodle pour une rencontre — vue pooler : ses disponibilités,
 le résumé, le babillard propre au sondage ; notifie les admins par push à chaque
@@ -644,6 +648,47 @@ revue le 2026-09-14 :**
   table `cap_signing_watch`. Le pooler peut réagir comme il veut (libérer, échanger,
   ajuster) ; passé le délai, seul l'admin peut libérer le joueur manuellement — jamais
   automatique.
+
+**Ballotage en cours de saison (`app/lib/waiverClaims.ts`) — David, 2026-09-15 :**
+- Déclencheur : un pooler libère un joueur (`/gestion-effectifs`, action "Libération") ou
+  l'admin libère un joueur en son nom (`/admin/transactions`, `action_type='release'`) — dans
+  les deux cas **seulement si `pool_seasons.season_started=true`** (`createWaiverClaimForRelease`
+  revérifie lui-même ce flag, sans dépendre de l'appelant). Les libérations en rafale de la
+  pré-saison (`/repechage-agents-libres`) ne déclenchent jamais de ballotage — hors scope
+  (elles tournent de toute façon toujours avant que `season_started` bascule à `true`).
+- Priorité : `priority_snapshot` (JSONB, ordre = priorité décroissante) **snapshotté** au
+  moment de la libération via `buildStandings()` (`app/lib/standings.ts`) inversé — pire
+  classé en premier. Ni recalculé, ni mis à jour si le classement change avant la résolution.
+- Fenêtre : `app_settings.waiver_claim_hours` (défaut 72h/3 jours, éditable dans
+  `/admin/effectifs?tab=conformite`, même formulaire que `unsigned_player_cap_multiplier`/
+  `cap_deadline_days`), snapshottée dans `waiver_claims.window_hours` à la création.
+- Réclamation : `/gestion-effectifs` → onglet **Ballotage**, ouvert à tous les poolers
+  (`submitWaiverClaimAction`, `gestion-effectifs/waiver-actions.ts`) — sauf le pooler qui vient
+  de libérer le joueur. Plusieurs réclamations possibles sur la même claim ; seule la priorité
+  tranche à la résolution.
+- Résolution : **paresseuse**, au chargement de l'onglet Ballotage (`getWaiverClaimsAction`
+  appelle `resolveExpiredWaiverClaims()` en premier — même patron que
+  `syncExpiredRookieProtection`, `admin/presaison/actions.ts` — pas de tâche planifiée). Pour
+  chaque claim `open` dont `expires_at` est passé : aucune réclamation → `resolved_unclaimed`
+  (le joueur reste un agent libre normal, aucune action supplémentaire) ; sinon le gagnant
+  (premier `pooler_id` de `priority_snapshot` parmi les requérants) reçoit le joueur en
+  **réserviste** (jamais actif — évite de dépasser 12/6/2 automatiquement ; le gagnant
+  réactive lui-même ensuite), journalisé `roster_change_log.change_type='ballotage'` (déjà un
+  libellé reconnu, `CHANGE_LABEL` dans `poolers/[id]/PoolerPageTabs.tsx`) + une vraie ligne
+  `transactions`/`transaction_items` (visible dans `/journal-transactions`). Si la résolution
+  échoue (ex: cap du gagnant dépassé) : `status='blocked'`, `error_message` rempli,
+  `console.error` — l'admin résout manuellement via `/admin/transactions` (filet de sécurité,
+  même philosophie que la protection recrue ci-dessus).
+- Écriture directe (pas de réutilisation d'`applyTransactionItems`, `admin/transactions/
+  actions.ts`) : `waiverClaims.ts` importe `applyTransactionItems` nulle part — un import dans
+  l'autre sens (`admin/transactions/actions.ts` appelle `createWaiverClaimForRelease` pour
+  brancher sur son propre `action_type='release'`) aurait créé un cycle. La résolution
+  duplique donc le strict minimum de la logique 'sign' d'`applyTransactionItems` plutôt que de
+  la réutiliser.
+- RLS `waiver_claims`/`waiver_claim_requests` : lecture publique + admin seulement en écriture
+  (même patron que `presaison_draft_state`/`presaison_pooler_ready`) — toutes les écritures
+  (création de claim, réclamation, résolution) passent par `createAdminClient()` depuis des
+  Server Actions qui font leur propre vérification d'autorisation.
 
 **Règles d'alignement consolidées (`app/lib/rosterLimits.ts`) — David, 2026-08-31 :**
 - `validateRosterLimits(entries, poolCap)` : 12 attaquants / 6 défenseurs / 2 gardiens actifs

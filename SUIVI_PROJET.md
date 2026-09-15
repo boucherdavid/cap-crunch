@@ -7714,3 +7714,39 @@ demandait où en était la préparation :
   questions ci-dessus répondues — rien de ceci n'est encore construit.
 - **Prochaine étape à la reprise** : répondre aux 5 questions ouvertes ci-dessus avant de
   commencer à coder.
+
+### 2026-09-15 — Ballotage en cours de saison : construit
+
+**[Feature] — Ballotage en cours de saison** (`app/lib/waiverClaims.ts`,
+`app/app/gestion-effectifs/{waiver-actions.ts,BallotageTab.tsx,GestionEffectifsManager.tsx}`,
+`app/app/admin/transactions/actions.ts`, `app/app/admin/effectifs/{cap-watch-actions.ts,
+CapWatchManager.tsx,page.tsx}`, `schema.sql`) :
+- Réponses de David aux 5 questions ouvertes de la session précédente : portée en cours de
+  saison seulement, onglet dans Gestion d'effectifs, notifications activées, fenêtre par
+  défaut 3 jours (72h, valeur utilisée l'an dernier), résolution automatique quand personne ne
+  réclame → le joueur redevient un agent libre normal.
+- Nouvelles tables `waiver_claims`/`waiver_claim_requests` + `app_settings.waiver_claim_hours`
+  (migration en commentaire dans `schema.sql`, **pas encore exécutée en base** — à rouler dans
+  le SQL Editor Supabase, staging d'abord). RLS lecture publique + admin gère, même patron que
+  `presaison_draft_state`/`presaison_pooler_ready` — voir CLAUDE.md section 6 pour le détail
+  complet du mécanisme (déclencheur, priorité snapshottée, résolution paresseuse, fallback
+  `blocked`).
+- Création de la claim branchée sur les deux chemins de libération existants
+  (`gestion-effectifs/actions.ts` case `'release'`, `admin/transactions/actions.ts` branche
+  `action_type==='release'`), gatée sur `season_started=true`. Résolution appelée depuis le
+  nouvel onglet Ballotage de `/gestion-effectifs` (`getWaiverClaimsAction`).
+- Décision d'implémentation notable, pas dans le plan initial : la résolution n'appelle
+  **pas** `applyTransactionItems` (admin/transactions/actions.ts) malgré la réutilisation
+  déjà en place ailleurs (`syncExpiredRookieProtection`, `submitSelfServiceAction`) — un
+  import dans les deux sens aurait créé un cycle (`admin/transactions/actions.ts` a besoin
+  d'appeler `createWaiverClaimForRelease` pour brancher sur son propre `'release'`). La
+  résolution duplique donc directement la logique 'sign' minimale (insert `pooler_rosters` +
+  `transactions`/`transaction_items` + `roster_change_log` avec `change_type='ballotage'`,
+  déjà un libellé reconnu dans `poolers/[id]/PoolerPageTabs.tsx`).
+- Le joueur remporté est signé **réserviste** (jamais actif) pour ne jamais risquer de
+  dépasser 12/6/2 automatiquement — le gagnant réactive lui-même ensuite. Validation du cap du
+  gagnant avant résolution (`validateRosterLimits`) ; en cas d'échec, `status='blocked'` avec
+  `error_message`, admin résout manuellement via `/admin/transactions` (même filet de sécurité
+  que la protection recrue).
+- Vérifié : `tsc --noEmit`/`next build` passent. **Pas encore testé en base** — migration SQL
+  non exécutée (à faire en staging avant tout test réel de bout en bout).

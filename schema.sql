@@ -978,3 +978,46 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 -- (staging d'abord, puis prod) :
 --
 -- ALTER TABLE presaison_draft_state ADD COLUMN IF NOT EXISTS pass_skip_one BOOLEAN NOT NULL DEFAULT false;
+
+-- Migration 2026-09-15 : ballotage en cours de saison (file de réclamation par priorité quand
+-- un pooler libère un joueur, saison démarrée seulement) — voir CLAUDE.md section 6 pour la
+-- mécanique complète. RLS "lecture publique + admin gère" même patron que
+-- presaison_draft_state/presaison_pooler_ready — toutes les écritures (création de claim,
+-- réclamation par un pooler, résolution) passent par le client admin depuis des Server
+-- Actions qui font elles-mêmes la vérification d'autorisation. À exécuter une seule fois dans
+-- le SQL Editor Supabase (staging d'abord, puis prod) :
+--
+-- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS waiver_claim_hours INTEGER NOT NULL DEFAULT 72;
+--
+-- CREATE TABLE waiver_claims (
+--   id SERIAL PRIMARY KEY,
+--   pool_season_id INTEGER REFERENCES pool_seasons(id) ON DELETE CASCADE,
+--   player_id INTEGER REFERENCES players(id),
+--   released_by_pooler_id UUID REFERENCES poolers(id),
+--   released_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+--   priority_snapshot JSONB NOT NULL,        -- array de pooler_id, ordre = priorité (pire classé en premier)
+--   window_hours INTEGER NOT NULL,           -- snapshot de app_settings.waiver_claim_hours à la création
+--   expires_at TIMESTAMPTZ NOT NULL,
+--   status VARCHAR(20) NOT NULL DEFAULT 'open',  -- open | resolved_claimed | resolved_unclaimed | blocked
+--   resolved_at TIMESTAMPTZ,
+--   awarded_to_pooler_id UUID REFERENCES poolers(id),
+--   error_message TEXT
+-- );
+--
+-- CREATE TABLE waiver_claim_requests (
+--   id SERIAL PRIMARY KEY,
+--   waiver_claim_id INTEGER REFERENCES waiver_claims(id) ON DELETE CASCADE,
+--   pooler_id UUID REFERENCES poolers(id),
+--   claimed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+--   UNIQUE (waiver_claim_id, pooler_id)
+-- );
+--
+-- ALTER TABLE waiver_claims ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Lecture publique waiver_claims" ON waiver_claims FOR SELECT USING (true);
+-- CREATE POLICY "Admin gère waiver_claims" ON waiver_claims FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+--
+-- ALTER TABLE waiver_claim_requests ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Lecture publique waiver_claim_requests" ON waiver_claim_requests FOR SELECT USING (true);
+-- CREATE POLICY "Admin gère waiver_claim_requests" ON waiver_claim_requests FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));

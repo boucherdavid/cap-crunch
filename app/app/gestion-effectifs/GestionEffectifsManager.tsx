@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useTransition } from 'react'
 import MovementHistoryPanel from '@/components/MovementHistoryPanel'
+import BallotageTab from './BallotageTab'
 import {
   getPoolerRosterAction,
   searchPlayersAction,
@@ -301,6 +302,8 @@ export default function GestionEffectifsManager({
   maxSignaturesAl: number
   maxSignaturesLtir: number
 }) {
+  const [activeTab, setActiveTab] = useState<'mouvements' | 'ballotage'>('mouvements')
+
   const [poolerId, setPoolerId]           = useState(selfPoolerId ?? '')
   const [roster, setRoster]               = useState<RosterForPooler | null>(null)
   const [loadingRoster, setLoadingRoster] = useState(false)
@@ -873,14 +876,39 @@ export default function GestionEffectifsManager({
     </div>
   )
 
+  const tabs = (
+    <div className="flex gap-2 mb-6 border-b border-gray-200">
+      {(['mouvements', 'ballotage'] as const).map(tab => (
+        <button key={tab} onClick={() => setActiveTab(tab)}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+            activeTab === tab ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}>
+          {tab === 'mouvements' ? 'Mouvements' : 'Ballotage'}
+        </button>
+      ))}
+    </div>
+  )
+
+  if (activeTab === 'ballotage') {
+    return (
+      <div className="max-w-3xl mx-auto">
+        {tabs}
+        <BallotageTab saisonId={saisonId} />
+      </div>
+    )
+  }
+
   if (!isAdmin) {
-    return <div className="max-w-3xl mx-auto">{mainContent}</div>
+    return <div className="max-w-3xl mx-auto">{tabs}{mainContent}</div>
   }
 
   return (
-    <div className="flex gap-6 items-start">
-      {mainContent}
-      <MovementHistoryPanel poolerId={poolerId || null} poolerName={poolerName} refreshKey={historyRefresh} saisonId={saisonId} />
+    <div>
+      {tabs}
+      <div className="flex gap-6 items-start">
+        {mainContent}
+        <MovementHistoryPanel poolerId={poolerId || null} poolerName={poolerName} refreshKey={historyRefresh} saisonId={saisonId} />
+      </div>
     </div>
   )
 }
