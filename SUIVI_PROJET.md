@@ -7793,4 +7793,20 @@ CapWatchManager.tsx,page.tsx}`, `schema.sql`) :
   `mainContent` juste en dessous. `BallotageTab.tsx` a déjà son propre `max-w-3xl` interne
   (sans `mx-auto`), donc reste sagement borné même en pleine largeur admin.
 - Vérifié : `tsc --noEmit` passe.
-- Commit : à venir.
+- Commit : `22abf11`, poussé sur `staging`.
+
+**[Chore] — mise à jour salaires/contrats PuckPedia** (`python_script/PuckPedia_*.csv`,
+`python_script/teams_offline/*.csv`) :
+- `run_pipeline_staging.ps1` complet (scraping + import joueurs/contrats + repêchages +
+  backfill nhl_id), log validé sans erreur — 1531 joueurs scrapés, 1509 mis à jour/6 insérés
+  en base staging, 4452 contrats upserted. Le "0 trouvés dans l'API NHL" au backfill nhl_id
+  (589 joueurs sans correspondance) est normal : saison régulière 2026-27 pas encore
+  commencée, donc l'API de stats NHL n'a encore aucune donnée pour matcher les joueurs.
+- Convention du projet (section 2 de `CLAUDE.md`) : une fois le log staging validé, les CSV
+  vont directement sur `main` (pas `staging` d'abord) pour déclencher `import.yml` → prod.
+  Commité par erreur d'abord sur `staging` (`d911bc7`, branche courante par défaut) faute
+  d'avoir vérifié la branche active avant de committer — corrigé par cherry-pick du même
+  commit sur `main` (`9b8e8ca`), poussé, puis retour sur `staging` pour pousser aussi
+  `d911bc7` (déjà committé, autant le garder — sans impact, mêmes fichiers que sur `main`).
+  À l'avenir : vérifier `git branch` et checkout `main` **avant** de committer les CSV du
+  pipeline, pas après.
