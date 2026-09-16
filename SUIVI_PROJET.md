@@ -7748,5 +7748,37 @@ CapWatchManager.tsx,page.tsx}`, `schema.sql`) :
   gagnant avant résolution (`validateRosterLimits`) ; en cas d'échec, `status='blocked'` avec
   `error_message`, admin résout manuellement via `/admin/transactions` (même filet de sécurité
   que la protection recrue).
-- Vérifié : `tsc --noEmit`/`next build` passent. **Pas encore testé en base** — migration SQL
-  non exécutée (à faire en staging avant tout test réel de bout en bout).
+- Vérifié : `tsc --noEmit`/`next build` passent. Commit `caa36c0`, poussé sur `staging`.
+- Migration SQL exécutée par David en staging **et en prod** le jour même (exception au
+  workflow habituel "staging d'abord, prod après validation" — migration pure sans risque de
+  données, David a choisi de la rouler aux deux endroits tout de suite plutôt que d'attendre
+  la validation fonctionnelle). Le code applicatif, lui, reste sur `staging` en attente de
+  validation avant merge vers `main` comme d'habitude.
+
+### 2026-09-16
+
+**[Fix] — déconnexions aléatoires sur mobile** (`app/proxy.ts`) :
+- David signale des déconnexions fréquentes sur cellulaire sans action de sa part. Cookies
+  Supabase écartés (maxAge par défaut de `@supabase/ssr` = 400 jours) et service worker écarté
+  (`public/sw.js` ne touche jamais aux requêtes Supabase/API/admin, aucune page authentifiée
+  mise en cache).
+- Cause la plus probable : `proxy.ts` appelle `supabase.auth.getUser()` sur **toutes** les
+  requêtes qui passent le matcher, y compris les prefetch automatiques de Next.js (`<Link>`
+  visible dans le viewport, ex: menus Navbar). Sur mobile, plusieurs de ces requêtes peuvent
+  arriver quasi simultanément près de l'expiration du token ; le refresh token Supabase étant
+  à usage unique, la première requête le renouvelle et les suivantes arrivent avec un token
+  déjà invalidé → session traitée comme invalide → déconnexion sans action de l'utilisateur.
+  Classe de bug connue pour l'intégration Next.js middleware + Supabase SSR.
+- Fix appliqué : `proxy.ts` court-circuite désormais tout de suite (avant la création du
+  client Supabase) quand `request.headers.get('Next-Router-Prefetch') === '1'` — un prefetch
+  n'affiche jamais rien à l'utilisateur (la vraie navigation refait l'appel), donc sûr à
+  ignorer, et ça élimine la majorité des appels `getUser()` redondants/concurrents qui
+  causaient la collision.
+- Second levier identifié mais hors du scope du code (accès Supabase Dashboard requis, à
+  faire par David) : Authentication → Sessions/Rate limits — augmenter le *Refresh Token
+  Reuse Interval* (marge de grâce pour un token réutilisé, conçu pour ce cas précis) et/ou
+  la durée du JWT d'accès (moins de refresh = moins d'occasions de collision).
+- Vérifié : `tsc --noEmit` passe. Pas encore testé en conditions réelles sur mobile (le fix
+  réduit la fréquence du bug plutôt que de l'éliminer par construction — à surveiller après
+  déploiement en staging).
+- Commit : à venir.
