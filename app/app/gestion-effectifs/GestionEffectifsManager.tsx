@@ -891,7 +891,7 @@ export default function GestionEffectifsManager({
 
   if (activeTab === 'ballotage') {
     return (
-      <div className="max-w-3xl mx-auto">
+      <div className={isAdmin ? '' : 'max-w-3xl mx-auto'}>
         {tabs}
         <BallotageTab saisonId={saisonId} />
       </div>

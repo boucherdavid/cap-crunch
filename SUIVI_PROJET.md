@@ -7781,4 +7781,16 @@ CapWatchManager.tsx,page.tsx}`, `schema.sql`) :
 - Vérifié : `tsc --noEmit` passe. Pas encore testé en conditions réelles sur mobile (le fix
   réduit la fréquence du bug plutôt que de l'éliminer par construction — à surveiller après
   déploiement en staging).
+- Commit : `73481f8`, poussé sur `staging`.
+
+**[Fix] — décalage visuel en changeant d'onglet Mouvements → Ballotage**
+(`app/gestion-effectifs/GestionEffectifsManager.tsx`) :
+- Signalé par David (captures d'écran) : pour un admin, l'onglet Ballotage forçait toujours
+  `max-w-3xl mx-auto` alors que Mouvements s'affiche en pleine largeur alignée à gauche
+  (layout 2 colonnes avec l'historique) — le contenu se recentrait et rétrécissait à chaque
+  changement d'onglet.
+- Fix : `max-w-3xl mx-auto` appliqué seulement si `!isAdmin`, même pattern déjà utilisé pour
+  `mainContent` juste en dessous. `BallotageTab.tsx` a déjà son propre `max-w-3xl` interne
+  (sans `mx-auto`), donc reste sagement borné même en pleine largeur admin.
+- Vérifié : `tsc --noEmit` passe.
 - Commit : à venir.
