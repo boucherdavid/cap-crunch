@@ -7938,3 +7938,11 @@ LNH** (`app/lib/nhl-stats.ts`, `app/app/statistiques/ahl/{page.tsx,AhlStatsTable
   Prop renommée `showTimeSensitiveOverlay`, `fetchTakenNames()` appelée sans condition de
   saison. Message d'avertissement ajusté en conséquence.
 - Vérifié : `tsc --noEmit` et `next build` passent.
+
+**[Chore] — renomme "Projections" en "LNH - Projections Pts" dans la nav**
+(`app/components/Navbar.tsx`) : David trouvait le libellé ambigu dans le sous-menu
+Statistiques (LNH / Projections / AHL) une fois l'AHL ajoutée — pas clair si "Projections"
+concernait la LNH ou l'AHL. Libellé changé desktop + mobile ; route (`/statistiques/
+projections`) et titre de page (`<h1>`/`<title>`) inchangés, scope volontairement limité au
+libellé du menu (même logique que le renommage "Signatures des agents libres" du
+2026-09-14). Vérifié : `tsc --noEmit` passe.
