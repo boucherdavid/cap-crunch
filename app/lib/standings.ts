@@ -80,8 +80,10 @@ type GameLogRow = {
   goalie_shutouts: number
 }
 
+export type DateRange = { from: string; to: string }  // ISO — from inclusif, to exclusif
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function buildStandings(supabase: any, seasonId: string | number): Promise<PoolerStanding[]> {
+export async function buildStandings(supabase: any, seasonId: string | number, range?: DateRange): Promise<PoolerStanding[]> {
   const [
     { data: rosterRows },
     { data: scoringRows },
@@ -120,13 +122,14 @@ export async function buildStandings(supabase: any, seasonId: string | number): 
   const gameLogRows: GameLogRow[] = []
   let offset = 0
   while (true) {
-    const { data: page } = await admin
+    let query = admin
       .from('player_game_logs')
       .select('player_id, game_start_time, goals, assists, goalie_wins, goalie_otl, goalie_shutouts')
       .in('player_id', playerIds)
       .eq('season', nhlSeason)
       .eq('game_type', 2)
-      .range(offset, offset + PAGE - 1)
+    if (range) query = query.gte('game_start_time', range.from).lt('game_start_time', range.to)
+    const { data: page } = await query.range(offset, offset + PAGE - 1)
     if (!page || page.length === 0) break
     gameLogRows.push(...(page as GameLogRow[]))
     if (page.length < PAGE) break

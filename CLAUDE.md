@@ -202,7 +202,10 @@ mettre à jour cette section dès qu'une route ou un onglet admin change (voir s
 **Utilisateur :**
 `/` `/login` `/joueurs` `/statistiques` `/statistiques/ahl` `/repechage` `/repechage-recrues` `/calendrier`
 `/poolers` `/poolers/[id]` `/journal-transactions` (historique en lecture seule — pas de
-saisie pooler ; distinct de `/admin/transactions`, l'outil admin) `/classement` `/resultats`
+saisie pooler ; distinct de `/admin/transactions`, l'outil admin) `/classement`
+`/classement/hebdomadaire` `/classement/mensuel` (David, 2026-09-17 — mêmes données que
+`/classement`, `buildStandings()` juste borné à une semaine lundi-dimanche ou un mois civil,
+heure de l'Est ; navigation précédent/suivant, voir section 6) `/resultats`
 (récap veille)
 `/gestion-series` (soumettre ses choix séries) `/classement-series` (classement séries)
 `/gestion-effectifs` (2 onglets, David 2026-09-15 : **Mouvements**, l'outil existant ; et
@@ -347,7 +350,7 @@ repêchage n'est pas activement en cours.
 | Dropdown | Contenu |
 |---|---|
 | Alignements (ex-Pool Saison) | Mon équipe · Équipes · Journal des transactions — puis séparateur — Gestion d'effectifs · Simulation · Signatures des agents libres (les 3 premiers = consultation, les 3 derniers = action) |
-| Classement | Saison complète · Hebdomadaire (à venir) · Mensuel (à venir) — sorti d'Alignements pour son propre menu |
+| Classement | Saison complète · Hebdomadaire · Mensuel — sorti d'Alignements pour son propre menu |
 | LNH | 3 sections : Statistiques (LNH, AHL ; sous-item Projections) · Calendrier · Contrats (ex-"Contrats LNH", ex-item à plat) |
 | Recrues (ex-"Repêchage") | Classement pré-repêchage (ex-"Classement des prospects") · Repêchage LNH · Repêchage interne (ex-"Repêchage recrues") — réordonné et renommé le 2026-09-14 (David) |
 | Ressources | Babillard (global, ajouté le 2026-09-02) · Planification · Aide & Règlements (déplacé du menu Compte/avatar) |
@@ -561,6 +564,31 @@ existants) — pas des pages à part entière.
   `roster_change_log`, avec le même vocabulaire `change_type` que `/gestion-effectifs` et
   `/admin/rosters` (`activation`/`deactivation`/`ajout_reserviste`/`ajout_recrue`/`retrait`/
   `ltir`/`retour_ltir`/`changement_type`).
+
+**Classement hebdomadaire/mensuel (`app/lib/dateRanges.ts`) — David, 2026-09-17 :**
+- `buildStandings(supabase, seasonId, range?)` accepte maintenant un 3ᵉ paramètre optionnel
+  `{ from, to }` (ISO, `from` inclusif/`to` exclusif) — filtre la requête `player_game_logs`
+  (au niveau DB, en plus du filtre `season`/`game_type` existant) sans toucher au reste du
+  calcul : le statut réel du joueur à chaque match (`statusAt()`/`activeSegments()`) continue
+  de se baser sur tout l'historique de la saison, seule la somme des points est bornée à la
+  fenêtre demandée. `/classement` (sans `range`) est inchangée, rétrocompatible.
+- Semaine = **lundi à dimanche**, heure de l'Est (choix de David — convention la plus
+  courante) ; mois = mois civil. `mondayOfWeek()`/`weekRange()`/`monthRange()`
+  (`app/lib/dateRanges.ts`) gèrent la bascule heure d'été/hiver via une conversion
+  minuit-heure-de-l'Est → UTC dynamique (`localMidnightUTC()`, basée sur `Intl.DateTimeFormat`
+  plutôt qu'un décalage fixe -04:00/-05:00) — nécessaire ici (contrairement au `T12:00:00Z`
+  utilisé ailleurs dans le projet pour des dates sans heure précise) parce qu'on compare
+  contre de vraies heures de match proches de minuit.
+- Routes `/classement/hebdomadaire?semaine=YYYY-MM-DD` (n'importe quelle date de la semaine —
+  normalisée au lundi) et `/classement/mensuel?mois=YYYY-MM`, chacune avec navigation
+  précédent/suivant (`WeekNav.tsx`/`MonthNav.tsx`, même patron que `ResultatsManager.tsx` —
+  bouton "suivant" caché quand on est déjà sur la période courante, pas de borne sur "précédent").
+  Les deux réutilisent tel quel `ClassementTable` (`app/app/classement/ClassementTable.tsx`,
+  qui ne prend que `standings` en prop) — aucune duplication d'affichage, seule la fenêtre de
+  calcul change.
+- Le détail par période (popup ↩) affiche les dates de la fenêtre d'activation réelle du
+  joueur (`added_at`/`removed_at` de la ligne `pooler_rosters`), pas la semaine/le mois
+  affiché — cosmétique mineur assumé (le total de points, lui, est bien borné à la période).
 
 **Saisons de contrats sur `/joueurs` (David, 2026-09-08)** — `JoueursTable.tsx` calcule
 dynamiquement ses 5 colonnes de saisons à partir de `pool_seasons.season` (saison active,
@@ -786,7 +814,8 @@ Règle : quand on touche une page de consultation, on la rend responsive en mêm
 - Pas de layout en colonnes côte à côte sur mobile (`flex-wrap` ou `grid-cols-1`)
 
 Pages de consultation : `/`, `/joueurs`, `/statistiques`, `/statistiques/ahl`, `/repechage`,
-`/poolers`, `/poolers/[id]`, `/journal-transactions`, `/gestion-series`, `/classement-series`, `/aide`
+`/poolers`, `/poolers/[id]`, `/journal-transactions`, `/gestion-series`, `/classement-series`,
+`/classement`, `/classement/hebdomadaire`, `/classement/mensuel`, `/aide`
 
 ---
 

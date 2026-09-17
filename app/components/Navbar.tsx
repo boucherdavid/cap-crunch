@@ -216,12 +216,8 @@ export default function Navbar({
                 {openDropdown === 'classement' && (
                   <div className="absolute left-0 top-full mt-1 w-44 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
                     <Link href="/classement" className={dropdownLinkClass('/classement')}>Saison complète</Link>
-                    <span className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 cursor-default">
-                      Hebdomadaire <span className="text-xs bg-gray-100 text-gray-500 rounded px-1.5 py-0.5">À venir</span>
-                    </span>
-                    <span className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 cursor-default">
-                      Mensuel <span className="text-xs bg-gray-100 text-gray-500 rounded px-1.5 py-0.5">À venir</span>
-                    </span>
+                    <Link href="/classement/hebdomadaire" className={dropdownLinkClass('/classement/hebdomadaire')}>Hebdomadaire</Link>
+                    <Link href="/classement/mensuel" className={dropdownLinkClass('/classement/mensuel')}>Mensuel</Link>
                   </div>
                 )}
               </div>
@@ -406,8 +402,8 @@ export default function Navbar({
 
             <MobileSection label="Classement" />
             <Link href="/classement" className={mobileLinkClass('/classement')}>Saison complète</Link>
-            <span className="px-3 py-2 text-sm text-pool-silver opacity-50">Hebdomadaire (à venir)</span>
-            <span className="px-3 py-2 text-sm text-pool-silver opacity-50">Mensuel (à venir)</span>
+            <Link href="/classement/hebdomadaire" className={mobileLinkClass('/classement/hebdomadaire')}>Hebdomadaire</Link>
+            <Link href="/classement/mensuel" className={mobileLinkClass('/classement/mensuel')}>Mensuel</Link>
 
             <MobileSection label="LNH" />
             <Link href="/statistiques" className={mobileLinkClass('/statistiques')}>Statistiques LNH</Link>

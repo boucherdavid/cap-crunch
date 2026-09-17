@@ -7878,3 +7878,29 @@ chacun) — réimport vers prod confirmé sans erreur.
   changements pas validés (fix déconnexions mobile `73481f8`, fix visuel Ballotage `22abf11`,
   ballotage en cours de saison `caa36c0`) qu'un merge groupé enverrait aussi en prod. À
   merger tous ensemble une fois le reste testé, pas l'AHL seul.
+
+**[Feature] — Classement hebdomadaire et mensuel** (`app/lib/standings.ts`,
+`app/lib/dateRanges.ts`, `app/app/classement/{hebdomadaire,mensuel}/*`,
+`app/components/Navbar.tsx`) :
+- Dernier morceau du menu Classement encore en placeholder "à venir" (David : "de ce que je
+  vois, il reste seulement un élément non terminé sur l'application"). Deux précisions
+  demandées à David avant de coder : début de semaine (lundi, confirmé) et navigation
+  précédent/suivant dans l'historique (confirmé, plutôt qu'afficher seulement la période
+  courante).
+- `buildStandings()` prend maintenant un 3ᵉ paramètre optionnel `range: { from, to }` qui
+  borne la requête `player_game_logs` à une fenêtre de dates, sans toucher au calcul de statut
+  actif/réserve par match (toujours basé sur tout l'historique de la saison via
+  `roster_change_log`) — changement minimal et rétrocompatible (`/classement` sans `range`
+  continue de fonctionner tel quel). Détail complet dans CLAUDE.md section 6.
+- Nouveau fichier `app/lib/dateRanges.ts` : bornes de semaine (lundi-dimanche) et de mois
+  civil, heure de l'Est, avec conversion minuit-ET→UTC qui gère correctement la bascule heure
+  d'été/hiver (validé manuellement pour une semaine en heure d'été (UTC-4) et une après la
+  bascule vers l'heure d'hiver (UTC-5) début novembre 2026, ainsi que le débordement
+  décembre→janvier pour les mois).
+- Deux nouvelles routes `/classement/hebdomadaire` et `/classement/mensuel`, chacune avec
+  navigation précédent/suivant façon `/resultats` (`WeekNav.tsx`/`MonthNav.tsx`) — réutilisent
+  telle quelle `ClassementTable` (`/classement`), aucune duplication d'affichage. Les deux
+  placeholders "à venir" du menu Classement (desktop + mobile) remplacés par de vrais liens.
+- Vérifié : `tsc --noEmit` et `next build` passent, routes générées. Logique de dates testée
+  isolément avec un script Node (`tsx` installé à la volée) reproduisant les fonctions pures —
+  pas de test dans un navigateur connecté (à valider par David en staging, comme l'AHL).
