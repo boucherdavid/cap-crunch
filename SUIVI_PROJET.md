@@ -7810,3 +7810,26 @@ CapWatchManager.tsx,page.tsx}`, `schema.sql`) :
   `d911bc7` (déjà committé, autant le garder — sans impact, mêmes fichiers que sur `main`).
   À l'avenir : vérifier `git branch` et checkout `main` **avant** de committer les CSV du
   pipeline, pas après.
+
+**Pause de session — état courant :**
+- Branche active : `staging`, à jour avec `origin/staging` (`4d4e722`). `main` a reçu
+  uniquement le commit CSV PuckPedia (`9b8e8ca`) — les 3 commits de code de cette session
+  (fix auth, fix UI Ballotage) **restent sur `staging`, pas encore mergés vers `main`**,
+  en attente de validation fonctionnelle de David comme d'habitude (section 10).
+- **Import.yml** a dû se déclencher automatiquement suite au push CSV sur `main` — à vérifier
+  (onglet Actions du repo GitHub) que le réimport vers **prod** s'est bien terminé sans erreur.
+- **À valider par David avant merge vers `main` :**
+  1. Le fix de déconnexions aléatoires sur mobile (`app/proxy.ts`, commit `73481f8`) — ignore
+     les prefetch Next.js dans le middleware d'auth. Réduit la fréquence du bug plutôt que de
+     l'éliminer par construction (limite architecturale du serverless, pas de lock partagé
+     entre requêtes concurrentes) — un deuxième levier existe côté Dashboard Supabase
+     (*Refresh Token Reuse Interval*, durée du JWT) mais nécessite l'accès de David, pas
+     encore fait.
+  2. Le fix de décalage visuel Mouvements ↔ Ballotage (`GestionEffectifsManager.tsx`, commit
+     `22abf11`).
+  3. Le ballotage en cours de saison au complet (`caa36c0`, session précédente) — migration
+     SQL déjà appliquée en staging **et prod**, mais le flux de bout en bout (libération →
+     réclamation → résolution paresseuse après expiration) n'a **toujours pas été testé** en
+     conditions réelles.
+- **Prochaine étape suggérée à la reprise** : tester le ballotage de bout en bout en staging,
+  puis si tout est validé (ballotage + les deux fixes), merger `staging` → `main`.
