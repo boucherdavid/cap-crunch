@@ -770,18 +770,25 @@ revue le 2026-09-14 :**
   `nhl_id`/`player.id` fiable pour un matching plus robuste) — un homonyme improbable
   afficherait un faux positif, risque jugé acceptable.
 
-**Saisons passées sur `/statistiques` (LNH) — David, 2026-09-17 :**
+**Saisons passées sur `/statistiques` (LNH) — David, 2026-09-17, corrigé le même jour :**
 - Sélecteur de saison (`recentNhlSeasons()`, `app/lib/nhl-stats.ts`) — 15 dernières saisons
   générées par calcul pur (pas d'appel réseau ; l'API stats NHL publique couvre déjà tout
   l'historique). Uniquement en mode "Saison régulière" (`?saisonNhl=20242025`) — le mode
   "Séries" reste lié aux choix réels du pool des séries pour la saison active, pas un
   historique navigable ; le sélecteur est caché dans ce mode.
-- Surcouches propres au pool (pastille disponibilité, badge recrue ELC, séquences de forme)
-  masquées dès qu'une saison autre que l'active est sélectionnée (`showPoolOverlay` dans
-  `StatsTable.tsx`) — elles reflètent l'état *actuel* du pool (alignements, contrats), pas
-  l'état historique à l'époque de la saison consultée, donc les afficher serait trompeur.
-  `fetchTakenNames()`/`fetchRookieNames()`/`fetchStreaksForStats()` ne sont même pas appelées
-  dans ce cas (évite le travail inutile). Message d'avertissement affiché à la place.
+- Badge recrue ELC et séquences de forme masqués dès qu'une saison autre que l'active est
+  sélectionnée (`showTimeSensitiveOverlay` dans `StatsTable.tsx`) — ces deux-là reflètent
+  l'état *actuel* (contrat en cours, forme récente), trompeur pour une saison passée.
+  `fetchRookieNames()`/`fetchStreaksForStats()` ne sont même pas appelées dans ce cas (évite
+  le travail inutile). Message d'avertissement affiché à la place.
+- **La pastille de disponibilité, elle, reste toujours affichée** peu importe la saison
+  consultée (David a repéré l'incohérence : elle était d'abord masquée elle aussi, alors
+  qu'elle répond à "ce joueur est-il pris *aujourd'hui*", une question qui ne dépend pas de la
+  saison de stats regardée — contrairement au statut recrue/à la forme récente). Même
+  comportement que sur `/statistiques/ahl`, qui n'a jamais masqué sa pastille selon la saison
+  choisie. `fetchTakenNames()` est donc appelée sans condition de saison.
+
+**Next.js 16 :**
 - Utiliser `proxy.ts`, PAS `middleware.ts`
 - Rester compatible avec les conventions Next.js 16
 

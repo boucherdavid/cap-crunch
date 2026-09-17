@@ -95,7 +95,7 @@ export default function StatsTable({
   streaksMap = {},
   seasonOptions = [],
   selectedNhlSeason,
-  showPoolOverlay = true,
+  showTimeSensitiveOverlay = true,
 }: {
   skaters: SkaterStat[]
   goalies: GoalieStat[]
@@ -106,7 +106,9 @@ export default function StatsTable({
   streaksMap?: Record<number, StreakInfo>
   seasonOptions?: { id: string; label: string }[]
   selectedNhlSeason?: string
-  showPoolOverlay?: boolean
+  // Recrue ELC + séquences de forme reflètent l'état actuel, trompeur pour une saison
+  // passée — contrairement à la disponibilité (toujours affichée, voir AvailDot ci-dessous).
+  showTimeSensitiveOverlay?: boolean
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -227,9 +229,9 @@ export default function StatsTable({
         </div>
       </div>
 
-      {!showPoolOverlay && (
+      {!showTimeSensitiveOverlay && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
-          Saison passée — disponibilité, statut recrue et séquences de forme reflètent seulement la saison active, pas celle-ci.
+          Saison passée — statut recrue et séquences de forme reflètent seulement la saison active, pas celle-ci. La disponibilité, elle, reste à jour.
         </p>
       )}
 
@@ -260,20 +262,18 @@ export default function StatsTable({
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
-        {showPoolOverlay && (
-          <button
-            type="button"
-            onClick={() => setAvailOnly(v => !v)}
-            className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
-              availOnly
-                ? 'border-green-500 bg-green-50 text-green-700 font-medium'
-                : 'border-slate-300 text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
-            {gameMode === 'series' ? 'Libres' : 'Disponibles'}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setAvailOnly(v => !v)}
+          className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
+            availOnly
+              ? 'border-green-500 bg-green-50 text-green-700 font-medium'
+              : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+          {gameMode === 'series' ? 'Libres' : 'Disponibles'}
+        </button>
         {tab === 'skaters' && (
           <div className="flex gap-1">
             {(['all', 'forward', 'defense'] as const).map(pos => (
@@ -303,7 +303,7 @@ export default function StatsTable({
         )}
       </div>
 
-      {showPoolOverlay && <div className="mb-4"><StreakLegend /></div>}
+      {showTimeSensitiveOverlay && <div className="mb-4"><StreakLegend /></div>}
 
       {/* Table patineurs */}
       {tab === 'skaters' && (
@@ -340,18 +340,16 @@ export default function StatsTable({
                     <tr key={s.id} className="border-b hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-2.5 text-gray-400 text-xs">{i + 1}</td>
                       <td className="px-4 py-2.5">
-                        {!showPoolOverlay
-                          ? null
-                          : gameMode === 'series'
-                            ? <PoolerBadges poolers={pickedBy} />
-                            : <AvailDot available={avail} />}
+                        {gameMode === 'series'
+                          ? <PoolerBadges poolers={pickedBy} />
+                          : <AvailDot available={avail} />}
                       </td>
                       <td className="px-4 py-2.5 font-medium text-gray-800">
                         <span className="inline-flex items-center gap-1.5">
                           <PlayerLink nhlId={s.id}>
                             {s.lastName}, {s.firstName}
                           </PlayerLink>
-                          {showPoolOverlay && gameMode === 'regular' && isRookie(s.firstName, s.lastName) && <RookieBadge />}
+                          {showTimeSensitiveOverlay && gameMode === 'regular' && isRookie(s.firstName, s.lastName) && <RookieBadge />}
                           <StreakBadge info={streaksMap[s.id]} />
                         </span>
                       </td>
@@ -410,18 +408,16 @@ export default function StatsTable({
                     <tr key={g.id} className="border-b hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-2.5 text-gray-400 text-xs">{i + 1}</td>
                       <td className="px-4 py-2.5">
-                        {!showPoolOverlay
-                          ? null
-                          : gameMode === 'series'
-                            ? <PoolerBadges poolers={pickedBy} />
-                            : <AvailDot available={avail} />}
+                        {gameMode === 'series'
+                          ? <PoolerBadges poolers={pickedBy} />
+                          : <AvailDot available={avail} />}
                       </td>
                       <td className="px-4 py-2.5 font-medium text-gray-800">
                         <span className="inline-flex items-center gap-1.5">
                           <PlayerLink nhlId={g.id}>
                             {g.lastName}, {g.firstName}
                           </PlayerLink>
-                          {showPoolOverlay && gameMode === 'regular' && isRookie(g.firstName, g.lastName) && <RookieBadge />}
+                          {showTimeSensitiveOverlay && gameMode === 'regular' && isRookie(g.firstName, g.lastName) && <RookieBadge />}
                           <StreakBadge info={streaksMap[g.id]} />
                           <GoalieBadge info={streaksMap[g.id]} />
                         </span>

@@ -7924,3 +7924,17 @@ LNH** (`app/lib/nhl-stats.ts`, `app/app/statistiques/ahl/{page.tsx,AhlStatsTable
   CLAUDE.md section 6.
 - Vérifié : `tsc --noEmit` et `next build` passent. Pas de test visuel en navigateur connecté
   (même limite que les sessions précédentes) — à valider par David en staging.
+
+**[Fix] — disponibilité masquée à tort sur les saisons passées LNH** (`app/app/statistiques/
+{page.tsx,StatsTable.tsx}`) :
+- David a repéré l'incohérence en testant en staging : la pastille de disponibilité
+  disparaissait complètement dès qu'on choisissait une saison LNH passée, alors qu'elle
+  restait toujours visible sur `/statistiques/ahl`. Cause : le gate `showPoolOverlay` ajouté
+  plus tôt aujourd'hui regroupait à tort disponibilité + recrue ELC + séquences sous un seul
+  interrupteur "saison active seulement".
+- Correction : la disponibilité répond à "ce joueur est-il pris *aujourd'hui*", une question
+  indépendante de la saison de stats consultée — contrairement au statut recrue (contrat en
+  cours) et aux séquences (forme récente), qui eux restent masqués pour une saison passée.
+  Prop renommée `showTimeSensitiveOverlay`, `fetchTakenNames()` appelée sans condition de
+  saison. Message d'avertissement ajusté en conséquence.
+- Vérifié : `tsc --noEmit` et `next build` passent.

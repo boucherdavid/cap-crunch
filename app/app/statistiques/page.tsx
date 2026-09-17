@@ -379,7 +379,9 @@ export default async function StatistiquesPage({
   const [skaters, goalies, takenNames, rookieNames, currentTeamMap, playoffPicksMap, streaksMap] = await Promise.all([
     fetchSkaters(gameType, nhlSeason),
     fetchGoalies(gameType, nhlSeason),
-    isCurrentSeason ? fetchTakenNames() : Promise.resolve([] as string[]),
+    // Disponibilité = état du jour dans le pool, indépendant de la saison de stats consultée
+    // (contrairement au statut recrue ELC et aux séquences, ci-dessous) — toujours pertinente.
+    fetchTakenNames(),
     isCurrentSeason ? fetchRookieNames() : Promise.resolve([] as string[]),
     fetchCurrentTeamMap(),
     gameType === 3 ? fetchPlayoffPicksMap() : Promise.resolve({} as Record<string, string[]>),
@@ -418,7 +420,7 @@ export default async function StatistiquesPage({
         streaksMap={streaksMap}
         seasonOptions={seasonOptions}
         selectedNhlSeason={nhlSeason}
-        showPoolOverlay={isCurrentSeason}
+        showTimeSensitiveOverlay={isCurrentSeason}
       />
     </div>
   )
