@@ -295,6 +295,13 @@ function PoolerCard({
   const [banqueMode, setBanqueMode] = useState(false)
   const [selectedForBanque, setSelectedForBanque] = useState<Set<number>>(new Set())
 
+  // Basculer actif↔réserviste au nom d'un pooler (David, 2026-09-17) — même geste que le
+  // libre-service (MonAlignement, handleToggleType), mais pour n'importe quel pooler. Immédiat
+  // (pas de mode sélection), pour aider à rendre un alignement conforme (12/6/2) ou ajuster
+  // pour un pooler qui n'a pas accès à l'app pendant le repêchage AL.
+  const [togglingId, setTogglingId] = useState<number | null>(null)
+  const [toggleErr, setToggleErr] = useState<string | null>(null)
+
   // Même correctif que MonAlignement (voir AgentsLibresDashboard) — AutoReload coupait une
   // sélection de libération/mise en banque admin en cours (David, 2026-09-09).
   useEffect(() => {
@@ -371,6 +378,20 @@ function PoolerCard({
       if (result.error) { setBanquing(false); setBanqueErr(result.error) } else { window.location.reload() }
     } catch {
       setBanquing(false); setBanqueErr('Erreur inattendue — réessaie.')
+    }
+  }
+
+  const handleAdminToggleType = async (entry: RosterEntry) => {
+    setTogglingId(entry.player_id); setToggleErr(null)
+    try {
+      const newType = entry.player_type === 'actif' ? 'reserviste' : 'actif'
+      const result = await submitTransactionAction(saisonId, 'Ajustement pré-saison', [{
+        action_type: 'type_change', from_pooler_id: pooler.id, to_pooler_id: pooler.id,
+        player_id: entry.player_id, old_player_type: entry.player_type, new_player_type: newType,
+      }])
+      if (result.error) { setTogglingId(null); setToggleErr(result.error) } else { window.location.reload() }
+    } catch {
+      setTogglingId(null); setToggleErr('Erreur inattendue — réessaie.')
     }
   }
 
@@ -451,6 +472,7 @@ function PoolerCard({
                   const selected = selectedForRelease.has(e.player_id)
                   const banqueEligible = !!e.rookieType
                   const banqueSelected = selectedForBanque.has(e.player_id)
+                  const canToggleType = e.player_type === 'actif' || e.player_type === 'reserviste'
                   return (
                     <div key={e.roster_id} className={`flex items-center justify-between text-xs text-gray-600 py-0.5 gap-2 ${selected ? 'bg-red-50 rounded px-1' : banqueSelected ? 'bg-amber-50 rounded px-1' : ''}`}>
                       <span className="flex-1">
@@ -459,6 +481,16 @@ function PoolerCard({
                         {banqueMode && banqueEligible && <span className="ml-1 text-amber-500" title="Encore sous protection recrue — éligible">★</span>}
                       </span>
                       <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
+                      {isAdmin && !releaseMode && !banqueMode && canToggleType && (
+                        <button
+                          onClick={() => handleAdminToggleType(e)}
+                          disabled={togglingId === e.player_id}
+                          title={e.player_type === 'actif' ? 'Mettre en réserve' : 'Activer'}
+                          className="text-[10px] px-1.5 py-0.5 border rounded text-gray-500 hover:text-blue-600 hover:border-blue-300 shrink-0 disabled:opacity-40"
+                        >
+                          {togglingId === e.player_id ? '...' : e.player_type === 'actif' ? '→ Rés.' : '→ Actif'}
+                        </button>
+                      )}
                       {isAdmin && releaseMode && (
                         <button
                           onClick={() => toggleReleaseSelect(e.player_id)}
@@ -511,6 +543,7 @@ function PoolerCard({
             </div>
           )}
           {banqueErr && <p className="text-xs text-red-600 mt-1">{banqueErr}</p>}
+          {toggleErr && <p className="text-xs text-red-600 mt-1">{toggleErr}</p>}
         </div>
       )}
     </div>

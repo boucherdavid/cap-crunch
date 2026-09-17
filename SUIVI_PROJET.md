@@ -21,6 +21,20 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-17
+
+**[Feature] — Bascule actif↔réserviste au nom d'un pooler, depuis /repechage-agents-libres**
+(`app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`) :
+- David : pendant le repêchage AL, il pouvait déjà libérer un joueur ou remettre une recrue
+  en banque au nom de n'importe quel pooler (`PoolerCard`), mais pas basculer actif↔réserviste
+  — utile pour rendre un alignement conforme (12/6/2) ou ajuster celui d'un pooler qui n'a pas
+  accès à l'app pendant le pool.
+- Ajout d'un bouton "→ Rés."/"→ Actif" par joueur (actif/réserviste seulement) dans
+  `PoolerCard`, visible admin seulement, immédiat (pas de mode sélection — même patron que le
+  bouton équivalent du libre-service dans `MonAlignement`). `handleAdminToggleType` réutilise
+  `submitTransactionAction` (`action_type='type_change'`), déjà générique pour actif↔réserviste
+  côté serveur — aucun changement requis dans `admin/transactions/actions.ts`.
+
 ### 2026-09-10 (suite — bouton test courriel + boucle de rendu)
 
 **[Feature] — Bouton "Tester le courriel" dans /compte**
