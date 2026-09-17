@@ -93,6 +93,9 @@ export default function StatsTable({
   gameMode,
   playoffPicksMap = {},
   streaksMap = {},
+  seasonOptions = [],
+  selectedNhlSeason,
+  showPoolOverlay = true,
 }: {
   skaters: SkaterStat[]
   goalies: GoalieStat[]
@@ -101,6 +104,9 @@ export default function StatsTable({
   gameMode: 'regular' | 'series'
   playoffPicksMap?: Record<string, string[]>
   streaksMap?: Record<number, StreakInfo>
+  seasonOptions?: { id: string; label: string }[]
+  selectedNhlSeason?: string
+  showPoolOverlay?: boolean
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -204,11 +210,28 @@ export default function StatsTable({
               Séries
             </button>
           </div>
+          {gameMode === 'regular' && seasonOptions.length > 0 && (
+            <select
+              value={selectedNhlSeason ?? ''}
+              onChange={e => router.push(`${pathname}?saisonNhl=${e.target.value}`)}
+              className="border rounded-lg px-3 py-2 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {seasonOptions.map(s => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </select>
+          )}
           <span className="text-sm text-gray-500">
             {tab === 'skaters' ? `${filteredSkaters.length} joueurs` : `${filteredGoalies.length} gardiens`}
           </span>
         </div>
       </div>
+
+      {!showPoolOverlay && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+          Saison passée — disponibilité, statut recrue et séquences de forme reflètent seulement la saison active, pas celle-ci.
+        </p>
+      )}
 
       {/* Filtres */}
       <div className="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-3 items-center">
@@ -237,18 +260,20 @@ export default function StatsTable({
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
-        <button
-          type="button"
-          onClick={() => setAvailOnly(v => !v)}
-          className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
-            availOnly
-              ? 'border-green-500 bg-green-50 text-green-700 font-medium'
-              : 'border-slate-300 text-slate-600 hover:bg-slate-50'
-          }`}
-        >
-          <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
-          {gameMode === 'series' ? 'Libres' : 'Disponibles'}
-        </button>
+        {showPoolOverlay && (
+          <button
+            type="button"
+            onClick={() => setAvailOnly(v => !v)}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
+              availOnly
+                ? 'border-green-500 bg-green-50 text-green-700 font-medium'
+                : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+            {gameMode === 'series' ? 'Libres' : 'Disponibles'}
+          </button>
+        )}
         {tab === 'skaters' && (
           <div className="flex gap-1">
             {(['all', 'forward', 'defense'] as const).map(pos => (
@@ -278,7 +303,7 @@ export default function StatsTable({
         )}
       </div>
 
-      <div className="mb-4"><StreakLegend /></div>
+      {showPoolOverlay && <div className="mb-4"><StreakLegend /></div>}
 
       {/* Table patineurs */}
       {tab === 'skaters' && (
@@ -315,16 +340,18 @@ export default function StatsTable({
                     <tr key={s.id} className="border-b hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-2.5 text-gray-400 text-xs">{i + 1}</td>
                       <td className="px-4 py-2.5">
-                        {gameMode === 'series'
-                          ? <PoolerBadges poolers={pickedBy} />
-                          : <AvailDot available={avail} />}
+                        {!showPoolOverlay
+                          ? null
+                          : gameMode === 'series'
+                            ? <PoolerBadges poolers={pickedBy} />
+                            : <AvailDot available={avail} />}
                       </td>
                       <td className="px-4 py-2.5 font-medium text-gray-800">
                         <span className="inline-flex items-center gap-1.5">
                           <PlayerLink nhlId={s.id}>
                             {s.lastName}, {s.firstName}
                           </PlayerLink>
-                          {gameMode === 'regular' && isRookie(s.firstName, s.lastName) && <RookieBadge />}
+                          {showPoolOverlay && gameMode === 'regular' && isRookie(s.firstName, s.lastName) && <RookieBadge />}
                           <StreakBadge info={streaksMap[s.id]} />
                         </span>
                       </td>
@@ -383,16 +410,18 @@ export default function StatsTable({
                     <tr key={g.id} className="border-b hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-2.5 text-gray-400 text-xs">{i + 1}</td>
                       <td className="px-4 py-2.5">
-                        {gameMode === 'series'
-                          ? <PoolerBadges poolers={pickedBy} />
-                          : <AvailDot available={avail} />}
+                        {!showPoolOverlay
+                          ? null
+                          : gameMode === 'series'
+                            ? <PoolerBadges poolers={pickedBy} />
+                            : <AvailDot available={avail} />}
                       </td>
                       <td className="px-4 py-2.5 font-medium text-gray-800">
                         <span className="inline-flex items-center gap-1.5">
                           <PlayerLink nhlId={g.id}>
                             {g.lastName}, {g.firstName}
                           </PlayerLink>
-                          {gameMode === 'regular' && isRookie(g.firstName, g.lastName) && <RookieBadge />}
+                          {showPoolOverlay && gameMode === 'regular' && isRookie(g.firstName, g.lastName) && <RookieBadge />}
                           <StreakBadge info={streaksMap[g.id]} />
                           <GoalieBadge info={streaksMap[g.id]} />
                         </span>

@@ -758,12 +758,30 @@ revue le 2026-09-14 :**
   2026-10-02), donc un simple "plus récente saison" afficherait un classement vide en
   pré-saison.
 - Page `/statistiques/ahl` volontairement plus simple que `/statistiques` (LNH) : pas de
-  croisement avec le pool (disponibilité, recrues ELC, séries, indicateurs de forme) — les
-  joueurs AHL ne sont pas nécessairement liés à un `player` de la base (identifiants
-  HockeyTech, pas `nhl_id`). Le badge "R" utilise le champ `rookie` propre à l'API AHL (statut
-  recrue au sens de la ligue), pas `rookieProtection.ts` (règle du pool, sans rapport).
+  recrues ELC, séries ni indicateurs de forme — les joueurs AHL ne sont pas nécessairement
+  liés à un `player` de la base (identifiants HockeyTech, pas `nhl_id`). Le badge "R" utilise
+  le champ `rookie` propre à l'API AHL (statut recrue au sens de la ligue), pas
+  `rookieProtection.ts` (règle du pool, sans rapport).
+- **Indicateur de disponibilité (David, 2026-09-17)** — pastille verte/grise comme sur
+  `/statistiques`, réutilise `fetchTakenNames()` + `normName()` (`app/lib/nhl-stats.ts`) :
+  noms normalisés de tout joueur déjà présent dans un alignement de la saison active
+  (`pooler_rosters`, tous `player_type` confondus — donc un prospect en banque de recrues
+  compte comme "pris"). Matching sur le nom complet uniquement (les joueurs AHL n'ont pas de
+  `nhl_id`/`player.id` fiable pour un matching plus robuste) — un homonyme improbable
+  afficherait un faux positif, risque jugé acceptable.
 
-**Next.js 16 :**
+**Saisons passées sur `/statistiques` (LNH) — David, 2026-09-17 :**
+- Sélecteur de saison (`recentNhlSeasons()`, `app/lib/nhl-stats.ts`) — 15 dernières saisons
+  générées par calcul pur (pas d'appel réseau ; l'API stats NHL publique couvre déjà tout
+  l'historique). Uniquement en mode "Saison régulière" (`?saisonNhl=20242025`) — le mode
+  "Séries" reste lié aux choix réels du pool des séries pour la saison active, pas un
+  historique navigable ; le sélecteur est caché dans ce mode.
+- Surcouches propres au pool (pastille disponibilité, badge recrue ELC, séquences de forme)
+  masquées dès qu'une saison autre que l'active est sélectionnée (`showPoolOverlay` dans
+  `StatsTable.tsx`) — elles reflètent l'état *actuel* du pool (alignements, contrats), pas
+  l'état historique à l'époque de la saison consultée, donc les afficher serait trompeur.
+  `fetchTakenNames()`/`fetchRookieNames()`/`fetchStreaksForStats()` ne sont même pas appelées
+  dans ce cas (évite le travail inutile). Message d'avertissement affiché à la place.
 - Utiliser `proxy.ts`, PAS `middleware.ts`
 - Rester compatible avec les conventions Next.js 16
 

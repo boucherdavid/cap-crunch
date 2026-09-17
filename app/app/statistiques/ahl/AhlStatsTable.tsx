@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import type { AhlSkater, AhlGoalie, AhlSeasonInfo } from '@/lib/ahl-stats'
 import TeamBadge from '@/components/TeamBadge'
 import { normalizeSearch } from '@/lib/normalizeSearch'
+import { normName } from '@/lib/nhl-stats'
 
 type Tab = 'skaters' | 'goalies'
 
@@ -16,16 +17,27 @@ function RookieBadge() {
   )
 }
 
+function AvailDot({ available }: { available: boolean }) {
+  return (
+    <span
+      title={available ? 'Disponible' : 'Dans un pool'}
+      className={`inline-block w-2 h-2 rounded-full shrink-0 ${available ? 'bg-green-500' : 'bg-slate-300'}`}
+    />
+  )
+}
+
 export default function AhlStatsTable({
   skaters,
   goalies,
   seasons,
   selectedSeasonId,
+  takenNames,
 }: {
   skaters: AhlSkater[]
   goalies: AhlGoalie[]
   seasons: AhlSeasonInfo[]
   selectedSeasonId: string
+  takenNames: string[]
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -33,6 +45,10 @@ export default function AhlStatsTable({
   const [search, setSearch] = useState('')
   const [selectedTeam, setSelectedTeam] = useState('')
   const [positionFilter, setPositionFilter] = useState<'all' | 'forward' | 'defense'>('all')
+  const [availOnly, setAvailOnly] = useState(false)
+
+  const takenSet = useMemo(() => new Set(takenNames), [takenNames])
+  const isAvailable = (name: string) => !takenSet.has(normName(name))
 
   const teamOptions = useMemo(() => {
     const all = [...skaters.map(s => s.teamCode), ...goalies.map(g => g.teamCode)].filter(Boolean)
@@ -42,29 +58,33 @@ export default function AhlStatsTable({
   const filteredSkaters = useMemo(() => {
     const q = normalizeSearch(search.trim())
     return skaters.filter(s => {
+      if (availOnly && !isAvailable(s.name)) return false
       if (selectedTeam && s.teamCode !== selectedTeam) return false
       if (positionFilter === 'defense' && s.position !== 'D') return false
       if (positionFilter === 'forward' && s.position === 'D') return false
       if (q && !normalizeSearch(s.name).includes(q) && !normalizeSearch(s.teamCode).includes(q)) return false
       return true
     })
-  }, [skaters, search, selectedTeam, positionFilter])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [skaters, search, selectedTeam, positionFilter, availOnly, takenSet])
 
   const filteredGoalies = useMemo(() => {
     const q = normalizeSearch(search.trim())
     return goalies.filter(g => {
+      if (availOnly && !isAvailable(g.name)) return false
       if (selectedTeam && g.teamCode !== selectedTeam) return false
       if (q && !normalizeSearch(g.name).includes(q) && !normalizeSearch(g.teamCode).includes(q)) return false
       return true
     })
-  }, [goalies, search, selectedTeam])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [goalies, search, selectedTeam, availOnly, takenSet])
 
   const tabClass = (t: Tab) =>
     `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
       tab === t ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
     }`
 
-  const hasFilters = search || selectedTeam || positionFilter !== 'all'
+  const hasFilters = search || selectedTeam || positionFilter !== 'all' || availOnly
 
   return (
     <div>
@@ -115,6 +135,18 @@ export default function AhlStatsTable({
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
+        <button
+          type="button"
+          onClick={() => setAvailOnly(v => !v)}
+          className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
+            availOnly
+              ? 'border-green-500 bg-green-50 text-green-700 font-medium'
+              : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+          Disponibles
+        </button>
         {tab === 'skaters' && (
           <div className="flex gap-1">
             {(['all', 'forward', 'defense'] as const).map(pos => (
@@ -136,7 +168,7 @@ export default function AhlStatsTable({
         {hasFilters && (
           <button
             type="button"
-            onClick={() => { setSearch(''); setSelectedTeam(''); setPositionFilter('all') }}
+            onClick={() => { setSearch(''); setSelectedTeam(''); setPositionFilter('all'); setAvailOnly(false) }}
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
           >
             Effacer
@@ -151,6 +183,7 @@ export default function AhlStatsTable({
             <thead>
               <tr className="bg-gray-50 border-b">
                 <th className="text-left px-4 py-3 font-medium text-gray-600 w-8">#</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 w-5" title="Disponibilité" />
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Joueur</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Équipe</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Pos</th>
@@ -165,7 +198,7 @@ export default function AhlStatsTable({
             <tbody>
               {filteredSkaters.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-12 text-gray-400">
+                  <td colSpan={11} className="text-center py-12 text-gray-400">
                     Aucun joueur ne correspond aux filtres.
                   </td>
                 </tr>
@@ -173,6 +206,7 @@ export default function AhlStatsTable({
                 filteredSkaters.map((s, i) => (
                   <tr key={s.id} className="border-b hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-2.5 text-gray-400 text-xs">{i + 1}</td>
+                    <td className="px-4 py-2.5"><AvailDot available={isAvailable(s.name)} /></td>
                     <td className="px-4 py-2.5 font-medium text-gray-800">
                       <span className="inline-flex items-center gap-1.5">
                         {s.name}
@@ -206,6 +240,7 @@ export default function AhlStatsTable({
             <thead>
               <tr className="bg-gray-50 border-b">
                 <th className="text-left px-4 py-3 font-medium text-gray-600 w-8">#</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 w-5" title="Disponibilité" />
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Gardien</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Équipe</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">PJ</th>
@@ -220,7 +255,7 @@ export default function AhlStatsTable({
             <tbody>
               {filteredGoalies.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-12 text-gray-400">
+                  <td colSpan={11} className="text-center py-12 text-gray-400">
                     Aucun gardien ne correspond aux filtres.
                   </td>
                 </tr>
@@ -228,6 +263,7 @@ export default function AhlStatsTable({
                 filteredGoalies.map((g, i) => (
                   <tr key={g.id} className="border-b hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-2.5 text-gray-400 text-xs">{i + 1}</td>
+                    <td className="px-4 py-2.5"><AvailDot available={isAvailable(g.name)} /></td>
                     <td className="px-4 py-2.5 font-medium text-gray-800">
                       <span className="inline-flex items-center gap-1.5">
                         {g.name}

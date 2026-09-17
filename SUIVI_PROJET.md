@@ -7904,3 +7904,23 @@ chacun) — réimport vers prod confirmé sans erreur.
 - Vérifié : `tsc --noEmit` et `next build` passent, routes générées. Logique de dates testée
   isolément avec un script Node (`tsx` installé à la volée) reproduisant les fonctions pures —
   pas de test dans un navigateur connecté (à valider par David en staging, comme l'AHL).
+
+**[Feature] — indicateur de disponibilité sur les stats AHL + saisons passées sur les stats
+LNH** (`app/lib/nhl-stats.ts`, `app/app/statistiques/ahl/{page.tsx,AhlStatsTable.tsx}`,
+`app/app/statistiques/{page.tsx,StatsTable.tsx}`) :
+- Deux demandes de David après avoir validé l'AHL et le classement hebdo/mensuel.
+- **Disponibilité AHL** : même pastille verte/grise que `/statistiques`, réutilise
+  `fetchTakenNames()`/`normName()` déjà existants (`app/lib/nhl-stats.ts`) — un prospect AHL
+  déjà en banque de recrues d'un pooler apparaît "pris". Matching par nom complet normalisé
+  uniquement (pas d'identifiant commun entre l'API HockeyTech et la base). Ajout aussi du
+  bouton de filtre "Disponibles", même patron que la page LNH.
+- **Saisons passées LNH** : nouveau sélecteur de saison (`recentNhlSeasons()`,
+  `app/lib/nhl-stats.ts` — 15 dernières saisons, calcul pur, pas d'appel réseau), uniquement
+  en mode "Saison régulière" (le mode "Séries" reste lié au pool des séries actif, pas un
+  historique). Décision prise sans repasser par David : les surcouches propres au pool
+  (disponibilité, recrue ELC, séquences de forme) reflètent l'état *actuel*, donc trompeuses
+  pour une saison passée — masquées automatiquement dès qu'on quitte la saison active
+  (`showPoolOverlay`), avec un message d'avertissement à la place. Détail complet dans
+  CLAUDE.md section 6.
+- Vérifié : `tsc --noEmit` et `next build` passent. Pas de test visuel en navigateur connecté
+  (même limite que les sessions précédentes) — à valider par David en staging.
