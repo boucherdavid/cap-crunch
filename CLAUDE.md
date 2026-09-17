@@ -200,7 +200,7 @@ Vérifié par lecture du code le 2026-07-17 (build `next build` + grep des liens
 mettre à jour cette section dès qu'une route ou un onglet admin change (voir section 11).
 
 **Utilisateur :**
-`/` `/login` `/joueurs` `/statistiques` `/repechage` `/repechage-recrues` `/calendrier`
+`/` `/login` `/joueurs` `/statistiques` `/statistiques/ahl` `/repechage` `/repechage-recrues` `/calendrier`
 `/poolers` `/poolers/[id]` `/journal-transactions` (historique en lecture seule — pas de
 saisie pooler ; distinct de `/admin/transactions`, l'outil admin) `/classement` `/resultats`
 (récap veille)
@@ -348,7 +348,7 @@ repêchage n'est pas activement en cours.
 |---|---|
 | Alignements (ex-Pool Saison) | Mon équipe · Équipes · Journal des transactions — puis séparateur — Gestion d'effectifs · Simulation · Signatures des agents libres (les 3 premiers = consultation, les 3 derniers = action) |
 | Classement | Saison complète · Hebdomadaire (à venir) · Mensuel (à venir) — sorti d'Alignements pour son propre menu |
-| LNH | 3 sections : Statistiques (LNH, AHL à venir ; sous-item Projections) · Calendrier · Contrats (ex-"Contrats LNH", ex-item à plat) |
+| LNH | 3 sections : Statistiques (LNH, AHL ; sous-item Projections) · Calendrier · Contrats (ex-"Contrats LNH", ex-item à plat) |
 | Recrues (ex-"Repêchage") | Classement pré-repêchage (ex-"Classement des prospects") · Repêchage LNH · Repêchage interne (ex-"Repêchage recrues") — réordonné et renommé le 2026-09-14 (David) |
 | Ressources | Babillard (global, ajouté le 2026-09-02) · Planification · Aide & Règlements (déplacé du menu Compte/avatar) |
 
@@ -714,6 +714,27 @@ revue le 2026-09-14 :**
   `/admin/historique` (reconstruction d'un historique passé, règles potentiellement différentes
   à l'époque).
 
+**Statistiques AHL (`app/lib/ahl-stats.ts`) — David, 2026-09-17 :**
+- Source : API HockeyTech/LeagueStat (`https://lscluster.hockeytech.com/feed/index.php`,
+  `client_code=ahl`), même fournisseur que theahl.com — pas d'équivalent à l'API LNH publique
+  (`api.nhle.com`) déjà utilisée par `/statistiques`. Clé (`key=...`) trouvée dans l'onglet
+  Réseau du navigateur sur theahl.com/stats — publique de fait (visible par n'importe quel
+  visiteur du site, pas une clé secrète), mais propre à ce client (le même mécanisme existe
+  pour la PWHL avec une clé différente, `client_code=pwhl`). Si la clé change côté HockeyTech,
+  la retrouver de la même façon (F5 sur theahl.com/stats, onglet Réseau, filtrer `hockeytech`).
+- Réponses JSON enveloppées dans des parenthèses même avec `fmt=json` (format JSONP hérité) —
+  `parseHockeyTechJson()` les retire avant `JSON.parse`.
+- Saison par défaut : la plus récente saison "Regular Season" qui a des matchs joués
+  (`resolveSeason()`, `app/app/statistiques/ahl/page.tsx`) — la saison AHL à venir apparaît
+  dans la liste avant même son coup d'envoi (ex : 2026-27 visible dès septembre, débute le
+  2026-10-02), donc un simple "plus récente saison" afficherait un classement vide en
+  pré-saison.
+- Page `/statistiques/ahl` volontairement plus simple que `/statistiques` (LNH) : pas de
+  croisement avec le pool (disponibilité, recrues ELC, séries, indicateurs de forme) — les
+  joueurs AHL ne sont pas nécessairement liés à un `player` de la base (identifiants
+  HockeyTech, pas `nhl_id`). Le badge "R" utilise le champ `rookie` propre à l'API AHL (statut
+  recrue au sens de la ligue), pas `rookieProtection.ts` (règle du pool, sans rapport).
+
 **Next.js 16 :**
 - Utiliser `proxy.ts`, PAS `middleware.ts`
 - Rester compatible avec les conventions Next.js 16
@@ -764,7 +785,7 @@ Règle : quand on touche une page de consultation, on la rend responsive en mêm
 - Masquer les colonnes secondaires sur mobile : `hidden sm:table-cell`
 - Pas de layout en colonnes côte à côte sur mobile (`flex-wrap` ou `grid-cols-1`)
 
-Pages de consultation : `/`, `/joueurs`, `/statistiques`, `/repechage`,
+Pages de consultation : `/`, `/joueurs`, `/statistiques`, `/statistiques/ahl`, `/repechage`,
 `/poolers`, `/poolers/[id]`, `/journal-transactions`, `/gestion-series`, `/classement-series`, `/aide`
 
 ---

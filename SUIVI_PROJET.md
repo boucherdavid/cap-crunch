@@ -7833,3 +7833,43 @@ CapWatchManager.tsx,page.tsx}`, `schema.sql`) :
      conditions réelles.
 - **Prochaine étape suggérée à la reprise** : tester le ballotage de bout en bout en staging,
   puis si tout est validé (ballotage + les deux fixes), merger `staging` → `main`.
+
+### 2026-09-17
+
+**[Chore] — vérification `import.yml`** : les deux runs déclenchés par le push des CSV
+PuckPedia du 2026-09-16 (branches `main` et `staging`) se sont terminés `success` (~1m15s
+chacun) — réimport vers prod confirmé sans erreur.
+
+**[Feature] — Statistiques AHL** (`app/lib/ahl-stats.ts`,
+`app/app/statistiques/ahl/{page.tsx,AhlStatsTable.tsx}`, `app/components/Navbar.tsx`) :
+- David n'avait pas eu le temps de compléter ses alignements pour cette session et a demandé
+  un autre ajout à la place : la page "Statistiques AHL", déjà réservée en placeholder
+  "À venir" dans le menu Statistiques depuis un moment (voir CLAUDE.md section 5).
+- Pas de source de données identifiée au départ. Recherche : theahl.com (stats officielles)
+  tourne sur HockeyTech/LeagueStat (même fournisseur que la PWHL), API `lscluster.hockeytech.com`
+  exigeant une clé par client. Tentative de deviner/réutiliser la clé publique documentée pour
+  `client_code=pwhl` sur `client_code=ahl` bloquée par le classificateur de sécurité de l'auto
+  mode ("Credential Exploration") — abandonnée volontairement plutôt que contournée. Résolu en
+  demandant à David de capturer l'URL réseau réelle depuis l'onglet Réseau du navigateur sur
+  theahl.com/stats (F12) — clé trouvée : `ccb91f29d6744675` (`client_code=ahl`, `site_id=3`,
+  `league_id=4`). Détail complet (endpoint, format de réponse JSONP même avec `fmt=json`,
+  logique de saison par défaut) documenté dans CLAUDE.md section 6.
+- Page volontairement plus simple que `/statistiques` (LNH) : classement complet patineurs/
+  gardiens avec recherche, filtre équipe/position et sélecteur de saison, mais **sans**
+  croisement avec le pool (pas de badge "disponible/pris", pas de lien vers les fiches
+  joueurs LNH, pas d'indicateurs de forme) — les joueurs AHL n'ont pas de `nhl_id` fiable dans
+  la base, contrairement aux joueurs LNH. Badge "R" = champ `rookie` de l'API AHL elle-même,
+  sans rapport avec la protection recrue du pool (`rookieProtection.ts`).
+- Saison par défaut : la plus récente saison "Regular Season" ayant des matchs joués — la
+  saison AHL 2026-27 apparaît déjà dans la liste des saisons en septembre (avant son coup
+  d'envoi du 2026-10-02) avec 0 match joué, donc un simple "plus récente" afficherait un
+  classement vide ; fallback automatique vers 2025-26.
+- Navbar : les deux placeholders "AHL (à venir)" (dropdown desktop et menu mobile) remplacés
+  par de vrais liens vers `/statistiques/ahl`.
+- Vérifié : `tsc --noEmit` et `next build` passent, route générée dans la liste des pages.
+  Testé que `/statistiques/ahl` répond (redirection `/login?next=...` attendue côté serveur
+  dev sans session, comme les autres pages protégées) — **pas testé visuellement dans un
+  navigateur connecté** (rendu réel du tableau à valider par David).
+- Pages `/aide` (section 8/9 de CLAUDE.md, guide/règlements) pas mises à jour — évaluation
+  laissée à une prochaine session si David juge que ça vaut la peine d'y documenter cette
+  nouvelle page.

@@ -237,9 +237,7 @@ export default function Navbar({
                     <div className="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Statistiques</div>
                     <Link href="/statistiques" className={dropdownLinkClass('/statistiques')}>LNH</Link>
                     <Link href="/statistiques/projections" className={dropdownLinkClass('/statistiques/projections')}>Projections</Link>
-                    <span className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 cursor-default">
-                      AHL <span className="text-xs bg-gray-100 text-gray-500 rounded px-1.5 py-0.5">À venir</span>
-                    </span>
+                    <Link href="/statistiques/ahl" className={dropdownLinkClass('/statistiques/ahl')}>AHL</Link>
                     <div className="border-t my-1" />
                     <div className="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Calendrier</div>
                     <Link href="/calendrier" className={dropdownLinkClass('/calendrier')}>Calendrier</Link>
@@ -414,7 +412,7 @@ export default function Navbar({
             <MobileSection label="LNH" />
             <Link href="/statistiques" className={mobileLinkClass('/statistiques')}>Statistiques LNH</Link>
             <Link href="/statistiques/projections" className={mobileLinkClass('/statistiques/projections')}>Projections</Link>
-            <span className="px-3 py-2 text-sm text-pool-silver opacity-50">Statistiques AHL (à venir)</span>
+            <Link href="/statistiques/ahl" className={mobileLinkClass('/statistiques/ahl')}>Statistiques AHL</Link>
             <Link href="/calendrier" className={mobileLinkClass('/calendrier')}>Calendrier</Link>
             <Link href="/joueurs"    className={mobileLinkClass('/joueurs')}>Contrats LNH</Link>
 
