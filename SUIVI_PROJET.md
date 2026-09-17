@@ -7873,3 +7873,8 @@ chacun) — réimport vers prod confirmé sans erreur.
 - Pages `/aide` (section 8/9 de CLAUDE.md, guide/règlements) pas mises à jour — évaluation
   laissée à une prochaine session si David juge que ça vaut la peine d'y documenter cette
   nouvelle page.
+- **Validé par David en staging** le jour même : "la page fonctionne". Merge vers `main`
+  volontairement remis à plus tard (choix de David) — `staging` contient encore 3 autres
+  changements pas validés (fix déconnexions mobile `73481f8`, fix visuel Ballotage `22abf11`,
+  ballotage en cours de saison `caa36c0`) qu'un merge groupé enverrait aussi en prod. À
+  merger tous ensemble une fois le reste testé, pas l'AHL seul.
