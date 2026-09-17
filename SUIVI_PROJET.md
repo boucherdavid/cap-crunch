@@ -7946,3 +7946,30 @@ concernait la LNH ou l'AHL. Libellé changé desktop + mobile ; route (`/statist
 projections`) et titre de page (`<h1>`/`<title>`) inchangés, scope volontairement limité au
 libellé du menu (même logique que le renommage "Signatures des agents libres" du
 2026-09-14). Vérifié : `tsc --noEmit` passe.
+
+**[Chore] — redéploiement staging redéclenché** (commit vide `0be054c`) : David avait annulé
+manuellement un déploiement Vercel jugé trop long et ne le retrouvait plus dans l'onglet
+Deployments du dashboard pour le relancer avec "Redeploy". Solution : un commit vide poussé
+sur `staging` redéclenche automatiquement un nouveau build Vercel (le projet est lié au repo
+GitHub, tout push sur la branche déclenche un déploiement). Aucun changement de code.
+
+**Pause de session — état courant :**
+- Branche active : `staging`, à jour avec `origin/staging` (`0be054c`). `main` n'a rien reçu
+  depuis le commit CSV PuckPedia (`9b8e8ca`, session du 2026-09-16) — **10 commits de code**
+  restent sur `staging` en attente de validation avant merge vers `main` (section 10) :
+  fix déconnexions mobile (`73481f8`), fix visuel Ballotage (`22abf11`), ballotage en cours de
+  saison (`caa36c0`), statistiques AHL (`da5adb8`), classement hebdomadaire/mensuel
+  (`3481e9c`), disponibilité AHL + saisons passées LNH (`d06fcdd` + fix `d2c4c90`), renommage
+  nav Projections (`e343d12`), plus le commit vide de redéploiement (`0be054c`, sans impact
+  fonctionnel).
+- **Validé par David en staging** : statistiques AHL ("la page fonctionne", 2026-09-17).
+- **Pas encore validé** : classement hebdomadaire/mensuel (jamais confirmé explicitement),
+  saisons passées LNH + fix disponibilité (David a testé et trouvé le bug de disponibilité
+  masquée à tort, corrigé le même jour, mais pas de "ça marche" après coup), renommage nav
+  Projections, et — hérité de la session précédente — le ballotage en cours de saison au
+  complet (flux libération → réclamation → résolution jamais testé de bout en bout) et les
+  deux fixes du 2026-09-16 (déconnexions mobile, visuel Ballotage).
+- **Prochaine étape suggérée à la reprise** : confirmer que le redéploiement staging a abouti
+  (vérifier le dashboard Vercel), puis reprendre les validations en attente — en particulier
+  le ballotage de bout en bout, le plus ancien et le plus à risque fonctionnellement de la
+  liste — avant d'envisager un merge groupé vers `main`.
