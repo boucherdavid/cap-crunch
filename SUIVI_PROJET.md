@@ -21,6 +21,23 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-18
+
+**[Fix] — Badge "Prêt" ambigu sur /repechage-agents-libres et /admin/init?tab=presaison**
+(`app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`,
+`app/app/admin/presaison/PresaisonManager.tsx`) :
+- David : presque tous les poolers affichaient "Prêt" sur leur carte, alors qu'ils n'avaient
+  pas déclaré leur alignement prêt. Le badge en question vient de `isReadyForDraft`
+  (`admin/presaison/actions.ts`) — un indicateur purement financier ("a assez d'espace cap
+  pour combler ses postes manquants au salaire minimum"), sans aucun rapport avec la vraie
+  déclaration "✓ Mon alignement est prêt" (`presaison_pooler_ready`, panneau "Mon alignement").
+  Comme presque tout le monde a assez d'espace tôt dans le ménage pré-saison, le badge
+  affichait "Prêt" par défaut pour tous — même mot que la vraie déclaration, d'où la confusion.
+- Renommé "Prêt" → "Espace OK" aux deux endroits qui réutilisaient ce badge (`PoolerCard` de
+  `/repechage-agents-libres`, ligne d'en-tête de `PresaisonManager.tsx`) — logique et données
+  inchangées (`isReadyForDraft`/`slotsManquants`/`capNeededForReady`), seul le libellé change,
+  pour ne plus entrer en collision avec le mot "Prêt" réservé à la déclaration du pooler.
+
 ### 2026-09-17
 
 **[Feature] — Bascule actif↔réserviste au nom d'un pooler, depuis /repechage-agents-libres**

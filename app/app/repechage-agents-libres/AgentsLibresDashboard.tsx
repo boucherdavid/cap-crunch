@@ -426,7 +426,7 @@ function PoolerCard({
             className={`text-xs font-medium px-1.5 py-0.5 rounded border ${pooler.isReadyForDraft ? 'text-emerald-600 border-emerald-200' : 'text-amber-600 border-amber-200'}`}
             title={`${pooler.slotsManquants} poste(s) à combler — besoin d'au moins ${fmt(pooler.capNeededForReady)} d'espace`}
           >
-            {pooler.isReadyForDraft ? 'Prêt' : `Manque ${fmt(pooler.capNeededForReady - pooler.capSpace)}`}
+            {pooler.isReadyForDraft ? 'Espace OK' : `Manque ${fmt(pooler.capNeededForReady - pooler.capSpace)}`}
           </span>
         )}
       </div>
