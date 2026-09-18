@@ -21,6 +21,28 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-18 (suite — ajustements de la réorganisation : séparateurs + sommaire masquable)
+
+**[Feature] — Lignes de séparation dans l'onglet Simulation + sommaire des poolers masquable**
+(`app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`) :
+- David, après avoir testé la réorganisation en 3 colonnes livrée plus tôt aujourd'hui, a
+  demandé deux ajustements : des lignes de séparation entre les sous-sections de l'onglet
+  Simulation (alignement/reset, ajout de recrue, ajout d'agent libre), comme c'était déjà le
+  cas dans l'onglet Actuel entre l'alignement et "Activer ou libérer une recrue" ; et une façon
+  de masquer le sommaire des poolers + activité récente pour redonner cet espace à "Mon
+  alignement".
+- Ajout de deux `border-t pt-3 mt-3` dans l'onglet Simulation (`MonAlignement`), même patron
+  que celui déjà utilisé dans Actuel — un avant "Ajouter une recrue de ta banque", un avant
+  "Ajouter un agent libre".
+- Nouvel état `sommaireVisible` (persisté par navigateur, `localStorage`, même patron que
+  `PoolerCard`/`AdminPanel` — préférence par pooler, pas une donnée de saison). Bouton "✕
+  Masquer" en haut de la colonne de droite ; bouton "☰ Afficher le sommaire" dans l'en-tête de
+  page quand masqué. Le nombre de colonnes de la grille (`lg:grid-cols-3/4/5`, classes
+  Tailwind littérales pour le JIT) s'ajuste selon le nombre de colonnes latérales réellement
+  affichées (panneau admin + sommaire), 0 à 2 — "Mon alignement" reste toujours col-span-3,
+  donc prend automatiquement l'espace libéré quand le sommaire est masqué.
+- Validé avec `tsc --noEmit` et `eslint` (0 erreur).
+
 ### 2026-09-18 (suite — réorganisation de la page /repechage-agents-libres)
 
 **[Feature] — Disposition en 3 colonnes pour réduire le défilement pendant un repêchage AL**

@@ -111,6 +111,20 @@ export default function AgentsLibresDashboard({
 
   const myPooler = poolers.find(p => p.id === me.id) ?? null
 
+  // Masquer le sommaire des poolers + activité récente (David, 2026-09-18) — un pooler qui ne
+  // s'en sert pas peut redonner cet espace à "Mon alignement". Préférence locale, persistée par
+  // navigateur (localStorage, même patron que PoolerCard/AdminPanel "expanded") — pas une
+  // donnée de saison, chaque pooler garde son propre choix.
+  const sommaireKey = 'al-sommaire-visible'
+  const [sommaireVisible, setSommaireVisibleState] = useState(() => {
+    if (typeof window === 'undefined') return true
+    try { return localStorage.getItem(sommaireKey) !== '0' } catch { return true }
+  })
+  const setSommaireVisible = (visible: boolean) => {
+    setSommaireVisibleState(visible)
+    try { localStorage.setItem(sommaireKey, visible ? '1' : '0') } catch { /* stockage indisponible — pas grave */ }
+  }
+
   // AutoReload (rechargement complet toutes les 8s pendant un tour actif) coupait
   // net une sélection de libération en cours dans MonAlignement — le pooler n'avait
   // jamais le temps de cocher des joueurs avant que la page ne se recharge sous lui
@@ -167,7 +181,17 @@ export default function AgentsLibresDashboard({
         {/* Intervalle allongé à 5 min (David, 2026-09-10) — 8s faisait clignoter la page en
             continu ; le bouton "Rafraîchir" manuel (toujours visible, voir AutoReload.tsx)
             couvre le besoin de voir un changement tout de suite sans attendre. */}
-        <AutoReload enabled={!draftState.ended_at && !releaseSelectionActive && adminReleaseSelectionIds.size === 0 && !adminSigningActive && !adminOrderDirty} intervalMs={300000} />
+        <div className="flex items-center gap-3">
+          {!sommaireVisible && (
+            <button
+              onClick={() => setSommaireVisible(true)}
+              className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+            >
+              ☰ Afficher le sommaire
+            </button>
+          )}
+          <AutoReload enabled={!draftState.ended_at && !releaseSelectionActive && adminReleaseSelectionIds.size === 0 && !adminSigningActive && !adminOrderDirty} intervalMs={300000} />
+        </div>
       </div>
 
       {/* Widget "Signature en cours" (David, 2026-09-18) — extrait du Panneau admin pour rester
@@ -211,10 +235,17 @@ export default function AgentsLibresDashboard({
           fréquents — voir TourEnCoursPanel.tsx ci-dessus pour la signature elle-même), "Mon
           alignement" au centre en plus large (recherche d'agents libres + gestion des recrues y
           avaient peu de place dans l'ancienne colonne étroite), sommaire compact des poolers +
-          activité récente à droite (vue d'ensemble sans avoir à déplier quoi que ce soit). Les
-          grandes cartes détaillées par pooler (alignement complet, actions admin) restent plus
-          bas, accessibles à tous — le sommaire s'ajoute, il ne les remplace pas. */}
-      <div className={`grid grid-cols-1 gap-6 ${me.isAdmin && !seasonStarted ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
+          activité récente à droite (vue d'ensemble sans avoir à déplier quoi que ce soit) —
+          masquable (voir sommaireVisible ci-dessus) pour redonner cet espace à "Mon alignement".
+          Le centre reste toujours col-span-3 ; seul le nombre total de colonnes varie selon le
+          nombre de colonnes latérales réellement affichées (0, 1 ou 2), gardé en classes
+          Tailwind littérales pour que le JIT les détecte. Les grandes cartes détaillées par
+          pooler (alignement complet, actions admin) restent plus bas, accessibles à tous — le
+          sommaire s'ajoute, il ne les remplace pas. */}
+      <div className={`grid grid-cols-1 gap-6 ${
+        (me.isAdmin && !seasonStarted ? 1 : 0) + (sommaireVisible ? 1 : 0) === 2 ? 'lg:grid-cols-5'
+          : (me.isAdmin && !seasonStarted) || sommaireVisible ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
+      }`}>
         {me.isAdmin && !seasonStarted && (
           <div className="lg:col-span-1">
             <AdminPanel
@@ -242,7 +273,13 @@ export default function AgentsLibresDashboard({
           />
         </div>
 
+        {sommaireVisible && (
         <div className="lg:col-span-1 space-y-6">
+          <div className="flex justify-end -mb-3">
+            <button onClick={() => setSommaireVisible(false)} className="text-xs text-gray-400 hover:text-gray-600">
+              ✕ Masquer
+            </button>
+          </div>
           <PoolersSommaire poolers={poolers} poolCap={poolCap} currentPoolerId={currentPoolerId} />
 
           {/* Bornée avec défilement (David, 2026-09-10) — pour que les poolers puissent suivre
@@ -277,6 +314,7 @@ export default function AgentsLibresDashboard({
             )}
           </div>
         </div>
+        )}
       </div>
 
       <div className="mt-6">
@@ -1256,7 +1294,7 @@ function MonAlignement({
             </button>
 
             {recruePlayers.length > 0 && (
-              <div className="mb-3">
+              <div className="border-t pt-3 mt-3 mb-3">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ajouter une recrue de ta banque</p>
                 {/* Liste déroulante plutôt qu'une liste à plat (David, 2026-09-10) — prenait
                     trop de place à l'écran avec une grosse banque de recrues. */}
@@ -1292,6 +1330,7 @@ function MonAlignement({
               </div>
             )}
 
+            <div className="border-t pt-3 mt-3">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ajouter un agent libre</p>
             <input
               value={query}
@@ -1367,6 +1406,7 @@ function MonAlignement({
                 Plus de résultats que ce qui est affiché — affine avec une équipe, une position ou un nom pour tout voir.
               </p>
             )}
+            </div>
 
             <div className="border-t pt-2 mt-1 space-y-1">
               <div className="flex justify-between text-xs">
