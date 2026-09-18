@@ -422,7 +422,14 @@ function PoolerCard({
           >
             À libérer
           </span>
-        ) : pooler.slotsManquants > 0 && (
+        ) : pooler.slotsManquants === 0 ? (
+          <span
+            className="text-xs font-medium px-1.5 py-0.5 rounded border text-emerald-600 border-emerald-200"
+            title="12 attaquants, 6 défenseurs, 2 gardiens actifs et au moins 2 réservistes"
+          >
+            Alignement minimum atteint
+          </span>
+        ) : (
           <span
             className={`text-xs font-medium px-1.5 py-0.5 rounded border ${pooler.isReadyForDraft ? 'text-emerald-600 border-emerald-200' : 'text-amber-600 border-amber-200'}`}
             title={`${pooler.slotsManquants} poste(s) à combler — besoin d'au moins ${fmt(pooler.capNeededForReady)} d'espace`}

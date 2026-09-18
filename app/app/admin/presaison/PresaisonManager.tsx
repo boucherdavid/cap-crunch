@@ -96,10 +96,12 @@ function ComplianceCard({
           <span className={pooler.capSpace < 0 ? 'text-red-600 font-medium' : 'text-gray-600'}>
             {pooler.capSpace >= 0 ? `${fmt(pooler.capSpace)} dispo` : `${fmt(Math.abs(pooler.capSpace))} dépassé`}
           </span>
-          {pooler.isReadyForDraft ? (
-            <span className="text-[10px] font-medium bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded">Espace OK</span>
-          ) : pooler.isOverLimits ? (
+          {pooler.isOverLimits ? (
             <span className="text-[10px] font-medium bg-red-50 text-red-600 px-1.5 py-0.5 rounded">À libérer</span>
+          ) : pooler.slotsManquants === 0 ? (
+            <span className="text-[10px] font-medium bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded">Alignement minimum atteint</span>
+          ) : pooler.isReadyForDraft ? (
+            <span className="text-[10px] font-medium bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded">Espace OK</span>
           ) : (
             <span className="text-[10px] font-medium bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">
               Manque {fmt(pooler.capNeededForReady - pooler.capSpace)}

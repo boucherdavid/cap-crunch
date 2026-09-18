@@ -21,6 +21,20 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-18 (suite — badge "Alignement minimum atteint")
+
+**[Fix] — Le badge de préparation disparaissait au lieu de confirmer l'alignement complet**
+(`app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`,
+`app/app/admin/presaison/PresaisonManager.tsx`) :
+- David : une fois `slotsManquants === 0` (12A/6D/2G actifs + min. 2 rés. atteints), le badge
+  "Espace OK"/"Manque $X" disparaissait carrément — la seule façon de savoir que l'alignement
+  était valide était de constater son absence, pas très explicite.
+- Ajout d'un 3ᵉ état explicite "Alignement minimum atteint" (vert) quand `slotsManquants===0`
+  et pas de dépassement de cap, aux deux endroits qui affichaient ce badge (`PoolerCard` de
+  `/repechage-agents-libres`, en-tête de `PresaisonManager.tsx`) — même condition qu'avant
+  (juste plus de branche "rien à afficher"), "Espace OK"/"Manque $X" ne s'affichent plus que
+  tant qu'il reste des postes à combler.
+
 ### 2026-09-18 (suite — sortie volontaire de la file du repêchage AL)
 
 **[Feature] — Se retirer de la file du repêchage des agents libres, alignement complet**
