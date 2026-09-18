@@ -21,6 +21,36 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-18 (suite — sortie volontaire de la file du repêchage AL)
+
+**[Feature] — Se retirer de la file du repêchage des agents libres, alignement complet**
+(`app/app/admin/presaison/actions.ts`, `app/app/repechage-agents-libres/actions.ts`,
+`app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`,
+`app/app/repechage-agents-libres/AdminPanel.tsx`) :
+- David : un pooler qui atteint 12A/6D/2G actifs + min. 2 rés. n'est pas obligé de dépenser
+  tout son cap — il devrait pouvoir se retirer de la file plutôt que d'attendre son tour juste
+  pour "Passer" à répétition (et faire patienter les autres). L'admin devrait pouvoir le faire
+  aussi, au nom de n'importe quel pooler.
+- `removeFromQueueInternal` (interne, `admin/presaison/actions.ts`) : retire un poolerId de
+  `presaison_draft_state.queue` pour de bon (distinct de "Passer", qui fait juste tourner la
+  file). Si c'était son tour, relance le chrono pour le suivant et le notifie par push ; sinon
+  n'affecte pas le tour en cours. Termine le repêchage (`ended_at`) si la file devient vide.
+  Partagée par deux points d'entrée (même patron que `applyTransactionItems`, chacun fait sa
+  propre vérification d'autorisation avant d'appeler la fonction interne) :
+  - `removePoolerFromQueueAction(saisonId, poolerId)` — admin-only, retire n'importe qui,
+    à tout moment. UI : liste "File d'attente" dans `AdminPanel.tsx` (bouton "Retirer" par
+    pooler encore dans la file), sous le bouton "Passer".
+  - `leaveQueueForPoolerAction(supabase, saisonId, poolerId)` — revérifie côté serveur que
+    l'alignement actif est exactement complet (12A/6D/2G + min. 2 rés., pas de dépassement de
+    cap — condition stricte, contrairement à `isCompliant`/`isReadyForDraft` qui utilisent des
+    seuils `<=`/financiers plus permissifs) avant d'autoriser le retrait. Appelée par
+    `leaveDraftQueueAction` (`repechage-agents-libres/actions.ts`) avec un client admin —
+    écriture sur `presaison_draft_state` (RLS admin-only), même patron que
+    `submitSelfServiceAction`.
+- UI pooler : bannière bleue "Ton alignement est complet..." + bouton "Me retirer du
+  repêchage" dans "Mon alignement" (`MonAlignement`), visible seulement si encore dans la file
+  active ET alignement complet.
+
 ### 2026-09-18
 
 **[Fix] — Badge "Prêt" ambigu sur /repechage-agents-libres et /admin/init?tab=presaison**

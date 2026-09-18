@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { applyTransactionItems, type TxItemPayload } from '../admin/transactions/actions'
+import { leaveQueueForPoolerAction } from '../admin/presaison/actions'
 
 // Libre-service pooler — David, 2026-09-06 : plutôt que de dépendre de l'admin pour chaque
 // ajustement pré-saison, un pooler peut lui-même basculer actif↔réserviste, libérer et
@@ -170,6 +171,20 @@ export async function setReadyAction(saisonId: number, ready: boolean): Promise<
   revalidatePath('/repechage-agents-libres')
   revalidatePath('/admin/init')
   return { readyAt }
+}
+
+// Se retirer soi-même de la file du repêchage AL (David, 2026-09-18) — un pooler dont
+// l'alignement est déjà complet (12A/6D/2G + min. 2 rés.) n'est pas obligé de dépenser tout son
+// cap ; plutôt que d'attendre son tour juste pour "Passer" à répétition (et faire patienter les
+// autres), il peut annoncer lui-même qu'il sort du repêchage. Distinct de "Passer" (admin-only,
+// fait juste tourner la file) — ceci retire pour de bon. L'admin garde son propre bouton pour
+// faire la même chose au nom de n'importe quel pooler (removePoolerFromQueueAction).
+export async function leaveDraftQueueAction(saisonId: number): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+
+  return leaveQueueForPoolerAction(createAdminClient(), saisonId, user.id)
 }
 
 export async function loadOwnRecrueBankAction(saisonId: number): Promise<{

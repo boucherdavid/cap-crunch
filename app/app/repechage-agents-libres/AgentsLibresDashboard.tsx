@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import AutoReload from '@/components/AutoReload'
 import { submitTransactionAction } from '../admin/transactions/actions'
-import { submitSelfServiceAction, loadOwnRecrueBankAction, setReadyAction, searchSandboxFreeAgentsAction, listTeamsAction, type SandboxFreeAgentResult } from './actions'
+import { submitSelfServiceAction, loadOwnRecrueBankAction, setReadyAction, leaveDraftQueueAction, searchSandboxFreeAgentsAction, listTeamsAction, type SandboxFreeAgentResult } from './actions'
 import AdminPanel from './AdminPanel'
 
 type Me = { id: string; name: string; isAdmin: boolean }
@@ -249,6 +249,7 @@ export default function AgentsLibresDashboard({
             nhlMinimumSalary={nhlMinimumSalary}
             seasonStarted={seasonStarted}
             releasePhaseOpen={draftState.release_phase_open}
+            inDraftQueue={draftState.is_active && draftState.queue.includes(me.id)}
             onReleaseSelectionChange={setReleaseSelectionActive}
           />
         </div>
@@ -553,7 +554,7 @@ function PoolerCard({
 type RecrueOption = { roster_id: number; player_id: number; name: string; position: string | null; cap_number: number }
 
 function MonAlignement({
-  me, myPooler, poolCap, saisonId, nhlMinimumSalary, seasonStarted, releasePhaseOpen, onReleaseSelectionChange,
+  me, myPooler, poolCap, saisonId, nhlMinimumSalary, seasonStarted, releasePhaseOpen, inDraftQueue, onReleaseSelectionChange,
 }: {
   me: Me
   myPooler: PoolerInfo | null
@@ -562,6 +563,7 @@ function MonAlignement({
   nhlMinimumSalary: number
   seasonStarted: boolean
   releasePhaseOpen: boolean
+  inDraftQueue: boolean
   onReleaseSelectionChange?: (active: boolean) => void
 }) {
   const [tab, setTab] = useState<'actuel' | 'sandbox'>('actuel')
@@ -594,6 +596,8 @@ function MonAlignement({
   const [busy, setBusy] = useState(false)
   const [selfErr, setSelfErr] = useState<string | null>(null)
   const [togglingReady, setTogglingReady] = useState(false)
+  const [leavingQueue, setLeavingQueue] = useState(false)
+  const [leaveQueueErr, setLeaveQueueErr] = useState<string | null>(null)
 
   // Déclaration "mon alignement est prêt" (David, 2026-09-08) — confirme uniquement que les
   // actifs/réservistes sont placés comme voulu ; remise à zéro automatiquement côté serveur
@@ -606,6 +610,20 @@ function MonAlignement({
     } catch {
       setTogglingReady(false)
       setSelfErr('Erreur inattendue — réessaie.')
+    }
+  }
+  // Se retirer soi-même du repêchage AL (David, 2026-09-18) — visible seulement pendant un
+  // tour actif où on est encore dans la file, et seulement si l'alignement actif est déjà
+  // complet (12A/6D/2G + min. 2 rés.) : pas obligé de dépenser tout son cap, donc pas obligé
+  // d'attendre son tour juste pour "Passer" à répétition. Revérifié côté serveur.
+  const handleLeaveQueue = async () => {
+    if (!window.confirm('Te retirer du repêchage des agents libres ? Tu ne seras plus rappelé pour signer, même s\'il reste de l\'espace cap.')) return
+    setLeavingQueue(true); setLeaveQueueErr(null)
+    try {
+      const result = await leaveDraftQueueAction(saisonId)
+      if (result.error) { setLeavingQueue(false); setLeaveQueueErr(result.error) } else { window.location.reload() }
+    } catch {
+      setLeavingQueue(false); setLeaveQueueErr('Erreur inattendue — réessaie.')
     }
   }
   const [releaseMode, setReleaseMode] = useState(false)
@@ -816,6 +834,8 @@ function MonAlignement({
     )
   }
 
+  const rosterComplete = myPooler.counts.forward === 12 && myPooler.counts.defense === 6
+    && myPooler.counts.goalie === 2 && myPooler.counts.reserviste >= 2 && !myPooler.isOverLimits
   const hasEligibleForBanque = myPooler.roster.some(e => e.rookieType && (e.player_type === 'actif' || e.player_type === 'reserviste'))
   const removedCap = myPooler.roster.filter(e => removed.has(e.player_id)).reduce((s, e) => s + e.cap_number, 0)
   const addedRecrueCap = recruePlayers.filter(r => addedRecrueIds.has(r.player_id)).reduce((s, r) => s + r.cap_number, 0)
@@ -850,6 +870,23 @@ function MonAlignement({
             </button>
           </div>
         )}
+
+        {inDraftQueue && rosterComplete && (
+          <div className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 mb-4 bg-blue-50">
+            <p className="text-xs text-gray-600">
+              Ton alignement est complet — pas obligé de dépenser le reste de ton cap. Tu peux te
+              retirer du repêchage plutôt que d&apos;attendre ton tour.
+            </p>
+            <button
+              onClick={handleLeaveQueue}
+              disabled={leavingQueue}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0 disabled:opacity-40 bg-white border border-blue-300 text-blue-700 hover:bg-blue-100"
+            >
+              {leavingQueue ? '...' : 'Me retirer du repêchage'}
+            </button>
+          </div>
+        )}
+        {leaveQueueErr && <p className="text-xs text-red-600 mb-3">{leaveQueueErr}</p>}
 
         <div className="flex gap-2 mb-4">
           <button

@@ -8,6 +8,7 @@ import {
   startPresaisonDraftAction, advancePresaisonQueueAction, endPresaisonDraftAction,
   adjustPresaisonTimerAction, resetPresaisonTimerAction, resetPresaisonDraftAction,
   pausePresaisonTimerAction, resumePresaisonTimerAction, setPassModeAction,
+  removePoolerFromQueueAction,
 } from '../admin/presaison/actions'
 import type { PoolerCapInfo, DraftState } from '../admin/presaison/types'
 
@@ -62,6 +63,8 @@ export default function AdminPanel({
   const [togglingReleasePhase, setTogglingReleasePhase] = useState(false)
   const [resettingDraft, setResettingDraft] = useState(false)
   const [resetDraftMsg, setResetDraftMsg] = useState<string | null>(null)
+  const [removingId, setRemovingId] = useState<string | null>(null)
+  const [removeErr, setRemoveErr] = useState<string | null>(null)
   const [togglingPassMode, setTogglingPassMode] = useState(false)
   const [now] = useState(() => Date.now())
   const [freeAgentSelecting, setFreeAgentSelecting] = useState(false)
@@ -192,6 +195,21 @@ export default function AdminPanel({
       window.location.reload()
     } catch { /* chrono inchangé, l'admin peut réessayer */ }
   }
+  // Retirer un pooler de la file pour de bon (David, 2026-09-18) — distinct de "Passer" : utile
+  // quand un pooler a déjà un alignement complet (12A/6D/2G + min. 2 rés.) et n'a pas besoin de
+  // dépenser plus de cap, ou n'est pas connecté pour se retirer lui-même (voir
+  // leaveDraftQueueAction côté pooler, même mécanique).
+  const handleRemoveFromQueue = async (poolerId: string, poolerName: string) => {
+    if (!window.confirm(`Retirer ${poolerName} de la file du repêchage ? Il ne sera plus rappelé pour signer, même s'il reste de l'espace cap.`)) return
+    setRemovingId(poolerId); setRemoveErr(null)
+    try {
+      const result = await removePoolerFromQueueAction(saisonId, poolerId)
+      if (result.error) { setRemovingId(null); setRemoveErr(result.error) } else { window.location.reload() }
+    } catch {
+      setRemovingId(null); setRemoveErr('Erreur inattendue — réessaie.')
+    }
+  }
+
   const handleReset = async () => {
     if (!window.confirm('Réinitialiser le repêchage pré-saison ? Toutes les signatures seront annulées.')) return
     setResettingDraft(true)
@@ -359,6 +377,32 @@ export default function AdminPanel({
                   Passer{nextPoolerName ? ` → ${nextPoolerName}` : ''}
                 </button>
               </div>
+
+              {draftState.queue.length > 0 && (
+                <div className="border-t pt-3 mt-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                    File d&apos;attente — retirer un pooler qui n&apos;a plus besoin de jouer
+                  </p>
+                  <div className="space-y-1">
+                    {draftState.queue.map((id, idx) => {
+                      const p = poolers.find(pp => pp.id === id)
+                      return (
+                        <div key={id} className="flex items-center justify-between text-xs text-gray-600 py-0.5">
+                          <span>{idx === 0 ? <strong className="text-blue-700">{p?.name ?? id}</strong> : p?.name ?? id}</span>
+                          <button
+                            onClick={() => handleRemoveFromQueue(id, p?.name ?? id)}
+                            disabled={removingId === id}
+                            className="text-[10px] px-1.5 py-0.5 border rounded text-gray-400 hover:text-red-600 hover:border-red-300 disabled:opacity-40"
+                          >
+                            {removingId === id ? '...' : 'Retirer'}
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {removeErr && <p className="text-xs text-red-600 mt-1.5">{removeErr}</p>}
+                </div>
+              )}
             </div>
           )}
 
