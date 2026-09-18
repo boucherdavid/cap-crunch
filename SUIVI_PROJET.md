@@ -21,6 +21,33 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-18 (suite — 25 autres lignes manquantes en prod, non corrigées pour l'instant)
+
+**[Décision] — 25 lignes de roster manquantes en prod (2025-26 → 2026-27), laissées telles quelles**
+(aucun fichier applicatif modifié, aucune écriture en base) :
+- Suite au correctif Zellweger (voir entrée précédente), David a demandé si d'autres poolers
+  avaient le même problème. Scan complet des 8 poolers (script ponctuel, lecture seule) :
+  comparaison des lignes actives de 2025-26 contre la présence de la même paire
+  pooler/joueur en 2026-27, dans les deux environnements.
+- **Staging : 0 cas.** **Prod : 25 lignes manquantes**, même symptôme que Zellweger
+  (actives en 2025-26, jamais copiées vers 2026-27 par `transitionSeasonAction`) :
+  - David (9) : Drysdale, Konecny, Maccelli, McMichael, Miller (actifs) ; Firkus, Korchinski,
+    Rinzel, Öhgren (recrues, repêchées 2022)
+  - Jérôme (4) : Laferriere, Teravainen, Vlasic (actifs) ; Ingram (réserviste)
+  - Nicolas (6) : Fowler, Gustafsson, Montembeault (actifs) ; Hayton (réserviste) ; Geekie
+    (recrue, repêchée 2022) ; Finnie (recrue, agent libre)
+  - Paule (6) : Broberg, Drouin, Kakko, Marchessault (actifs) ; McGroarty (réserviste, recrue
+    repêchée 2022) ; Yakemchuk (recrue, repêchée 2024)
+  Aucune de ces recrues n'est à la limite des 5 ans (2022/2024, contrairement à Zellweger
+  repêché en 2021) — une correction n'aurait déclenché aucune promotion automatique
+  immédiate, juste réapparu telle quelle avec le même statut qu'en 2025-26.
+- **David a choisi de laisser tel quel pour l'instant** (« Finalement on laisse ainsi ») —
+  correctif proposé (recréer les 25 lignes dans la saison 2026-27, `added_at=null`, même
+  logique que le correctif Zellweger) mais pas exécuté. À reprendre si David change d'avis :
+  voir le script `scan_missing_transition.py` (scratchpad de session, non conservé dans le
+  repo) pour la requête de détection — comparer `pooler_rosters` actives de la saison source
+  contre les paires `(pooler_id, player_id)` présentes dans la saison cible.
+
 ### 2026-09-18 (suite — doublon Chinakhov + ligne manquante Zellweger)
 
 **[Chore] — Fusion du doublon Egor/Yegor Chinakhov (staging + prod)**
