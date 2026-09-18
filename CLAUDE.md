@@ -227,7 +227,8 @@ libérations pré-saison confondues), et un panneau personnel "Mon alignement" �
 **Actuel** — libre-service réel depuis le 2026-09-06 (`repechage-agents-libres/actions.ts`,
 `submitSelfServiceAction`) : basculer un joueur actif↔réserviste, le libérer, activer/libérer
 une recrue de sa propre banque — restreint à ses propres joueurs, désactivé dès que
-`season_started=true` (place alors à `/gestion-effectifs`) ; et **Bac à sable** — simulation
+`season_started=true` (place alors à `/gestion-effectifs`) ; et **Simulation** (ex-"Bac à
+sable", renommé le 2026-09-18 pour cohérence avec `/simulation`) — simulation
 locale non sauvegardée, pour tester l'ajout d'un agent libre pas encore signé (toujours actif,
 peu importe la phase, aucune écriture serveur). La signature réelle d'un agent libre (pendant
 son tour) reste admin-only, peu importe où l'admin la déclenche — panneau admin rétractable de
@@ -259,11 +260,11 @@ plutôt que vers l'ancienne page.
 défaut** (l'admin l'ouvre explicitement, jamais l'inverse — premier bouton visible = "Ouvrir
 la libération de joueurs"), distincte du repêchage AL lui-même. Tant qu'ouverte, libérer
 n'importe quel joueur signé est permis en libre-service comme décrit plus haut, y compris
-depuis le bac à sable (voir plus bas). L'admin la ferme (bandeau du panneau admin ci-dessus,
+depuis la Simulation (voir plus bas). L'admin la ferme (bandeau du panneau admin ci-dessus,
 `setReleasePhaseAction`) une fois que tout le monde a ajusté sa masse salariale — à partir de
 là, "Libérer des joueurs" (vétérans) disparaît de `/repechage-agents-libres`, mais
 actif↔réserviste et activer/libérer une recrue de banque restent toujours permis (jamais
-gatés par cette phase), tout comme le bac à sable. `submitSelfServiceAction` revalide côté
+gatés par cette phase), tout comme la Simulation. `submitSelfServiceAction` revalide côté
 serveur (le `player_type` réel en base, pas l'état client) : une libération n'est bloquée que
 si le joueur visé n'est pas une `recrue`. "Démarrer le repêchage"
 (`startPresaisonDraftAction`) reste désactivé — client et serveur — tant que la phase est
@@ -312,15 +313,17 @@ des non-conformes avec le motif "Alignement pas encore déclaré prêt par le po
 "Démarrer la saison" n'est pas cliqué, le libre-service reste réutilisable à volonté, peu
 importe la phase.
 
-**Bac à sable soumettable (David, 2026-09-08)** — dans `MonAlignement` (onglet Bac à sable de
-`/repechage-agents-libres`), les retraits testés (`removed`, joueurs déjà possédés) peuvent
+**Simulation soumettable (David, 2026-09-08, onglet renommé "Bac à sable" → "Simulation" le
+2026-09-18)** — dans `MonAlignement` (onglet Simulation de `/repechage-agents-libres`), les
+retraits testés (`removed`, joueurs déjà possédés) peuvent
 être soumis pour vrai via un bouton "Soumettre la libération (N)"
-(`handleSubmitSandboxReleases`) — même `action_type='release'` et même garde-fou de phase que
-le flux "Libérer des joueurs" de l'onglet Actuel, juste une seconde porte d'entrée après avoir
-exploré l'impact salarial dans le bac à sable. Les agents libres ajoutés (`added`) restent en
-revanche une simulation pure, jamais soumissibles — signer un agent libre reste réservé à
-l'admin pendant le tour du pooler ; seul le retrait de joueurs déjà possédés peut être soumis.
-Depuis le 2026-09-08, le bac à sable permet aussi d'ajouter une recrue de sa propre banque
+(`handleSubmitSandboxReleases`, nom interne inchangé) — même `action_type='release'` et même
+garde-fou de phase que le flux "Libérer des joueurs" de l'onglet Actuel, juste une seconde
+porte d'entrée après avoir exploré l'impact salarial dans la Simulation. Les agents libres
+ajoutés (`added`) restent en revanche une simulation pure, jamais soumissibles — signer un
+agent libre reste réservé à l'admin pendant le tour du pooler ; seul le retrait de joueurs
+déjà possédés peut être soumis.
+Depuis le 2026-09-08, la Simulation permet aussi d'ajouter une recrue de sa propre banque
 (`addedRecrueIds`) pour voir l'impact réel sur la masse (contrairement à un agent libre, une
 recrue est déjà signée — son `cap_number` est réellement déduit dans la simulation, pas juste
 indicatif) ; reste une simulation, pas soumissible (l'activation réelle passe par "Activer ou

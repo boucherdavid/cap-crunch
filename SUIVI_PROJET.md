@@ -21,6 +21,46 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-18 (suite — réorganisation de la page /repechage-agents-libres)
+
+**[Feature] — Disposition en 3 colonnes pour réduire le défilement pendant un repêchage AL**
+(nouveaux : `app/app/repechage-agents-libres/TourEnCoursPanel.tsx` ; modifiés :
+`AgentsLibresDashboard.tsx`, `AdminPanel.tsx`, `CLAUDE.md`) :
+- David, en pleine session de test du repêchage AL en staging, a proposé un réaménagement pour
+  moins avoir à faire défiler la page : panneau admin à gauche (réglages moins fréquents),
+  section de signature toujours visible en haut-centre, "Mon alignement" élargi au centre
+  (recherches d'agents libres/recrues étaient trop à l'étroit dans l'ancienne colonne latérale
+  étroite), sommaire compact des poolers + activité récente à droite. Clarifié par questions
+  avant de coder : le panneau admin reste repliable comme avant (pas figé ouvert) ; le nouveau
+  "sommaire des poolers" est un **ajout**, pas un remplacement — les grandes cartes détaillées
+  par pooler (alignement complet, actions admin) restent accessibles à tous, juste déplacées
+  plus bas (pleine largeur, jusqu'à 4 colonnes sur grand écran).
+- `AdminPanel.tsx` scindé en deux : le tour en cours (chrono, `FreeAgentSigner`, "Passer",
+  "Terminer le repêchage") extrait vers le nouveau `TourEnCoursPanel.tsx`, affiché en pleine
+  largeur juste sous l'en-tête (visible sans déplier quoi que ce soit) ; `AdminPanel.tsx`
+  (colonne de gauche) ne garde que la phase de libération, l'ordre du repêchage, la file
+  d'attente (bouton "Retirer", ajouté le 2026-09-18 plus tôt) et la Zone de test. Aucune Server
+  Action dupliquée — simple découpage de composants React, mêmes fonctions de
+  `admin/presaison/actions.ts` réutilisées des deux côtés.
+- Nouveau composant `PoolersSommaire` (dans `AgentsLibresDashboard.tsx`) — un ajout compact
+  (nom, espace cap restant/surplus, décompte F/D/G/Rés., badge de statut) réutilisant sciemment
+  une logique de badge dupliquée plutôt que factorisée avec `PoolerCard` (déjà validé, pour ne
+  pas risquer de régression sur "Alignement minimum atteint" livré plus tôt aujourd'hui).
+- Renommage cosmétique de l'onglet "Bac à sable" → "Simulation" dans `MonAlignement`, pour
+  cohérence avec l'outil `/simulation` déjà existant ailleurs dans l'app — seul le libellé
+  visible change (bouton, message de confirmation), noms de fonctions/variables internes
+  (`sandbox`, `handleSubmitSandboxReleases`, etc.) inchangés, même patron que le renommage de
+  route du 2026-09-14. `CLAUDE.md` mis à jour aux 6 endroits qui documentaient "Bac à sable"
+  par ce nom.
+- Validé avec `tsc --noEmit` et `eslint` (0 erreur, seuls des avertissements pré-existants sans
+  rapport). **Vérification visuelle en navigateur non concluante cette fois** : tenté de se
+  connecter en staging avec les identifiants de `credentials/poolers-staging.md`, mais le
+  compte admin de David (`david@staging.test`) a été changé vers son vrai courriel dans une
+  session antérieure (voir entrée du 2026-09-04) — identifiants de test périmés pour l'admin.
+  Élever temporairement un autre compte de test (Vincent) en admin pour prendre une capture
+  d'écran a été bloqué par le classificateur du mode auto (changement de privilège jugé
+  sensible) — abandonné plutôt que de contourner. À valider par David directement en staging.
+
 ### 2026-09-18 (suite — remise à zéro complète de la transition 2026-27 en prod)
 
 **[Chore] — Repartir à zéro sur la saison 2026-27 en prod : rosters + choix de repêchage**
