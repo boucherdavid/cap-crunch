@@ -21,6 +21,41 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-18 (suite — remise à zéro complète de la transition 2026-27 en prod)
+
+**[Chore] — Repartir à zéro sur la saison 2026-27 en prod : rosters + choix de repêchage**
+(script ponctuel, aucun fichier applicatif modifié) :
+- David : une fois les tests terminés en staging, il compte recommencer pour de vrai en prod —
+  demande explicite de ne PAS transférer les alignements de staging vers prod (pas d'usage de
+  `sync_staging_to_prod.py` ici), mais de nettoyer directement l'état de prod pour repartir sur
+  une base propre. Décision prise après l'entrée précédente (25 lignes manquantes, d'abord
+  laissées telles quelles) — David a changé d'avis et voulu un vrai repart à zéro plutôt qu'un
+  correctif ciblé.
+- Vérifié avant d'agir (lecture seule) que la saison 2026-27 en prod n'avait par ailleurs aucune
+  trace de test : 0 `presaison_draft_state`, 0 `presaison_pooler_ready`, 0 transaction, 0
+  `roster_change_log`, 0 `waiver_claim` pour cette saison — seul le roster copié depuis 2025-26
+  (327 lignes, avec l'écart de 25 lignes déjà repéré) posait problème.
+- **Rosters** : les 327 lignes `pooler_rosters` de 2026-27 supprimées puis recopiées à neuf
+  depuis les 317 lignes actives de 2025-26, en reproduisant exactement la logique de
+  `transitionSeasonAction` (`app/app/admin/config/actions.ts`) — LTIR→actif, effacement
+  `rookie_type`/`pool_draft_year` pour toute recrue actif/réserviste dont la protection est
+  réellement expirée (`isRookieProtectionExpired`/`isElcActiveForSeason`, portées fidèlement en
+  Python), `added_at=null`. Résultat : 317 lignes propres, aucun doublon, Zellweger (voir entrée
+  précédente) bien présent en recrue — 13 joueurs au total (dont Zellweger ne fait pas partie,
+  encore `recrue` donc non concerné par cette clause) ont perdu leur protection recrue pendant
+  cette repasse complète, plus que les 25 initialement repérés puisque cette fois **tous** les
+  317 joueurs ont été retraités, pas seulement les 25 manquants.
+- **Choix de repêchage** : avant d'y toucher, découverte de 6 choix 2026-27 déjà échangés entre
+  poolers (ex: 2e tour de David → Vincent, 4e de Paule → David) — vérifié avec David que ce
+  n'étaient pas des artefacts de test avant d'agir (risque de perdre un vrai historique
+  d'échange). **David a confirmé vouloir les effacer aussi** — `current_owner_id` remis à
+  `original_owner_id` pour ces 6 lignes ; `is_used` déjà `false` partout (le repêchage interne
+  des recrues 2026-27 n'a jamais eu lieu en prod).
+- Vérifié après coup : 8 poolers présents, ~20 actifs chacun (12A/6D/2G), 0 doublon
+  `(pooler_id, player_id)`, 32 choix tous à leur propriétaire d'origine.
+- **Staging non touchée** — ce ménage concernait spécifiquement l'état de prod en vue d'un
+  vrai départ, pas l'environnement de test.
+
 ### 2026-09-18 (suite — 25 autres lignes manquantes en prod, non corrigées pour l'instant)
 
 **[Décision] — 25 lignes de roster manquantes en prod (2025-26 → 2026-27), laissées telles quelles**
