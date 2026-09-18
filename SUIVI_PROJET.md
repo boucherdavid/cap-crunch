@@ -21,6 +21,44 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-18 (suite — doublon Chinakhov + ligne manquante Zellweger)
+
+**[Chore] — Fusion du doublon Egor/Yegor Chinakhov (staging + prod)**
+(script ponctuel, aucun fichier applicatif modifié) :
+- David a repéré le doublon en consultant la recherche d'agents libres pendant le repêchage AL
+  (`/repechage-agents-libres`) — deux lignes `players` pour le même joueur des Penguins,
+  `nhl_id` vide des deux côtés (même cause que les 8 doublons du 2026-08-31 : désync du
+  pipeline PuckPedia sans clé fiable pour matcher).
+- Vérifié : présent à l'identique dans staging (#2805 "Egor" / #1051 "Yegor") et prod (#3016
+  "Egor" / #1051 "Yegor", même id de doublon par coïncidence) — zéro `pooler_roster`, game log
+  ou `roster_change_log` des deux côtés, donc fusion sans aucun risque de collision.
+- Gardé le record avec le vrai contrat en cours (Egor, 2026-27 à 6,25M$) plutôt que celui au
+  statut RFA sans salaire (Yegor) — même règle de choix que la fusion précédente. Script
+  ponctuel reproduisant exactement `mergePlayersAction` (`app/app/admin/joueurs/merge-
+  actions.ts`), confirmé par David avant exécution. Vérifié après coup : un seul Chinakhov
+  restant dans les deux bases.
+
+**[Fix] — Ligne de roster manquante pour Zellweger en 2026-27 (staging + prod)**
+(script ponctuel, aucun fichier applicatif modifié) :
+- David a remarqué qu'Olen Zellweger (repêché par le pool en 2021, encore recrue en banque
+  depuis) avait disparu de son alignement — inquiet d'une libération oubliée.
+- Vérifié : aucune trace dans `transaction_items`/`roster_change_log` pour ce joueur, dans
+  aucun des deux environnements — jamais touché par une transaction. La vraie cause : sa ligne
+  `pooler_rosters` pour la saison 2025-26 (prod, `added_at` du 2026-04-07) n'a jamais été
+  copiée vers 2026-27 par `transitionSeasonAction` (`app/app/admin/config/actions.ts`) — copie
+  qui ne s'exécute qu'une fois, au moment de la transition. Cohérent avec le fait que le
+  "rebuild d'historique" en prod (voir mémoire projet) a probablement ajouté/reconstruit cette
+  ligne dans la saison 2025-26 après coup, une fois la transition déjà passée. Absent des DEUX
+  bases pour la saison active 2026-27 (staging n'avait même aucune ligne, peu importe la saison).
+- Pas un bug de `isRookieProtectionExpired`/`syncExpiredRookieProtection` — ces fonctions n'ont
+  jamais eu la ligne à traiter puisqu'elle n'existait tout simplement pas dans la saison cible.
+- Recréé (script ponctuel, confirmé par David) la ligne manquante dans 2026-27 pour David, dans
+  staging et prod : `player_type='recrue'`, `rookie_type='repeche'`, `pool_draft_year=2021`,
+  `is_active=true`, `added_at=null` (convention pré-saison). Comme 2026 − 2021 = 5,
+  `syncExpiredRookieProtection()` (appelée à chaque chargement de `/repechage-agents-libres`
+  ou `/admin/init?tab=presaison`) va la promouvoir automatiquement en `actif` au prochain
+  chargement — aucune intervention manuelle supplémentaire nécessaire.
+
 ### 2026-09-18 (suite — badge "Alignement minimum atteint")
 
 **[Fix] — Le badge de préparation disparaissait au lieu de confirmer l'alignement complet**
