@@ -69,6 +69,20 @@ function groupRosterByPosition<T extends { position: string | null; cap_number: 
     .filter(g => g.entries.length > 0)
 }
 
+// Couleur d'accent par groupe de position (David, 2026-09-20) — bordure gauche + titre coloré,
+// pour distinguer les regroupements en un coup d'œil dans les longues listes (grandes cartes de
+// "Les 8 poolers" et les deux onglets de "Mon alignement" — même groupRosterByPosition partout,
+// même traitement visuel pour rester cohérent sur toute la page).
+const GROUP_ACCENT: Record<string, { border: string; text: string }> = {
+  Attaquants: { border: 'border-blue-300', text: 'text-blue-500' },
+  Défenseurs: { border: 'border-purple-300', text: 'text-purple-500' },
+  Gardiens: { border: 'border-amber-300', text: 'text-amber-500' },
+  Réservistes: { border: 'border-gray-300', text: 'text-gray-400' },
+}
+function groupAccent(label: string) {
+  return GROUP_ACCENT[label] ?? { border: 'border-gray-200', text: 'text-gray-400' }
+}
+
 function fmtDateTime(iso: string) {
   return new Date(iso).toLocaleString('fr-CA', {
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'America/Toronto',
@@ -590,8 +604,8 @@ function PoolerCard({
           {pooler.roster.length === 0 ? (
             <p className="text-xs text-gray-400">Aucun joueur.</p>
           ) : groupRosterByPosition(pooler.roster).map(group => (
-            <div key={group.label}>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{group.label}</p>
+            <div key={group.label} className={`border-l-2 pl-2 ${groupAccent(group.label).border}`}>
+              <p className={`text-[10px] font-semibold uppercase tracking-wide mb-0.5 ${groupAccent(group.label).text}`}>{group.label}</p>
               <div className="space-y-0.5">
                 {group.entries.map(e => {
                   const selected = selectedForRelease.has(e.player_id)
@@ -1095,8 +1109,8 @@ function MonAlignement({
 
             <div className="border-t pt-2 space-y-2">
               {groupRosterByPosition(myPooler.roster).map(group => (
-                <div key={group.label}>
-                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{group.label}</p>
+                <div key={group.label} className={`border-l-2 pl-2 ${groupAccent(group.label).border}`}>
+                  <p className={`text-[10px] font-semibold uppercase tracking-wide mb-0.5 ${groupAccent(group.label).text}`}>{group.label}</p>
                   <div className="space-y-1">
                     {group.entries.map(e => {
                       const canToggleType = !seasonStarted && (e.player_type === 'actif' || e.player_type === 'reserviste')
@@ -1237,8 +1251,8 @@ function MonAlignement({
             <p className="text-xs text-gray-400 mb-3">Ajoute ou retire librement pour tester. Rien n&apos;est sauvegardé automatiquement — un retrait peut être soumis pour vrai ci-dessous, un ajout reste toujours une simulation.</p>
             <div className="space-y-2 mb-2">
               {groupRosterByPosition(myPooler.roster).map(group => (
-                <div key={group.label}>
-                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{group.label}</p>
+                <div key={group.label} className={`border-l-2 pl-2 ${groupAccent(group.label).border}`}>
+                  <p className={`text-[10px] font-semibold uppercase tracking-wide mb-0.5 ${groupAccent(group.label).text}`}>{group.label}</p>
                   <div className="space-y-1">
                     {group.entries.map(e => (
                       <div key={e.roster_id} className={`flex items-center justify-between text-xs py-1 ${removed.has(e.player_id) ? 'opacity-40 line-through' : 'text-gray-600'}`}>

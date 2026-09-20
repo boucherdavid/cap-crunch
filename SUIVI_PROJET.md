@@ -21,6 +21,32 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-20
+
+**[Feature] — Couleur d'accent par groupe de position (Attaquants/Défenseurs/Gardiens/Réservistes)**
+(`app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`) :
+- David : difficile de distinguer les regroupements de position en scannant les grandes cartes
+  de "Les 8 poolers" — proposé une inspiration visuelle (le bleuté du Panneau admin). Question
+  posée avec 3 options illustrées (barre de couleur à gauche, fond teinté par section, simple
+  point coloré) — David a choisi la barre de couleur à gauche + titre coloré.
+- Nouvelle constante `GROUP_ACCENT`/fonction `groupAccent(label)` : bordure gauche + texte du
+  titre colorés par groupe (bleu=Attaquants, violet=Défenseurs, ambre=Gardiens, gris=Réservistes,
+  inchangé pour ce dernier). Appliqué aux 3 usages de `groupRosterByPosition` sur cette page —
+  `PoolerCard` (grandes cartes) et les deux onglets de `MonAlignement` (Actuel/Simulation) —
+  pour rester cohérent partout où ce regroupement apparaît, pas seulement l'endroit montré en
+  exemple.
+- Validé avec `tsc --noEmit` et `eslint` (0 erreur).
+
+**[Clarification] — "Repartir à zéro" (2026-09-18) ne voulait pas dire vider les alignements**
+- David, en revoyant prod, a cru que la remise à zéro de la transition 2026-27 (voir entrée du
+  2026-09-18) aurait dû vider les alignements de tout le monde — confusion clarifiée : cette
+  remise à zéro portait sur la **mécanique de la copie** (cohérence interne des lignes
+  `pooler_rosters` recopiées depuis 2025-26 + réinitialisation des choix de repêchage échangés),
+  pas sur le contenu des alignements eux-mêmes. Les alignements pleins observés sont le
+  comportement normal et voulu d'une transition de saison (le pool continue avec les contrats
+  en cours). Une remise à zéro des effectifs eux-mêmes serait une action distincte et bien plus
+  radicale, pas demandée ni faite.
+
 ### 2026-09-18 (suite — ajustements de la réorganisation : séparateurs + sommaire masquable)
 
 **[Feature] — Lignes de séparation dans l'onglet Simulation + sommaire des poolers masquable**
