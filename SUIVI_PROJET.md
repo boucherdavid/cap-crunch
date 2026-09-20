@@ -21,6 +21,49 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-21 (suite — déclarer prêt au nom d'un pooler + délai d'ajustement de 48h)
+
+**[Feature] — Admin peut déclarer un pooler prêt, avec délai d'ajustement actif↔réserviste**
+(nouveaux : migration `schema.sql` ; modifiés : `app/app/repechage-agents-libres/actions.ts`,
+`app/app/admin/nouvelle-saison/actions.ts`, `app/app/admin/nouvelle-saison/DemarrerSaisonCard.tsx`,
+`app/app/gestion-effectifs/actions.ts`) :
+- En testant "Démarrer la saison" en staging, 7/8 poolers n'avaient jamais cliqué "prêt" (comptes
+  de test, personne ne se connecte pour de vrai). David a demandé que l'admin puisse débloquer le
+  démarrage quand même, avec une notification au pooler concerné et un délai d'ajustement sans
+  pénalité. Clarifié par questions : le délai s'applique seulement aux poolers déclarés prêts par
+  l'admin (pas ceux qui ont confirmé eux-mêmes) ; l'exemption porte uniquement sur la bascule
+  actif↔réserviste (les signatures d'agents libres sont de toute façon terminées à ce stade) ;
+  durée fixée à 48h.
+- **Migration** (2 colonnes, à rouler manuellement dans le SQL Editor Supabase — staging puis
+  prod, voir `schema.sql` section MIGRATIONS) :
+  `pool_seasons.season_started_at` (horodatage réel du clic sur "Démarrer la saison", distinct
+  de `saison_start_date` qui est une date calendaire configurée à l'avance) et
+  `presaison_pooler_ready.declared_by_admin` (booléen, défaut `false`).
+- `setPoolerReadyByAdminAction` (nouveau, `repechage-agents-libres/actions.ts`) : admin-only,
+  marque `ready_at`+`declared_by_admin=true` pour le pooler visé, notifie par push
+  ("vérifie ton alignement, tu as 48h après le début de saison pour ajuster"). `setReadyAction`
+  (déclaration par le pooler lui-même) remet maintenant explicitement `declared_by_admin=false`
+  à chaque upsert — sinon un upsert ultérieur du pooler aurait gardé `true` indéfiniment (les
+  colonnes absentes du payload d'un upsert Supabase ne sont pas réinitialisées en cas de conflit).
+- `demarrerSaisonAction` écrit désormais `season_started_at=now()` en même temps que
+  `season_started=true`.
+- `submitBatchAction` (self-service `/gestion-effectifs`) : nouveau calcul
+  `graceAdjustmentEligible` — vrai seulement si le pooler a `declared_by_admin=true`, qu'on est
+  dans les 48h suivant `season_started_at`, ET que le lot soumis ne contient QUE des
+  `change_status` avec `newType1`/`newType2` ∈ {actif, reserviste} (toute libération, signature,
+  LTIR, remise en banque ou promotion dans le même lot désactive l'exemption). Si vrai, la
+  validation stricte `validateRosterLimits` (ajoutée le 2026-09-20) est sautée pour ce lot
+  seulement — même patron que le contournement admin déjà en place, mais limité dans le temps et
+  au type de mouvement.
+- `DemarrerSaisonCard.tsx` : bouton "Déclarer prêt en son nom" à côté de chaque motif "pas
+  encore déclaré prêt" (les autres motifs de non-conformité, ex: cap dépassé, n'ont pas ce
+  bouton — déclarer prêt ne réglerait rien pour ceux-là).
+- Validé avec `tsc --noEmit` et `eslint` (0 nouvelle erreur/avertissement — quelques `any`
+  pré-existants inchangés dans les fichiers touchés).
+- **À faire avant de tester** : rouler la migration en staging (voir `schema.sql`) — le code est
+  poussé mais les colonnes n'existent pas encore en base ; "Démarrer la saison" et le
+  self-service planteraient sinon sur les nouvelles colonnes.
+
 ### 2026-09-21 (suite — le filtre d'abordabilité doit réserver pour les AUTRES postes manquants)
 
 **[Fix] — Le filtre de recherche ne réservait pas d'espace pour les postes restants**

@@ -249,7 +249,7 @@ export async function submitBatchAction(input: {
   // Fetch config
   const { data: saisonConfig } = await db
     .from('pool_seasons')
-    .select('delai_reactivation_jours, max_signatures_al, max_signatures_ltir, saison_start_date, season, season_started, pool_cap, gestion_effectifs_ouvert')
+    .select('delai_reactivation_jours, max_signatures_al, max_signatures_ltir, saison_start_date, season, season_started, season_started_at, pool_cap, gestion_effectifs_ouvert')
     .eq('id', input.saisonId)
     .single()
 
@@ -260,6 +260,31 @@ export async function submitBatchAction(input: {
   if (!isAdmin) {
     if (!saisonConfig?.season_started) return { error: "La saison n'a pas encore démarré." }
     if (!(saisonConfig.gestion_effectifs_ouvert ?? true)) return { error: "L'outil est temporairement fermé." }
+  }
+
+  // Délai d'ajustement sans pénalité (David, 2026-09-21) — un pooler déclaré "prêt" par l'admin
+  // (plutôt que lui-même, voir setPoolerReadyByAdminAction, repechage-agents-libres/actions.ts)
+  // garde 48h après le vrai démarrage pour ajuster librement actif↔réserviste sans la
+  // contrainte stricte 12/6/2 ajoutée le 2026-09-20 — jamais pour une libération, une
+  // signature, un LTIR ou une remise en banque, seulement un `change_status` entre actif et
+  // reserviste. Se remet à false dès que le pooler déclare "prêt" lui-même (setReadyAction).
+  let graceAdjustmentEligible = false
+  if (!isAdmin && saisonConfig?.season_started_at) {
+    const graceEnd = new Date(saisonConfig.season_started_at).getTime() + 48 * 60 * 60 * 1000
+    if (Date.now() <= graceEnd) {
+      const { data: readyRow } = await db
+        .from('presaison_pooler_ready')
+        .select('declared_by_admin')
+        .eq('pool_season_id', input.saisonId)
+        .eq('pooler_id', input.poolerId)
+        .maybeSingle()
+      const onlyActifReserveToggle = input.actions.every(a =>
+        a.type === 'change_status'
+        && (!a.newType1 || a.newType1 === 'actif' || a.newType1 === 'reserviste')
+        && (!a.newType2 || a.newType2 === 'actif' || a.newType2 === 'reserviste'),
+      )
+      graceAdjustmentEligible = !!readyRow?.declared_by_admin && onlyActifReserveToggle
+    }
   }
 
   // Fenêtre de protection recrue (5 saisons) — même formule que getPoolerRosterAction()
@@ -496,7 +521,9 @@ export async function submitBatchAction(input: {
   // ne jamais laisser un état non conforme (12/6/2, réservistes, cap) atteindre la base —
   // mêmes règles que submitTransactionAction/submitRosterAction (app/lib/rosterLimits.ts).
   // Ne devient de toute façon atteignable qu'après "Démarrer la saison" (verrou plus haut).
-  if (!isAdmin) {
+  // Sautée aussi pendant le délai d'ajustement de 48h (graceAdjustmentEligible, voir plus haut)
+  // — mais seulement pour un lot qui ne fait QUE basculer actif↔réserviste.
+  if (!isAdmin && !graceAdjustmentEligible) {
     const [{ data: currentRows }, { data: settingsRow }] = await Promise.all([
       db
         .from('pooler_rosters')

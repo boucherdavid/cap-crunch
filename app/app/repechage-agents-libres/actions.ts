@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
 import { applyTransactionItems, type TxItemPayload } from '../admin/transactions/actions'
 import { leaveQueueForPoolerAction } from '../admin/presaison/actions'
 
@@ -164,13 +165,51 @@ export async function setReadyAction(saisonId: number, ready: boolean): Promise<
   const readyAt = ready ? new Date().toISOString() : null
   const adminSupabase = createAdminClient()
   const { error } = await adminSupabase.from('presaison_pooler_ready').upsert({
-    pool_season_id: saisonId, pooler_id: user.id, ready_at: readyAt,
+    // declared_by_admin toujours remis à false ici (David, 2026-09-21) — dès que le pooler
+    // confirme lui-même, le filet de sécurité "déclaré par l'admin" (délai d'ajustement sans
+    // pénalité post-démarrage, voir setPoolerReadyByAdminAction) n'a plus lieu d'être, même si
+    // l'admin l'avait déclaré prêt avant lui.
+    pool_season_id: saisonId, pooler_id: user.id, ready_at: readyAt, declared_by_admin: false,
   })
   if (error) return { error: error.message }
 
   revalidatePath('/repechage-agents-libres')
   revalidatePath('/admin/init')
   return { readyAt }
+}
+
+// Admin déclare un pooler prêt en son nom (David, 2026-09-21) — pour débloquer "Démarrer la
+// saison" quand un pooler ne se connecte pas (ou pas à temps), sans devoir attendre
+// indéfiniment. Marque declared_by_admin=true, qui ouvre une fenêtre de 48h après le vrai
+// démarrage (pool_seasons.season_started_at) pendant laquelle CE pooler peut ajuster
+// actif↔réserviste sans la contrainte stricte 12/6/2 (voir submitBatchAction,
+// gestion-effectifs/actions.ts) — jamais pour une libération ou une signature. Notifie le
+// pooler par push pour qu'il sache que ce n'est pas lui qui a confirmé et puisse vérifier.
+export async function setPoolerReadyByAdminAction(saisonId: number, poolerId: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  if (!me?.is_admin) return { error: 'Accès refusé.' }
+
+  const adminSupabase = createAdminClient()
+  const { error } = await adminSupabase.from('presaison_pooler_ready').upsert({
+    pool_season_id: saisonId, pooler_id: poolerId, ready_at: new Date().toISOString(), declared_by_admin: true,
+  })
+  if (error) return { error: error.message }
+
+  const { sendPushToUser } = await import('@/lib/push')
+  // after() : voir le commentaire dans lib/threadNotify.ts.
+  after(() => sendPushToUser(poolerId, {
+    title: 'Alignement déclaré prêt',
+    body: "L'administrateur a déclaré ton alignement prêt en ton nom — vérifie-le. Tu auras 48h après le début de la saison pour ajuster actif/réserviste si besoin.",
+    url: '/repechage-agents-libres',
+  }).catch(() => {}))
+
+  revalidatePath('/repechage-agents-libres')
+  revalidatePath('/admin/init')
+  revalidatePath('/admin/nouvelle-saison')
+  return {}
 }
 
 // Se retirer soi-même de la file du repêchage AL (David, 2026-09-18) — un pooler dont

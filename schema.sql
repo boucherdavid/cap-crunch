@@ -51,6 +51,12 @@ CREATE TABLE pool_seasons (
   is_active BOOLEAN DEFAULT false,
   is_public BOOLEAN NOT NULL DEFAULT true,  -- masque une saison inactive des sélecteurs publics (transactions, repêchage recrues) — n'affecte jamais la saison active elle-même
   saison_start_date DATE,                -- début du comptage; NULL = saison déjà démarrée
+  -- season_started (BOOLEAN, ajoutée hors de ce fichier — voir "Démarrer vs activer",
+  -- CLAUDE.md section 5) bascule à true via demarrerSaisonAction ; season_started_at
+  -- (David, 2026-09-21) horodate ce même moment précisément, pour calculer une fenêtre de
+  -- délai d'ajustement sans pénalité (voir presaison_pooler_ready.declared_by_admin) —
+  -- distincte de saison_start_date, qui reste une date calendaire configurée à l'avance.
+  season_started_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -911,6 +917,11 @@ CREATE TABLE presaison_pooler_ready (
   pool_season_id INTEGER REFERENCES pool_seasons(id) ON DELETE CASCADE,
   pooler_id UUID REFERENCES poolers(id) ON DELETE CASCADE,
   ready_at TIMESTAMPTZ,
+  -- David, 2026-09-21 : true quand c'est l'admin qui a déclaré ce pooler prêt (bouton
+  -- "Déclarer prêt en son nom", /admin/nouvelle-saison) plutôt que le pooler lui-même — ouvre
+  -- une fenêtre de délai d'ajustement actif↔réserviste sans la contrainte stricte 12/6/2,
+  -- voir pool_seasons.season_started_at et submitBatchAction (gestion-effectifs/actions.ts).
+  declared_by_admin BOOLEAN NOT NULL DEFAULT false,
   PRIMARY KEY (pool_season_id, pooler_id)
 );
 ALTER TABLE presaison_pooler_ready ENABLE ROW LEVEL SECURITY;
@@ -1021,3 +1032,14 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 -- CREATE POLICY "Lecture publique waiver_claim_requests" ON waiver_claim_requests FOR SELECT USING (true);
 -- CREATE POLICY "Admin gère waiver_claim_requests" ON waiver_claim_requests FOR ALL
 --   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- Migration 2026-09-21 : délai d'ajustement sans pénalité pour un pooler déclaré "prêt" par
+-- l'admin (pas lui-même) — l'admin peut forcer "Démarrer la saison" même si un pooler n'a
+-- jamais cliqué "prêt" (bouton "Déclarer prêt en son nom", notifie le pooler par push), et ce
+-- pooler garde alors 48h après le vrai démarrage pour ajuster librement actif↔réserviste
+-- (submitBatchAction, gestion-effectifs/actions.ts) sans la contrainte stricte 12/6/2 ajoutée
+-- le 2026-09-20 — seulement pour ce type de mouvement, jamais pour une libération/signature.
+-- À exécuter une seule fois dans le SQL Editor Supabase (staging d'abord, puis prod) :
+--
+-- ALTER TABLE pool_seasons ADD COLUMN IF NOT EXISTS season_started_at TIMESTAMPTZ;
+-- ALTER TABLE presaison_pooler_ready ADD COLUMN IF NOT EXISTS declared_by_admin BOOLEAN NOT NULL DEFAULT false;

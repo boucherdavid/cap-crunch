@@ -313,6 +313,21 @@ des non-conformes avec le motif "Alignement pas encore déclaré prêt par le po
 "Démarrer la saison" n'est pas cliqué, le libre-service reste réutilisable à volonté, peu
 importe la phase.
 
+**Déclarer prêt au nom d'un pooler + délai d'ajustement de 48h (David, 2026-09-21)** — pour
+débloquer "Démarrer la saison" sans attendre indéfiniment qu'un pooler se connecte, l'admin
+peut cliquer "Déclarer prêt en son nom" (`DemarrerSaisonCard.tsx`, `/admin/nouvelle-saison`, à
+côté de chaque motif "pas encore déclaré prêt") — `setPoolerReadyByAdminAction`
+(`repechage-agents-libres/actions.ts`) marque `presaison_pooler_ready.declared_by_admin=true`
+et notifie le pooler par push. En échange, ce pooler garde 48h après le vrai démarrage
+(`pool_seasons.season_started_at`, horodatage réel distinct de `saison_start_date` — la date
+calendaire configurée à l'avance) pour ajuster librement actif↔réserviste
+(`submitBatchAction`, `gestion-effectifs/actions.ts`) sans la contrainte stricte 12/6/2 ajoutée
+le 2026-09-20 — **seulement** pour un lot qui ne contient QUE des `change_status` entre actif
+et réserviste (jamais pour une libération, une signature, un LTIR ou une remise en banque, qui
+restent soumis aux règles normales dès le démarrage). `declared_by_admin` est remis à `false`
+dès que le pooler déclare "prêt" lui-même (`setReadyAction`) — une fois qu'il a vraiment
+confirmé, le filet de sécurité n'a plus lieu d'être.
+
 **Simulation soumettable (David, 2026-09-08, onglet renommé "Bac à sable" → "Simulation" le
 2026-09-18)** — dans `MonAlignement` (onglet Simulation de `/repechage-agents-libres`), les
 retraits testés (`removed`, joueurs déjà possédés) peuvent

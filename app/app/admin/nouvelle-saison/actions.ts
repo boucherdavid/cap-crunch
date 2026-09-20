@@ -58,9 +58,13 @@ export async function demarrerSaisonAction(saisonId: number): Promise<{
     .eq('is_active', true)
   if (updateErr) return { error: updateErr.message }
 
+  // season_started_at (David, 2026-09-21) — horodatage réel du démarrage, distinct de
+  // saison_start_date (date calendaire configurée à l'avance) : sert de point de départ pour
+  // le délai d'ajustement de 48h accordé aux poolers déclarés "prêt" par l'admin plutôt que par
+  // eux-mêmes (voir submitBatchAction, gestion-effectifs/actions.ts).
   const { error: flagErr } = await db
     .from('pool_seasons')
-    .update({ season_started: true })
+    .update({ season_started: true, season_started_at: new Date().toISOString() })
     .eq('id', saisonId)
   if (flagErr) return { error: flagErr.message }
 

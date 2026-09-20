@@ -4,7 +4,10 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { previewConformityAction, demarrerSaisonAction } from './actions'
+import { setPoolerReadyByAdminAction } from '../../repechage-agents-libres/actions'
 import type { ConformityIssue } from '@/lib/seasonConformity'
+
+const NOT_READY_REASON = 'Alignement pas encore déclaré prêt par le pooler'
 
 export default function DemarrerSaisonCard({
   saisonId,
@@ -23,6 +26,28 @@ export default function DemarrerSaisonCard({
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [summary, setSummary] = useState<string | null>(null)
+  // Déclarer prêt au nom d'un pooler (David, 2026-09-21) — débloque "Démarrer la saison" sans
+  // attendre indéfiniment qu'un pooler se connecte ; le notifie par push et lui laisse 48h
+  // après le vrai démarrage pour ajuster actif/réserviste sans la contrainte stricte 12/6/2
+  // (voir submitBatchAction, gestion-effectifs/actions.ts).
+  const [declaringId, setDeclaringId] = useState<string | null>(null)
+  const [declareErr, setDeclareErr] = useState<string | null>(null)
+
+  const handleDeclareReady = async (poolerId: string) => {
+    if (!window.confirm(
+      "Déclarer cet alignement prêt au nom du pooler ? Il recevra une notification et aura 48h " +
+      'après le démarrage de la saison pour ajuster actif/réserviste si besoin.',
+    )) return
+    setDeclaringId(poolerId)
+    setDeclareErr(null)
+    try {
+      const result = await setPoolerReadyByAdminAction(saisonId, poolerId)
+      if (result.error) { setDeclareErr(result.error) } else { await refresh() }
+    } catch {
+      setDeclareErr('Erreur inattendue — réessaie.')
+    }
+    setDeclaringId(null)
+  }
 
   const refresh = async () => {
     setLoading(true)
@@ -98,17 +123,40 @@ export default function DemarrerSaisonCard({
                 <p className="text-xs text-red-600 font-medium">
                   {totalPoolers - issues.length}/{totalPoolers} poolers conformes et prêts
                 </p>
-                {issues.map(issue => (
-                  <Link
-                    key={issue.poolerId}
-                    href={`/admin/init?tab=presaison&saisonId=${saisonId}&poolerId=${issue.poolerId}`}
-                    className="block text-xs bg-red-50 border border-red-200 rounded px-2.5 py-1.5 hover:bg-red-100 transition-colors"
-                  >
-                    <span className="font-medium text-red-800">{issue.poolerName}</span>
-                    <span className="text-red-700"> — {issue.reasons.join(' · ')}</span>
-                    <span className="text-red-400"> → corriger</span>
-                  </Link>
-                ))}
+                {issues.map(issue => {
+                  const notReady = issue.reasons.includes(NOT_READY_REASON)
+                  return (
+                    <div
+                      key={issue.poolerId}
+                      className="text-xs bg-red-50 border border-red-200 rounded px-2.5 py-1.5"
+                    >
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div>
+                          <span className="font-medium text-red-800">{issue.poolerName}</span>
+                          <span className="text-red-700"> — {issue.reasons.join(' · ')}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Link
+                            href={`/admin/init?tab=presaison&saisonId=${saisonId}&poolerId=${issue.poolerId}`}
+                            className="text-red-400 hover:text-red-600"
+                          >
+                            corriger →
+                          </Link>
+                          {notReady && (
+                            <button
+                              onClick={() => handleDeclareReady(issue.poolerId)}
+                              disabled={declaringId === issue.poolerId}
+                              className="text-[11px] font-medium px-2 py-1 rounded bg-white border border-red-300 text-red-700 hover:bg-red-100 disabled:opacity-40"
+                            >
+                              {declaringId === issue.poolerId ? '...' : 'Déclarer prêt en son nom'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+                {declareErr && <p className="text-xs text-red-600">{declareErr}</p>}
               </div>
             )
           )}
