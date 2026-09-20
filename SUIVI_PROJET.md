@@ -21,6 +21,30 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-21 (suite — vue à deux colonnes dans /simulation, onglet Mon alignement)
+
+**[Feature] — "Alignement actuel" en lecture seule à côté du panneau simulé**
+(`app/app/simulation/SimulationTool.tsx`, `SimPanel.tsx`, `useSimState.ts`) :
+- David trouvait l'affichage de l'onglet "Mon alignement" confus : les joueurs retirés
+  restaient visibles biffés, mélangés aux joueurs gardés dans chaque groupe de position — du
+  bruit visuel pour voir ce qui est réellement projeté. Demandé 2 colonnes (actuel | modifié),
+  en laissant une suggestion ouverte sur les détails.
+- `SimPanel.tsx` : la liste principale n'affiche plus les joueurs retirés (filtrés avant
+  `groupSimEntries`) — ils apparaissent maintenant dans une petite section "Retirés de la
+  simulation" séparée, avec un bouton "↺ Remettre" par joueur (aucune perte de fonctionnalité,
+  juste sorti des groupes de position). S'applique aussi à l'onglet Transaction (même
+  composant partagé), pas seulement "Mon alignement".
+- Nouvelle fonction `groupRosterEntries` (`useSimState.ts`) — regroupe un alignement réel
+  (`SimRosterEntry[]`, pas encore passé par `useSimState`) par position, réutilisée pour la
+  nouvelle colonne de référence.
+- `SimulationTool.tsx` : nouveau composant `CurrentRosterColumn` (lecture seule, aucun toggle
+  ni bouton) affiché à gauche du panneau simulé, seulement dans l'onglet "Mon alignement" (pas
+  dans l'onglet Transaction, où l'espace est déjà partagé entre 2 poolers et où l'état "avant"
+  est moins pertinent) — grille `md:grid-cols-2`, panneau simulé renommé "Alignement simulé"
+  pour le distinguer clairement de la colonne de référence.
+- Validé avec `tsc --noEmit` et `eslint` (0 nouvelle erreur, seuls des avertissements
+  pré-existants inchangés).
+
 ### 2026-09-21 (suite — déclarer prêt au nom d'un pooler + délai d'ajustement de 48h)
 
 **[Feature] — Admin peut déclarer un pooler prêt, avec délai d'ajustement actif↔réserviste**

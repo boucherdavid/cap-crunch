@@ -78,17 +78,18 @@ export default function SimPanel({
     <div>
       <h3 className="font-semibold text-gray-800 mb-3">{title}</h3>
 
+      {/* Lignes biffées retirées de la liste principale (David, 2026-09-21) — un joueur retiré
+          n'apparaît plus ici du tout, seulement dans "Retirés" ci-dessous (moins de bruit
+          visuel pour voir l'alignement réellement projeté). */}
       <div className="space-y-2 mb-2">
-        {groupSimEntries(state.entries).map(group => (
+        {groupSimEntries(state.entries.filter(e => !e.removedFlag)).map(group => (
           <div key={group.label}>
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{group.label}</p>
             <div className="space-y-1">
               {group.entries.map(e => (
                 <div
                   key={e.key}
-                  className={`flex items-center justify-between text-sm py-1 ${
-                    e.removedFlag ? 'opacity-40 line-through text-gray-500' : e.kind !== 'current' ? 'text-emerald-700' : 'text-gray-600'
-                  }`}
+                  className={`flex items-center justify-between text-sm py-1 ${e.kind !== 'current' ? 'text-emerald-700' : 'text-gray-600'}`}
                 >
                   <span className="truncate">
                     <span className="text-gray-400 mr-1">{e.position ?? DASH}</span>{e.playerName}
@@ -96,18 +97,16 @@ export default function SimPanel({
                     {e.kind === 'fa' && e.ownerName && <span className="text-amber-600"> ({e.ownerName})</span>}
                   </span>
                   <span className="flex items-center gap-2 shrink-0">
-                    {!e.removedFlag && (
-                      <TypeToggle
-                        value={e.playerType}
-                        onChange={t => {
-                          if (e.kind === 'current') state.setCurrentType(e.playerId, t)
-                          else if (e.kind === 'recrue') state.setRecrueType(e.playerId, t)
-                          else state.setFAType(e.playerId, t)
-                        }}
-                      />
-                    )}
+                    <TypeToggle
+                      value={e.playerType}
+                      onChange={t => {
+                        if (e.kind === 'current') state.setCurrentType(e.playerId, t)
+                        else if (e.kind === 'recrue') state.setRecrueType(e.playerId, t)
+                        else state.setFAType(e.playerId, t)
+                      }}
+                    />
                     <span>{e.capNumber > 0 ? fmt(e.capNumber) : DASH}</span>
-                    {onSend && e.canSend && !e.removedFlag && (
+                    {onSend && e.canSend && (
                       <button
                         onClick={() => onSend(e)}
                         title={sendLabel}
@@ -120,7 +119,7 @@ export default function SimPanel({
                       onClick={() => e.kind === 'current' ? state.toggleRemove(e.playerId) : e.kind === 'recrue' ? state.removeRecrue(e.playerId) : state.removeAdded(e.playerId)}
                       className="w-5 h-5 rounded border text-gray-400 hover:text-red-600 text-xs"
                     >
-                      {e.kind === 'current' ? (e.removedFlag ? '↺' : '✕') : '✕'}
+                      ✕
                     </button>
                   </span>
                 </div>
@@ -129,6 +128,28 @@ export default function SimPanel({
           </div>
         ))}
       </div>
+
+      {state.entries.some(e => e.removedFlag) && (
+        <div className="mb-3 rounded-lg bg-gray-50 px-2.5 py-2">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">
+            Retirés de la simulation
+          </p>
+          <div className="space-y-0.5">
+            {state.entries.filter(e => e.removedFlag).map(e => (
+              <div key={e.key} className="flex items-center justify-between text-xs text-gray-400">
+                <span className="truncate">{e.position ?? DASH} {e.playerName}</span>
+                <button
+                  onClick={() => state.toggleRemove(e.playerId)}
+                  className="text-gray-400 hover:text-blue-600 shrink-0 ml-2"
+                  title="Remettre dans la simulation"
+                >
+                  ↺ Remettre
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <p className="text-[11px] text-gray-400 mb-3">
         {state.counts.forward} attaquant{state.counts.forward > 1 ? 's' : ''} · {state.counts.defense} défenseur{state.counts.defense > 1 ? 's' : ''} ·

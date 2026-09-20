@@ -7,8 +7,39 @@ import {
   type SimRosterEntry, type ScenarioData,
 } from './actions'
 import { listTeamsAction } from '../repechage-agents-libres/actions'
-import { useSimState, type RecrueOption, type SimEntry } from './useSimState'
+import { useSimState, groupRosterEntries, type RecrueOption, type SimEntry } from './useSimState'
 import SimPanel from './SimPanel'
+
+const fmt = (n: number) =>
+  new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+const DASH = '—'
+
+// Colonne de référence en lecture seule (David, 2026-09-21) — l'alignement RÉEL, sans aucun
+// toggle ni bouton, affiché à côté du panneau simulé (onglet "Mon alignement" seulement) pour
+// comparer d'un coup d'œil sans avoir à se souvenir de l'état de départ derrière les lignes
+// biffées du panneau simulé.
+function CurrentRosterColumn({ roster }: { roster: SimRosterEntry[] }) {
+  return (
+    <div>
+      <h3 className="font-semibold text-gray-800 mb-3">Alignement actuel</h3>
+      <div className="space-y-2">
+        {groupRosterEntries(roster).map(group => (
+          <div key={group.label}>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{group.label}</p>
+            <div className="space-y-1">
+              {group.entries.map(e => (
+                <div key={e.roster_id} className="flex items-center justify-between text-sm py-1 text-gray-600">
+                  <span className="truncate"><span className="text-gray-400 mr-1">{e.position ?? DASH}</span>{e.playerName}</span>
+                  <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 type Scenario = { id: number; name: string; updated_at: string }
 type Tab = 'moi' | 'transaction'
@@ -212,7 +243,12 @@ export default function SimulationTool({
             <p className="text-xs text-gray-400 mb-3">
               Ajoute ou retire librement pour tester — rien n&apos;affecte ton vrai alignement, jamais soumis d&apos;ici.
             </p>
-            <SimPanel title={me.name} poolCap={poolCap} state={myState} recruePlayers={myRecrue} teams={teams} saisonId={saisonId} />
+            {/* Colonne "Alignement actuel" en lecture seule à gauche (David, 2026-09-21) — pour
+                comparer sans se souvenir de l'état de départ derrière les lignes biffées. */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <CurrentRosterColumn roster={myRoster} />
+              <SimPanel title="Alignement simulé" poolCap={poolCap} state={myState} recruePlayers={myRecrue} teams={teams} saisonId={saisonId} />
+            </div>
           </div>
         </>
       )}
