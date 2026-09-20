@@ -721,12 +721,19 @@ revue le 2026-09-14 :**
   (création de claim, réclamation, résolution) passent par `createAdminClient()` depuis des
   Server Actions qui font leur propre vérification d'autorisation.
 
-**Règles d'alignement consolidées (`app/lib/rosterLimits.ts`) — David, 2026-08-31 :**
-- `validateRosterLimits(entries, poolCap)` : 12 attaquants / 6 défenseurs / 2 gardiens actifs
-  **maximum** (pas exactement — un pooler peut être en sous-effectif temporaire en cours de
-  saison), minimum 2 réservistes, masse salariale ≤ cap du pool. Fonction pure, `capNumber`
-  toujours pré-résolu par l'appelant via `getEffectiveCap()` (jamais un `cap_number` brut —
-  corrige un bug où `submitTransactionAction` comptait un joueur non signé comme 0$).
+**Règles d'alignement consolidées (`app/lib/rosterLimits.ts`) — David, 2026-08-31, exactitude
+corrigée le 2026-09-20 :**
+- `validateRosterLimits(entries, poolCap)` : **exactement** 12 attaquants / 6 défenseurs /
+  2 gardiens actifs (un dépassement ET un sous-effectif sont tous les deux bloquants — corrigé
+  le 2026-09-20 : la version d'origine ne bloquait qu'un dépassement, ce qui permettait à tort
+  un mouvement d'effectif de laisser un pooler en sous-effectif ; en cours de saison,
+  l'alignement doit toujours respecter les minimums après un mouvement soumis — c'est
+  justement pour ça que les mouvements groupés existent, pour permettre de libérer et
+  d'activer en un seul geste sans jamais passer par un état invalide), minimum 2 réservistes
+  (pas de maximum — un pooler peut en garder plus que 2), masse salariale ≤ cap du pool.
+  Fonction pure, `capNumber` toujours pré-résolu par l'appelant via `getEffectiveCap()` (jamais
+  un `cap_number` brut — corrige un bug où `submitTransactionAction` comptait un joueur non
+  signé comme 0$).
 - Utilisée par `submitTransactionAction` (admin/transactions), `submitRosterAction`
   (admin/rosters, Mode init désactivé) et `submitBatchAction` (`gestion-effectifs/actions.ts`
   — self-service pooler, qui n'avait *aucune* validation de ce genre avant cette date).
@@ -735,9 +742,18 @@ revue le 2026-09-14 :**
   qui construit déjà un état virtuel) — voir le bloc "Validation de l'état final" en tête de
   la fonction. Sautée entièrement quand l'appelant est admin (override délibéré), et de toute
   façon inatteignable pour un pooler avant que `season_started=true` (voir ci-dessus).
-- `app/lib/seasonConformity.ts` (`checkSeasonConformity`) est un validateur **distinct**, plus
-  strict (== 12/6/2 exactement) — utilisé uniquement par "Démarrer la saison" comme condition
-  de blocage un moment donné, pas une contrainte permanente comme `validateRosterLimits`.
+- `app/lib/seasonConformity.ts` (`checkSeasonConformity`) reste un validateur **distinct** —
+  même règle de comptage par position depuis le 2026-09-20 (les deux exigent 12/6/2 exact), mais
+  ajoute la déclaration "prêt" par pooler par-dessus, et reste utilisé uniquement comme
+  condition de blocage de "Démarrer la saison", pas à chaque transaction.
+- Signer un agent libre pendant la pré-saison (repêchage AL, `submitTransactionAction`) a sa
+  propre validation distincte (David, 2026-09-20) — `validateRosterLimits` est sautée en
+  pré-saison (`skipEnforcement`, voir plus bas), donc une signature ne peut pas être bloquée
+  par elle ; un garde-fou séparé vérifie plutôt qu'il resterait assez d'espace cap pour combler
+  les postes encore manquants au salaire minimum LNH après la signature — sinon la saison ne
+  pourrait jamais démarrer sans qu'on l'ait vu venir pendant le repêchage. Bug trouvé en
+  pratique : une signature à 5M$ acceptée alors qu'il ne restait plus assez d'espace pour le
+  dernier réserviste requis.
 - Contextes "override" intentionnels, sans validation ni journal, vérifiés et laissés tels
   quels : Mode init/Banque de recrues (`admin/rosters/actions.ts`, voir plus haut — bloqués
   depuis le 2026-08-31 dès que `season_started=true`, garde-fou séparé), `presaison/actions.ts`

@@ -20,10 +20,19 @@ const fmtCap = (n: number) =>
 
 export type RosterLimitEntry = { player_type: string; position: string | null; capNumber: number }
 
-// Validateur partagé de l'état final d'un alignement (12/6/2 actifs max, 2 réservistes min,
-// cap respecté) — utilisé par submitTransactionAction, submitRosterAction et submitBatchAction
-// pour que les poolers et les admins (hors contextes "override" délibérés : Mode init, Banque
-// de recrues, pré-saison, /admin/historique) soient soumis exactement aux mêmes règles.
+// Validateur partagé de l'état final d'un alignement (exactement 12/6/2 actifs, 2 réservistes
+// minimum, cap respecté) — utilisé par submitTransactionAction, submitRosterAction et
+// submitBatchAction pour que les poolers et les admins (hors contextes "override" délibérés :
+// Mode init, Banque de recrues, pré-saison, /admin/historique) soient soumis exactement aux
+// mêmes règles. Exact (pas seulement "au plus") depuis le 2026-09-20 — David : en cours de
+// saison, l'alignement doit toujours respecter les minimums (12A/6D/2G/2Rés) après un mouvement
+// soumis, jamais rester en sous-effectif ; c'est justement pour ça que les mouvements groupés
+// existent (libérer et activer en un seul geste, pour ne jamais avoir à passer par un état
+// invalide). Avant cette date, seul un dépassement (13 attaquants) était bloqué — un
+// sous-effectif (10 attaquants) passait, ce qui ne correspondait pas à la vraie règle. Aligné
+// sur checkSeasonConformity (app/lib/seasonConformity.ts), qui applique déjà cette exactitude
+// pour "Démarrer la saison" — les deux validateurs partagent maintenant la même règle de
+// comptage par position, seul checkSeasonConformity ajoute la déclaration "prêt" par-dessus.
 // capNumber doit déjà être résolu par l'appelant via getEffectiveCap() (app/lib/capUtils.ts) —
 // jamais un cap_number brut, pour ne pas compter un joueur non signé comme 0$.
 export function validateRosterLimits(entries: RosterLimitEntry[], poolCap: number): string | null {
@@ -36,8 +45,8 @@ export function validateRosterLimits(entries: RosterLimitEntry[], poolCap: numbe
   }, { forward: 0, defense: 0, goalie: 0 } as Record<Bucket, number>)
 
   for (const bucket of (['forward', 'defense', 'goalie'] as Bucket[])) {
-    if (counts[bucket] > ACTIVE_LIMITS[bucket]) {
-      return `Trop de ${BUCKET_LABELS[bucket]} (${counts[bucket]} / ${ACTIVE_LIMITS[bucket]})`
+    if (counts[bucket] !== ACTIVE_LIMITS[bucket]) {
+      return `${counts[bucket] > ACTIVE_LIMITS[bucket] ? 'Trop de' : 'Pas assez de'} ${BUCKET_LABELS[bucket]} (${counts[bucket]} / ${ACTIVE_LIMITS[bucket]})`
     }
   }
 

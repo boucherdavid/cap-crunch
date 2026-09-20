@@ -21,6 +21,34 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-20 (suite — validateRosterLimits n'exigeait pas l'exactitude 12/6/2)
+
+**[Fix] — En cours de saison, un mouvement d'effectif doit toujours respecter les minimums**
+(`app/lib/rosterLimits.ts`) :
+- David a corrigé mon résumé du fix précédent ("en saison, un sous-effectif temporaire reste
+  normal") — en fait, l'alignement doit toujours respecter les minimums (12A/6D/2G/2Rés) après
+  un mouvement soumis ; c'est justement pour ça que les mouvements groupés existent (libérer et
+  activer en un seul geste, sans jamais passer par un état invalide). Exemple donné : un pooler
+  avec 3 réservistes peut en libérer un (retombe à 2, encore conforme) — la contrainte est un
+  plancher, pas une exactitude figée à un seul chiffre par le haut ET par le bas pour les
+  réservistes ; mais pour les positions actives (12A/6D/2G), c'est bien un nombre exact.
+- Vérifié : `validateRosterLimits` (utilisée par `submitTransactionAction`, `submitRosterAction`,
+  `submitBatchAction`) ne bloquait qu'un **dépassement** (13 attaquants), pas un sous-effectif
+  (10 attaquants passait) — documenté comme délibéré au 2026-08-31 ("un pooler peut être en
+  sous-effectif temporaire en cours de saison"), mais cette note ne correspondait pas à la
+  vraie règle voulue.
+- Changé `counts[bucket] > ACTIVE_LIMITS[bucket]` → `counts[bucket] !== ACTIVE_LIMITS[bucket]`
+  pour attaquants/défenseurs/gardiens (message d'erreur distingue maintenant "Trop de" vs "Pas
+  assez de"). Réservistes inchangé (déjà un minimum strict, pas de maximum). `checkSeasonConformity`
+  (utilisé par "Démarrer la saison") appliquait déjà cette exactitude — les deux validateurs
+  partagent maintenant la même règle de comptage par position.
+- **Impact réel** : un mouvement seul qui ferait tomber un pooler sous 12/6/2 sans compensation
+  immédiate est maintenant bloqué (`submitTransactionAction`, `submitBatchAction`,
+  `submitRosterAction`) — nécessite un mouvement groupé (libérer + activer en même temps) pour
+  rester conforme, comme prévu. Contextes override (Mode init, pré-saison, `/admin/historique`)
+  restent inchangés — voir CLAUDE.md section 6.
+- Validé avec `tsc --noEmit` et `eslint` (0 erreur).
+
 ### 2026-09-20 (suite — signature d'agent libre pouvait laisser un alignement infaisable)
 
 **[Fix] — Valider l'espace restant pour compléter l'alignement avant d'accepter une signature**
