@@ -73,9 +73,38 @@ export async function loadRosterAction(poolerId: string, saisonId: number) {
   return { roster: (rosterData ?? []) as any[], picks: (picksData ?? []) as any[] }
 }
 
-export async function searchFreeAgentsAction(saisonId: number, query: string): Promise<{ players: any[] }> {
-  if (query.trim().length < 2) return { players: [] }
+function posBucketLocal(position: string | null): 'forward' | 'defense' | 'goalie' {
+  const pos = (position ?? '').toUpperCase()
+  if (pos.includes('G')) return 'goalie'
+  if (pos.includes('D')) return 'defense'
+  return 'forward'
+}
+
+// Tri équipe (alphabétique) → nom (alphabétique) fait en JS plutôt qu'en SQL (David,
+// 2026-09-21) — la recherche par nom passe par le RPC search_players_unaccent (insensible aux
+// accents), et PostgREST ne sait pas combiner un order() sur une relation imbriquée (teams)
+// avec une requête basée sur un appel RPC (même limite déjà rencontrée par
+// searchSandboxFreeAgentsAction, repechage-agents-libres/actions.ts, qui contourne pareil).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sortByTeamThenName(players: any[]) {
+  return [...players].sort((a, b) =>
+    (a.teams?.code ?? '').localeCompare(b.teams?.code ?? '') || a.last_name.localeCompare(b.last_name),
+  )
+}
+
+// Sélecteurs équipe/position ajoutés (David, 2026-09-21) — pour trouver un agent libre quand on
+// connaît son équipe mais pas l'orthographe exacte du nom. Sans nom (ou moins de 2 caractères),
+// bascule sur une recherche par équipe/position sans passer par le RPC de recherche par nom
+// (même dualité que searchSandboxFreeAgentsAction) ; avec un nom, le RPC reste utilisé pour
+// l'insensibilité aux accents, puis équipe/position sont filtrés en JS après coup.
+export async function searchFreeAgentsAction(
+  saisonId: number,
+  query: string,
+  opts: { position?: 'forward' | 'defense' | 'goalie'; teamCode?: string } = {},
+): Promise<{ players: any[] }> {
   const supabase = await createClient()
+  const q = query.trim()
+  if (q.length < 2 && !opts.position && !opts.teamCode) return { players: [] }
 
   const { data: onRoster } = await supabase
     .from('pooler_rosters')
@@ -84,19 +113,41 @@ export async function searchFreeAgentsAction(saisonId: number, query: string): P
     .eq('is_active', true)
 
   const takenIds = (onRoster ?? []).map((r: any) => r.player_id)
-  const q = query.trim()
 
-  let dbQuery = supabase
-    .rpc('search_players_unaccent', { search_term: q })
-    .select(`id, first_name, last_name, position, status, teams (code), player_contracts (season, cap_number)`)
-    .limit(15)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let players: any[]
 
-  if (takenIds.length > 0) {
-    dbQuery = dbQuery.not('id', 'in', `(${takenIds.join(',')})`)
+  if (q.length >= 2) {
+    let dbQuery = supabase
+      .rpc('search_players_unaccent', { search_term: q })
+      .select(`id, first_name, last_name, position, status, teams (code), player_contracts (season, cap_number)`)
+      .limit(50)
+    if (takenIds.length > 0) dbQuery = dbQuery.not('id', 'in', `(${takenIds.join(',')})`)
+    const { data } = await dbQuery
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    players = (data ?? []) as any[]
+    // Équipe filtrée en JS ici (pas .eq('teams.code', ...)) — combiner un filtre sur une
+    // relation imbriquée avec une requête basée sur le RPC n'est pas fiable (voir commentaire
+    // plus haut).
+    if (opts.teamCode) players = players.filter(p => p.teams?.code === opts.teamCode)
+    if (opts.position) players = players.filter(p => posBucketLocal(p.position) === opts.position)
+    players = players.slice(0, 15)
+  } else {
+    // Navigation par équipe/position sans nom — teams!inner requis pour filtrer sur la
+    // relation (voir searchSandboxFreeAgentsAction pour le même besoin).
+    let dbQuery = supabase
+      .from('players')
+      .select(`id, first_name, last_name, position, status, teams!inner (code), player_contracts (season, cap_number)`)
+    if (opts.teamCode) dbQuery = dbQuery.eq('teams.code', opts.teamCode)
+    if (takenIds.length > 0) dbQuery = dbQuery.not('id', 'in', `(${takenIds.join(',')})`)
+    const { data } = await dbQuery.limit(opts.teamCode ? 60 : 200)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    players = (data ?? []) as any[]
+    if (opts.position) players = players.filter(p => posBucketLocal(p.position) === opts.position)
+    players = players.slice(0, 40)
   }
 
-  const { data } = await dbQuery
-  return { players: (data ?? []) as any[] }
+  return { players: sortByTeamThenName(players) }
 }
 
 export async function submitTransactionAction(

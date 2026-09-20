@@ -21,6 +21,31 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-21 (suite — tri et filtres équipe/position dans la recherche de signature)
+
+**[Feature] — Tri équipe+nom et sélecteurs équipe/position pour signer un agent libre**
+(`app/app/admin/transactions/actions.ts`, `app/app/admin/presaison/FreeAgentSigner.tsx`) :
+- David a remarqué que les résultats de recherche d'agent libre (widget "Signature en cours"
+  pendant le repêchage AL) n'avaient aucun ordre visible, et a demandé des sélecteurs
+  équipe/position pour trouver un joueur sans connaître l'orthographe exacte de son nom.
+- `searchFreeAgentsAction` (`admin/transactions/actions.ts`) : vérifié qu'aucun `.order()`
+  n'existait — les résultats sortaient dans l'ordre brut du RPC `search_players_unaccent`.
+  Ajouté un tri équipe (alpha) → nom (alpha) fait en JS après coup (même contournement déjà
+  utilisé par `searchSandboxFreeAgentsAction`, `repechage-agents-libres/actions.ts` : PostgREST
+  ne combine pas fiablement un `order()` sur une relation imbriquée avec une requête basée sur
+  un RPC). Nouveaux paramètres optionnels `{ position, teamCode }` — avec un nom (2+
+  caractères), le RPC reste utilisé (insensible aux accents) puis équipe/position filtrés en
+  JS ; sans nom mais avec un filtre, bascule sur une requête directe `players` (même patron que
+  la Simulation, ex-Bac à sable) pour permettre de parcourir par équipe sans taper de nom.
+- `FreeAgentSigner.tsx` : ajout des deux `<select>` (position, équipe — `listTeamsAction`
+  réutilisée de `repechage-agents-libres/actions.ts`) au-dessus du champ de recherche ; la
+  recherche se déclenche maintenant aussi avec un filtre seul (sans nom). Corrigé au passage un
+  avertissement React (`react-hooks/set-state-in-effect`, `setResults([])` appelé
+  synchroniquement dans l'effet plutôt que dans le `setTimeout` du debounce — même
+  comportement, juste conforme aux règles de hooks) — pré-existant, révélé en touchant cette
+  ligne.
+- Validé avec `tsc --noEmit` et `eslint` (0 nouvelle erreur/avertissement).
+
 ### 2026-09-20 (suite — validateRosterLimits n'exigeait pas l'exactitude 12/6/2)
 
 **[Fix] — En cours de saison, un mouvement d'effectif doit toujours respecter les minimums**

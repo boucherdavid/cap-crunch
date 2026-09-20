@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { submitTransactionAction, searchFreeAgentsAction } from '../transactions/actions'
+import { listTeamsAction } from '../../repechage-agents-libres/actions'
 import type { PoolerCapInfo } from './types'
 
 const fmt = (n: number) =>
@@ -36,17 +37,30 @@ export default function FreeAgentSigner({
   const [newType, setNewType] = useState('actif')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  // Sélecteurs équipe/position (David, 2026-09-21) — pour trouver un agent libre par équipe
+  // quand on ne connaît pas l'orthographe exacte du nom. Résultats triés équipe puis nom
+  // (searchFreeAgentsAction) — auparavant sans tri du tout.
+  const [filterPosition, setFilterPosition] = useState<'' | 'forward' | 'defense' | 'goalie'>('')
+  const [filterTeam, setFilterTeam] = useState('')
+  const [teams, setTeams] = useState<{ code: string; name: string }[]>([])
 
   useEffect(() => {
-    if (query.trim().length < 2) { setResults([]); return }
+    listTeamsAction().then(res => setTeams(res.teams))
+  }, [])
+
+  useEffect(() => {
     const timer = setTimeout(async () => {
+      if (query.trim().length < 2 && !filterPosition && !filterTeam) { setResults([]); return }
       setLoadingSearch(true)
-      const res = await searchFreeAgentsAction(saisonId, query)
+      const res = await searchFreeAgentsAction(saisonId, query, {
+        position: filterPosition || undefined,
+        teamCode: filterTeam || undefined,
+      })
       setResults(res.players)
       setLoadingSearch(false)
     }, 300)
     return () => clearTimeout(timer)
-  }, [query, saisonId])
+  }, [query, saisonId, filterPosition, filterTeam])
 
   // Signale au parent dès qu'il y a un texte de recherche (pas seulement une fois un résultat
   // cliqué) pour mettre en pause AutoReload — même correctif que pour les sélections de
@@ -54,9 +68,9 @@ export default function FreeAgentSigner({
   // entre le clic sur un résultat et le clic sur "Signer" — le vrai trou signalé par David
   // était plus tôt : taper une recherche ou parcourir les résultats se faisait déjà couper.
   useEffect(() => {
-    onSelectionChange?.(!!selected || query.trim().length > 0)
+    onSelectionChange?.(!!selected || query.trim().length > 0 || !!filterPosition || !!filterTeam)
     return () => onSelectionChange?.(false)
-  }, [selected, query, onSelectionChange])
+  }, [selected, query, filterPosition, filterTeam, onSelectionChange])
 
   const getCap = (p: FreeAgentResult) =>
     p.player_contracts?.find((c: { season: string; cap_number: number }) => c.season === season)?.cap_number ?? 0
@@ -105,11 +119,41 @@ export default function FreeAgentSigner({
         </div>
       ) : (
         <div className="relative">
+          <div className="flex items-center gap-2 mb-2">
+            <select
+              value={filterPosition}
+              onChange={e => setFilterPosition(e.target.value as typeof filterPosition)}
+              className="border rounded-lg px-2 py-1.5 text-xs focus:outline-none"
+            >
+              <option value="">Toutes positions</option>
+              <option value="forward">Attaquant</option>
+              <option value="defense">Défenseur</option>
+              <option value="goalie">Gardien</option>
+            </select>
+            <select
+              value={filterTeam}
+              onChange={e => setFilterTeam(e.target.value)}
+              className="border rounded-lg px-2 py-1.5 text-xs focus:outline-none"
+            >
+              <option value="">Toutes équipes</option>
+              {teams.map(t => (
+                <option key={t.code} value={t.code}>{t.name}</option>
+              ))}
+            </select>
+            {(filterPosition || filterTeam) && (
+              <button
+                onClick={() => { setFilterPosition(''); setFilterTeam('') }}
+                className="text-xs text-gray-400 hover:text-gray-600"
+              >
+                Effacer
+              </button>
+            )}
+          </div>
           <input
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Rechercher un agent libre..."
+            placeholder="Rechercher par nom (optionnel avec les filtres ci-dessus)..."
             className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           {loadingSearch && <p className="text-xs text-gray-400 mt-1">Recherche...</p>}
