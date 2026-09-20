@@ -4,10 +4,14 @@ import { after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/rosterTypeChange'
 import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
-import { validateRosterLimits } from '@/lib/rosterLimits'
+import { validateRosterLimits, getPlayerBucket } from '@/lib/rosterLimits'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { isRookieProtectionExpired } from '@/lib/rookieProtection'
 import { createWaiverClaimForRelease } from '@/lib/waiverClaims'
+import { DEFAULT_NHL_MINIMUM_SALARY } from '../presaison/types'
+
+const fmtCap = (n: number) =>
+  new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 
 export type ActionType = 'transfer' | 'promote' | 'sign' | 'reactivate' | 'release' | 'type_change'
 
@@ -133,10 +137,11 @@ export async function applyTransactionItems(
 
   const [{ data: saison }, { data: settings }] = await Promise.all([
     supabase.from('pool_seasons').select('season, pool_cap, season_started').eq('id', saisonId).single(),
-    supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
+    supabase.from('app_settings').select('unsigned_player_cap_multiplier, nhl_minimum_salary').eq('id', 1).maybeSingle(),
   ])
   if (!saison) return { error: 'Saison introuvable.' }
   const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
+  const nhlMinimumSalary = settings?.nhl_minimum_salary ?? DEFAULT_NHL_MINIMUM_SALARY
 
   // Pré-saison (saison active mais pas encore démarrée via /admin/nouvelle-saison) : ni
   // validation ni journalisation — voir CLAUDE.md section 6 / SUIVI_PROJET.md 2026-08-31.
@@ -288,6 +293,47 @@ export async function applyTransactionItems(
       if (err) {
         const { data: p } = await supabase.from('poolers').select('name').eq('id', poolerId).single()
         return { error: `${p?.name ?? poolerId}: ${err}` }
+      }
+    }
+  }
+
+  // Signer un agent libre (actif/réserviste) PENDANT LA PRÉ-SAISON (repêchage AL) ne doit
+  // jamais laisser un pooler sans assez d'espace pour compléter légalement son alignement
+  // (12A/6D/2G actifs + min. 2 rés., au salaire minimum LNH pour chaque poste encore manquant)
+  // — sinon "Démarrer la saison" (checkSeasonConformity) reste bloqué en permanence sans qu'on
+  // l'ait vu venir pendant le repêchage. S'applique dans la fenêtre skipEnforcement (l'inverse
+  // de validateRosterLimits ci-dessus, sauté pendant cette même fenêtre) — ce n'est pas la même
+  // vérification (max de postes/cap total vs "reste-t-il de quoi finir légalement"). Ne
+  // s'applique PAS en cours de saison réelle : un pooler peut y rester temporairement sous
+  // effectif complet sans que ce soit un problème (voir validateRosterLimits, commentaire sur
+  // le "sous-effectif temporaire"). David, 2026-09-20 — bug trouvé en pratique : une signature
+  // à 5M$ acceptée en plein repêchage AL alors qu'il ne restait plus assez d'espace pour le
+  // dernier réserviste requis.
+  if (skipEnforcement) {
+    const signToPoolerIds = new Set(
+      items
+        .filter(i => i.action_type === 'sign' && (i.new_player_type === 'actif' || i.new_player_type === 'reserviste'))
+        .map(i => i.to_pooler_id!),
+    )
+    for (const poolerId of signToPoolerIds) {
+      const entries = virtual.get(poolerId) ?? []
+      const counts = { forward: 0, defense: 0, goalie: 0, reserviste: 0 }
+      let capUsed = 0
+      for (const e of entries) {
+        if (e.player_type === 'actif') { counts[getPlayerBucket(e.position)]++; capUsed += e.cap_number }
+        else if (e.player_type === 'reserviste') { counts.reserviste++; capUsed += e.cap_number }
+      }
+      const missing = Math.max(0, 12 - counts.forward) + Math.max(0, 6 - counts.defense)
+        + Math.max(0, 2 - counts.goalie) + Math.max(0, 2 - counts.reserviste)
+      if (missing === 0) continue
+      const capSpace = saison.pool_cap - capUsed
+      const capNeeded = missing * nhlMinimumSalary
+      if (capSpace < capNeeded) {
+        const { data: p } = await supabase.from('poolers').select('name').eq('id', poolerId).single()
+        return {
+          error: `${p?.name ?? poolerId} n'aurait plus assez d'espace pour compléter légalement son alignement après cette signature `
+            + `(il resterait ${fmtCap(capSpace)}, il en faut au moins ${fmtCap(capNeeded)} pour combler ${missing} poste(s) manquant(s) au salaire minimum).`,
+        }
       }
     }
   }

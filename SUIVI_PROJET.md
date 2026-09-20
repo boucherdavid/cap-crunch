@@ -21,6 +21,32 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-20 (suite — signature d'agent libre pouvait laisser un alignement infaisable)
+
+**[Fix] — Valider l'espace restant pour compléter l'alignement avant d'accepter une signature**
+(`app/app/admin/transactions/actions.ts`) :
+- David, en testant le repêchage AL en staging : il lui restait ~5 532 000 $ et a signé Marco
+  Rossi à 5M$, ne laissant que 532 998 $ — bien en dessous des 850 000 $ (salaire minimum LNH)
+  nécessaires pour le réserviste qui lui manquait encore. La signature aurait dû être refusée.
+- Cause : `validateRosterLimits` (max de postes + cap total) est volontairement sauté pendant la
+  pré-saison (`skipEnforcement = !season_started`, voir CLAUDE.md section 6) pour laisser de la
+  flexibilité aux ajustements admin — mais rien d'autre ne vérifiait qu'une signature laissait
+  assez d'espace pour combler les postes encore manquants (12A/6D/2G actifs + min. 2 rés.) au
+  salaire minimum. `FreeAgentSigner.tsx` n'affichait qu'un avertissement informatif (sous le
+  seuil de participation de 850 000 $), jamais un blocage lié au coût réel du joueur choisi.
+- Nouvelle validation dans `applyTransactionItems`, appliquée uniquement pendant la pré-saison
+  (`skipEnforcement`, donc jamais en cours de saison réelle où un sous-effectif temporaire est
+  normal) et seulement pour `action_type='sign'` vers `actif`/`reserviste` (une recrue ne compte
+  pas dans le cap tant qu'elle n'est pas promue) : recalcule les compteurs par position + cap
+  utilisé du roster virtuel après la signature simulée, et refuse la transaction si l'espace
+  restant ne couvre pas le salaire minimum × nombre de postes encore manquants — message
+  d'erreur explicite (combien il resterait, combien il en faut).
+- Validé avec `tsc --noEmit` et `eslint` (0 erreur, 0 nouvel avertissement).
+- **Reste à faire par David en staging** : le test a laissé son alignement bloqué (532 998 $,
+  1 réserviste sur 2 requis, personne n'a encore déclaré "prêt") — libérer Rossi (ou un autre
+  joueur) via le bouton admin ✕ sur sa propre carte pour récupérer de l'espace, avant de pouvoir
+  déclarer "prêt" et démarrer la saison.
+
 ### 2026-09-20 (suite — vidage complet de 2025-26 et 2026-27 en prod)
 
 **[Chore] — Repartir à neuf : vidage des alignements 2025-26 ET 2026-27 en prod**
