@@ -21,6 +21,22 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-21 (suite — sommaire compact en haut du panneau simulé)
+
+**[Feature] — Espace restant + décompte de position visibles sans défiler**
+(`app/app/simulation/SimPanel.tsx`) :
+- David : en regardant l'ensemble de l'alignement simulé, impossible de voir l'espace restant
+  ou le nombre de postes manquants sans défiler jusqu'au résumé détaillé tout en bas — a
+  suggéré un petit sommaire comme celui du hub de signatures des agents libres.
+- Ajouté juste sous le titre du panneau : espace restant/dépassement (coloré) + décompte par
+  position (F/D/G/Rés./IR) + badge de statut ("Minimum atteint" / "Manque N poste(s)" /
+  "Dépassement") — même trio de badges que `PoolersSommaire`
+  (`repechage-agents-libres/AgentsLibresDashboard.tsx`), logique dupliquée sciemment plutôt que
+  factorisée (fichiers différents, pas de dépendance croisée pour un si petit bout de calcul).
+  Le résumé détaillé existant en bas de panneau (masse salariale totale, message de
+  conformité) reste inchangé — le nouveau sommaire s'ajoute, ne remplace rien.
+- Validé avec `tsc --noEmit` et `eslint` (0 erreur/avertissement).
+
 ### 2026-09-21 (suite — vue à deux colonnes dans /simulation, onglet Mon alignement)
 
 **[Feature] — "Alignement actuel" en lecture seule à côté du panneau simulé**

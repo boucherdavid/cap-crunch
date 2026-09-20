@@ -73,10 +73,32 @@ export default function SimPanel({
   }, [query, saisonId, filterPosition, filterMaxSalary, filterElcOnly, filterTeam, hasFilters])
 
   const simulatedRemain = poolCap - state.capUsed
+  // Sommaire compact en haut du panneau (David, 2026-09-21) — même esprit que "Sommaire des
+  // poolers" du hub de signatures (repechage-agents-libres) : espace restant + décompte par
+  // position visibles sans avoir à défiler jusqu'au résumé détaillé en bas de page.
+  const missingSlots = Math.max(0, 12 - state.counts.forward) + Math.max(0, 6 - state.counts.defense)
+    + Math.max(0, 2 - state.counts.goalie) + Math.max(0, 2 - state.counts.reserviste)
+  const topBadge = simulatedRemain < 0
+    ? { text: 'Dépassement', cls: 'text-red-600 border-red-200' }
+    : missingSlots === 0
+      ? { text: 'Minimum atteint', cls: 'text-emerald-600 border-emerald-200' }
+      : { text: `Manque ${missingSlots} poste${missingSlots > 1 ? 's' : ''}`, cls: 'text-amber-600 border-amber-200' }
 
   return (
     <div>
-      <h3 className="font-semibold text-gray-800 mb-3">{title}</h3>
+      <h3 className="font-semibold text-gray-800 mb-2">{title}</h3>
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-3 pb-3 border-b">
+        <span className={`text-sm font-semibold ${simulatedRemain < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+          {simulatedRemain < 0 ? `${fmt(Math.abs(simulatedRemain))} en surplus` : `${fmt(simulatedRemain)} restant`}
+        </span>
+        <span className="flex items-center gap-1.5 text-xs">
+          <span className="text-gray-400">
+            {state.counts.forward}F {state.counts.defense}D {state.counts.goalie}G {state.counts.reserviste}Rés.
+            {state.counts.ltir > 0 && <> {state.counts.ltir}IR</>}
+          </span>
+          <span className={`font-medium px-1.5 py-0.5 rounded border ${topBadge.cls}`}>{topBadge.text}</span>
+        </span>
+      </div>
 
       {/* Lignes biffées retirées de la liste principale (David, 2026-09-21) — un joueur retiré
           n'apparaît plus ici du tout, seulement dans "Retirés" ci-dessous (moins de bruit
