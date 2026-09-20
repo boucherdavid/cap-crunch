@@ -55,12 +55,13 @@ export default function FreeAgentSigner({
       const res = await searchFreeAgentsAction(saisonId, query, {
         position: filterPosition || undefined,
         teamCode: filterTeam || undefined,
+        maxSalary: pooler.capSpace,
       })
       setResults(res.players)
       setLoadingSearch(false)
     }, 300)
     return () => clearTimeout(timer)
-  }, [query, saisonId, filterPosition, filterTeam])
+  }, [query, saisonId, filterPosition, filterTeam, pooler.capSpace])
 
   // Signale au parent dès qu'il y a un texte de recherche (pas seulement une fois un résultat
   // cliqué) pour mettre en pause AutoReload — même correctif que pour les sélections de

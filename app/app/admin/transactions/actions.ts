@@ -96,23 +96,27 @@ function sortByTeamThenName(players: any[]) {
 // connaît son équipe mais pas l'orthographe exacte du nom. Sans nom (ou moins de 2 caractères),
 // bascule sur une recherche par équipe/position sans passer par le RPC de recherche par nom
 // (même dualité que searchSandboxFreeAgentsAction) ; avec un nom, le RPC reste utilisé pour
-// l'insensibilité aux accents, puis équipe/position sont filtrés en JS après coup.
+// l'insensibilité aux accents, puis équipe/position sont filtrés en JS après coup. `maxSalary`
+// (David, 2026-09-21, suite) : ne montre que les joueurs dont le salaire de la saison tient
+// dans l'espace cap restant du pooler en train de signer — un joueur sans contrat connu pour
+// la saison (cap inconnu) est exclu plutôt que supposé gratuit, même logique que
+// searchSandboxFreeAgentsAction.
 export async function searchFreeAgentsAction(
   saisonId: number,
   query: string,
-  opts: { position?: 'forward' | 'defense' | 'goalie'; teamCode?: string } = {},
+  opts: { position?: 'forward' | 'defense' | 'goalie'; teamCode?: string; maxSalary?: number } = {},
 ): Promise<{ players: any[] }> {
   const supabase = await createClient()
   const q = query.trim()
   if (q.length < 2 && !opts.position && !opts.teamCode) return { players: [] }
 
-  const { data: onRoster } = await supabase
-    .from('pooler_rosters')
-    .select('player_id')
-    .eq('pool_season_id', saisonId)
-    .eq('is_active', true)
+  const [{ data: onRoster }, { data: saison }] = await Promise.all([
+    supabase.from('pooler_rosters').select('player_id').eq('pool_season_id', saisonId).eq('is_active', true),
+    supabase.from('pool_seasons').select('season').eq('id', saisonId).single(),
+  ])
 
   const takenIds = (onRoster ?? []).map((r: any) => r.player_id)
+  const season = saison?.season as string | undefined
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let players: any[]
@@ -131,7 +135,6 @@ export async function searchFreeAgentsAction(
     // plus haut).
     if (opts.teamCode) players = players.filter(p => p.teams?.code === opts.teamCode)
     if (opts.position) players = players.filter(p => posBucketLocal(p.position) === opts.position)
-    players = players.slice(0, 15)
   } else {
     // Navigation par équipe/position sans nom — teams!inner requis pour filtrer sur la
     // relation (voir searchSandboxFreeAgentsAction pour le même besoin).
@@ -144,10 +147,18 @@ export async function searchFreeAgentsAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     players = (data ?? []) as any[]
     if (opts.position) players = players.filter(p => posBucketLocal(p.position) === opts.position)
-    players = players.slice(0, 40)
   }
 
-  return { players: sortByTeamThenName(players) }
+  if (opts.maxSalary != null && season) {
+    const maxSalary = opts.maxSalary
+    players = players.filter(p => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const contract = (p.player_contracts ?? []).find((c: any) => c.season === season)
+      return contract?.cap_number != null && contract.cap_number <= maxSalary
+    })
+  }
+
+  return { players: sortByTeamThenName(players).slice(0, q.length >= 2 ? 15 : 40) }
 }
 
 export async function submitTransactionAction(

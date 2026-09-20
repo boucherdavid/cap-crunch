@@ -21,6 +21,24 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-21 (suite — filtre d'abordabilité dans la recherche de signature)
+
+**[Feature] — Ne montrer que les agents libres abordables dans le widget de signature**
+(`app/app/admin/transactions/actions.ts`, `app/app/admin/presaison/FreeAgentSigner.tsx`) :
+- David : pouvoir filtrer la recherche pour ne voir que les joueurs dont le salaire tient dans
+  l'espace cap restant du pooler en train de signer.
+- `searchFreeAgentsAction` : nouveau paramètre `maxSalary` — filtre en JS après coup (même
+  limite RPC/relation imbriquée que pour équipe/position) sur le contrat de la saison courante
+  (`pool_seasons.season`, désormais chargée dans la fonction) ; un joueur sans contrat connu
+  pour la saison est exclu plutôt que supposé gratuit (même logique que
+  `searchSandboxFreeAgentsAction`). Slice de la limite d'affichage déplacée après tous les
+  filtres (équipe/position/salaire) plutôt qu'avant, pour ne pas couper des résultats
+  abordables à cause de résultats chers placés avant dans la liste.
+- `FreeAgentSigner.tsx` : passe automatiquement `pooler.capSpace` comme `maxSalary` — aucun
+  interrupteur, toujours actif pendant une signature (pas de raison de voir un joueur
+  inabordable dans ce contexte précis).
+- Validé avec `tsc --noEmit` et `eslint` (0 nouvelle erreur/avertissement).
+
 ### 2026-09-21 (suite — tri et filtres équipe/position dans la recherche de signature)
 
 **[Feature] — Tri équipe+nom et sélecteurs équipe/position pour signer un agent libre**
