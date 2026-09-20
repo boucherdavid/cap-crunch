@@ -21,6 +21,25 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-21 (suite — le filtre d'abordabilité doit réserver pour les AUTRES postes manquants)
+
+**[Fix] — Le filtre de recherche ne réservait pas d'espace pour les postes restants**
+(`app/app/admin/presaison/FreeAgentSigner.tsx`) :
+- David a repéré que le filtre `maxSalary` ajouté plus tôt aujourd'hui montrait quand même
+  Marco Rossi (5M$) alors que le signer aurait laissé le pooler sans assez d'espace pour un
+  autre poste encore manquant — le filtre ne regardait que l'espace total, pas ce qui doit
+  rester après CETTE signature pour les postes restants (même angle mort que le bug initial du
+  fix précédent, mais côté recherche plutôt que côté validation de la signature elle-même).
+- `maxAffordable = pooler.capSpace - Math.max(0, pooler.slotsManquants - 1) * threshold` — même
+  calcul en esprit que le blocage server-side (`admin/transactions/actions.ts`,
+  `signToPoolerIds`) : réserve le salaire minimum pour chacun des postes qui resteraient à
+  combler après celle-ci (on suppose que cette signature comble un des postes manquants,
+  peu importe lequel — approximation côté client, la vraie vérification exacte par position
+  reste le blocage server-side déjà en place).
+- Ligne "Espace disponible" complétée : affiche maintenant le budget réellement utilisable pour
+  la recherche quand il reste plus d'un poste à combler, avec le nombre de postes réservés.
+- Validé avec `tsc --noEmit` et `eslint` (0 erreur/avertissement).
+
 ### 2026-09-21 (suite — filtre d'abordabilité dans la recherche de signature)
 
 **[Feature] — Ne montrer que les agents libres abordables dans le widget de signature**

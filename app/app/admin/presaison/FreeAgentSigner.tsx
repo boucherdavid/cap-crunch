@@ -48,6 +48,14 @@ export default function FreeAgentSigner({
     listTeamsAction().then(res => setTeams(res.teams))
   }, [])
 
+  // Budget affichable pour CETTE signature (David, 2026-09-21, suite) — pas tout l'espace
+  // disponible : il faut réserver au moins le salaire minimum pour chacun des autres postes
+  // encore manquants après celle-ci, sinon la recherche propose des joueurs que la signature
+  // refuserait de toute façon (même calcul que le blocage server-side de
+  // submitTransactionAction — voir admin/transactions/actions.ts, "signToPoolerIds").
+  const missingAfterThisSignature = Math.max(0, pooler.slotsManquants - 1)
+  const maxAffordable = pooler.capSpace - missingAfterThisSignature * threshold
+
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (query.trim().length < 2 && !filterPosition && !filterTeam) { setResults([]); return }
@@ -55,13 +63,13 @@ export default function FreeAgentSigner({
       const res = await searchFreeAgentsAction(saisonId, query, {
         position: filterPosition || undefined,
         teamCode: filterTeam || undefined,
-        maxSalary: pooler.capSpace,
+        maxSalary: maxAffordable,
       })
       setResults(res.players)
       setLoadingSearch(false)
     }, 300)
     return () => clearTimeout(timer)
-  }, [query, saisonId, filterPosition, filterTeam, pooler.capSpace])
+  }, [query, saisonId, filterPosition, filterTeam, maxAffordable])
 
   // Signale au parent dès qu'il y a un texte de recherche (pas seulement une fois un résultat
   // cliqué) pour mettre en pause AutoReload — même correctif que pour les sélections de
@@ -106,6 +114,11 @@ export default function FreeAgentSigner({
         </span>
         {pooler.capSpace < threshold && (
           <span className="text-amber-600"> — sous le seuil de {fmt(threshold)}</span>
+        )}
+        {missingAfterThisSignature > 0 && (
+          <span className="block text-gray-400 mt-0.5">
+            Recherche limitée à {fmt(maxAffordable)} — {missingAfterThisSignature} autre{missingAfterThisSignature > 1 ? 's' : ''} poste{missingAfterThisSignature > 1 ? 's' : ''} à combler après celle-ci (réservé au salaire minimum).
+          </span>
         )}
       </p>
 
