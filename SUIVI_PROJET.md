@@ -21,6 +21,43 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-20 (suite — vidage complet de 2025-26 et 2026-27 en prod)
+
+**[Chore] — Repartir à neuf : vidage des alignements 2025-26 ET 2026-27 en prod**
+(script ponctuel exécuté par David, aucun fichier applicatif modifié) :
+- David a réévalué le "repartir à zéro" du 2026-09-18 (voir entrées précédentes) — au-delà de la
+  seule saison 2026-27, il a réalisé que la vraie référence pour 2025-26 est ce que les poolers
+  avaient **hors app** (avant/pendant la transition depuis l'ancien suivi Excel), pas les 351
+  lignes actuellement en base (possiblement imparfaites suite à l'import). Plan clarifié sur
+  plusieurs échanges : vider 2025-26 ET 2026-27 en prod, ressaisir manuellement l'alignement
+  réel de fin 2025-26 via Mode Init, refaire le repêchage des recrues 2025, puis déclencher la
+  **vraie** transition vers 2026-27 (via l'app, pas un script) à la rencontre annuelle — pour
+  que les mécanismes de protection recrue/agents libres embarquent correctement à partir de
+  données propres. Le classement historique de 2025-26 n'est pas une perte gênante pour David
+  (il fixera l'ordre de repêchage manuellement cette année).
+- Audit préalable (lecture seule) : 2025-26 avait 351 lignes `pooler_rosters`, 0
+  `roster_change_log`, 0 transaction, 32 choix de repêchage tous déjà utilisés (`is_used=true`,
+  0 échangés) ; 2026-27 avait 317 lignes (le vidage/recopie du 2026-09-18).
+- **Sauvegarde faite avant toute suppression** :
+  `python_script/diagnostics/backup_prod_seasons_1_4_before_wipe_20260920_104231.json`
+  (`pooler_rosters` + `pool_draft_picks` des deux saisons, snapshot complet).
+- Script de vidage (`wipe_seasons_1_4.py`, scratchpad de session) bloqué par le classificateur
+  du mode auto à deux reprises (suppression de masse sur de vraies données de prod, même après
+  confirmation explicite et répétée de David sur plusieurs tours de clarification) — remis à
+  David avec la commande exacte, roulé directement par lui (même pattern que la fusion de 8
+  doublons du 2026-08-31).
+- Effectué : `pooler_rosters` vidée pour les saisons 1 (2025-26) et 4 (2026-27) — 0 ligne
+  restante confirmé après coup. `pool_draft_picks` de 2025-26 remis à `is_used=false` (32
+  lignes, 0 encore échangé). `pool_seasons.season_started` de 2025-26 rebasculé à `false` —
+  nécessaire pour débloquer "Rosters initiaux" (Mode Init exige `season_started=false`) ;
+  `is_active` inchangé (reste `false`, 2026-27 demeure la saison active). Vérifié après coup :
+  tout à zéro/false comme attendu.
+- **Prochaines étapes (David, manuellement dans l'app)** : ressaisir l'alignement réel de fin
+  2025-26 via `/admin/init?tab=rosters`, refaire le repêchage des recrues 2025 via
+  `/admin/repechage`, puis déclencher la vraie transition vers 2026-27 (`/admin/nouvelle-saison`)
+  à la rencontre annuelle du pool.
+- **Staging non touchée** — ce vidage concernait spécifiquement prod.
+
 ### 2026-09-20
 
 **[Feature] — Couleur d'accent par groupe de position (Attaquants/Défenseurs/Gardiens/Réservistes)**
