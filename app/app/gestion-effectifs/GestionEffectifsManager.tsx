@@ -403,14 +403,22 @@ export default function GestionEffectifsManager({
     Promise.all([
       getPoolerRosterAction(poolerId, saisonId, season),
       getSigningCountsAction(poolerId, saisonId),
-      getAwardedWaiverClaimsAction(saisonId, poolerId, season),
-    ]).then(([r, counts, claims]) => {
+    ]).then(([r, counts]) => {
       setRoster(r)
       setDbCounts(counts)
-      setAwardedClaims(claims)
       setLoadingRoster(false)
     })
   }, [poolerId, saisonId, season])
+
+  // Claims gagnés — effet séparé, redéclenché aussi en revenant sur l'onglet Mouvements
+  // (David, 2026-09-21) : la résolution d'un claim (open → awarded) se déclenche seulement en
+  // ouvrant l'onglet Ballotage (BallotageTab appelle getWaiverClaimsAction, qui résout les
+  // claims expirés) — sans ce second déclencheur, un pooler qui avait déjà chargé Mouvements
+  // avant cette résolution ne voyait jamais le bandeau tant qu'il ne rechargeait pas la page.
+  useEffect(() => {
+    if (!poolerId || activeTab !== 'mouvements') return
+    getAwardedWaiverClaimsAction(saisonId, poolerId, season).then(setAwardedClaims)
+  }, [poolerId, saisonId, season, activeTab])
 
   function resetAddForm() {
     setAddType(null)
