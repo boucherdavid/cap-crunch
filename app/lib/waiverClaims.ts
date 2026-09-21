@@ -109,6 +109,61 @@ export async function createWaiverClaimForRelease(saisonId: number, playerId: nu
   )
 }
 
+// Notification anticipée "tu vas gagner" (David, 2026-09-21) — appelée après chaque réclamation
+// ET chaque refus (le refus n'est pas le seul déclencheur possible : le pooler le plus
+// prioritaire de toute la liste est déjà garanti dès sa propre réclamation, sans attendre un
+// refus de qui que ce soit). Pas de tâche planifiée — le déclencheur naturel est l'action
+// elle-même (réclamer/refuser), cohérent avec le reste de ce fichier (résolution paresseuse).
+// "Garanti" = tous les poolers plus prioritaires que le réclamant en tête ont explicitement
+// refusé (silence ≠ refus : un pooler qui n'a pas encore répondu pourrait encore réclamer plus
+// tard, donc pas de garantie possible tant qu'il n'a pas agi). `guaranteed_notified_at` évite
+// de renotifier deux fois le même réclamant pour le même claim.
+export async function checkGuaranteedWaiverWinner(waiverClaimId: number) {
+  const admin = createAdminClient()
+
+  const { data: claim } = await admin
+    .from('waiver_claims')
+    .select('id, player_id, status, priority_snapshot')
+    .eq('id', waiverClaimId)
+    .single()
+  if (!claim || claim.status !== 'open') return
+
+  const { data: requests } = await admin
+    .from('waiver_claim_requests')
+    .select('pooler_id, status, guaranteed_notified_at')
+    .eq('waiver_claim_id', waiverClaimId)
+  const claimedIds = new Set((requests ?? []).filter(r => r.status === 'claimed').map(r => r.pooler_id))
+  const refusedIds = new Set((requests ?? []).filter(r => r.status === 'refused').map(r => r.pooler_id))
+
+  const priority: string[] = claim.priority_snapshot
+  const leaderId = priority.find(id => claimedIds.has(id))
+  if (!leaderId) return // personne n'a encore réclamé — rien à garantir
+
+  const leaderIndex = priority.indexOf(leaderId)
+  const allAboveRefused = priority.slice(0, leaderIndex).every(id => refusedIds.has(id))
+  if (!allAboveRefused) return
+
+  const leaderRequest = (requests ?? []).find(r => r.pooler_id === leaderId && r.status === 'claimed')
+  if (leaderRequest?.guaranteed_notified_at) return // déjà notifié pour ce claim
+
+  await admin.from('waiver_claim_requests')
+    .update({ guaranteed_notified_at: new Date().toISOString() })
+    .eq('waiver_claim_id', waiverClaimId).eq('pooler_id', leaderId)
+
+  const label = await playerLabel(admin, claim.player_id)
+  after(() => Promise.all([
+    sendPushToUsers([leaderId], {
+      title: 'Cap Crunch — Ballotage',
+      body: `Tout le monde devant toi a refusé ${label} — tu vas l'obtenir à la fin du délai.`,
+      url: '/gestion-effectifs',
+    }).catch(() => {}),
+    sendEmailToIds([leaderId], {
+      subject: 'Cap Crunch — Ballotage (résultat garanti)',
+      html: `<p>Tout le monde devant toi au classement de priorité a refusé <strong>${label}</strong> — tu vas l'obtenir à la fin du délai de réclamation, même si quelqu'un d'autre le réclame encore après toi.</p>`,
+    }).catch(() => {}),
+  ]))
+}
+
 // Résout les claims dont la fenêtre est expirée — appelé paresseusement au chargement de
 // l'onglet Ballotage (même patron que syncExpiredRookieProtection, admin/presaison/actions.ts) :
 // pas de tâche planifiée, la résolution se fait au premier chargement de page qui suit
@@ -129,10 +184,13 @@ export async function resolveExpiredWaiverClaims(saisonId: number) {
   const unsignedMultiplier = settingsRow?.unsigned_player_cap_multiplier ?? 1.20
 
   for (const claim of expired as { id: number; player_id: number; released_by_pooler_id: string; priority_snapshot: string[] }[]) {
+    // status='claimed' seulement (David, 2026-09-21) — un refus explicite (bouton "Refuser",
+    // voir checkGuaranteedWaiverWinner plus bas) ne doit jamais compter comme une réclamation.
     const { data: requests } = await admin
       .from('waiver_claim_requests')
       .select('pooler_id')
       .eq('waiver_claim_id', claim.id)
+      .eq('status', 'claimed')
 
     if (!requests || requests.length === 0) {
       await admin.from('waiver_claims').update({ status: 'resolved_unclaimed', resolved_at: new Date().toISOString() }).eq('id', claim.id)

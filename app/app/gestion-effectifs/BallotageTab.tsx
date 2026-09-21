@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useTransition, useCallback } from 'react'
-import { getWaiverClaimsAction, submitWaiverClaimAction } from './waiver-actions'
+import { getWaiverClaimsAction, submitWaiverClaimAction, refuseWaiverClaimAction } from './waiver-actions'
 import type { WaiverClaimView, WaiverHistoryEntry } from './waiver-actions'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -55,6 +55,15 @@ export default function BallotageTab({ saisonId }: { saisonId: number }) {
     })
   }
 
+  function handleRefuse(id: number) {
+    setError(null)
+    startTransition(async () => {
+      const res = await refuseWaiverClaimAction(saisonId, id)
+      if (res.error) setError(res.error)
+      load()
+    })
+  }
+
   if (loading) return <p className="text-sm text-gray-500">Chargement…</p>
 
   return (
@@ -66,6 +75,8 @@ export default function BallotageTab({ saisonId }: { saisonId: number }) {
         <p className="text-sm text-gray-500 mb-4">
           Quand un joueur est libéré en cours de saison, il devient réclamable ici pendant un
           délai — la priorité va au pooler le moins bien classé au moment de la libération.
+          Refuser est optionnel, mais si tout le monde plus prioritaire que toi refuse, tu es
+          averti par notification que tu vas l&apos;obtenir, sans attendre la fin du délai.
         </p>
         {claims.length === 0 && <p className="text-sm text-gray-400">Aucun joueur au ballotage en ce moment.</p>}
         <div className="space-y-2">
@@ -81,18 +92,28 @@ export default function BallotageTab({ saisonId }: { saisonId: number }) {
                 <div className="text-xs text-gray-500">
                   Libéré par {c.releasedByName} — {formatExpiry(c.expiresAt)}
                   {c.claimCount > 0 && ` — ${c.claimCount} réclamation${c.claimCount > 1 ? 's' : ''}`}
+                  {c.refusedCount > 0 && ` · ${c.refusedCount} refus`}
                 </div>
               </div>
-              {c.alreadyClaimed ? (
-                <span className="text-sm text-green-700 font-medium shrink-0">Déjà réclamé ✓</span>
-              ) : c.canClaim ? (
-                <button onClick={() => handleClaim(c.id)} disabled={isPending}
-                  className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50 shrink-0">
-                  Réclamer
-                </button>
-              ) : (
-                <span className="text-sm text-gray-400 shrink-0">—</span>
-              )}
+              <div className="flex items-center gap-2 shrink-0">
+                {c.myStatus === 'claimed' && <span className="text-sm text-green-700 font-medium">Déjà réclamé ✓</span>}
+                {c.myStatus === 'refused' && <span className="text-sm text-gray-400 font-medium">Refusé</span>}
+                {c.canClaim && (
+                  <button onClick={() => handleClaim(c.id)} disabled={isPending}
+                    className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+                    Réclamer
+                  </button>
+                )}
+                {c.canRefuse && (
+                  <button onClick={() => handleRefuse(c.id)} disabled={isPending}
+                    className="border border-gray-300 text-gray-600 px-4 py-1.5 rounded text-sm font-medium hover:bg-gray-50 disabled:opacity-50">
+                    Refuser
+                  </button>
+                )}
+                {!c.canClaim && !c.canRefuse && c.myStatus === null && (
+                  <span className="text-sm text-gray-400">—</span>
+                )}
+              </div>
             </div>
           ))}
         </div>

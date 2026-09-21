@@ -751,6 +751,24 @@ revue le 2026-09-14 :**
   (même patron que `presaison_draft_state`/`presaison_pooler_ready`) — toutes les écritures
   (création de claim, réclamation, résolution) passent par `createAdminClient()` depuis des
   Server Actions qui font leur propre vérification d'autorisation.
+- **Refuser + notification anticipée "garanti" (David, 2026-09-21)** — `waiver_claim_requests`
+  a maintenant une colonne `status` (`'claimed'` | `'refused'`, une seule ligne par
+  `(waiver_claim_id, pooler_id)` grâce à la contrainte `UNIQUE` déjà en place) plutôt qu'une
+  nouvelle table : refuser (`refuseWaiverClaimAction`) est toujours permis, y compris après
+  avoir réclamé (changer d'avis) ; l'inverse (refusé → réclamé) est bloqué de façon permanente,
+  pour ne jamais invalider une garantie déjà notifiée à quelqu'un de moins prioritaire.
+  `resolveExpiredWaiverClaims` ne considère que `status='claimed'` comme de vraies
+  réclamations. `checkGuaranteedWaiverWinner()` (`app/lib/waiverClaims.ts`), appelée après
+  chaque réclamation ET chaque refus (pas de tâche planifiée, déclenchée par l'action
+  elle-même) : trouve le réclamant le plus prioritaire actuel (`leaderId`, premier de
+  `priority_snapshot` présent dans les `status='claimed'`) et vérifie que **tous** les poolers
+  plus prioritaires que lui ont un refus explicite enregistré (un silence ne compte jamais
+  comme un refus — un pooler qui n'a pas encore répondu pourrait encore réclamer). Si c'est le
+  cas, notifie ce réclamant par push/courriel qu'il est garanti de l'obtenir, et marque
+  `guaranteed_notified_at` (colonne sur `waiver_claim_requests`) pour ne jamais le notifier deux
+  fois pour le même claim. Le pooler le plus prioritaire de toute la liste est déjà "garanti"
+  dès sa propre réclamation (aucun refus requis, la liste des poolers plus prioritaires que lui
+  est vide) — géré par le même appel après une réclamation, pas seulement après un refus.
 
 **Règles d'alignement consolidées (`app/lib/rosterLimits.ts`) — David, 2026-08-31, exactitude
 corrigée le 2026-09-20 :**

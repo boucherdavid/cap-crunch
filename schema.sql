@@ -1043,3 +1043,13 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 --
 -- ALTER TABLE pool_seasons ADD COLUMN IF NOT EXISTS season_started_at TIMESTAMPTZ;
 -- ALTER TABLE presaison_pooler_ready ADD COLUMN IF NOT EXISTS declared_by_admin BOOLEAN NOT NULL DEFAULT false;
+
+-- Migration 2026-09-21 (suite) : bouton "Refuser" au ballotage, avec notification anticipée
+-- quand tout le monde devant un réclamant a refusé (voir CLAUDE.md section 6, ballotage) —
+-- réutilise waiver_claim_requests plutôt qu'une nouvelle table : une ligne par (claim, pooler),
+-- `status` distingue réclamation et refus. `guaranteed_notified_at` évite de renotifier deux
+-- fois le même réclamant "garanti". À exécuter une seule fois dans le SQL Editor Supabase
+-- (staging d'abord, puis prod) :
+--
+-- ALTER TABLE waiver_claim_requests ADD COLUMN IF NOT EXISTS status VARCHAR(10) NOT NULL DEFAULT 'claimed';
+-- ALTER TABLE waiver_claim_requests ADD COLUMN IF NOT EXISTS guaranteed_notified_at TIMESTAMPTZ;

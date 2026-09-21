@@ -21,6 +21,42 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-21 (suite — bouton "Refuser" au ballotage + notification de gain anticipée)
+
+**[Feature] — Refuser un joueur au ballotage, notification "garanti" si tout le monde devant refuse**
+(nouveaux : migration `schema.sql` ; modifiés : `app/lib/waiverClaims.ts`,
+`app/app/gestion-effectifs/waiver-actions.ts`, `BallotageTab.tsx`) :
+- David : pouvoir refuser explicitement un joueur au ballotage, et si tous les poolers plus
+  prioritaires qu'un réclamant ont refusé, notifier ce réclamant qu'il va l'obtenir sans
+  attendre la fin du délai. Confirmé faisable — le déclencheur naturel est l'action de refus
+  elle-même (pas besoin de tâche planifiée), cohérent avec le reste du ballotage (résolution
+  paresseuse).
+- **Migration** (2 colonnes sur `waiver_claim_requests`, à rouler manuellement dans le SQL
+  Editor Supabase — staging puis prod, voir `schema.sql` section MIGRATIONS) : `status`
+  (`'claimed'` | `'refused'`, défaut `'claimed'` pour compat avec les lignes existantes) et
+  `guaranteed_notified_at`. Réutilise la table existante (une ligne par pooler/claim, déjà
+  contrainte `UNIQUE`) plutôt qu'une nouvelle table.
+- Refuser (`refuseWaiverClaimAction`) toujours permis, même après avoir réclamé (changer
+  d'avis) ; l'inverse (refusé → réclamé) bloqué en permanence — sinon une garantie déjà
+  notifiée à un réclamant moins prioritaire deviendrait fausse si quelqu'un plus prioritaire
+  revenait sur son refus.
+- `checkGuaranteedWaiverWinner()` (nouveau, `app/lib/waiverClaims.ts`) — appelée après chaque
+  réclamation ET chaque refus : trouve le réclamant le plus prioritaire actuel, vérifie que
+  TOUS les poolers plus prioritaires que lui ont explicitement refusé (silence ≠ refus), et si
+  oui, notifie ce réclamant par push/courriel (une seule fois, `guaranteed_notified_at`). Le
+  pooler le plus prioritaire de toute la liste est déjà garanti dès sa propre réclamation, sans
+  attendre un refus de qui que ce soit.
+- `resolveExpiredWaiverClaims` filtre maintenant sur `status='claimed'` — un refus ne compte
+  jamais comme une réclamation à la résolution finale (comportement de résolution inchangé
+  sinon, priorité parmi les vrais réclamants comme avant).
+- `BallotageTab.tsx` : `alreadyClaimed` (booléen) remplacé par `myStatus`
+  (`'claimed'`/`'refused'`/`null`) ; bouton "Refuser" à côté de "Réclamer", compteur "N refus"
+  ajouté à côté de "N réclamations".
+- Validé avec `tsc --noEmit` et `eslint` (0 nouvelle erreur — 1 avertissement pré-existant sans
+  rapport dans `BallotageTab.tsx`, déjà là avant ce changement).
+- **À faire avant de tester** : rouler la migration en staging (voir `schema.sql`) — sans elle,
+  le ballotage plantera sur les colonnes manquantes.
+
 ### 2026-09-21 (suite — added_at ne recule plus inutilement entre "Démarrer la saison" et la vraie date de début)
 
 **[Fix] — Plancher `saison_start_date` pour computeTypeChangeAddedAt**
