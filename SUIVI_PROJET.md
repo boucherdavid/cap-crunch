@@ -21,6 +21,22 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-21 (suite — nom de saison explicite dans le message de succès "Démarrer la saison")
+
+**[Fix] — Ambiguïté entre le message de succès et la carte "Démarrer la saison" affichée**
+(`app/app/admin/nouvelle-saison/actions.ts`) :
+- David a remarqué qu'après avoir démarré une saison, la page semblait incohérente : le message
+  vert de succès restait affiché, mais la carte "Démarrer la saison" au-dessus montrait 0/8
+  poolers conformes avec des alignements totalement vides. Expliqué la cause : `defaultTarget`
+  (`admin/nouvelle-saison/page.tsx`) bascule intentionnellement sur la saison **suivante** dès
+  que `season_started` passe à `true` — comportement voulu (aider à enchaîner sur la prochaine
+  préparation), mais le message de succès ne précisait pas de quelle saison il parlait, donnant
+  l'impression que les deux blocs se contredisaient sur la même saison.
+- `demarrerSaisonAction` inclut maintenant le nom de la saison dans le message :
+  "Saison 2026-27 démarrée — ..." — sans ambiguïté que ce message concerne la saison qui vient
+  de démarrer, distincte de celle affichée juste au-dessus (déjà la suivante par design).
+- Validé avec `tsc --noEmit` et `eslint` (0 erreur).
+
 ### 2026-09-21 (suite — sommaire compact en haut du panneau simulé)
 
 **[Feature] — Espace restant + décompte de position visibles sans défiler**
