@@ -21,6 +21,27 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-21 (suite — masquer les transactions pré-saison dans l'historique de /gestion-effectifs)
+
+**[Feature] — Historique des mouvements sans le bruit du ménage pré-saison**
+(`app/components/movement-history-actions.ts`, `MovementHistoryPanel.tsx`,
+`app/app/gestion-effectifs/GestionEffectifsManager.tsx`) :
+- David : une fois la saison démarrée, le panneau "Historique des mouvements" de
+  `/gestion-effectifs` reste encombré des transactions du ménage pré-saison ("Repêchage
+  pré-saison", "Ajustement pré-saison") — aucune contrainte réelle ne s'appliquait à ces
+  mouvements, donc du bruit sans valeur une fois qu'on suit l'activité réelle de la saison.
+- Vérifié : `roster_change_log` n'a jamais ce problème (déjà vide en pré-saison,
+  `skipEnforcement` saute la journalisation dans `applyTransactionItems`) — seules les lignes
+  `transactions`/`transaction_items` elles-mêmes restent visibles, puisqu'elles sont toujours
+  insérées peu importe la phase.
+- `getMovementHistoryAction` accepte un nouveau paramètre optionnel `excludeNotes` (filtre
+  `.not('notes', 'in', ...)`) ; `MovementHistoryPanel` expose un prop `excludePreseason` qui le
+  traduit vers les deux libellés pré-saison connus. Activé uniquement sur `/gestion-effectifs`
+  — `/admin/transactions` (`TransactionBuilder.tsx`) garde l'historique complet, utile pour
+  l'audit admin.
+- Validé avec `tsc --noEmit` et `eslint` (0 nouvelle erreur — quelques erreurs pré-existantes
+  sans rapport dans les fichiers touchés, vérifiées via `git diff`).
+
 ### 2026-09-21 (suite — ordre du ballotage basé sur presaison_draft_order avant le 1er novembre)
 
 **[Feature] — Priorité du ballotage : ordre pré-saison avant le 1er novembre, classement réel après**

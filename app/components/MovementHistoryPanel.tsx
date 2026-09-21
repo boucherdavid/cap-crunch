@@ -10,16 +10,23 @@ function fmtDate(iso: string) {
   })
 }
 
+// Notes des transactions du ménage pré-saison (David, 2026-09-21) — voir
+// movement-history-actions.ts pour pourquoi elles sont exclues par défaut sur
+// /gestion-effectifs une fois la saison démarrée.
+const PRESEASON_NOTES = ['Repêchage pré-saison', 'Ajustement pré-saison']
+
 export default function MovementHistoryPanel({
   poolerId,
   poolerName,
   refreshKey,
   saisonId,
+  excludePreseason,
 }: {
   poolerId: string | null
   poolerName?: string
   refreshKey: number
   saisonId?: number
+  excludePreseason?: boolean
 }) {
   const [mode, setMode] = useState<'pooler' | 'all'>('pooler')
   const [events, setEvents] = useState<MovementEvent[]>([])
@@ -28,11 +35,16 @@ export default function MovementHistoryPanel({
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    getMovementHistoryAction(mode === 'pooler' ? poolerId : null, mode === 'pooler' ? 30 : 50, saisonId)
+    getMovementHistoryAction(
+      mode === 'pooler' ? poolerId : null,
+      mode === 'pooler' ? 30 : 50,
+      saisonId,
+      excludePreseason ? PRESEASON_NOTES : undefined,
+    )
       .then(data => { if (!cancelled) setEvents(data) })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [poolerId, mode, refreshKey, saisonId])
+  }, [poolerId, mode, refreshKey, saisonId, excludePreseason])
 
   return (
     <div className="w-80 shrink-0 sticky top-4 self-start bg-white rounded-lg shadow flex flex-col max-h-[calc(100vh-2rem)]">

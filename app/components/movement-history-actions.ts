@@ -23,6 +23,13 @@ export async function getMovementHistoryAction(
   poolerId: string | null,
   limit = 30,
   saisonId?: number,
+  // Exclut les transactions du ménage pré-saison (David, 2026-09-21) — une fois la saison
+  // démarrée, elles ne sont plus qu'un historique de mise en place sans contrainte réelle
+  // (pas d'application de validateRosterLimits, pas de roster_change_log — voir CLAUDE.md
+  // section 6), donc du bruit dans le panneau de /gestion-effectifs qui suit maintenant
+  // l'activité réelle. Laissé visible par défaut (undefined) pour /admin/transactions, où
+  // voir l'historique complet reste utile pour l'audit.
+  excludeNotes?: string[],
 ): Promise<MovementEvent[]> {
   const supabase = await createClient()
   const events: MovementEvent[] = []
@@ -76,6 +83,9 @@ export async function getMovementHistoryAction(
     .limit(limit)
   if (txIds) txQuery = txQuery.in('id', txIds)
   if (saisonId) txQuery = txQuery.eq('pool_season_id', saisonId)
+  if (excludeNotes && excludeNotes.length > 0) {
+    txQuery = txQuery.not('notes', 'in', `(${excludeNotes.map(n => `"${n}"`).join(',')})`)
+  }
   const { data: txr } = await txQuery
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
