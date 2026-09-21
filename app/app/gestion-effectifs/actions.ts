@@ -338,6 +338,14 @@ export async function submitBatchAction(input: {
       ? `${input.forcedDate}T12:00:00Z`
       : liveEffectiveAt
 
+  // Plancher pour computeTypeChangeAddedAt (David, 2026-09-21) — évite de reculer added_at à
+  // aujourd'hui pour une activation/désactivation faite après "Démarrer la saison" mais avant
+  // la vraie date de début (ex: saison démarrée le 21 pour un vrai début le 29) : aucun match
+  // n'est joué entre les deux, donc reculer n'apporte rien et n'affiche qu'un avertissement
+  // trompeur. Ne s'applique jamais à `changedAt` lui-même (une libération garde sa vraie date
+  // du jour, nécessaire au calcul du ballotage).
+  const minAddedAtTs = saisonConfig?.saison_start_date ? `${saisonConfig.saison_start_date}T12:00:00Z` : undefined
+
   // Count existing signings
   const { data: existingSigns } = await db
     .from('roster_change_log')
@@ -419,7 +427,7 @@ export async function submitBatchAction(input: {
     }
     const conflict = await checkFutureRosterConflict(db, input.poolerId, e.player_id, input.saisonId, changedAt, toType)
     if (conflict.error) throw new Error(conflict.error)
-    const { addedAtOverride, warning } = computeTypeChangeAddedAt(e.added_at, changedAt)
+    const { addedAtOverride, warning } = computeTypeChangeAddedAt(e.added_at, changedAt, minAddedAtTs)
     if (warning) warnings.push(warning)
     await db.from('pooler_rosters')
       .update({ player_type: toType, ...(addedAtOverride ? { added_at: addedAtOverride } : {}), ...rookieFields })
@@ -433,7 +441,7 @@ export async function submitBatchAction(input: {
     if (withDelayCheck) await checkReactivationDelay(e.player_id)
     const conflict = await checkFutureRosterConflict(db, input.poolerId, e.player_id, input.saisonId, changedAt, 'actif')
     if (conflict.error) throw new Error(conflict.error)
-    const { addedAtOverride, warning } = computeTypeChangeAddedAt(e.added_at, changedAt)
+    const { addedAtOverride, warning } = computeTypeChangeAddedAt(e.added_at, changedAt, minAddedAtTs)
     if (warning) warnings.push(warning)
     await db.from('pooler_rosters')
       .update({ player_type: 'actif', ...(addedAtOverride ? { added_at: addedAtOverride } : {}) })

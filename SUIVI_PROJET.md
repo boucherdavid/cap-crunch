@@ -21,6 +21,33 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-21 (suite — added_at ne recule plus inutilement entre "Démarrer la saison" et la vraie date de début)
+
+**[Fix] — Plancher `saison_start_date` pour computeTypeChangeAddedAt**
+(`app/lib/rosterTypeChange.ts`, `app/app/gestion-effectifs/actions.ts`,
+`app/app/admin/transactions/actions.ts`) :
+- David, en testant le ballotage : a libéré un joueur (garde sa vraie date du jour pour le
+  calcul de réclamation, pas de souci) mais l'activation du remplaçant (nécessaire pour rester
+  conforme au 12/6/2 exact) affichait "Date d'ajout au roster reculée du 2026-09-29 au
+  2026-09-21" — la saison a été démarrée le 21 (`season_started_at`) mais sa vraie date de
+  début configurée (`saison_start_date`) est le 29. Comme aucun match n'est joué entre les
+  deux dates, reculer `added_at` à aujourd'hui n'apporte rien à `buildStandings()` et n'affiche
+  qu'un avertissement trompeur.
+- `computeTypeChangeAddedAt()` accepte maintenant un 3ᵉ paramètre optionnel `minEffectiveTs` —
+  plancher appliqué à la date effective AVANT la comparaison avec `added_at` existant. Avec
+  `saison_start_date` comme plancher, une activation/désactivation faite avant la vraie date de
+  début garde `added_at` à cette date plutôt que de reculer inutilement ; une fois la vraie
+  saison commencée (`effectiveTs ≥ minEffectiveTs`), le comportement d'origine s'applique
+  normalement (recule bel et bien pour couvrir de vrais matchs manqués).
+- Branché dans `/gestion-effectifs` (`activate`/`deactivate`) et `/admin/transactions`
+  (`type_change`). **Pas** dans `/admin/historique`, qui saisit délibérément des dates passées
+  — ce plancher n'a pas de sens là et casserait des corrections historiques légitimes.
+- `changedAt`/`txTs` eux-mêmes restent inchangés (la libération garde sa vraie date du jour,
+  nécessaire au calcul de la fenêtre de réclamation du ballotage) — seul le calcul interne de
+  `added_at` pour les activations/désactivations est affecté.
+- Validé avec `tsc --noEmit` et `eslint` (0 nouvelle erreur — mêmes avertissements
+  pré-existants qu'avant dans les fichiers touchés).
+
 ### 2026-09-21 (suite — masquer les transactions pré-saison dans l'historique de /gestion-effectifs)
 
 **[Feature] — Historique des mouvements sans le bruit du ménage pré-saison**

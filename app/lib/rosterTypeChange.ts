@@ -8,14 +8,28 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // avec le bon statut dans roster_change_log — added_at borne la fenêtre en premier lieu.
 // La date effective saisie fait foi comme date de début : on recule added_at, avec un
 // avertissement non bloquant pour que l'admin le sache.
+//
+// `minEffectiveTs` (David, 2026-09-21) — plancher optionnel, typiquement la date de début de
+// saison configurée (`pool_seasons.saison_start_date`). Cas trouvé en pratique : un pooler
+// ajuste actif/réserviste juste après "Démarrer la saison" mais AVANT la vraie date de début
+// (ex: saison démarrée le 21 pour une date de début le 29 — aucun match n'est joué entre les
+// deux, donc reculer added_at à aujourd'hui n'a aucune valeur pour buildStandings() et
+// n'affiche qu'un avertissement trompeur). Avec ce plancher, une activation faite avant la
+// vraie date de début garde added_at à cette date plutôt que de reculer inutilement ; une
+// correction faite pendant la vraie saison (effectiveTs ≥ minEffectiveTs) n'est pas affectée —
+// le comportement d'origine (reculer jusqu'à effectiveTs) s'applique alors normalement. Les
+// appelants qui saisissent délibérément une date passée (ex: /admin/historique) omettent ce
+// paramètre pour garder le comportement d'origine sans plancher.
 export function computeTypeChangeAddedAt(
   currentAddedAt: string | null,
   effectiveTs: string,
+  minEffectiveTs?: string,
 ): { addedAtOverride?: string; warning?: string } {
-  if (currentAddedAt && effectiveTs < currentAddedAt) {
+  const ts = minEffectiveTs && effectiveTs < minEffectiveTs ? minEffectiveTs : effectiveTs
+  if (currentAddedAt && ts < currentAddedAt) {
     return {
-      addedAtOverride: effectiveTs,
-      warning: `Date d'ajout au roster reculée du ${currentAddedAt.slice(0, 10)} au ${effectiveTs.slice(0, 10)} pour couvrir la transaction.`,
+      addedAtOverride: ts,
+      warning: `Date d'ajout au roster reculée du ${currentAddedAt.slice(0, 10)} au ${ts.slice(0, 10)} pour couvrir la transaction.`,
     }
   }
   return {}

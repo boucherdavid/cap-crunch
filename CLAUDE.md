@@ -545,6 +545,13 @@ existants) — pas des pages à part entière.
   `/admin/transactions` (`type_change`/`promote`/`reactivate`, `transactionDate`). Toute
   nouvelle action qui modifie `player_type` sur une ligne existante avec une date
   potentiellement passée doit passer par cette même fonction plutôt que de dupliquer la logique.
+  Paramètre optionnel `minEffectiveTs` (David, 2026-09-21) — plancher, typiquement
+  `saison_start_date` : évite de reculer `added_at` jusqu'à aujourd'hui quand une
+  activation/désactivation a lieu après "Démarrer la saison" mais avant la vraie date de
+  début (ex: saison démarrée le 21 pour un vrai début le 29 — aucun match joué entre les deux,
+  reculer n'apporte rien et n'affiche qu'un avertissement trompeur). Branché dans
+  `/gestion-effectifs` et `/admin/transactions` ; **pas** dans `/admin/historique`, qui saisit
+  délibérément des dates passées et doit garder le comportement d'origine sans plancher.
 - **Périodes affichées** (`PlayerContrib.periods`, popup ↩ dans `/classement` et
   `/poolers/[id]`) : une entrée par fenêtre **active** contiguë (via `activeSegments()`), pas
   une entrée par ligne `pooler_rosters`. Un joueur réactivé plusieurs fois sans jamais quitter

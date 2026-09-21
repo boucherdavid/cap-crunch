@@ -198,12 +198,15 @@ export async function applyTransactionItems(
   if (items.length === 0) return { error: 'La transaction est vide.' }
 
   const [{ data: saison }, { data: settings }] = await Promise.all([
-    supabase.from('pool_seasons').select('season, pool_cap, season_started').eq('id', saisonId).single(),
+    supabase.from('pool_seasons').select('season, pool_cap, season_started, saison_start_date').eq('id', saisonId).single(),
     supabase.from('app_settings').select('unsigned_player_cap_multiplier, nhl_minimum_salary').eq('id', 1).maybeSingle(),
   ])
   if (!saison) return { error: 'Saison introuvable.' }
   const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
   const nhlMinimumSalary = settings?.nhl_minimum_salary ?? DEFAULT_NHL_MINIMUM_SALARY
+  // Plancher pour computeTypeChangeAddedAt (David, 2026-09-21) — voir le commentaire détaillé
+  // dans app/lib/rosterTypeChange.ts et gestion-effectifs/actions.ts (même logique).
+  const minAddedAtTs = saison.saison_start_date ? `${saison.saison_start_date}T12:00:00Z` : undefined
 
   // Pré-saison (saison active mais pas encore démarrée via /admin/nouvelle-saison) : ni
   // validation ni journalisation — voir CLAUDE.md section 6 / SUIVI_PROJET.md 2026-08-31.
@@ -518,7 +521,7 @@ export async function applyTransactionItems(
         .eq('is_active', true)
         .maybeSingle()
       if (!existingRow) return { error: `Joueur (id: ${player_id}) avec type "${matchType}" introuvable.` }
-      const { addedAtOverride, warning } = computeTypeChangeAddedAt(existingRow.added_at, txTs)
+      const { addedAtOverride, warning } = computeTypeChangeAddedAt(existingRow.added_at, txTs, minAddedAtTs)
       if (warning) warnings.push(warning)
 
       // Promouvoir une recrue dont la protection (5 saisons depuis le repêchage pour un
