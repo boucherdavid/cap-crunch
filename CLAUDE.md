@@ -115,6 +115,16 @@ python sync_staging_to_prod.py           # dry-run — aucune écriture, affiche
 python sync_staging_to_prod.py --apply   # exécution réelle — demande confirmation "oui"
 ```
 
+```bash
+# Régénère l'outil de backup manuel (David, 2026-09-21) — snapshot HTML autonome (alignements,
+# table de contrats des joueurs rostered, journal des mouvements) de la saison active en PROD,
+# éditable à la main dans le navigateur (localStorage) sans dépendre de l'app/Supabase — filet
+# de sécurité en cas de pépin. Cible toujours prod (python_script/.env), comme les autres
+# scripts. Régénéré aussi automatiquement chaque dimanche (.github/workflows/backup_tool.yml).
+cd python_script
+python generate_backup_tool.py   # écrit backup/pool_backup.html
+```
+
 ---
 
 ## 3. Structure du projet
@@ -134,7 +144,8 @@ Hockey_Pool_App/
 ├── .github/
 │   └── workflows/
 │       ├── import.yml             ← Pipeline auto (lundi 6h UTC + manuel)
-│       └── keepalive_staging.yml  ← Ping staging (jeudi 6h UTC) pour éviter pause Supabase
+│       ├── keepalive_staging.yml  ← Ping staging (jeudi 6h UTC) pour éviter pause Supabase
+│       └── backup_tool.yml        ← Régénère backup/pool_backup.html (dimanche 12h UTC + manuel)
 ├── app/                       ← Application Next.js
 │   ├── CLAUDE.md              ← Règles spécifiques Next.js/TypeScript
 │   ├── AGENTS.md
@@ -149,10 +160,12 @@ Hockey_Pool_App/
 │   ├── scrape_puckpedia.py
 │   ├── import_supabase.py
 │   ├── import_drafts.py
+│   ├── generate_backup_tool.py ← Génère backup/pool_backup.html (voir section 2)
 │   ├── source/                ← CSV générés par le scraping
 │   ├── teams_offline/
 │   ├── diagnostics/
 │   └── archive/
+├── backup/                    ← Généré (pool_backup.html) — pas de code source ici
 └── supabase_migrations/       ← Migrations SQL historiques
 ```
 
@@ -1071,6 +1084,7 @@ Exemples :
 | `app/proxy.ts` | Auth + redirections (remplace middleware.ts) |
 | `python_script/run_pipeline.py` | Point d'entrée pipeline de données |
 | `python_script/sync_staging_to_prod.py` | Synchronise l'historique de roster staging → prod |
+| `python_script/generate_backup_tool.py` | Génère `backup/pool_backup.html` (backup manuel hors-ligne) |
 | `schema.sql` | Schéma de référence BD |
 | `supabase_migrations/` | Migrations SQL historiques |
 | `credentials/` | Identifiants poolers générés (staging/prod) — gitignored, jamais commité |

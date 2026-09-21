@@ -21,6 +21,42 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-21 (suite — outil de backup manuel hors-ligne)
+
+**[Feature] — outil HTML autonome de backup des alignements**
+(nouveaux : `python_script/generate_backup_tool.py`, `.github/workflows/backup_tool.yml`) :
+- David a demandé un outil "à la Excel" pour suivre les alignements manuellement en cas de
+  pépin avec l'app/Vercel/Supabase — dans l'esprit du fichier qu'il utilisait avant de migrer
+  vers marqueur.com puis Cap Crunch. Contrainte explicite : pas deux outils à maintenir en
+  parallèle (pas de double saisie qui dérive de la réalité).
+- Décision : un fichier **HTML statique autonome** (`backup/pool_backup.html`) plutôt qu'un
+  artefact hébergé sur claude.ai — zéro dépendance, même à internet, pour être vraiment
+  indépendant d'une panne de l'app elle-même. Généré par un script Python
+  (`generate_backup_tool.py`, cible toujours prod comme les autres scripts) qui embarque en
+  JSON : les alignements de la saison active, une table de référence des contrats (seulement
+  les joueurs déjà rostered — pas tout le bassin LNH, même logique que l'ancien Excel), et les
+  500 derniers mouvements (`roster_change_log`). Les modifications faites dans le navigateur
+  (changer un type, retirer/ajouter un joueur) sont sauvegardées en `localStorage`, jamais
+  renvoyées à Supabase — un bouton "Réinitialiser depuis l'export" permet de revenir à
+  l'instantané d'origine.
+- Régénération : à la demande (`python generate_backup_tool.py`) ou automatiquement chaque
+  dimanche 12h UTC (`.github/workflows/backup_tool.yml`, même patron que `import.yml` —
+  secrets `SUPABASE_URL`/`SUPABASE_SERVICE_KEY` déjà configurés, pointent vers prod) ; le
+  workflow committe le fichier régénéré s'il a changé. Une régénération automatique écrase
+  volontairement les ajustements manuels faits dans le navigateur du dimanche précédent — c'est
+  voulu (le fichier du dépôt est un point de repère synchronisé, pas le journal de travail ;
+  les ajustements ponctuels pendant une vraie panne sont censés être de courte durée).
+- Bug corrigé en testant : `roster_change_log` a deux clés étrangères vers `poolers`
+  (`pooler_id` et `changed_by`), la jointure PostgREST `poolers (name)` était ambiguë — précisé
+  en `poolers!roster_change_log_pooler_id_fkey (name)`.
+- Vérifié : script exécuté avec succès contre staging (326 joueurs, 326 contrats, 7
+  mouvements), JSON embarqué validé (`JSON.parse` réussi) et JS du fichier généré validé
+  syntaxiquement (`node --check` via `vm.Script`) — pas de test visuel dans un navigateur réel
+  (aucun accès dans cet environnement), à valider par David en ouvrant le fichier localement.
+  Fichier de test (généré depuis staging) supprimé avant commit — rien n'est encore généré
+  contre prod (actuellement vide suite au vidage du 2026-09-20, voir plus loin dans ce journal
+  — un premier vrai backup n'aura de sens qu'une fois les alignements reconstruits).
+
 ### 2026-09-21 (suite — notification "modifié par l'admin" envoyée à tort quand l'admin gère son propre alignement)
 
 **[Fix] — notification push envoyée à l'admin pour ses propres mouvements**
