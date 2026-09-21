@@ -96,10 +96,12 @@ function ComplianceCard({
           <span className={pooler.capSpace < 0 ? 'text-red-600 font-medium' : 'text-gray-600'}>
             {pooler.capSpace >= 0 ? `${fmt(pooler.capSpace)} dispo` : `${fmt(Math.abs(pooler.capSpace))} dépassé`}
           </span>
-          {pooler.isReadyForDraft ? (
-            <span className="text-[10px] font-medium bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded">Prêt</span>
-          ) : pooler.isOverLimits ? (
+          {pooler.isOverLimits ? (
             <span className="text-[10px] font-medium bg-red-50 text-red-600 px-1.5 py-0.5 rounded">À libérer</span>
+          ) : pooler.slotsManquants === 0 ? (
+            <span className="text-[10px] font-medium bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded">Alignement minimum atteint</span>
+          ) : pooler.isReadyForDraft ? (
+            <span className="text-[10px] font-medium bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded">Espace OK</span>
           ) : (
             <span className="text-[10px] font-medium bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">
               Manque {fmt(pooler.capNeededForReady - pooler.capSpace)}
@@ -521,8 +523,11 @@ export default function PresaisonManager({
               ✓ Dernier repêchage terminé — tous les poolers éligibles ont complété leur tour ou n&apos;ont plus d&apos;espace suffisant.
             </p>
           )}
+          <p className="text-xs text-gray-400 mb-1">
+            Seuil de participation : {fmt(data.nhlMinimumSalary)} d&apos;espace cap. En dessous, le pooler est retiré automatiquement de la file.
+          </p>
           <p className="text-xs text-gray-400 mb-4">
-            Seuil de participation : {fmt(data.nhlMinimumSalary)} d'espace cap. En dessous, le pooler est retiré automatiquement de la file.
+            Sert aussi de priorité au ballotage jusqu&apos;au 1er novembre (avant que le classement réel de la saison ait du sens) — l&apos;ajuster ici l&apos;ajuste partout.
           </p>
 
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">

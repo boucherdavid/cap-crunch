@@ -51,6 +51,12 @@ CREATE TABLE pool_seasons (
   is_active BOOLEAN DEFAULT false,
   is_public BOOLEAN NOT NULL DEFAULT true,  -- masque une saison inactive des sélecteurs publics (transactions, repêchage recrues) — n'affecte jamais la saison active elle-même
   saison_start_date DATE,                -- début du comptage; NULL = saison déjà démarrée
+  -- season_started (BOOLEAN, ajoutée hors de ce fichier — voir "Démarrer vs activer",
+  -- CLAUDE.md section 5) bascule à true via demarrerSaisonAction ; season_started_at
+  -- (David, 2026-09-21) horodate ce même moment précisément, pour calculer une fenêtre de
+  -- délai d'ajustement sans pénalité (voir presaison_pooler_ready.declared_by_admin) —
+  -- distincte de saison_start_date, qui reste une date calendaire configurée à l'avance.
+  season_started_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -911,6 +917,11 @@ CREATE TABLE presaison_pooler_ready (
   pool_season_id INTEGER REFERENCES pool_seasons(id) ON DELETE CASCADE,
   pooler_id UUID REFERENCES poolers(id) ON DELETE CASCADE,
   ready_at TIMESTAMPTZ,
+  -- David, 2026-09-21 : true quand c'est l'admin qui a déclaré ce pooler prêt (bouton
+  -- "Déclarer prêt en son nom", /admin/nouvelle-saison) plutôt que le pooler lui-même — ouvre
+  -- une fenêtre de délai d'ajustement actif↔réserviste sans la contrainte stricte 12/6/2,
+  -- voir pool_seasons.season_started_at et submitBatchAction (gestion-effectifs/actions.ts).
+  declared_by_admin BOOLEAN NOT NULL DEFAULT false,
   PRIMARY KEY (pool_season_id, pooler_id)
 );
 ALTER TABLE presaison_pooler_ready ENABLE ROW LEVEL SECURITY;
@@ -978,3 +989,92 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 -- (staging d'abord, puis prod) :
 --
 -- ALTER TABLE presaison_draft_state ADD COLUMN IF NOT EXISTS pass_skip_one BOOLEAN NOT NULL DEFAULT false;
+
+-- Migration 2026-09-15 : ballotage en cours de saison (file de réclamation par priorité quand
+-- un pooler libère un joueur, saison démarrée seulement) — voir CLAUDE.md section 6 pour la
+-- mécanique complète. RLS "lecture publique + admin gère" même patron que
+-- presaison_draft_state/presaison_pooler_ready — toutes les écritures (création de claim,
+-- réclamation par un pooler, résolution) passent par le client admin depuis des Server
+-- Actions qui font elles-mêmes la vérification d'autorisation. À exécuter une seule fois dans
+-- le SQL Editor Supabase (staging d'abord, puis prod) :
+--
+-- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS waiver_claim_hours INTEGER NOT NULL DEFAULT 72;
+--
+-- CREATE TABLE waiver_claims (
+--   id SERIAL PRIMARY KEY,
+--   pool_season_id INTEGER REFERENCES pool_seasons(id) ON DELETE CASCADE,
+--   player_id INTEGER REFERENCES players(id),
+--   released_by_pooler_id UUID REFERENCES poolers(id),
+--   released_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+--   priority_snapshot JSONB NOT NULL,        -- array de pooler_id, ordre = priorité (pire classé en premier)
+--   window_hours INTEGER NOT NULL,           -- legacy (jours*24), plus lu — voir window_days
+--   window_days INTEGER,                     -- snapshot de app_settings.waiver_claim_days à la création
+--   expires_at TIMESTAMPTZ NOT NULL,
+--   status VARCHAR(20) NOT NULL DEFAULT 'open',  -- open | awarded | resolved_claimed | resolved_unclaimed | blocked
+--   resolved_at TIMESTAMPTZ,
+--   awarded_to_pooler_id UUID REFERENCES poolers(id),
+--   awarded_at TIMESTAMPTZ,  -- passage à 'awarded' — départ du délai de 48h pour que le gagnant complète sa transaction
+--   error_message TEXT
+-- );
+--
+-- CREATE TABLE waiver_claim_requests (
+--   id SERIAL PRIMARY KEY,
+--   waiver_claim_id INTEGER REFERENCES waiver_claims(id) ON DELETE CASCADE,
+--   pooler_id UUID REFERENCES poolers(id),
+--   claimed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+--   UNIQUE (waiver_claim_id, pooler_id)
+-- );
+--
+-- ALTER TABLE waiver_claims ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Lecture publique waiver_claims" ON waiver_claims FOR SELECT USING (true);
+-- CREATE POLICY "Admin gère waiver_claims" ON waiver_claims FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+--
+-- ALTER TABLE waiver_claim_requests ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Lecture publique waiver_claim_requests" ON waiver_claim_requests FOR SELECT USING (true);
+-- CREATE POLICY "Admin gère waiver_claim_requests" ON waiver_claim_requests FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- Migration 2026-09-21 : délai d'ajustement sans pénalité pour un pooler déclaré "prêt" par
+-- l'admin (pas lui-même) — l'admin peut forcer "Démarrer la saison" même si un pooler n'a
+-- jamais cliqué "prêt" (bouton "Déclarer prêt en son nom", notifie le pooler par push), et ce
+-- pooler garde alors 48h après le vrai démarrage pour ajuster librement actif↔réserviste
+-- (submitBatchAction, gestion-effectifs/actions.ts) sans la contrainte stricte 12/6/2 ajoutée
+-- le 2026-09-20 — seulement pour ce type de mouvement, jamais pour une libération/signature.
+-- À exécuter une seule fois dans le SQL Editor Supabase (staging d'abord, puis prod) :
+--
+-- ALTER TABLE pool_seasons ADD COLUMN IF NOT EXISTS season_started_at TIMESTAMPTZ;
+-- ALTER TABLE presaison_pooler_ready ADD COLUMN IF NOT EXISTS declared_by_admin BOOLEAN NOT NULL DEFAULT false;
+
+-- Migration 2026-09-21 (suite) : bouton "Refuser" au ballotage, avec notification anticipée
+-- quand tout le monde devant un réclamant a refusé (voir CLAUDE.md section 6, ballotage) —
+-- réutilise waiver_claim_requests plutôt qu'une nouvelle table : une ligne par (claim, pooler),
+-- `status` distingue réclamation et refus. `guaranteed_notified_at` évite de renotifier deux
+-- fois le même réclamant "garanti". À exécuter une seule fois dans le SQL Editor Supabase
+-- (staging d'abord, puis prod) :
+--
+-- ALTER TABLE waiver_claim_requests ADD COLUMN IF NOT EXISTS status VARCHAR(10) NOT NULL DEFAULT 'claimed';
+-- ALTER TABLE waiver_claim_requests ADD COLUMN IF NOT EXISTS guaranteed_notified_at TIMESTAMPTZ;
+
+-- Migration 2026-09-21 (suite) : le gagnant du ballotage complète lui-même sa transaction au
+-- lieu d'un ajout automatique en réserviste (qui pouvait dépasser son cap et bloquer,
+-- obligeant l'admin à intervenir à chaque fois — voir CLAUDE.md section 6, ballotage). Le
+-- claim passe par un nouveau statut 'awarded' (`status` reste VARCHAR(20) libre, pas de
+-- contrainte CHECK à modifier) le temps que le gagnant soumette lui-même l'ajout depuis
+-- Gestion d'effectifs (bouton "Ballotage" pré-rempli) ; `awarded_at` sert de départ au délai
+-- de grâce de 48h (resolveExpiredAwardedClaims, app/lib/waiverClaims.ts) avant de passer
+-- 'blocked' si le gagnant n'a rien fait. À exécuter une seule fois dans le SQL Editor Supabase
+-- (staging d'abord, puis prod) :
+--
+-- ALTER TABLE waiver_claims ADD COLUMN IF NOT EXISTS awarded_at TIMESTAMPTZ;
+
+-- Migration 2026-09-21 (suite) : fenêtre de réclamation par jour civil (heure de l'Est) plutôt
+-- qu'un délai roulant en heures — un joueur libéré un jour J reste réclamable jusqu'à 23h59 ET
+-- du jour J+`waiver_claim_days` (défaut 2), attribué le lendemain (computeWaiverWindow(),
+-- app/lib/waiverClaims.ts), plus simple à retenir qu'une heure limite qui dépend de l'heure
+-- exacte de la libération. Remplace `waiver_claim_hours`/`window_hours` (colonnes conservées,
+-- plus lues) par `waiver_claim_days`/`window_days`. À exécuter une seule fois dans le SQL
+-- Editor Supabase (staging d'abord, puis prod) :
+--
+-- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS waiver_claim_days INTEGER NOT NULL DEFAULT 2;
+-- ALTER TABLE waiver_claims ADD COLUMN IF NOT EXISTS window_days INTEGER;

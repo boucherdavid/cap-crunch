@@ -2,6 +2,17 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function proxy(request: NextRequest) {
+  // Les prefetch automatiques de Next.js (<Link> visible dans le viewport, ex: menus
+  // Navbar) passent aussi par le middleware. Sans ce garde-fou, chacun déclenche son
+  // propre getUser()/refresh — sur mobile, plusieurs peuvent arriver quasi en même temps
+  // avec le même refresh token (à usage unique côté Supabase) : la première requête le
+  // renouvelle, les suivantes arrivent avec un token déjà invalidé → déconnexion
+  // aléatoire sans action de l'utilisateur. Un prefetch n'affiche jamais rien à
+  // l'utilisateur (la vraie navigation refera l'appel), donc sûr à ignorer ici.
+  if (request.headers.get('Next-Router-Prefetch') === '1') {
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(

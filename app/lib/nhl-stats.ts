@@ -22,6 +22,23 @@ export function toNhlSeasonId(season: string): string {
   return String(start * 10000 + (start + 1))
 }
 
+/** "20252026" → "2025-26" */
+export function nhlSeasonLabel(seasonId: string): string {
+  return `${seasonId.slice(0, 4)}-${seasonId.slice(6, 8)}`
+}
+
+/** Liste de saisons NHL (la plus récente en premier) pour un sélecteur — ex: id "20252026"
+ * en partant de `currentSeasonId`. Purement calculé (pas d'appel réseau), l'API stats NHL
+ * publique couvrant déjà tout l'historique. */
+export function recentNhlSeasons(currentSeasonId: string, count = 15): { id: string; label: string }[] {
+  const startYear = parseInt(currentSeasonId.slice(0, 4), 10)
+  return Array.from({ length: count }, (_, i) => {
+    const y = startYear - i
+    const id = `${y}${y + 1}`
+    return { id, label: nhlSeasonLabel(id) }
+  })
+}
+
 export type NhlSkaterStat = {
   playerId: number
   firstName: string

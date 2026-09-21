@@ -4,7 +4,13 @@ import SimulationTool from './SimulationTool'
 export const metadata = { title: 'Simulation' }
 export const dynamic = 'force-dynamic'
 
-export default async function SimulationPage() {
+export default async function SimulationPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ addPlayer?: string }>
+}) {
+  const { addPlayer } = await searchParams
+  const preloadPlayerId = addPlayer && /^\d+$/.test(addPlayer) ? Number(addPlayer) : undefined
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -29,7 +35,12 @@ export default async function SimulationPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <SimulationTool me={me} saisonId={saison.id} season={saison.season} />
+      <SimulationTool
+        me={me}
+        saisonId={saison.id}
+        season={saison.season}
+        preloadPlayerId={preloadPlayerId}
+      />
     </div>
   )
 }

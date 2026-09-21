@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import AutoReload from '@/components/AutoReload'
 import { submitTransactionAction } from '../admin/transactions/actions'
-import { submitSelfServiceAction, loadOwnRecrueBankAction, setReadyAction, searchSandboxFreeAgentsAction, listTeamsAction, type SandboxFreeAgentResult } from './actions'
+import { submitSelfServiceAction, loadOwnRecrueBankAction, setReadyAction, leaveDraftQueueAction, searchSandboxFreeAgentsAction, listTeamsAction, type SandboxFreeAgentResult } from './actions'
 import AdminPanel from './AdminPanel'
+import TourEnCoursPanel from './TourEnCoursPanel'
 
 type Me = { id: string; name: string; isAdmin: boolean }
 type RosterEntry = {
@@ -68,6 +69,20 @@ function groupRosterByPosition<T extends { position: string | null; cap_number: 
     .filter(g => g.entries.length > 0)
 }
 
+// Couleur d'accent par groupe de position (David, 2026-09-20) — bordure gauche + titre coloré,
+// pour distinguer les regroupements en un coup d'œil dans les longues listes (grandes cartes de
+// "Les 8 poolers" et les deux onglets de "Mon alignement" — même groupRosterByPosition partout,
+// même traitement visuel pour rester cohérent sur toute la page).
+const GROUP_ACCENT: Record<string, { border: string; text: string }> = {
+  Attaquants: { border: 'border-blue-300', text: 'text-blue-500' },
+  Défenseurs: { border: 'border-purple-300', text: 'text-purple-500' },
+  Gardiens: { border: 'border-amber-300', text: 'text-amber-500' },
+  Réservistes: { border: 'border-gray-300', text: 'text-gray-400' },
+}
+function groupAccent(label: string) {
+  return GROUP_ACCENT[label] ?? { border: 'border-gray-200', text: 'text-gray-400' }
+}
+
 function fmtDateTime(iso: string) {
   return new Date(iso).toLocaleString('fr-CA', {
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'America/Toronto',
@@ -110,6 +125,20 @@ export default function AgentsLibresDashboard({
 
   const myPooler = poolers.find(p => p.id === me.id) ?? null
 
+  // Masquer le sommaire des poolers + activité récente (David, 2026-09-18) — un pooler qui ne
+  // s'en sert pas peut redonner cet espace à "Mon alignement". Préférence locale, persistée par
+  // navigateur (localStorage, même patron que PoolerCard/AdminPanel "expanded") — pas une
+  // donnée de saison, chaque pooler garde son propre choix.
+  const sommaireKey = 'al-sommaire-visible'
+  const [sommaireVisible, setSommaireVisibleState] = useState(() => {
+    if (typeof window === 'undefined') return true
+    try { return localStorage.getItem(sommaireKey) !== '0' } catch { return true }
+  })
+  const setSommaireVisible = (visible: boolean) => {
+    setSommaireVisibleState(visible)
+    try { localStorage.setItem(sommaireKey, visible ? '1' : '0') } catch { /* stockage indisponible — pas grave */ }
+  }
+
   // AutoReload (rechargement complet toutes les 8s pendant un tour actif) coupait
   // net une sélection de libération en cours dans MonAlignement — le pooler n'avait
   // jamais le temps de cocher des joueurs avant que la page ne se recharge sous lui
@@ -137,14 +166,18 @@ export default function AgentsLibresDashboard({
   }, [])
   // Même correctif pour la sélection d'un agent libre en cours de signature (David,
   // 2026-09-10, repéré en plein vrai repêchage — la sélection sautait sous l'admin avant
-  // même qu'il puisse cliquer "Signer").
+  // même qu'il puisse cliquer "Signer") — porté par TourEnCoursPanel depuis le 2026-09-18.
   const [adminSigningActive, setAdminSigningActive] = useState(false)
+  // Ordre du repêchage réordonné localement pas encore sauvegardé dans AdminPanel (colonne de
+  // gauche depuis le 2026-09-18) — séparé de adminSigningActive puisque les deux widgets sont
+  // désormais deux composants distincts.
+  const [adminOrderDirty, setAdminOrderDirty] = useState(false)
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4">
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Repêchage — Agents libres</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Signatures des agents libres</h1>
           <p className="text-gray-500 text-sm mt-1">
             {season}
             {draftState.is_active && <span className="ml-2 text-amber-600 font-medium">· En cours</span>}
@@ -162,17 +195,30 @@ export default function AgentsLibresDashboard({
         {/* Intervalle allongé à 5 min (David, 2026-09-10) — 8s faisait clignoter la page en
             continu ; le bouton "Rafraîchir" manuel (toujours visible, voir AutoReload.tsx)
             couvre le besoin de voir un changement tout de suite sans attendre. */}
-        <AutoReload enabled={!draftState.ended_at && !releaseSelectionActive && adminReleaseSelectionIds.size === 0 && !adminSigningActive} intervalMs={300000} />
+        <div className="flex items-center gap-3">
+          {!sommaireVisible && (
+            <button
+              onClick={() => setSommaireVisible(true)}
+              className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+            >
+              ☰ Afficher le sommaire
+            </button>
+          )}
+          <AutoReload enabled={!draftState.ended_at && !releaseSelectionActive && adminReleaseSelectionIds.size === 0 && !adminSigningActive && !adminOrderDirty} intervalMs={300000} />
+        </div>
       </div>
 
+      {/* Widget "Signature en cours" (David, 2026-09-18) — extrait du Panneau admin pour rester
+          visible en haut de page pendant un tour actif, sans avoir à déplier le panneau
+          (déplacé en colonne de gauche ci-dessous) juste pour signer. */}
       {me.isAdmin && !seasonStarted && (
-        <AdminPanel
+        <TourEnCoursPanel
           saisonId={saisonId}
           season={season}
           poolers={poolers}
-          initialDraftOrder={draftOrder}
           draftState={draftState}
           nhlMinimumSalary={nhlMinimumSalary}
+          now={now}
           onSelectionChange={setAdminSigningActive}
         />
       )}
@@ -198,49 +244,36 @@ export default function AgentsLibresDashboard({
         </div>
       )}
 
-      {/* Remontée en haut de page et bornée avec défilement (David, 2026-09-10) — pour que les
-          poolers puissent suivre le repêchage en direct sans descendre toute la page, et sans
-          que la liste s'allonge indéfiniment. */}
-      <div className="bg-white rounded-lg shadow mb-6">
-        <div className="px-5 py-3 border-b flex items-center justify-between flex-wrap gap-1">
-          <h2 className="text-sm font-semibold text-gray-700">Activité récente</h2>
-          <p className="text-xs text-gray-400">Signatures, libérations, remises en banque et activations de recrue du ménage pré-saison</p>
-        </div>
-        {recentActivity.length === 0 ? (
-          <p className="text-gray-400 text-sm text-center px-5 py-6">Aucune activité pour l&apos;instant.</p>
-        ) : (
-          <div className="max-h-72 overflow-y-auto divide-y">
-            {recentActivity.map(r => (
-              <div key={`${r.kind}-${r.id}`} className="px-5 py-2.5 text-sm flex items-center gap-2">
-                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                  r.kind === 'sign' ? 'bg-emerald-400' : r.kind === 'banque' ? 'bg-amber-400' : r.kind === 'promote' ? 'bg-blue-400' : 'bg-red-400'
-                }`} />
-                <span className="font-medium text-gray-800">{r.poolerName}</span>
-                <span className="text-gray-500">
-                  {r.kind === 'sign' ? 'a signé' : r.kind === 'banque' ? 'a remis en banque' : r.kind === 'promote' ? 'a activé' : 'a libéré'}
-                </span>
-                <span className="font-medium text-gray-800">{r.playerName}</span>
-                {r.position && <span className="text-gray-400 text-xs">({r.position})</span>}
-                <span className="ml-auto text-xs text-gray-400">{fmtDateTime(r.at)}</span>
-              </div>
-            ))}
+      {/* Disposition en 3 colonnes (David, 2026-09-18, pour réduire le défilement pendant un
+          repêchage en direct) : panneau admin à gauche (réglages/file d'attente, moins
+          fréquents — voir TourEnCoursPanel.tsx ci-dessus pour la signature elle-même), "Mon
+          alignement" au centre en plus large (recherche d'agents libres + gestion des recrues y
+          avaient peu de place dans l'ancienne colonne étroite), sommaire compact des poolers +
+          activité récente à droite (vue d'ensemble sans avoir à déplier quoi que ce soit) —
+          masquable (voir sommaireVisible ci-dessus) pour redonner cet espace à "Mon alignement".
+          Le centre reste toujours col-span-3 ; seul le nombre total de colonnes varie selon le
+          nombre de colonnes latérales réellement affichées (0, 1 ou 2), gardé en classes
+          Tailwind littérales pour que le JIT les détecte. Les grandes cartes détaillées par
+          pooler (alignement complet, actions admin) restent plus bas, accessibles à tous — le
+          sommaire s'ajoute, il ne les remplace pas. */}
+      <div className={`grid grid-cols-1 gap-6 ${
+        (me.isAdmin && !seasonStarted ? 1 : 0) + (sommaireVisible ? 1 : 0) === 2 ? 'lg:grid-cols-5'
+          : (me.isAdmin && !seasonStarted) || sommaireVisible ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
+      }`}>
+        {me.isAdmin && !seasonStarted && (
+          <div className="lg:col-span-1">
+            <AdminPanel
+              saisonId={saisonId}
+              poolers={poolers}
+              initialDraftOrder={draftOrder}
+              draftState={draftState}
+              nhlMinimumSalary={nhlMinimumSalary}
+              onSelectionChange={setAdminOrderDirty}
+            />
           </div>
         )}
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Les 8 poolers</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {poolers.map(p => (
-                <PoolerCard key={p.id} pooler={p} poolCap={poolCap} isCurrentDrafter={p.id === currentPoolerId} isAdmin={me.isAdmin} saisonId={saisonId} onReleaseSelectionChange={setAdminReleaseSelectionFor} />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-6">
+        <div className="lg:col-span-3">
           <MonAlignement
             me={me}
             myPooler={myPooler}
@@ -249,9 +282,108 @@ export default function AgentsLibresDashboard({
             nhlMinimumSalary={nhlMinimumSalary}
             seasonStarted={seasonStarted}
             releasePhaseOpen={draftState.release_phase_open}
+            inDraftQueue={draftState.is_active && draftState.queue.includes(me.id)}
             onReleaseSelectionChange={setReleaseSelectionActive}
           />
         </div>
+
+        {sommaireVisible && (
+        <div className="lg:col-span-1 space-y-6">
+          <div className="flex justify-end -mb-3">
+            <button onClick={() => setSommaireVisible(false)} className="text-xs text-gray-400 hover:text-gray-600">
+              ✕ Masquer
+            </button>
+          </div>
+          <PoolersSommaire poolers={poolers} poolCap={poolCap} currentPoolerId={currentPoolerId} />
+
+          {/* Bornée avec défilement (David, 2026-09-10) — pour que les poolers puissent suivre
+              le repêchage en direct sans que la liste s'allonge indéfiniment. */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="px-4 py-3 border-b">
+              <h2 className="text-sm font-semibold text-gray-700">Activité récente</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Signatures, libérations, remises en banque et activations de recrue du ménage pré-saison</p>
+            </div>
+            {recentActivity.length === 0 ? (
+              <p className="text-gray-400 text-sm text-center px-4 py-6">Aucune activité pour l&apos;instant.</p>
+            ) : (
+              <div className="max-h-96 overflow-y-auto divide-y">
+                {recentActivity.map(r => (
+                  <div key={`${r.kind}-${r.id}`} className="px-4 py-2.5 text-xs flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                        r.kind === 'sign' ? 'bg-emerald-400' : r.kind === 'banque' ? 'bg-amber-400' : r.kind === 'promote' ? 'bg-blue-400' : 'bg-red-400'
+                      }`} />
+                      <span className="font-medium text-gray-800">{r.poolerName}</span>
+                      <span className="text-gray-500">
+                        {r.kind === 'sign' ? 'a signé' : r.kind === 'banque' ? 'a remis en banque' : r.kind === 'promote' ? 'a activé' : 'a libéré'}
+                      </span>
+                    </div>
+                    <div className="pl-3 text-gray-600">
+                      {r.playerName}{r.position && <span className="text-gray-400"> ({r.position})</span>}
+                      <span className="ml-2 text-gray-400">{fmtDateTime(r.at)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        )}
+      </div>
+
+      <div className="mt-6">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Les 8 poolers</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          {poolers.map(p => (
+            <PoolerCard key={p.id} pooler={p} poolCap={poolCap} isCurrentDrafter={p.id === currentPoolerId} isAdmin={me.isAdmin} saisonId={saisonId} onReleaseSelectionChange={setAdminReleaseSelectionFor} />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Sommaire compact des 8 poolers (David, 2026-09-18) — vue d'ensemble (espace cap + décompte
+// par position) sans avoir à déplier chaque carte détaillée de "Les 8 poolers" ci-dessous, qui
+// reste la référence complète (alignement joueur par joueur, actions admin) — un ajout, pas un
+// remplacement. Logique de badge délibérément dupliquée (pas extraite en fonction partagée
+// avec PoolerCard) plutôt qu'abstraite prématurément — les deux affichages divergent déjà
+// (tooltips détaillés dans PoolerCard, rien ici).
+function PoolersSommaire({
+  poolers, poolCap, currentPoolerId,
+}: {
+  poolers: PoolerInfo[]
+  poolCap: number
+  currentPoolerId: string | null
+}) {
+  return (
+    <div className="bg-white rounded-lg shadow p-4">
+      <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Sommaire des poolers</h2>
+      <div className="divide-y">
+        {poolers.map(p => {
+          const remain = poolCap - p.capUsed
+          const badge = p.isOverLimits
+            ? { text: 'À libérer', cls: 'text-red-600 border-red-200' }
+            : p.slotsManquants === 0
+              ? { text: 'Minimum atteint', cls: 'text-emerald-600 border-emerald-200' }
+              : p.isReadyForDraft
+                ? { text: 'Espace OK', cls: 'text-emerald-600 border-emerald-200' }
+                : { text: `Manque ${fmt(p.capNeededForReady - p.capSpace)}`, cls: 'text-amber-600 border-amber-200' }
+          return (
+            <div key={p.id} className={`text-xs py-2 first:pt-0 last:pb-0 ${p.id === currentPoolerId ? 'bg-amber-50 -mx-2 px-2 rounded' : ''}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-gray-800">{p.name}</span>
+                <span className={`font-medium shrink-0 ${remain < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                  {remain < 0 ? `${fmt(Math.abs(remain))} surplus` : fmt(remain)}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                <span className="text-gray-400">{p.counts.forward}F {p.counts.defense}D {p.counts.goalie}G {p.counts.reserviste}Rés.</span>
+                <span className={`ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded border ${badge.cls}`}>{badge.text}</span>
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -294,6 +426,13 @@ function PoolerCard({
   const [banqueErr, setBanqueErr] = useState<string | null>(null)
   const [banqueMode, setBanqueMode] = useState(false)
   const [selectedForBanque, setSelectedForBanque] = useState<Set<number>>(new Set())
+
+  // Basculer actif↔réserviste au nom d'un pooler (David, 2026-09-17) — même geste que le
+  // libre-service (MonAlignement, handleToggleType), mais pour n'importe quel pooler. Immédiat
+  // (pas de mode sélection), pour aider à rendre un alignement conforme (12/6/2) ou ajuster
+  // pour un pooler qui n'a pas accès à l'app pendant le repêchage AL.
+  const [togglingId, setTogglingId] = useState<number | null>(null)
+  const [toggleErr, setToggleErr] = useState<string | null>(null)
 
   // Même correctif que MonAlignement (voir AgentsLibresDashboard) — AutoReload coupait une
   // sélection de libération/mise en banque admin en cours (David, 2026-09-09).
@@ -374,6 +513,20 @@ function PoolerCard({
     }
   }
 
+  const handleAdminToggleType = async (entry: RosterEntry) => {
+    setTogglingId(entry.player_id); setToggleErr(null)
+    try {
+      const newType = entry.player_type === 'actif' ? 'reserviste' : 'actif'
+      const result = await submitTransactionAction(saisonId, 'Ajustement pré-saison', [{
+        action_type: 'type_change', from_pooler_id: pooler.id, to_pooler_id: pooler.id,
+        player_id: entry.player_id, old_player_type: entry.player_type, new_player_type: newType,
+      }])
+      if (result.error) { setTogglingId(null); setToggleErr(result.error) } else { window.location.reload() }
+    } catch {
+      setTogglingId(null); setToggleErr('Erreur inattendue — réessaie.')
+    }
+  }
+
   return (
     <div className={`bg-white rounded-lg shadow p-4 border ${isCurrentDrafter ? 'border-amber-400 ring-2 ring-amber-100' : 'border-transparent'}`}>
       <div className="flex items-center justify-between mb-2">
@@ -400,12 +553,19 @@ function PoolerCard({
           >
             À libérer
           </span>
-        ) : pooler.slotsManquants > 0 && (
+        ) : pooler.slotsManquants === 0 ? (
+          <span
+            className="text-xs font-medium px-1.5 py-0.5 rounded border text-emerald-600 border-emerald-200"
+            title="12 attaquants, 6 défenseurs, 2 gardiens actifs et au moins 2 réservistes"
+          >
+            Alignement minimum atteint
+          </span>
+        ) : (
           <span
             className={`text-xs font-medium px-1.5 py-0.5 rounded border ${pooler.isReadyForDraft ? 'text-emerald-600 border-emerald-200' : 'text-amber-600 border-amber-200'}`}
             title={`${pooler.slotsManquants} poste(s) à combler — besoin d'au moins ${fmt(pooler.capNeededForReady)} d'espace`}
           >
-            {pooler.isReadyForDraft ? 'Prêt' : `Manque ${fmt(pooler.capNeededForReady - pooler.capSpace)}`}
+            {pooler.isReadyForDraft ? 'Espace OK' : `Manque ${fmt(pooler.capNeededForReady - pooler.capSpace)}`}
           </span>
         )}
       </div>
@@ -444,13 +604,14 @@ function PoolerCard({
           {pooler.roster.length === 0 ? (
             <p className="text-xs text-gray-400">Aucun joueur.</p>
           ) : groupRosterByPosition(pooler.roster).map(group => (
-            <div key={group.label}>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{group.label}</p>
+            <div key={group.label} className={`border-l-2 pl-2 ${groupAccent(group.label).border}`}>
+              <p className={`text-[10px] font-semibold uppercase tracking-wide mb-0.5 ${groupAccent(group.label).text}`}>{group.label}</p>
               <div className="space-y-0.5">
                 {group.entries.map(e => {
                   const selected = selectedForRelease.has(e.player_id)
                   const banqueEligible = !!e.rookieType
                   const banqueSelected = selectedForBanque.has(e.player_id)
+                  const canToggleType = e.player_type === 'actif' || e.player_type === 'reserviste'
                   return (
                     <div key={e.roster_id} className={`flex items-center justify-between text-xs text-gray-600 py-0.5 gap-2 ${selected ? 'bg-red-50 rounded px-1' : banqueSelected ? 'bg-amber-50 rounded px-1' : ''}`}>
                       <span className="flex-1">
@@ -459,6 +620,16 @@ function PoolerCard({
                         {banqueMode && banqueEligible && <span className="ml-1 text-amber-500" title="Encore sous protection recrue — éligible">★</span>}
                       </span>
                       <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
+                      {isAdmin && !releaseMode && !banqueMode && canToggleType && (
+                        <button
+                          onClick={() => handleAdminToggleType(e)}
+                          disabled={togglingId === e.player_id}
+                          title={e.player_type === 'actif' ? 'Mettre en réserve' : 'Activer'}
+                          className="text-[10px] px-1.5 py-0.5 border rounded text-gray-500 hover:text-blue-600 hover:border-blue-300 shrink-0 disabled:opacity-40"
+                        >
+                          {togglingId === e.player_id ? '...' : e.player_type === 'actif' ? '→ Rés.' : '→ Actif'}
+                        </button>
+                      )}
                       {isAdmin && releaseMode && (
                         <button
                           onClick={() => toggleReleaseSelect(e.player_id)}
@@ -511,6 +682,7 @@ function PoolerCard({
             </div>
           )}
           {banqueErr && <p className="text-xs text-red-600 mt-1">{banqueErr}</p>}
+          {toggleErr && <p className="text-xs text-red-600 mt-1">{toggleErr}</p>}
         </div>
       )}
     </div>
@@ -520,7 +692,7 @@ function PoolerCard({
 type RecrueOption = { roster_id: number; player_id: number; name: string; position: string | null; cap_number: number }
 
 function MonAlignement({
-  me, myPooler, poolCap, saisonId, nhlMinimumSalary, seasonStarted, releasePhaseOpen, onReleaseSelectionChange,
+  me, myPooler, poolCap, saisonId, nhlMinimumSalary, seasonStarted, releasePhaseOpen, inDraftQueue, onReleaseSelectionChange,
 }: {
   me: Me
   myPooler: PoolerInfo | null
@@ -529,6 +701,7 @@ function MonAlignement({
   nhlMinimumSalary: number
   seasonStarted: boolean
   releasePhaseOpen: boolean
+  inDraftQueue: boolean
   onReleaseSelectionChange?: (active: boolean) => void
 }) {
   const [tab, setTab] = useState<'actuel' | 'sandbox'>('actuel')
@@ -561,6 +734,8 @@ function MonAlignement({
   const [busy, setBusy] = useState(false)
   const [selfErr, setSelfErr] = useState<string | null>(null)
   const [togglingReady, setTogglingReady] = useState(false)
+  const [leavingQueue, setLeavingQueue] = useState(false)
+  const [leaveQueueErr, setLeaveQueueErr] = useState<string | null>(null)
 
   // Déclaration "mon alignement est prêt" (David, 2026-09-08) — confirme uniquement que les
   // actifs/réservistes sont placés comme voulu ; remise à zéro automatiquement côté serveur
@@ -573,6 +748,20 @@ function MonAlignement({
     } catch {
       setTogglingReady(false)
       setSelfErr('Erreur inattendue — réessaie.')
+    }
+  }
+  // Se retirer soi-même du repêchage AL (David, 2026-09-18) — visible seulement pendant un
+  // tour actif où on est encore dans la file, et seulement si l'alignement actif est déjà
+  // complet (12A/6D/2G + min. 2 rés.) : pas obligé de dépenser tout son cap, donc pas obligé
+  // d'attendre son tour juste pour "Passer" à répétition. Revérifié côté serveur.
+  const handleLeaveQueue = async () => {
+    if (!window.confirm('Te retirer du repêchage des agents libres ? Tu ne seras plus rappelé pour signer, même s\'il reste de l\'espace cap.')) return
+    setLeavingQueue(true); setLeaveQueueErr(null)
+    try {
+      const result = await leaveDraftQueueAction(saisonId)
+      if (result.error) { setLeavingQueue(false); setLeaveQueueErr(result.error) } else { window.location.reload() }
+    } catch {
+      setLeavingQueue(false); setLeaveQueueErr('Erreur inattendue — réessaie.')
     }
   }
   const [releaseMode, setReleaseMode] = useState(false)
@@ -764,7 +953,7 @@ function MonAlignement({
   // signature pas encore faite ; signer reste admin-only, jamais soumis d'ici.
   const handleSubmitSandboxReleases = async () => {
     if (removed.size === 0) return
-    if (!window.confirm(`Libérer ${removed.size} joueur${removed.size > 1 ? 's' : ''} pour vrai ? Cette partie du bac à sable sera appliquée à ton alignement réel.`)) return
+    if (!window.confirm(`Libérer ${removed.size} joueur${removed.size > 1 ? 's' : ''} pour vrai ? Cette partie de la simulation sera appliquée à ton alignement réel.`)) return
     setBusy(true); setSelfErr(null)
     try {
       const items = Array.from(removed).map(playerId => ({ action_type: 'release' as const, player_id: playerId }))
@@ -783,6 +972,8 @@ function MonAlignement({
     )
   }
 
+  const rosterComplete = myPooler.counts.forward === 12 && myPooler.counts.defense === 6
+    && myPooler.counts.goalie === 2 && myPooler.counts.reserviste >= 2 && !myPooler.isOverLimits
   const hasEligibleForBanque = myPooler.roster.some(e => e.rookieType && (e.player_type === 'actif' || e.player_type === 'reserviste'))
   const removedCap = myPooler.roster.filter(e => removed.has(e.player_id)).reduce((s, e) => s + e.cap_number, 0)
   const addedRecrueCap = recruePlayers.filter(r => addedRecrueIds.has(r.player_id)).reduce((s, r) => s + r.cap_number, 0)
@@ -818,6 +1009,23 @@ function MonAlignement({
           </div>
         )}
 
+        {inDraftQueue && rosterComplete && (
+          <div className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 mb-4 bg-blue-50">
+            <p className="text-xs text-gray-600">
+              Ton alignement est complet — pas obligé de dépenser le reste de ton cap. Tu peux te
+              retirer du repêchage plutôt que d&apos;attendre ton tour.
+            </p>
+            <button
+              onClick={handleLeaveQueue}
+              disabled={leavingQueue}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0 disabled:opacity-40 bg-white border border-blue-300 text-blue-700 hover:bg-blue-100"
+            >
+              {leavingQueue ? '...' : 'Me retirer du repêchage'}
+            </button>
+          </div>
+        )}
+        {leaveQueueErr && <p className="text-xs text-red-600 mb-3">{leaveQueueErr}</p>}
+
         <div className="flex gap-2 mb-4">
           <button
             onClick={() => setTab('actuel')}
@@ -829,7 +1037,7 @@ function MonAlignement({
             onClick={() => setTab('sandbox')}
             className={`text-xs font-semibold px-3 py-1.5 rounded-lg ${tab === 'sandbox' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
           >
-            Bac à sable
+            Simulation
           </button>
         </div>
 
@@ -901,8 +1109,8 @@ function MonAlignement({
 
             <div className="border-t pt-2 space-y-2">
               {groupRosterByPosition(myPooler.roster).map(group => (
-                <div key={group.label}>
-                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{group.label}</p>
+                <div key={group.label} className={`border-l-2 pl-2 ${groupAccent(group.label).border}`}>
+                  <p className={`text-[10px] font-semibold uppercase tracking-wide mb-0.5 ${groupAccent(group.label).text}`}>{group.label}</p>
                   <div className="space-y-1">
                     {group.entries.map(e => {
                       const canToggleType = !seasonStarted && (e.player_type === 'actif' || e.player_type === 'reserviste')
@@ -1043,8 +1251,8 @@ function MonAlignement({
             <p className="text-xs text-gray-400 mb-3">Ajoute ou retire librement pour tester. Rien n&apos;est sauvegardé automatiquement — un retrait peut être soumis pour vrai ci-dessous, un ajout reste toujours une simulation.</p>
             <div className="space-y-2 mb-2">
               {groupRosterByPosition(myPooler.roster).map(group => (
-                <div key={group.label}>
-                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{group.label}</p>
+                <div key={group.label} className={`border-l-2 pl-2 ${groupAccent(group.label).border}`}>
+                  <p className={`text-[10px] font-semibold uppercase tracking-wide mb-0.5 ${groupAccent(group.label).text}`}>{group.label}</p>
                   <div className="space-y-1">
                     {group.entries.map(e => (
                       <div key={e.roster_id} className={`flex items-center justify-between text-xs py-1 ${removed.has(e.player_id) ? 'opacity-40 line-through' : 'text-gray-600'}`}>
@@ -1100,7 +1308,7 @@ function MonAlignement({
             </button>
 
             {recruePlayers.length > 0 && (
-              <div className="mb-3">
+              <div className="border-t pt-3 mt-3 mb-3">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ajouter une recrue de ta banque</p>
                 {/* Liste déroulante plutôt qu'une liste à plat (David, 2026-09-10) — prenait
                     trop de place à l'écran avec une grosse banque de recrues. */}
@@ -1136,6 +1344,7 @@ function MonAlignement({
               </div>
             )}
 
+            <div className="border-t pt-3 mt-3">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Ajouter un agent libre</p>
             <input
               value={query}
@@ -1211,6 +1420,7 @@ function MonAlignement({
                 Plus de résultats que ce qui est affiché — affine avec une équipe, une position ou un nom pour tout voir.
               </p>
             )}
+            </div>
 
             <div className="border-t pt-2 mt-1 space-y-1">
               <div className="flex justify-between text-xs">

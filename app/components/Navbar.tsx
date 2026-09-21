@@ -191,7 +191,7 @@ export default function Navbar({
               {/* Alignements */}
               <div className="relative">
                 <button onClick={() => toggle('alignements')}
-                  className={navBtnClass(isActive('/dashboard', '/journal-transactions', '/poolers', '/gestion-effectifs', '/simulation'))}>
+                  className={navBtnClass(isActive('/dashboard', '/journal-transactions', '/poolers', '/gestion-effectifs', '/simulation', '/repechage-agents-libres'))}>
                   Alignements <Chevron open={openDropdown === 'alignements'} />
                 </button>
                 {openDropdown === 'alignements' && (
@@ -202,6 +202,7 @@ export default function Navbar({
                     {userName && <div className="border-t my-1" />}
                     {userName && <Link href="/gestion-effectifs"  className={dropdownLinkClass('/gestion-effectifs')}>Gestion d&apos;effectifs</Link>}
                     {userName && <Link href="/simulation"          className={dropdownLinkClass('/simulation')}>Simulation</Link>}
+                    {userName && <Link href="/repechage-agents-libres" className={dropdownLinkClass('/repechage-agents-libres')}>{'Signatures des agents libres'}</Link>}
                   </div>
                 )}
               </div>
@@ -215,12 +216,8 @@ export default function Navbar({
                 {openDropdown === 'classement' && (
                   <div className="absolute left-0 top-full mt-1 w-44 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
                     <Link href="/classement" className={dropdownLinkClass('/classement')}>Saison complète</Link>
-                    <span className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 cursor-default">
-                      Hebdomadaire <span className="text-xs bg-gray-100 text-gray-500 rounded px-1.5 py-0.5">À venir</span>
-                    </span>
-                    <span className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 cursor-default">
-                      Mensuel <span className="text-xs bg-gray-100 text-gray-500 rounded px-1.5 py-0.5">À venir</span>
-                    </span>
+                    <Link href="/classement/hebdomadaire" className={dropdownLinkClass('/classement/hebdomadaire')}>Hebdomadaire</Link>
+                    <Link href="/classement/mensuel" className={dropdownLinkClass('/classement/mensuel')}>Mensuel</Link>
                   </div>
                 )}
               </div>
@@ -235,10 +232,8 @@ export default function Navbar({
                   <div className="absolute left-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
                     <div className="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Statistiques</div>
                     <Link href="/statistiques" className={dropdownLinkClass('/statistiques')}>LNH</Link>
-                    <Link href="/statistiques/projections" className={dropdownLinkClass('/statistiques/projections')}>Projections</Link>
-                    <span className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 cursor-default">
-                      AHL <span className="text-xs bg-gray-100 text-gray-500 rounded px-1.5 py-0.5">À venir</span>
-                    </span>
+                    <Link href="/statistiques/projections" className={dropdownLinkClass('/statistiques/projections')}>LNH - Projections Pts</Link>
+                    <Link href="/statistiques/ahl" className={dropdownLinkClass('/statistiques/ahl')}>AHL</Link>
                     <div className="border-t my-1" />
                     <div className="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Calendrier</div>
                     <Link href="/calendrier" className={dropdownLinkClass('/calendrier')}>Calendrier</Link>
@@ -249,18 +244,17 @@ export default function Navbar({
                 )}
               </div>
 
-              {/* Repêchage */}
+              {/* Recrues */}
               <div className="relative">
                 <button onClick={() => toggle('repechage')}
-                  className={navBtnClass(isActive('/repechage', '/repechage-recrues', '/repechage-agents-libres', '/draft-center'))}>
-                  {'Repêchage'} <Chevron open={openDropdown === 'repechage'} />
+                  className={navBtnClass(isActive('/repechage', '/repechage-recrues', '/draft-center'))}>
+                  {'Recrues'} <Chevron open={openDropdown === 'repechage'} />
                 </button>
                 {openDropdown === 'repechage' && (
                   <div className="absolute left-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
-                    <Link href="/repechage-recrues" className={dropdownLinkClass('/repechage-recrues')}>{'Repêchage recrues'}</Link>
-                    <Link href="/repechage-agents-libres" className={dropdownLinkClass('/repechage-agents-libres')}>{'Repêchage agents libres'}</Link>
-                    <Link href="/draft-center" className={dropdownLinkClass('/draft-center')}>{'Classement des prospects'}</Link>
+                    <Link href="/draft-center" className={dropdownLinkClass('/draft-center')}>{'Classement pré-repêchage'}</Link>
                     <Link href="/repechage" className={dropdownLinkClass('/repechage')}>{'Repêchage LNH'}</Link>
+                    <Link href="/repechage-recrues" className={dropdownLinkClass('/repechage-recrues')}>{'Repêchage interne'}</Link>
                   </div>
                 )}
               </div>
@@ -404,24 +398,24 @@ export default function Navbar({
             <Link href="/journal-transactions"             className={mobileLinkClass('/journal-transactions')}>{'Journal des transactions'}</Link>
             {userName && <Link href="/gestion-effectifs"  className={mobileLinkClass('/gestion-effectifs')}>Gestion d&apos;effectifs</Link>}
             {userName && <Link href="/simulation"          className={mobileLinkClass('/simulation')}>Simulation</Link>}
+            {userName && <Link href="/repechage-agents-libres" className={mobileLinkClass('/repechage-agents-libres')}>{'Signatures des agents libres'}</Link>}
 
             <MobileSection label="Classement" />
             <Link href="/classement" className={mobileLinkClass('/classement')}>Saison complète</Link>
-            <span className="px-3 py-2 text-sm text-pool-silver opacity-50">Hebdomadaire (à venir)</span>
-            <span className="px-3 py-2 text-sm text-pool-silver opacity-50">Mensuel (à venir)</span>
+            <Link href="/classement/hebdomadaire" className={mobileLinkClass('/classement/hebdomadaire')}>Hebdomadaire</Link>
+            <Link href="/classement/mensuel" className={mobileLinkClass('/classement/mensuel')}>Mensuel</Link>
 
             <MobileSection label="LNH" />
             <Link href="/statistiques" className={mobileLinkClass('/statistiques')}>Statistiques LNH</Link>
-            <Link href="/statistiques/projections" className={mobileLinkClass('/statistiques/projections')}>Projections</Link>
-            <span className="px-3 py-2 text-sm text-pool-silver opacity-50">Statistiques AHL (à venir)</span>
+            <Link href="/statistiques/projections" className={mobileLinkClass('/statistiques/projections')}>LNH - Projections Pts</Link>
+            <Link href="/statistiques/ahl" className={mobileLinkClass('/statistiques/ahl')}>Statistiques AHL</Link>
             <Link href="/calendrier" className={mobileLinkClass('/calendrier')}>Calendrier</Link>
             <Link href="/joueurs"    className={mobileLinkClass('/joueurs')}>Contrats LNH</Link>
 
-            <MobileSection label={'Repêchage'} />
-            <Link href="/repechage-recrues" className={mobileLinkClass('/repechage-recrues')}>{'Repêchage recrues'}</Link>
-            <Link href="/repechage-agents-libres" className={mobileLinkClass('/repechage-agents-libres')}>{'Repêchage agents libres'}</Link>
-            <Link href="/draft-center" className={mobileLinkClass('/draft-center')}>{'Classement des prospects'}</Link>
+            <MobileSection label={'Recrues'} />
+            <Link href="/draft-center" className={mobileLinkClass('/draft-center')}>{'Classement pré-repêchage'}</Link>
             <Link href="/repechage"  className={mobileLinkClass('/repechage')}>{'Repêchage LNH'}</Link>
+            <Link href="/repechage-recrues" className={mobileLinkClass('/repechage-recrues')}>{'Repêchage interne'}</Link>
 
             <MobileSection label="Ressources" />
             <Link href="/babillard" className={mobileLinkClass('/babillard')}>Babillard</Link>

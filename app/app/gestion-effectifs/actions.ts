@@ -9,6 +9,7 @@ import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/roste
 import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { validateRosterLimits } from '@/lib/rosterLimits'
+import { createWaiverClaimForRelease, isPlayerUnderActiveWaiverClaim } from '@/lib/waiverClaims'
 
 export type PlayerType = 'actif' | 'reserviste' | 'ltir' | 'recrue'
 
@@ -85,6 +86,10 @@ export type BatchActionInput = {
   newPlayerId?: number
   newPlayerType?: 'actif' | 'reserviste' | 'recrue'
   releaseEntryId?: number
+  // Requis pour type='ballotage' — id du waiver_claims 'awarded' que cette action complète,
+  // revalidé côté serveur (voir addNewPlayer, actions.ts) pour empêcher d'ajouter n'importe
+  // quel joueur sous cette étiquette sans avoir vraiment gagné un ballotage (David, 2026-09-21).
+  waiverClaimId?: number
 }
 
 // ─── Read actions ─────────────────────────────────────────────────────────────
@@ -184,16 +189,26 @@ export async function getPoolerRosterAction(
 export async function searchPlayersAction(
   query: string,
   season: string,
+  saisonId: number,
 ): Promise<PlayerSearchResult[]> {
   if (query.length < 2) return []
   const supabase = await createClient()
-  const { data } = await supabase
+  const db = createAdminClient()
+  // Exclut les joueurs présentement au ballotage (réclamation ouverte ou gagnée en attente de
+  // complétion) — jamais signables via la recherche normale, seulement via le bouton
+  // "Ballotage" pré-rempli du gagnant (David, 2026-09-21). Filtre côté recherche pour l'UX ;
+  // addNewPlayer revalide de toute façon au moment de la soumission.
+  const { data: lockedClaims } = await db.from('waiver_claims').select('player_id')
+    .eq('pool_season_id', saisonId).in('status', ['open', 'awarded'])
+  const lockedIds = (lockedClaims ?? []).map(c => c.player_id)
+
+  let q = supabase
     .from('players')
     .select('id, first_name, last_name, position, nhl_id, teams (code), player_contracts (season, cap_number)')
     .or(`last_name.ilike.%${query}%,first_name.ilike.%${query}%`)
     .eq('is_available', true)
-    .order('last_name')
-    .limit(20)
+  if (lockedIds.length > 0) q = q.not('id', 'in', `(${lockedIds.join(',')})`)
+  const { data } = await q.order('last_name').limit(20)
   return (data ?? []).map((p: any) => ({
     id: p.id,
     firstName: p.first_name,
@@ -223,6 +238,49 @@ export async function getSigningCountsAction(
   }
 }
 
+export type AwardedClaim = {
+  id: number
+  playerId: number
+  playerName: string
+  position: string | null
+  teamCode: string | null
+  capNumber: number | null
+  awardedAt: string
+}
+
+// Claims de ballotage gagnés par ce pooler, en attente qu'il complète lui-même sa transaction
+// (David, 2026-09-21) — alimente le bandeau "Ballotage" de GestionEffectifsManager.tsx, seule
+// source normale d'un waiverClaimId valide pour addNewPlayer (voir plus bas).
+export async function getAwardedWaiverClaimsAction(saisonId: number, poolerId: string, season: string): Promise<AwardedClaim[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data: poolerSelf } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  const isAdmin = poolerSelf?.is_admin ?? false
+  if (!isAdmin && user.id !== poolerId) return []
+
+  const db = createAdminClient()
+  const { data } = await db
+    .from('waiver_claims')
+    .select('id, player_id, awarded_at, players (first_name, last_name, position, teams (code), player_contracts (season, cap_number))')
+    .eq('pool_season_id', saisonId)
+    .eq('status', 'awarded')
+    .eq('awarded_to_pooler_id', poolerId)
+    .order('awarded_at')
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data ?? []) as any[]).map(c => ({
+    id: c.id,
+    playerId: c.player_id,
+    playerName: `${c.players?.last_name ?? ''}, ${c.players?.first_name ?? ''}`,
+    position: c.players?.position ?? null,
+    teamCode: c.players?.teams?.code ?? null,
+    capNumber: c.players?.player_contracts?.find((ct: { season: string }) => ct.season === season)?.cap_number ?? null,
+    awardedAt: c.awarded_at,
+  }))
+}
+
 // ─── Submit action ────────────────────────────────────────────────────────────
 
 export async function submitBatchAction(input: {
@@ -248,7 +306,7 @@ export async function submitBatchAction(input: {
   // Fetch config
   const { data: saisonConfig } = await db
     .from('pool_seasons')
-    .select('delai_reactivation_jours, max_signatures_al, max_signatures_ltir, saison_start_date, season, season_started, pool_cap, gestion_effectifs_ouvert')
+    .select('delai_reactivation_jours, max_signatures_al, max_signatures_ltir, saison_start_date, season, season_started, season_started_at, pool_cap, gestion_effectifs_ouvert')
     .eq('id', input.saisonId)
     .single()
 
@@ -259,6 +317,31 @@ export async function submitBatchAction(input: {
   if (!isAdmin) {
     if (!saisonConfig?.season_started) return { error: "La saison n'a pas encore démarré." }
     if (!(saisonConfig.gestion_effectifs_ouvert ?? true)) return { error: "L'outil est temporairement fermé." }
+  }
+
+  // Délai d'ajustement sans pénalité (David, 2026-09-21) — un pooler déclaré "prêt" par l'admin
+  // (plutôt que lui-même, voir setPoolerReadyByAdminAction, repechage-agents-libres/actions.ts)
+  // garde 48h après le vrai démarrage pour ajuster librement actif↔réserviste sans la
+  // contrainte stricte 12/6/2 ajoutée le 2026-09-20 — jamais pour une libération, une
+  // signature, un LTIR ou une remise en banque, seulement un `change_status` entre actif et
+  // reserviste. Se remet à false dès que le pooler déclare "prêt" lui-même (setReadyAction).
+  let graceAdjustmentEligible = false
+  if (!isAdmin && saisonConfig?.season_started_at) {
+    const graceEnd = new Date(saisonConfig.season_started_at).getTime() + 48 * 60 * 60 * 1000
+    if (Date.now() <= graceEnd) {
+      const { data: readyRow } = await db
+        .from('presaison_pooler_ready')
+        .select('declared_by_admin')
+        .eq('pool_season_id', input.saisonId)
+        .eq('pooler_id', input.poolerId)
+        .maybeSingle()
+      const onlyActifReserveToggle = input.actions.every(a =>
+        a.type === 'change_status'
+        && (!a.newType1 || a.newType1 === 'actif' || a.newType1 === 'reserviste')
+        && (!a.newType2 || a.newType2 === 'actif' || a.newType2 === 'reserviste'),
+      )
+      graceAdjustmentEligible = !!readyRow?.declared_by_admin && onlyActifReserveToggle
+    }
   }
 
   // Fenêtre de protection recrue (5 saisons) — même formule que getPoolerRosterAction()
@@ -311,6 +394,14 @@ export async function submitBatchAction(input: {
     : input.forcedDate
       ? `${input.forcedDate}T12:00:00Z`
       : liveEffectiveAt
+
+  // Plancher pour computeTypeChangeAddedAt (David, 2026-09-21) — évite de reculer added_at à
+  // aujourd'hui pour une activation/désactivation faite après "Démarrer la saison" mais avant
+  // la vraie date de début (ex: saison démarrée le 21 pour un vrai début le 29) : aucun match
+  // n'est joué entre les deux, donc reculer n'apporte rien et n'affiche qu'un avertissement
+  // trompeur. Ne s'applique jamais à `changedAt` lui-même (une libération garde sa vraie date
+  // du jour, nécessaire au calcul du ballotage).
+  const minAddedAtTs = saisonConfig?.saison_start_date ? `${saisonConfig.saison_start_date}T12:00:00Z` : undefined
 
   // Count existing signings
   const { data: existingSigns } = await db
@@ -393,7 +484,7 @@ export async function submitBatchAction(input: {
     }
     const conflict = await checkFutureRosterConflict(db, input.poolerId, e.player_id, input.saisonId, changedAt, toType)
     if (conflict.error) throw new Error(conflict.error)
-    const { addedAtOverride, warning } = computeTypeChangeAddedAt(e.added_at, changedAt)
+    const { addedAtOverride, warning } = computeTypeChangeAddedAt(e.added_at, changedAt, minAddedAtTs)
     if (warning) warnings.push(warning)
     await db.from('pooler_rosters')
       .update({ player_type: toType, ...(addedAtOverride ? { added_at: addedAtOverride } : {}), ...rookieFields })
@@ -407,7 +498,7 @@ export async function submitBatchAction(input: {
     if (withDelayCheck) await checkReactivationDelay(e.player_id)
     const conflict = await checkFutureRosterConflict(db, input.poolerId, e.player_id, input.saisonId, changedAt, 'actif')
     if (conflict.error) throw new Error(conflict.error)
-    const { addedAtOverride, warning } = computeTypeChangeAddedAt(e.added_at, changedAt)
+    const { addedAtOverride, warning } = computeTypeChangeAddedAt(e.added_at, changedAt, minAddedAtTs)
     if (warning) warnings.push(warning)
     await db.from('pooler_rosters')
       .update({ player_type: 'actif', ...(addedAtOverride ? { added_at: addedAtOverride } : {}) })
@@ -430,7 +521,30 @@ export async function submitBatchAction(input: {
     }
   }
 
-  async function addNewPlayer(playerId: number, playerType: 'actif' | 'reserviste' | 'recrue', signingType: 'al' | 'ltir' | 'ballotage') {
+  async function addNewPlayer(playerId: number, playerType: 'actif' | 'reserviste' | 'recrue', signingType: 'al' | 'ltir' | 'ballotage', waiverClaimId?: number) {
+    if (signingType === 'ballotage') {
+      // Revalidation serveur (David, 2026-09-21) — l'étiquette "Ballotage" ne complète jamais
+      // un joueur au hasard : seulement un claim réellement 'awarded' à CE pooler pour CE
+      // joueur, jamais déjà complété par ailleurs. Voir getAwardedWaiverClaimsAction, dont le
+      // bouton pré-rempli est la seule source normale de waiverClaimId.
+      if (!isAdmin) {
+        if (!waiverClaimId) throw new Error('Réclamation de ballotage manquante.')
+        const { data: claim } = await db.from('waiver_claims')
+          .select('id, status, player_id, awarded_to_pooler_id, pool_season_id').eq('id', waiverClaimId).maybeSingle()
+        if (!claim || claim.pool_season_id !== input.saisonId || claim.status !== 'awarded'
+          || claim.awarded_to_pooler_id !== input.poolerId || claim.player_id !== playerId) {
+          throw new Error('Cette réclamation de ballotage est introuvable ou déjà résolue.')
+        }
+      }
+    } else if (!isAdmin) {
+      // Un joueur présentement au ballotage (réclamation ouverte ou gagnée en attente) ne se
+      // signe jamais par la voie normale — seulement via le bouton "Ballotage" du gagnant
+      // (David, 2026-09-21).
+      if (await isPlayerUnderActiveWaiverClaim(db, input.saisonId, playerId)) {
+        throw new Error('Ce joueur est présentement au ballotage — pas signable directement.')
+      }
+    }
+
     // Validate budget (non-admins seulement, ballotage exempt)
     if (!isAdmin && signingType !== 'ballotage') {
       if (signingType === 'ltir') {
@@ -459,6 +573,13 @@ export async function submitBatchAction(input: {
     const conflict = await checkFutureRosterConflict(db, input.poolerId, playerId, input.saisonId, changedAt, playerType)
     if (conflict.error) throw new Error(conflict.error)
 
+    // Plancher à saison_start_date (David, 2026-09-21) — même logique que computeTypeChangeAddedAt
+    // pour une ligne existante : une signature faite après "Démarrer la saison" mais avant la
+    // vraie date de début n'a manqué aucun match, donc added_at ne doit pas afficher une date
+    // antérieure trompeuse (ex: signature le 21 pour un vrai début le 29). Repéré via le popup
+    // de périodes d'un joueur signé au ballotage pendant ce genre de fenêtre de test.
+    const newAddedAt = minAddedAtTs && changedAt < minAddedAtTs ? minAddedAtTs : changedAt
+
     const { data: existing } = await db
       .from('pooler_rosters').select('id')
       .eq('pooler_id', input.poolerId).eq('player_id', playerId)
@@ -466,12 +587,12 @@ export async function submitBatchAction(input: {
     // Pas de date tant que la saison n'est pas démarrée pour de vrai (David, 2026-09-02).
     if (existing) {
       await db.from('pooler_rosters')
-        .update({ is_active: true, player_type: playerType, removed_at: null, added_at: isPreseason ? null : changedAt, ...rookieFields }).eq('id', existing.id)
+        .update({ is_active: true, player_type: playerType, removed_at: null, added_at: isPreseason ? null : newAddedAt, ...rookieFields }).eq('id', existing.id)
     } else {
       await db.from('pooler_rosters').insert({
         pooler_id: input.poolerId, player_id: playerId,
         pool_season_id: input.saisonId, player_type: playerType, is_active: true,
-        added_at: isPreseason ? null : changedAt, ...rookieFields,
+        added_at: isPreseason ? null : newAddedAt, ...rookieFields,
       })
     }
 
@@ -488,6 +609,12 @@ export async function submitBatchAction(input: {
     }
 
     await log(playerId, logType, null, playerType)
+
+    // Finalise le claim une fois le joueur réellement ajouté (David, 2026-09-21) — n'arrive
+    // qu'ici, après tous les checks/écritures ci-dessus, jamais en cas d'erreur plus haut.
+    if (signingType === 'ballotage' && waiverClaimId) {
+      await db.from('waiver_claims').update({ status: 'resolved_claimed', resolved_at: new Date().toISOString() }).eq('id', waiverClaimId)
+    }
   }
 
   // ─── Validation de l'état final (poolers seulement — override admin délibéré) ─────────────
@@ -495,7 +622,9 @@ export async function submitBatchAction(input: {
   // ne jamais laisser un état non conforme (12/6/2, réservistes, cap) atteindre la base —
   // mêmes règles que submitTransactionAction/submitRosterAction (app/lib/rosterLimits.ts).
   // Ne devient de toute façon atteignable qu'après "Démarrer la saison" (verrou plus haut).
-  if (!isAdmin) {
+  // Sautée aussi pendant le délai d'ajustement de 48h (graceAdjustmentEligible, voir plus haut)
+  // — mais seulement pour un lot qui ne fait QUE basculer actif↔réserviste.
+  if (!isAdmin && !graceAdjustmentEligible) {
     const [{ data: currentRows }, { data: settingsRow }] = await Promise.all([
       db
         .from('pooler_rosters')
@@ -633,7 +762,7 @@ export async function submitBatchAction(input: {
 
         case 'ballotage':
           if (!action.newPlayerId || !action.newPlayerType) throw new Error('Joueur manquant (ballotage)')
-          await addNewPlayer(action.newPlayerId, action.newPlayerType, 'ballotage')
+          await addNewPlayer(action.newPlayerId, action.newPlayerType, 'ballotage', action.waiverClaimId)
           break
 
         case 'release': {
@@ -643,6 +772,9 @@ export async function submitBatchAction(input: {
           await log(e.player_id, e.player_type === 'actif' ? 'deactivation' : 'retrait', e.player_type, null)
           await db.from('pooler_rosters')
             .update({ is_active: false, removed_at: changedAt }).eq('id', action.releaseEntryId)
+          // Ballotage (David, 2026-09-15) — no-op en pré-saison, createWaiverClaimForRelease
+          // revérifie season_started lui-même ; gate ici en plus pour éviter l'appel inutile.
+          if (!isPreseason) after(() => createWaiverClaimForRelease(input.saisonId, e.player_id, input.poolerId).catch(() => {}))
           break
         }
 
@@ -651,7 +783,10 @@ export async function submitBatchAction(input: {
       }
     }
 
-    if (isAdmin) {
+    // Seulement quand l'admin agit pour un AUTRE pooler (David, 2026-09-21) — un admin qui
+    // gère son propre alignement (isAdmin=true, input.poolerId===user.id) n'a pas besoin
+    // d'être notifié qu'"un admin" l'a modifié, c'est lui-même.
+    if (isAdmin && input.poolerId !== user.id) {
       const n = input.actions.length
       // after() : voir le commentaire dans lib/threadNotify.ts.
       after(() => sendPushToUser(input.poolerId, {

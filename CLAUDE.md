@@ -183,6 +183,8 @@ Hockey_Pool_App/
   `/repechage-agents-libres` — voir section 5)
 - `presaison_pooler_ready` (déclaration "mon alignement est prêt" par pooler, une ligne par
   saison+pooler — voir section 5)
+- `waiver_claims`/`waiver_claim_requests` (ballotage en cours de saison — une claim par
+  libération, une request par pooler l'ayant réclamée — voir section 6)
 
 **Conventions :**
 - Statuts joueurs : `ELC`, `RFA`, `UFA`
@@ -198,12 +200,17 @@ Vérifié par lecture du code le 2026-07-17 (build `next build` + grep des liens
 mettre à jour cette section dès qu'une route ou un onglet admin change (voir section 11).
 
 **Utilisateur :**
-`/` `/login` `/joueurs` `/statistiques` `/repechage` `/repechage-recrues` `/calendrier`
+`/` `/login` `/joueurs` `/statistiques` `/statistiques/ahl` `/repechage` `/repechage-recrues` `/calendrier`
 `/poolers` `/poolers/[id]` `/journal-transactions` (historique en lecture seule — pas de
-saisie pooler ; distinct de `/admin/transactions`, l'outil admin) `/classement` `/resultats`
+saisie pooler ; distinct de `/admin/transactions`, l'outil admin) `/classement`
+`/classement/hebdomadaire` `/classement/mensuel` (David, 2026-09-17 — mêmes données que
+`/classement`, `buildStandings()` juste borné à une semaine lundi-dimanche ou un mois civil,
+heure de l'Est ; navigation précédent/suivant, voir section 6) `/resultats`
 (récap veille)
 `/gestion-series` (soumettre ses choix séries) `/classement-series` (classement séries)
-`/gestion-effectifs` `/draft-center` (classement des prospects, vue publique)
+`/gestion-effectifs` (2 onglets, David 2026-09-15 : **Mouvements**, l'outil existant ; et
+**Ballotage**, réclamer un joueur libéré en cours de saison — voir section 6) `/draft-center`
+(classement des prospects, vue publique)
 `/dashboard` (redirige vers son propre alignement) `/compte` `/signaler` `/aide` `/offline`
 `/planification` (sondage type Doodle pour une rencontre — vue pooler : ses disponibilités,
 le résumé, le babillard propre au sondage ; notifie les admins par push à chaque
@@ -220,7 +227,8 @@ libérations pré-saison confondues), et un panneau personnel "Mon alignement" �
 **Actuel** — libre-service réel depuis le 2026-09-06 (`repechage-agents-libres/actions.ts`,
 `submitSelfServiceAction`) : basculer un joueur actif↔réserviste, le libérer, activer/libérer
 une recrue de sa propre banque — restreint à ses propres joueurs, désactivé dès que
-`season_started=true` (place alors à `/gestion-effectifs`) ; et **Bac à sable** — simulation
+`season_started=true` (place alors à `/gestion-effectifs`) ; et **Simulation** (ex-"Bac à
+sable", renommé le 2026-09-18 pour cohérence avec `/simulation`) — simulation
 locale non sauvegardée, pour tester l'ajout d'un agent libre pas encore signé (toujours actif,
 peu importe la phase, aucune écriture serveur). La signature réelle d'un agent libre (pendant
 son tour) reste admin-only, peu importe où l'admin la déclenche — panneau admin rétractable de
@@ -252,11 +260,11 @@ plutôt que vers l'ancienne page.
 défaut** (l'admin l'ouvre explicitement, jamais l'inverse — premier bouton visible = "Ouvrir
 la libération de joueurs"), distincte du repêchage AL lui-même. Tant qu'ouverte, libérer
 n'importe quel joueur signé est permis en libre-service comme décrit plus haut, y compris
-depuis le bac à sable (voir plus bas). L'admin la ferme (bandeau du panneau admin ci-dessus,
+depuis la Simulation (voir plus bas). L'admin la ferme (bandeau du panneau admin ci-dessus,
 `setReleasePhaseAction`) une fois que tout le monde a ajusté sa masse salariale — à partir de
 là, "Libérer des joueurs" (vétérans) disparaît de `/repechage-agents-libres`, mais
 actif↔réserviste et activer/libérer une recrue de banque restent toujours permis (jamais
-gatés par cette phase), tout comme le bac à sable. `submitSelfServiceAction` revalide côté
+gatés par cette phase), tout comme la Simulation. `submitSelfServiceAction` revalide côté
 serveur (le `player_type` réel en base, pas l'état client) : une libération n'est bloquée que
 si le joueur visé n'est pas une `recrue`. "Démarrer le repêchage"
 (`startPresaisonDraftAction`) reste désactivé — client et serveur — tant que la phase est
@@ -305,15 +313,32 @@ des non-conformes avec le motif "Alignement pas encore déclaré prêt par le po
 "Démarrer la saison" n'est pas cliqué, le libre-service reste réutilisable à volonté, peu
 importe la phase.
 
-**Bac à sable soumettable (David, 2026-09-08)** — dans `MonAlignement` (onglet Bac à sable de
-`/repechage-agents-libres`), les retraits testés (`removed`, joueurs déjà possédés) peuvent
+**Déclarer prêt au nom d'un pooler + délai d'ajustement de 48h (David, 2026-09-21)** — pour
+débloquer "Démarrer la saison" sans attendre indéfiniment qu'un pooler se connecte, l'admin
+peut cliquer "Déclarer prêt en son nom" (`DemarrerSaisonCard.tsx`, `/admin/nouvelle-saison`, à
+côté de chaque motif "pas encore déclaré prêt") — `setPoolerReadyByAdminAction`
+(`repechage-agents-libres/actions.ts`) marque `presaison_pooler_ready.declared_by_admin=true`
+et notifie le pooler par push. En échange, ce pooler garde 48h après le vrai démarrage
+(`pool_seasons.season_started_at`, horodatage réel distinct de `saison_start_date` — la date
+calendaire configurée à l'avance) pour ajuster librement actif↔réserviste
+(`submitBatchAction`, `gestion-effectifs/actions.ts`) sans la contrainte stricte 12/6/2 ajoutée
+le 2026-09-20 — **seulement** pour un lot qui ne contient QUE des `change_status` entre actif
+et réserviste (jamais pour une libération, une signature, un LTIR ou une remise en banque, qui
+restent soumis aux règles normales dès le démarrage). `declared_by_admin` est remis à `false`
+dès que le pooler déclare "prêt" lui-même (`setReadyAction`) — une fois qu'il a vraiment
+confirmé, le filet de sécurité n'a plus lieu d'être.
+
+**Simulation soumettable (David, 2026-09-08, onglet renommé "Bac à sable" → "Simulation" le
+2026-09-18)** — dans `MonAlignement` (onglet Simulation de `/repechage-agents-libres`), les
+retraits testés (`removed`, joueurs déjà possédés) peuvent
 être soumis pour vrai via un bouton "Soumettre la libération (N)"
-(`handleSubmitSandboxReleases`) — même `action_type='release'` et même garde-fou de phase que
-le flux "Libérer des joueurs" de l'onglet Actuel, juste une seconde porte d'entrée après avoir
-exploré l'impact salarial dans le bac à sable. Les agents libres ajoutés (`added`) restent en
-revanche une simulation pure, jamais soumissibles — signer un agent libre reste réservé à
-l'admin pendant le tour du pooler ; seul le retrait de joueurs déjà possédés peut être soumis.
-Depuis le 2026-09-08, le bac à sable permet aussi d'ajouter une recrue de sa propre banque
+(`handleSubmitSandboxReleases`, nom interne inchangé) — même `action_type='release'` et même
+garde-fou de phase que le flux "Libérer des joueurs" de l'onglet Actuel, juste une seconde
+porte d'entrée après avoir exploré l'impact salarial dans la Simulation. Les agents libres
+ajoutés (`added`) restent en revanche une simulation pure, jamais soumissibles — signer un
+agent libre reste réservé à l'admin pendant le tour du pooler ; seul le retrait de joueurs
+déjà possédés peut être soumis.
+Depuis le 2026-09-08, la Simulation permet aussi d'ajouter une recrue de sa propre banque
 (`addedRecrueIds`) pour voir l'impact réel sur la masse (contrairement à un agent libre, une
 recrue est déjà signée — son `cap_number` est réellement déduit dans la simulation, pas juste
 indicatif) ; reste une simulation, pas soumissible (l'activation réelle passe par "Activer ou
@@ -338,15 +363,24 @@ redondant dont l'erreur ne s'affichait nulle part — fusionné en un seul bouto
 repêchage n'est pas activement en cours.
 
 **Menu pooler (`Navbar.tsx`) — réorganisé le 2026-08-30, ordre/regroupement affinés le
-2026-09-01 :**
+2026-09-01, "Repêchage" scindé en Alignements/Recrues le 2026-09-14 :**
 
 | Dropdown | Contenu |
 |---|---|
-| Alignements (ex-Pool Saison) | Mon équipe · Équipes · Journal des transactions — puis séparateur — Gestion d'effectifs (les 3 premiers = consultation, le dernier = action) |
-| Classement | Saison complète · Hebdomadaire (à venir) · Mensuel (à venir) — sorti d'Alignements pour son propre menu |
-| LNH | 3 sections : Statistiques (LNH, AHL à venir) · Calendrier · Contrats (ex-"Contrats LNH", ex-item à plat) |
-| Repêchage | Repêchage recrues · Repêchage agents libres (ajouté le 2026-09-03) · Classement des prospects · Repêchage LNH — réordonné le 2026-09-01 (le repêchage du pool lui-même, plus pertinent au quotidien, remonté en premier — même principe que "Mon équipe" en tête d'Alignements) |
+| Alignements (ex-Pool Saison) | Mon équipe · Équipes · Journal des transactions — puis séparateur — Gestion d'effectifs · Simulation · Signatures des agents libres (les 3 premiers = consultation, les 3 derniers = action) |
+| Classement | Saison complète · Hebdomadaire · Mensuel — sorti d'Alignements pour son propre menu |
+| LNH | 3 sections : Statistiques (LNH, AHL ; sous-item Projections) · Calendrier · Contrats (ex-"Contrats LNH", ex-item à plat) |
+| Recrues (ex-"Repêchage") | Classement pré-repêchage (ex-"Classement des prospects") · Repêchage LNH · Repêchage interne (ex-"Repêchage recrues") — réordonné et renommé le 2026-09-14 (David) |
 | Ressources | Babillard (global, ajouté le 2026-09-02) · Planification · Aide & Règlements (déplacé du menu Compte/avatar) |
+
+**"Repêchage agents libres" déplacé d'Recrues vers Alignements, renommé "Signatures des
+agents libres" (David, 2026-09-14)** — repositionné une fois `/repechage-agents-libres`
+devenu, avec le libre-service pré-saison, un vrai outil de gestion d'alignement plutôt qu'un
+simple repêchage ; le menu Recrues, lui, ne rassemblait plus que des pages centrées sur les
+recrues/prospects (d'où le renommage). Route (`/repechage-agents-libres`), noms de fonctions
+et de tables (`presaison_draft_state`, etc.) inchangés — seul le libellé visible (menu, titre
+de page `<h1>`) a changé, pour éviter un chantier de renommage profond à faible valeur pour un
+changement qui ne touche que l'affichage.
 
 **`/transactions` renommé `/journal-transactions` le 2026-09-01** (David) : c'est un historique
 en lecture seule (aucune saisie pooler), et le nom "Transactions" était réservé pour un futur
@@ -511,6 +545,19 @@ existants) — pas des pages à part entière.
   `/admin/transactions` (`type_change`/`promote`/`reactivate`, `transactionDate`). Toute
   nouvelle action qui modifie `player_type` sur une ligne existante avec une date
   potentiellement passée doit passer par cette même fonction plutôt que de dupliquer la logique.
+  Paramètre optionnel `minEffectiveTs` (David, 2026-09-21) — plancher, typiquement
+  `saison_start_date` : évite de reculer `added_at` jusqu'à aujourd'hui quand une
+  activation/désactivation a lieu après "Démarrer la saison" mais avant la vraie date de
+  début (ex: saison démarrée le 21 pour un vrai début le 29 — aucun match joué entre les deux,
+  reculer n'apporte rien et n'affiche qu'un avertissement trompeur). Branché dans
+  `/gestion-effectifs` et `/admin/transactions` ; **pas** dans `/admin/historique`, qui saisit
+  délibérément des dates passées et doit garder le comportement d'origine sans plancher.
+  Même plancher appliqué directement (sans passer par `computeTypeChangeAddedAt`, pas de ligne
+  existante à consulter pour un nouvel ajout) dans `addNewPlayer` (`gestion-effectifs/
+  actions.ts`, David 2026-09-21) — une signature (agent libre, ballotage) faite après
+  "Démarrer la saison" mais avant la vraie date de début affichait sinon une date de début
+  trompeuse dans le popup de périodes, repéré en testant le ballotage dans une fenêtre où
+  `season_started=true` mais `saison_start_date` pas encore atteinte.
 - **Périodes affichées** (`PlayerContrib.periods`, popup ↩ dans `/classement` et
   `/poolers/[id]`) : une entrée par fenêtre **active** contiguë (via `activeSegments()`), pas
   une entrée par ligne `pooler_rosters`. Un joueur réactivé plusieurs fois sans jamais quitter
@@ -548,6 +595,31 @@ existants) — pas des pages à part entière.
   `roster_change_log`, avec le même vocabulaire `change_type` que `/gestion-effectifs` et
   `/admin/rosters` (`activation`/`deactivation`/`ajout_reserviste`/`ajout_recrue`/`retrait`/
   `ltir`/`retour_ltir`/`changement_type`).
+
+**Classement hebdomadaire/mensuel (`app/lib/dateRanges.ts`) — David, 2026-09-17 :**
+- `buildStandings(supabase, seasonId, range?)` accepte maintenant un 3ᵉ paramètre optionnel
+  `{ from, to }` (ISO, `from` inclusif/`to` exclusif) — filtre la requête `player_game_logs`
+  (au niveau DB, en plus du filtre `season`/`game_type` existant) sans toucher au reste du
+  calcul : le statut réel du joueur à chaque match (`statusAt()`/`activeSegments()`) continue
+  de se baser sur tout l'historique de la saison, seule la somme des points est bornée à la
+  fenêtre demandée. `/classement` (sans `range`) est inchangée, rétrocompatible.
+- Semaine = **lundi à dimanche**, heure de l'Est (choix de David — convention la plus
+  courante) ; mois = mois civil. `mondayOfWeek()`/`weekRange()`/`monthRange()`
+  (`app/lib/dateRanges.ts`) gèrent la bascule heure d'été/hiver via une conversion
+  minuit-heure-de-l'Est → UTC dynamique (`localMidnightUTC()`, basée sur `Intl.DateTimeFormat`
+  plutôt qu'un décalage fixe -04:00/-05:00) — nécessaire ici (contrairement au `T12:00:00Z`
+  utilisé ailleurs dans le projet pour des dates sans heure précise) parce qu'on compare
+  contre de vraies heures de match proches de minuit.
+- Routes `/classement/hebdomadaire?semaine=YYYY-MM-DD` (n'importe quelle date de la semaine —
+  normalisée au lundi) et `/classement/mensuel?mois=YYYY-MM`, chacune avec navigation
+  précédent/suivant (`WeekNav.tsx`/`MonthNav.tsx`, même patron que `ResultatsManager.tsx` —
+  bouton "suivant" caché quand on est déjà sur la période courante, pas de borne sur "précédent").
+  Les deux réutilisent tel quel `ClassementTable` (`app/app/classement/ClassementTable.tsx`,
+  qui ne prend que `standings` en prop) — aucune duplication d'affichage, seule la fenêtre de
+  calcul change.
+- Le détail par période (popup ↩) affiche les dates de la fenêtre d'activation réelle du
+  joueur (`added_at`/`removed_at` de la ligne `pooler_rosters`), pas la semaine/le mois
+  affiché — cosmétique mineur assumé (le total de points, lui, est bien borné à la période).
 
 **Saisons de contrats sur `/joueurs` (David, 2026-09-08)** — `JoueursTable.tsx` calcule
 dynamiquement ses 5 colonnes de saisons à partir de `pool_seasons.season` (saison active,
@@ -636,12 +708,139 @@ revue le 2026-09-14 :**
   ajuster) ; passé le délai, seul l'admin peut libérer le joueur manuellement — jamais
   automatique.
 
-**Règles d'alignement consolidées (`app/lib/rosterLimits.ts`) — David, 2026-08-31 :**
-- `validateRosterLimits(entries, poolCap)` : 12 attaquants / 6 défenseurs / 2 gardiens actifs
-  **maximum** (pas exactement — un pooler peut être en sous-effectif temporaire en cours de
-  saison), minimum 2 réservistes, masse salariale ≤ cap du pool. Fonction pure, `capNumber`
-  toujours pré-résolu par l'appelant via `getEffectiveCap()` (jamais un `cap_number` brut —
-  corrige un bug où `submitTransactionAction` comptait un joueur non signé comme 0$).
+**Ballotage en cours de saison (`app/lib/waiverClaims.ts`) — David, 2026-09-15 :**
+- Déclencheur : un pooler libère un joueur (`/gestion-effectifs`, action "Libération") ou
+  l'admin libère un joueur en son nom (`/admin/transactions`, `action_type='release'`) — dans
+  les deux cas **seulement si `pool_seasons.season_started=true`** (`createWaiverClaimForRelease`
+  revérifie lui-même ce flag, sans dépendre de l'appelant). Les libérations en rafale de la
+  pré-saison (`/repechage-agents-libres`) ne déclenchent jamais de ballotage — hors scope
+  (elles tournent de toute façon toujours avant que `season_started` bascule à `true`).
+- Priorité : `priority_snapshot` (JSONB, ordre = priorité décroissante) **snapshotté** au
+  moment de la libération, pire classé en premier. Ni recalculé, ni mis à jour si le classement
+  change avant la résolution. Deux sources selon la date (`computeWaiverPriority`,
+  `app/lib/waiverClaims.ts`, David 2026-09-21) : **avant le 1er novembre** de l'année de début
+  de saison, utilise `pool_seasons.presaison_draft_order` tel quel (même ordre — pire en
+  premier — déjà utilisé pour le repêchage des recrues/agents libres, déjà ajustable
+  manuellement via `DraftOrderEditor.tsx`) plutôt que le classement réel, qui n'a pas encore de
+  sens en tout début de saison (`buildStandings()` retournerait un tableau vide tant qu'aucun
+  match n'est joué). **À partir du 1er novembre**, classement réel de la saison en cours
+  (`buildStandings()` inversé) comme avant ; si ce classement est encore vide à ce moment-là
+  (cas limite), repli sur `presaison_draft_order` plutôt que de bloquer le ballotage. Coupure du
+  1er novembre volontairement approximative (pas d'heure de l'Est à la seconde près).
+- **Fenêtre par jour civil, pas par délai roulant (David, 2026-09-21)** — `app_settings.
+  waiver_claim_days` (défaut 2, éditable dans `/admin/effectifs?tab=conformite`, même
+  formulaire que `unsigned_player_cap_multiplier`/`cap_deadline_days`) : un joueur libéré un
+  jour J reste réclamable jusqu'à **23h59 heure de l'Est du jour J+N**, peu importe l'heure
+  exacte de la libération (ex: libéré lundi, `waiver_claim_days=2` → réclamable jusqu'à
+  mercredi 23h59, attribué le jeudi) — remplace l'ancien délai roulant en heures
+  (`waiver_claim_hours`, ex-défaut 72h), dont l'heure limite exacte dépendait de l'heure de la
+  libération et prêtait à confusion. `computeWaiverWindow()` (`app/lib/waiverClaims.ts`)
+  calcule `expiresAt` = minuit ET du jour **suivant** le dernier jour réclamable (le moment
+  exact où `resolveExpiredWaiverClaims()` peut résoudre le claim) ; l'affichage humain
+  (notification, `formatExpiry()` dans `BallotageTab.tsx`) recule d'une minute pour montrer
+  "23h59" plutôt que "00h00 le lendemain". Snapshotté dans `waiver_claims.window_days` à la
+  création (`window_hours`/`waiver_claim_hours` conservés en base pour compat historique, plus
+  lus par le code).
+- Réclamation : `/gestion-effectifs` → onglet **Ballotage**, ouvert à tous les poolers
+  (`submitWaiverClaimAction`, `gestion-effectifs/waiver-actions.ts`) — sauf le pooler qui vient
+  de libérer le joueur. Plusieurs réclamations possibles sur la même claim ; seule la priorité
+  tranche à la résolution.
+- Résolution : **paresseuse**, au chargement de l'onglet Ballotage (`getWaiverClaimsAction`
+  appelle `resolveExpiredWaiverClaims()` puis `resolveExpiredAwardedClaims()` — même patron que
+  `syncExpiredRookieProtection`, `admin/presaison/actions.ts` — pas de tâche planifiée). Pour
+  chaque claim `open` dont `expires_at` est passé : aucune réclamation → `resolved_unclaimed`
+  (le joueur reste un agent libre normal) ; sinon le gagnant (premier `pooler_id` de
+  `priority_snapshot` parmi les requérants) passe le claim à **`status='awarded'`**
+  (`awarded_to_pooler_id`, `awarded_at`) et est notifié par push/courriel.
+- **Complétion par le gagnant, pas d'ajout automatique (David, 2026-09-21)** — avant cette date,
+  la résolution ajoutait directement le joueur en réserviste au gagnant, ce qui pouvait dépasser
+  son cap et finir `status='blocked'`, obligeant l'admin à intervenir à chaque fois. Le gagnant
+  complète maintenant lui-même sa transaction depuis `/gestion-effectifs` (onglet Mouvements) :
+  tant qu'il a un claim `awarded`, un bandeau ambre y affiche le joueur avec deux boutons
+  "Ajouter (Réserviste)"/"Ajouter (Actif)" (`getAwardedWaiverClaimsAction`,
+  `handleAddAwardedClaim`, `GestionEffectifsManager.tsx`) qui poussent directement une action
+  `type='ballotage'` dans le panier, sans passer par la recherche manuelle — le joueur et le
+  `waiverClaimId` viennent du claim, pas d'un choix libre. Le pooler ajoute au besoin une
+  libération dans le même lot : `submitBatchAction` revalide tout le panier avec
+  `validateRosterLimits` comme n'importe quel autre lot, ce qui force la conformité sans jamais
+  bloquer l'admin. Revalidation serveur dans `addNewPlayer` (`gestion-effectifs/actions.ts`) :
+  un `type='ballotage'` non-admin exige un `waiverClaimId` pointant vers un claim `awarded` à ce
+  pooler pour ce joueur exact, sinon rejeté — empêche d'ajouter n'importe quel joueur sous cette
+  étiquette. Une fois l'ajout réussi, le claim passe `resolved_claimed`.
+- **Garde-fou contre la signature directe d'un joueur au ballotage (David, 2026-09-21)** — un
+  joueur avec un claim `open` ou `awarded` est exclu de la recherche libre-service normale
+  (`searchPlayersAction`) et, en profondeur, bloqué dans `addNewPlayer` pour tout signingType
+  autre que `'ballotage'` (`isPlayerUnderActiveWaiverClaim()`, `app/lib/waiverClaims.ts`) —
+  seul le bandeau ci-dessus peut l'ajouter, tant que la réclamation n'est pas résolue/expirée.
+  Ne s'applique pas à l'admin (`/admin/transactions` reste le filet de sécurité, y compris pour
+  compléter manuellement un claim `blocked` après le délai ci-dessous).
+- **Délai de grâce de 48h pour compléter (`COMPLETION_GRACE_HOURS`, `app/lib/waiverClaims.ts`)**
+  — si le gagnant n'a rien fait 48h après `awarded_at`, `resolveExpiredAwardedClaims()` passe le
+  claim à `status='blocked'` (`error_message` rempli) : l'admin traite alors manuellement via
+  `/admin/transactions`, même philosophie que la protection recrue/`cap_signing_watch`
+  ci-dessus. Un claim `awarded` reste visible dans l'historique de l'onglet Ballotage
+  (`STATUS_LABEL`/`STATUS_COLOR`, `BallotageTab.tsx`) pendant qu'il attend.
+- **Comptes de réclamations/refus jamais exposés aux poolers tant qu'un claim est ouvert
+  (David, 2026-09-21)** — `getWaiverClaimsAction` ne renvoie plus `claimCount`/`refusedCount`
+  (supprimés de `WaiverClaimView`) et sa requête sur `waiver_claim_requests` est filtrée
+  `.eq('pooler_id', user.id)` — un pooler ne voit jamais même via le réseau qui d'autre a
+  réclamé/refusé, seulement son propre statut. Repéré par David : ces comptes révélaient de
+  l'info stratégique (qui est intéressé) avant que la priorité tranche. Une fois résolu, seul
+  le nom du gagnant apparaît dans "Activité récente" (jamais les comptes), inchangé.
+- **Lien cliquable dans les courriels/push (David, 2026-09-21)** — même patron que babillard/
+  planification (`process.env.NEXT_PUBLIC_SITE_URL` + `<a href>`, "Voir sur Cap Crunch") : la
+  notification de libération et le "garanti" pointent vers `/gestion-effectifs?tab=ballotage`
+  (`GestionEffectifsManager.tsx` accepte `initialTab`, lu depuis `?tab=` par `page.tsx`) ; la
+  notification "tu as remporté" pointe vers `/gestion-effectifs` (onglet Mouvements par défaut,
+  où se trouve le bandeau à compléter).
+- **Analyser dans le simulateur avant de réclamer (David, 2026-09-21)** — bouton "Analyser" sur
+  chaque claim ouvert de `BallotageTab.tsx`, lien vers `/simulation?addPlayer=<playerId>` :
+  pré-remplit l'onglet "Mon alignement" avec ce joueur en simulation
+  (`loadPlayerByIdAction`, `app/simulation/actions.ts`, `preloadPlayerId` sur
+  `SimulationTool.tsx`) pour évaluer l'impact avant de s'engager, sans rien soumettre. Pure
+  lecture, aucun lien avec la réclamation elle-même.
+- Écriture directe (pas de réutilisation d'`applyTransactionItems`, `admin/transactions/
+  actions.ts`) : `waiverClaims.ts` importe `applyTransactionItems` nulle part — un import dans
+  l'autre sens (`admin/transactions/actions.ts` appelle `createWaiverClaimForRelease` pour
+  brancher sur son propre `action_type='release'`) aurait créé un cycle. La résolution
+  duplique donc le strict minimum de la logique 'sign' d'`applyTransactionItems` plutôt que de
+  la réutiliser.
+- RLS `waiver_claims`/`waiver_claim_requests` : lecture publique + admin seulement en écriture
+  (même patron que `presaison_draft_state`/`presaison_pooler_ready`) — toutes les écritures
+  (création de claim, réclamation, résolution) passent par `createAdminClient()` depuis des
+  Server Actions qui font leur propre vérification d'autorisation.
+- **Refuser + notification anticipée "garanti" (David, 2026-09-21)** — `waiver_claim_requests`
+  a maintenant une colonne `status` (`'claimed'` | `'refused'`, une seule ligne par
+  `(waiver_claim_id, pooler_id)` grâce à la contrainte `UNIQUE` déjà en place) plutôt qu'une
+  nouvelle table : refuser (`refuseWaiverClaimAction`) est toujours permis, y compris après
+  avoir réclamé (changer d'avis) ; l'inverse (refusé → réclamé) est bloqué de façon permanente,
+  pour ne jamais invalider une garantie déjà notifiée à quelqu'un de moins prioritaire.
+  `resolveExpiredWaiverClaims` ne considère que `status='claimed'` comme de vraies
+  réclamations. `checkGuaranteedWaiverWinner()` (`app/lib/waiverClaims.ts`), appelée après
+  chaque réclamation ET chaque refus (pas de tâche planifiée, déclenchée par l'action
+  elle-même) : trouve le réclamant le plus prioritaire actuel (`leaderId`, premier de
+  `priority_snapshot` présent dans les `status='claimed'`) et vérifie que **tous** les poolers
+  plus prioritaires que lui ont un refus explicite enregistré (un silence ne compte jamais
+  comme un refus — un pooler qui n'a pas encore répondu pourrait encore réclamer). Si c'est le
+  cas, notifie ce réclamant par push/courriel qu'il est garanti de l'obtenir, et marque
+  `guaranteed_notified_at` (colonne sur `waiver_claim_requests`) pour ne jamais le notifier deux
+  fois pour le même claim. Le pooler le plus prioritaire de toute la liste est déjà "garanti"
+  dès sa propre réclamation (aucun refus requis, la liste des poolers plus prioritaires que lui
+  est vide) — géré par le même appel après une réclamation, pas seulement après un refus.
+
+**Règles d'alignement consolidées (`app/lib/rosterLimits.ts`) — David, 2026-08-31, exactitude
+corrigée le 2026-09-20 :**
+- `validateRosterLimits(entries, poolCap)` : **exactement** 12 attaquants / 6 défenseurs /
+  2 gardiens actifs (un dépassement ET un sous-effectif sont tous les deux bloquants — corrigé
+  le 2026-09-20 : la version d'origine ne bloquait qu'un dépassement, ce qui permettait à tort
+  un mouvement d'effectif de laisser un pooler en sous-effectif ; en cours de saison,
+  l'alignement doit toujours respecter les minimums après un mouvement soumis — c'est
+  justement pour ça que les mouvements groupés existent, pour permettre de libérer et
+  d'activer en un seul geste sans jamais passer par un état invalide), minimum 2 réservistes
+  (pas de maximum — un pooler peut en garder plus que 2), masse salariale ≤ cap du pool.
+  Fonction pure, `capNumber` toujours pré-résolu par l'appelant via `getEffectiveCap()` (jamais
+  un `cap_number` brut — corrige un bug où `submitTransactionAction` comptait un joueur non
+  signé comme 0$).
 - Utilisée par `submitTransactionAction` (admin/transactions), `submitRosterAction`
   (admin/rosters, Mode init désactivé) et `submitBatchAction` (`gestion-effectifs/actions.ts`
   — self-service pooler, qui n'avait *aucune* validation de ce genre avant cette date).
@@ -650,15 +849,70 @@ revue le 2026-09-14 :**
   qui construit déjà un état virtuel) — voir le bloc "Validation de l'état final" en tête de
   la fonction. Sautée entièrement quand l'appelant est admin (override délibéré), et de toute
   façon inatteignable pour un pooler avant que `season_started=true` (voir ci-dessus).
-- `app/lib/seasonConformity.ts` (`checkSeasonConformity`) est un validateur **distinct**, plus
-  strict (== 12/6/2 exactement) — utilisé uniquement par "Démarrer la saison" comme condition
-  de blocage un moment donné, pas une contrainte permanente comme `validateRosterLimits`.
+- `app/lib/seasonConformity.ts` (`checkSeasonConformity`) reste un validateur **distinct** —
+  même règle de comptage par position depuis le 2026-09-20 (les deux exigent 12/6/2 exact), mais
+  ajoute la déclaration "prêt" par pooler par-dessus, et reste utilisé uniquement comme
+  condition de blocage de "Démarrer la saison", pas à chaque transaction.
+- Signer un agent libre pendant la pré-saison (repêchage AL, `submitTransactionAction`) a sa
+  propre validation distincte (David, 2026-09-20) — `validateRosterLimits` est sautée en
+  pré-saison (`skipEnforcement`, voir plus bas), donc une signature ne peut pas être bloquée
+  par elle ; un garde-fou séparé vérifie plutôt qu'il resterait assez d'espace cap pour combler
+  les postes encore manquants au salaire minimum LNH après la signature — sinon la saison ne
+  pourrait jamais démarrer sans qu'on l'ait vu venir pendant le repêchage. Bug trouvé en
+  pratique : une signature à 5M$ acceptée alors qu'il ne restait plus assez d'espace pour le
+  dernier réserviste requis.
 - Contextes "override" intentionnels, sans validation ni journal, vérifiés et laissés tels
   quels : Mode init/Banque de recrues (`admin/rosters/actions.ts`, voir plus haut — bloqués
   depuis le 2026-08-31 dès que `season_started=true`, garde-fou séparé), `presaison/actions.ts`
   (ELC, retour LTIR), `submitTransactionAction` tant que `season_started=false`,
   `/admin/historique` (reconstruction d'un historique passé, règles potentiellement différentes
   à l'époque).
+
+**Statistiques AHL (`app/lib/ahl-stats.ts`) — David, 2026-09-17 :**
+- Source : API HockeyTech/LeagueStat (`https://lscluster.hockeytech.com/feed/index.php`,
+  `client_code=ahl`), même fournisseur que theahl.com — pas d'équivalent à l'API LNH publique
+  (`api.nhle.com`) déjà utilisée par `/statistiques`. Clé (`key=...`) trouvée dans l'onglet
+  Réseau du navigateur sur theahl.com/stats — publique de fait (visible par n'importe quel
+  visiteur du site, pas une clé secrète), mais propre à ce client (le même mécanisme existe
+  pour la PWHL avec une clé différente, `client_code=pwhl`). Si la clé change côté HockeyTech,
+  la retrouver de la même façon (F5 sur theahl.com/stats, onglet Réseau, filtrer `hockeytech`).
+- Réponses JSON enveloppées dans des parenthèses même avec `fmt=json` (format JSONP hérité) —
+  `parseHockeyTechJson()` les retire avant `JSON.parse`.
+- Saison par défaut : la plus récente saison "Regular Season" qui a des matchs joués
+  (`resolveSeason()`, `app/app/statistiques/ahl/page.tsx`) — la saison AHL à venir apparaît
+  dans la liste avant même son coup d'envoi (ex : 2026-27 visible dès septembre, débute le
+  2026-10-02), donc un simple "plus récente saison" afficherait un classement vide en
+  pré-saison.
+- Page `/statistiques/ahl` volontairement plus simple que `/statistiques` (LNH) : pas de
+  recrues ELC, séries ni indicateurs de forme — les joueurs AHL ne sont pas nécessairement
+  liés à un `player` de la base (identifiants HockeyTech, pas `nhl_id`). Le badge "R" utilise
+  le champ `rookie` propre à l'API AHL (statut recrue au sens de la ligue), pas
+  `rookieProtection.ts` (règle du pool, sans rapport).
+- **Indicateur de disponibilité (David, 2026-09-17)** — pastille verte/grise comme sur
+  `/statistiques`, réutilise `fetchTakenNames()` + `normName()` (`app/lib/nhl-stats.ts`) :
+  noms normalisés de tout joueur déjà présent dans un alignement de la saison active
+  (`pooler_rosters`, tous `player_type` confondus — donc un prospect en banque de recrues
+  compte comme "pris"). Matching sur le nom complet uniquement (les joueurs AHL n'ont pas de
+  `nhl_id`/`player.id` fiable pour un matching plus robuste) — un homonyme improbable
+  afficherait un faux positif, risque jugé acceptable.
+
+**Saisons passées sur `/statistiques` (LNH) — David, 2026-09-17, corrigé le même jour :**
+- Sélecteur de saison (`recentNhlSeasons()`, `app/lib/nhl-stats.ts`) — 15 dernières saisons
+  générées par calcul pur (pas d'appel réseau ; l'API stats NHL publique couvre déjà tout
+  l'historique). Uniquement en mode "Saison régulière" (`?saisonNhl=20242025`) — le mode
+  "Séries" reste lié aux choix réels du pool des séries pour la saison active, pas un
+  historique navigable ; le sélecteur est caché dans ce mode.
+- Badge recrue ELC et séquences de forme masqués dès qu'une saison autre que l'active est
+  sélectionnée (`showTimeSensitiveOverlay` dans `StatsTable.tsx`) — ces deux-là reflètent
+  l'état *actuel* (contrat en cours, forme récente), trompeur pour une saison passée.
+  `fetchRookieNames()`/`fetchStreaksForStats()` ne sont même pas appelées dans ce cas (évite
+  le travail inutile). Message d'avertissement affiché à la place.
+- **La pastille de disponibilité, elle, reste toujours affichée** peu importe la saison
+  consultée (David a repéré l'incohérence : elle était d'abord masquée elle aussi, alors
+  qu'elle répond à "ce joueur est-il pris *aujourd'hui*", une question qui ne dépend pas de la
+  saison de stats regardée — contrairement au statut recrue/à la forme récente). Même
+  comportement que sur `/statistiques/ahl`, qui n'a jamais masqué sa pastille selon la saison
+  choisie. `fetchTakenNames()` est donc appelée sans condition de saison.
 
 **Next.js 16 :**
 - Utiliser `proxy.ts`, PAS `middleware.ts`
@@ -710,8 +964,9 @@ Règle : quand on touche une page de consultation, on la rend responsive en mêm
 - Masquer les colonnes secondaires sur mobile : `hidden sm:table-cell`
 - Pas de layout en colonnes côte à côte sur mobile (`flex-wrap` ou `grid-cols-1`)
 
-Pages de consultation : `/`, `/joueurs`, `/statistiques`, `/repechage`,
-`/poolers`, `/poolers/[id]`, `/journal-transactions`, `/gestion-series`, `/classement-series`, `/aide`
+Pages de consultation : `/`, `/joueurs`, `/statistiques`, `/statistiques/ahl`, `/repechage`,
+`/poolers`, `/poolers/[id]`, `/journal-transactions`, `/gestion-series`, `/classement-series`,
+`/classement`, `/classement/hebdomadaire`, `/classement/mensuel`, `/aide`
 
 ---
 

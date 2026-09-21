@@ -1,11 +1,17 @@
 'use server'
 
+import { after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/rosterTypeChange'
 import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
-import { validateRosterLimits } from '@/lib/rosterLimits'
+import { validateRosterLimits, getPlayerBucket } from '@/lib/rosterLimits'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { isRookieProtectionExpired } from '@/lib/rookieProtection'
+import { createWaiverClaimForRelease } from '@/lib/waiverClaims'
+import { DEFAULT_NHL_MINIMUM_SALARY } from '../presaison/types'
+
+const fmtCap = (n: number) =>
+  new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 
 export type ActionType = 'transfer' | 'promote' | 'sign' | 'reactivate' | 'release' | 'type_change'
 
@@ -67,30 +73,92 @@ export async function loadRosterAction(poolerId: string, saisonId: number) {
   return { roster: (rosterData ?? []) as any[], picks: (picksData ?? []) as any[] }
 }
 
-export async function searchFreeAgentsAction(saisonId: number, query: string): Promise<{ players: any[] }> {
-  if (query.trim().length < 2) return { players: [] }
-  const supabase = await createClient()
+function posBucketLocal(position: string | null): 'forward' | 'defense' | 'goalie' {
+  const pos = (position ?? '').toUpperCase()
+  if (pos.includes('G')) return 'goalie'
+  if (pos.includes('D')) return 'defense'
+  return 'forward'
+}
 
-  const { data: onRoster } = await supabase
-    .from('pooler_rosters')
-    .select('player_id')
-    .eq('pool_season_id', saisonId)
-    .eq('is_active', true)
+// Tri équipe (alphabétique) → nom (alphabétique) fait en JS plutôt qu'en SQL (David,
+// 2026-09-21) — la recherche par nom passe par le RPC search_players_unaccent (insensible aux
+// accents), et PostgREST ne sait pas combiner un order() sur une relation imbriquée (teams)
+// avec une requête basée sur un appel RPC (même limite déjà rencontrée par
+// searchSandboxFreeAgentsAction, repechage-agents-libres/actions.ts, qui contourne pareil).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sortByTeamThenName(players: any[]) {
+  return [...players].sort((a, b) =>
+    (a.teams?.code ?? '').localeCompare(b.teams?.code ?? '') || a.last_name.localeCompare(b.last_name),
+  )
+}
+
+// Sélecteurs équipe/position ajoutés (David, 2026-09-21) — pour trouver un agent libre quand on
+// connaît son équipe mais pas l'orthographe exacte du nom. Sans nom (ou moins de 2 caractères),
+// bascule sur une recherche par équipe/position sans passer par le RPC de recherche par nom
+// (même dualité que searchSandboxFreeAgentsAction) ; avec un nom, le RPC reste utilisé pour
+// l'insensibilité aux accents, puis équipe/position sont filtrés en JS après coup. `maxSalary`
+// (David, 2026-09-21, suite) : ne montre que les joueurs dont le salaire de la saison tient
+// dans l'espace cap restant du pooler en train de signer — un joueur sans contrat connu pour
+// la saison (cap inconnu) est exclu plutôt que supposé gratuit, même logique que
+// searchSandboxFreeAgentsAction.
+export async function searchFreeAgentsAction(
+  saisonId: number,
+  query: string,
+  opts: { position?: 'forward' | 'defense' | 'goalie'; teamCode?: string; maxSalary?: number } = {},
+): Promise<{ players: any[] }> {
+  const supabase = await createClient()
+  const q = query.trim()
+  if (q.length < 2 && !opts.position && !opts.teamCode) return { players: [] }
+
+  const [{ data: onRoster }, { data: saison }] = await Promise.all([
+    supabase.from('pooler_rosters').select('player_id').eq('pool_season_id', saisonId).eq('is_active', true),
+    supabase.from('pool_seasons').select('season').eq('id', saisonId).single(),
+  ])
 
   const takenIds = (onRoster ?? []).map((r: any) => r.player_id)
-  const q = query.trim()
+  const season = saison?.season as string | undefined
 
-  let dbQuery = supabase
-    .rpc('search_players_unaccent', { search_term: q })
-    .select(`id, first_name, last_name, position, status, teams (code), player_contracts (season, cap_number)`)
-    .limit(15)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let players: any[]
 
-  if (takenIds.length > 0) {
-    dbQuery = dbQuery.not('id', 'in', `(${takenIds.join(',')})`)
+  if (q.length >= 2) {
+    let dbQuery = supabase
+      .rpc('search_players_unaccent', { search_term: q })
+      .select(`id, first_name, last_name, position, status, teams (code), player_contracts (season, cap_number)`)
+      .limit(50)
+    if (takenIds.length > 0) dbQuery = dbQuery.not('id', 'in', `(${takenIds.join(',')})`)
+    const { data } = await dbQuery
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    players = (data ?? []) as any[]
+    // Équipe filtrée en JS ici (pas .eq('teams.code', ...)) — combiner un filtre sur une
+    // relation imbriquée avec une requête basée sur le RPC n'est pas fiable (voir commentaire
+    // plus haut).
+    if (opts.teamCode) players = players.filter(p => p.teams?.code === opts.teamCode)
+    if (opts.position) players = players.filter(p => posBucketLocal(p.position) === opts.position)
+  } else {
+    // Navigation par équipe/position sans nom — teams!inner requis pour filtrer sur la
+    // relation (voir searchSandboxFreeAgentsAction pour le même besoin).
+    let dbQuery = supabase
+      .from('players')
+      .select(`id, first_name, last_name, position, status, teams!inner (code), player_contracts (season, cap_number)`)
+    if (opts.teamCode) dbQuery = dbQuery.eq('teams.code', opts.teamCode)
+    if (takenIds.length > 0) dbQuery = dbQuery.not('id', 'in', `(${takenIds.join(',')})`)
+    const { data } = await dbQuery.limit(opts.teamCode ? 60 : 200)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    players = (data ?? []) as any[]
+    if (opts.position) players = players.filter(p => posBucketLocal(p.position) === opts.position)
   }
 
-  const { data } = await dbQuery
-  return { players: (data ?? []) as any[] }
+  if (opts.maxSalary != null && season) {
+    const maxSalary = opts.maxSalary
+    players = players.filter(p => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const contract = (p.player_contracts ?? []).find((c: any) => c.season === season)
+      return contract?.cap_number != null && contract.cap_number <= maxSalary
+    })
+  }
+
+  return { players: sortByTeamThenName(players).slice(0, q.length >= 2 ? 15 : 40) }
 }
 
 export async function submitTransactionAction(
@@ -130,11 +198,15 @@ export async function applyTransactionItems(
   if (items.length === 0) return { error: 'La transaction est vide.' }
 
   const [{ data: saison }, { data: settings }] = await Promise.all([
-    supabase.from('pool_seasons').select('season, pool_cap, season_started').eq('id', saisonId).single(),
-    supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
+    supabase.from('pool_seasons').select('season, pool_cap, season_started, saison_start_date').eq('id', saisonId).single(),
+    supabase.from('app_settings').select('unsigned_player_cap_multiplier, nhl_minimum_salary').eq('id', 1).maybeSingle(),
   ])
   if (!saison) return { error: 'Saison introuvable.' }
   const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
+  const nhlMinimumSalary = settings?.nhl_minimum_salary ?? DEFAULT_NHL_MINIMUM_SALARY
+  // Plancher pour computeTypeChangeAddedAt (David, 2026-09-21) — voir le commentaire détaillé
+  // dans app/lib/rosterTypeChange.ts et gestion-effectifs/actions.ts (même logique).
+  const minAddedAtTs = saison.saison_start_date ? `${saison.saison_start_date}T12:00:00Z` : undefined
 
   // Pré-saison (saison active mais pas encore démarrée via /admin/nouvelle-saison) : ni
   // validation ni journalisation — voir CLAUDE.md section 6 / SUIVI_PROJET.md 2026-08-31.
@@ -290,6 +362,47 @@ export async function applyTransactionItems(
     }
   }
 
+  // Signer un agent libre (actif/réserviste) PENDANT LA PRÉ-SAISON (repêchage AL) ne doit
+  // jamais laisser un pooler sans assez d'espace pour compléter légalement son alignement
+  // (12A/6D/2G actifs + min. 2 rés., au salaire minimum LNH pour chaque poste encore manquant)
+  // — sinon "Démarrer la saison" (checkSeasonConformity) reste bloqué en permanence sans qu'on
+  // l'ait vu venir pendant le repêchage. S'applique dans la fenêtre skipEnforcement (l'inverse
+  // de validateRosterLimits ci-dessus, sauté pendant cette même fenêtre) — ce n'est pas la même
+  // vérification (max de postes/cap total vs "reste-t-il de quoi finir légalement"). Ne
+  // s'applique PAS en cours de saison réelle : un pooler peut y rester temporairement sous
+  // effectif complet sans que ce soit un problème (voir validateRosterLimits, commentaire sur
+  // le "sous-effectif temporaire"). David, 2026-09-20 — bug trouvé en pratique : une signature
+  // à 5M$ acceptée en plein repêchage AL alors qu'il ne restait plus assez d'espace pour le
+  // dernier réserviste requis.
+  if (skipEnforcement) {
+    const signToPoolerIds = new Set(
+      items
+        .filter(i => i.action_type === 'sign' && (i.new_player_type === 'actif' || i.new_player_type === 'reserviste'))
+        .map(i => i.to_pooler_id!),
+    )
+    for (const poolerId of signToPoolerIds) {
+      const entries = virtual.get(poolerId) ?? []
+      const counts = { forward: 0, defense: 0, goalie: 0, reserviste: 0 }
+      let capUsed = 0
+      for (const e of entries) {
+        if (e.player_type === 'actif') { counts[getPlayerBucket(e.position)]++; capUsed += e.cap_number }
+        else if (e.player_type === 'reserviste') { counts.reserviste++; capUsed += e.cap_number }
+      }
+      const missing = Math.max(0, 12 - counts.forward) + Math.max(0, 6 - counts.defense)
+        + Math.max(0, 2 - counts.goalie) + Math.max(0, 2 - counts.reserviste)
+      if (missing === 0) continue
+      const capSpace = saison.pool_cap - capUsed
+      const capNeeded = missing * nhlMinimumSalary
+      if (capSpace < capNeeded) {
+        const { data: p } = await supabase.from('poolers').select('name').eq('id', poolerId).single()
+        return {
+          error: `${p?.name ?? poolerId} n'aurait plus assez d'espace pour compléter légalement son alignement après cette signature `
+            + `(il resterait ${fmtCap(capSpace)}, il en faut au moins ${fmtCap(capNeeded)} pour combler ${missing} poste(s) manquant(s) au salaire minimum).`,
+        }
+      }
+    }
+  }
+
   // Enregistrer la transaction avant d'appliquer les mutations.
   // Ainsi, si une mutation échoue à mi-chemin, l'intent est toujours tracé
   // et un admin peut identifier et corriger l'état partiel.
@@ -408,7 +521,7 @@ export async function applyTransactionItems(
         .eq('is_active', true)
         .maybeSingle()
       if (!existingRow) return { error: `Joueur (id: ${player_id}) avec type "${matchType}" introuvable.` }
-      const { addedAtOverride, warning } = computeTypeChangeAddedAt(existingRow.added_at, txTs)
+      const { addedAtOverride, warning } = computeTypeChangeAddedAt(existingRow.added_at, txTs, minAddedAtTs)
       if (warning) warnings.push(warning)
 
       // Promouvoir une recrue dont la protection (5 saisons depuis le repêchage pour un
@@ -487,6 +600,11 @@ export async function applyTransactionItems(
         .maybeSingle()
       if (error) return { error: error.message }
       await log(player_id!, from_pooler_id!, relRow?.player_type ?? old_player_type ?? null, null)
+      // Ballotage (David, 2026-09-15) — no-op en pré-saison (createWaiverClaimForRelease
+      // revérifie season_started lui-même), et déjà sauté ici en pré-saison via
+      // skipEnforcement plus bas de toute façon (l'admin peut appeler applyTransactionItems
+      // hors saison démarrée pour une correction historique, ce n'est pas une vraie libération).
+      if (!skipEnforcement) after(() => createWaiverClaimForRelease(saisonId, player_id!, from_pooler_id!).catch(() => {}))
       continue
     }
   }

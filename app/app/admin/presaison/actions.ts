@@ -642,6 +642,101 @@ export async function advancePresaisonQueueAction(saisonId: number, isPass = fal
   return loadPresaisonDraftStateAction(saisonId)
 }
 
+// Retrait volontaire/forcé de la file (David, 2026-09-18) — distinct de "Passer" :
+// "Passer" fait juste tourner la file (le pooler reviendra à son tour) ; ceci le retire pour
+// de bon de ce repêchage AL, typiquement parce que son alignement est déjà complet (12A/6D/2G
+// + min. 2 rés.) et qu'il ne veut pas dépenser plus de cap. Partagé entre l'action admin
+// ci-dessous (retirer n'importe qui, à tout moment) et le self-service pooler
+// (repechage-agents-libres/actions.ts, leaveDraftQueueAction) — chacun fait sa propre
+// vérification d'autorisation avant d'appeler cette fonction, comme applyTransactionItems.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function removeFromQueueInternal(supabase: any, saisonId: number, poolerId: string): Promise<{ error?: string; removed: boolean }> {
+  const { data: current } = await supabase
+    .from('presaison_draft_state')
+    .select('queue, turn_started_at, turn_duration_seconds')
+    .eq('pool_season_id', saisonId)
+    .maybeSingle()
+  const prevQueue = (current?.queue as string[] | undefined) ?? []
+  if (!prevQueue.includes(poolerId)) return { removed: false }
+
+  const wasCurrent = prevQueue[0] === poolerId
+  const nextQueue = prevQueue.filter((id: string) => id !== poolerId)
+  const isActive = nextQueue.length > 0
+  const nowIso = new Date().toISOString()
+
+  const { error } = await supabase
+    .from('presaison_draft_state')
+    .update({
+      is_active: isActive,
+      queue: nextQueue,
+      // Seul le retrait du pooler EN TRAIN de jouer relance le chrono pour le suivant — retirer
+      // quelqu'un plus loin dans la file ne doit pas perturber le tour en cours.
+      turn_started_at: isActive ? (wasCurrent ? nowIso : current?.turn_started_at ?? nowIso) : null,
+      turn_duration_seconds: isActive ? (wasCurrent ? TURN_DURATION_DEFAULT : current?.turn_duration_seconds ?? TURN_DURATION_DEFAULT) : TURN_DURATION_DEFAULT,
+      ended_at: isActive ? null : nowIso,
+      updated_at: nowIso,
+    })
+    .eq('pool_season_id', saisonId)
+  if (error) return { error: error.message, removed: false }
+
+  if (wasCurrent && isActive) {
+    const { sendPushToUser } = await import('@/lib/push')
+    // after() : voir le commentaire dans lib/threadNotify.ts.
+    after(() => sendPushToUser(nextQueue[0], {
+      title: 'Repêchage agents libres',
+      body: "C'est ton tour de signer un agent libre.",
+      url: '/repechage-agents-libres',
+    }).catch(() => {}))
+  }
+
+  return { removed: true }
+}
+
+// Admin — retirer n'importe quel pooler de la file, peu importe si c'est son tour ou non
+// (ex: son alignement est complet et il ne se connectera pas pour le dire lui-même).
+export async function removePoolerFromQueueAction(saisonId: number, poolerId: string): Promise<{ error?: string; state?: DraftState }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  if (!me?.is_admin) return { error: 'Accès refusé.' }
+
+  const result = await removeFromQueueInternal(supabase, saisonId, poolerId)
+  if (result.error) return { error: result.error }
+
+  revalidatePath('/admin/presaison')
+  revalidatePath('/repechage-agents-libres')
+  return loadPresaisonDraftStateAction(saisonId)
+}
+
+// Self-service pooler — se retirer soi-même, seulement si son propre alignement actif est
+// complet (12A/6D/2G + min. 2 rés., pas de dépassement de cap). Appelée depuis
+// repechage-agents-libres/actions.ts (leaveDraftQueueAction) avec un client admin — écriture
+// sur presaison_draft_state (RLS admin-only), autorisation faite ici plutôt qu'en RLS, même
+// patron que submitSelfServiceAction pour les transactions.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function leaveQueueForPoolerAction(supabase: any, saisonId: number, poolerId: string): Promise<{ error?: string }> {
+  const fresh = await loadPresaisonDataAction(saisonId)
+  if (fresh.error || !fresh.poolers) return { error: fresh.error ?? 'Impossible de vérifier ton alignement.' }
+  const info = fresh.poolers.find(p => p.id === poolerId)
+  if (!info) return { error: 'Alignement introuvable.' }
+
+  const isRosterComplete = info.counts.forward === 12 && info.counts.defense === 6
+    && info.counts.goalie === 2 && info.counts.reserviste >= 2 && info.capSpace >= 0
+  if (!isRosterComplete) {
+    return { error: 'Ton alignement doit être complet (12 attaquants, 6 défenseurs, 2 gardiens, min. 2 réservistes) avant de pouvoir te retirer de la file.' }
+  }
+
+  const result = await removeFromQueueInternal(supabase, saisonId, poolerId)
+  if (result.error) return { error: result.error }
+  if (!result.removed) return { error: 'Tu n\'es plus dans la file du repêchage.' }
+
+  revalidatePath('/repechage-agents-libres')
+  revalidatePath('/admin/presaison')
+  return {}
+}
+
 export async function endPresaisonDraftAction(saisonId: number): Promise<{ error?: string; state?: DraftState }> {
   const supabase = await createClient()
 

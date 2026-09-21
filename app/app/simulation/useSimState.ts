@@ -3,6 +3,22 @@
 import { useState } from 'react'
 import type { SimRosterEntry } from './actions'
 
+// Regroupe l'alignement RÉEL (non simulé) par position — pour la colonne "Alignement actuel"
+// en lecture seule (David, 2026-09-21), affichée à côté du panneau simulé pour ne plus avoir à
+// deviner l'état de départ derrière les lignes biffées.
+export function groupRosterEntries(roster: SimRosterEntry[]): { label: string; entries: SimRosterEntry[] }[] {
+  const groups: { label: string; match: (e: SimRosterEntry) => boolean }[] = [
+    { label: 'Attaquants', match: e => e.player_type === 'actif' && posBucket(e.position) === 'forward' },
+    { label: 'Défenseurs', match: e => e.player_type === 'actif' && posBucket(e.position) === 'defense' },
+    { label: 'Gardiens', match: e => e.player_type === 'actif' && posBucket(e.position) === 'goalie' },
+    { label: 'Réservistes', match: e => e.player_type === 'reserviste' },
+    { label: 'LTIR', match: e => e.player_type === 'ltir' },
+  ]
+  return groups
+    .map(g => ({ label: g.label, entries: roster.filter(g.match).sort((a, b) => b.cap_number - a.cap_number) }))
+    .filter(g => g.entries.length > 0)
+}
+
 export type PlayerType = 'actif' | 'reserviste' | 'ltir'
 
 export type FreeAgent = {

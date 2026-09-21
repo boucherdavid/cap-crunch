@@ -4,11 +4,43 @@ import { useEffect, useState } from 'react'
 import {
   loadRosterForSimulationAction, listScenariosAction, loadScenarioAction,
   saveScenarioAction, deleteScenarioAction, listOtherPoolersAction, loadRecrueBankForPoolerAction,
+  loadPlayerByIdAction,
   type SimRosterEntry, type ScenarioData,
 } from './actions'
 import { listTeamsAction } from '../repechage-agents-libres/actions'
-import { useSimState, type RecrueOption, type SimEntry } from './useSimState'
+import { useSimState, groupRosterEntries, type RecrueOption, type SimEntry } from './useSimState'
 import SimPanel from './SimPanel'
+
+const fmt = (n: number) =>
+  new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+const DASH = '—'
+
+// Colonne de référence en lecture seule (David, 2026-09-21) — l'alignement RÉEL, sans aucun
+// toggle ni bouton, affiché à côté du panneau simulé (onglet "Mon alignement" seulement) pour
+// comparer d'un coup d'œil sans avoir à se souvenir de l'état de départ derrière les lignes
+// biffées du panneau simulé.
+function CurrentRosterColumn({ roster }: { roster: SimRosterEntry[] }) {
+  return (
+    <div>
+      <h3 className="font-semibold text-gray-800 mb-3">Alignement actuel</h3>
+      <div className="space-y-2">
+        {groupRosterEntries(roster).map(group => (
+          <div key={group.label}>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{group.label}</p>
+            <div className="space-y-1">
+              {group.entries.map(e => (
+                <div key={e.roster_id} className="flex items-center justify-between text-sm py-1 text-gray-600">
+                  <span className="truncate"><span className="text-gray-400 mr-1">{e.position ?? DASH}</span>{e.playerName}</span>
+                  <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 type Scenario = { id: number; name: string; updated_at: string }
 type Tab = 'moi' | 'transaction'
@@ -25,11 +57,15 @@ function sendEntry(entry: SimEntry, from: ReturnType<typeof useSimState>, to: Re
 }
 
 export default function SimulationTool({
-  me, saisonId, season,
+  me, saisonId, season, preloadPlayerId,
 }: {
   me: { id: string; name: string }
   saisonId: number
   season: string
+  // Pré-remplit "Mon alignement" avec ce joueur en simulation (lien "Analyser" depuis l'onglet
+  // Ballotage de /gestion-effectifs, David 2026-09-21) — pour évaluer l'impact d'une réclamation
+  // avant de s'engager, sans rien soumettre pour de vrai.
+  preloadPlayerId?: number
 }) {
   const [tab, setTab] = useState<Tab>('moi')
 
@@ -61,6 +97,19 @@ export default function SimulationTool({
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saisonId, me.id])
+
+  // Ajoute automatiquement le joueur pré-rempli (lien "Analyser" depuis Ballotage) une fois
+  // l'alignement chargé — une seule fois, même si l'effet ré-exécute (David, 2026-09-21).
+  const [preloadDone, setPreloadDone] = useState(false)
+  useEffect(() => {
+    if (loading || preloadDone || !preloadPlayerId) return
+    setPreloadDone(true)
+    loadPlayerByIdAction(saisonId, preloadPlayerId).then(res => {
+      const p = res.player
+      if (p) myState.addFA({ id: p.id, first_name: p.first_name, last_name: p.last_name, position: p.position, cap_number: p.cap_number, ownerName: p.owner_name })
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, preloadDone, preloadPlayerId, saisonId])
 
   // ── Scénarios sauvegardés (onglet "Mon alignement" seulement) — David, 2026-09-14.
   const [scenarios, setScenarios] = useState<Scenario[]>([])
@@ -212,7 +261,12 @@ export default function SimulationTool({
             <p className="text-xs text-gray-400 mb-3">
               Ajoute ou retire librement pour tester — rien n&apos;affecte ton vrai alignement, jamais soumis d&apos;ici.
             </p>
-            <SimPanel title={me.name} poolCap={poolCap} state={myState} recruePlayers={myRecrue} teams={teams} saisonId={saisonId} />
+            {/* Colonne "Alignement actuel" en lecture seule à gauche (David, 2026-09-21) — pour
+                comparer sans se souvenir de l'état de départ derrière les lignes biffées. */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <CurrentRosterColumn roster={myRoster} />
+              <SimPanel title="Alignement simulé" poolCap={poolCap} state={myState} recruePlayers={myRecrue} teams={teams} saisonId={saisonId} />
+            </div>
           </div>
         </>
       )}

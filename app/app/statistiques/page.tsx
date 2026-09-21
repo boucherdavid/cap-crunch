@@ -5,7 +5,7 @@ import { fetchStreaks, DEFAULT_INDICATOR_CONFIG, type StreakInfo } from '@/lib/s
 export const metadata = { title: 'Statistiques LNH' }
 export const dynamic = 'force-dynamic'
 
-import { NHL_SEASON } from '@/lib/nhl-stats'
+import { NHL_SEASON, recentNhlSeasons } from '@/lib/nhl-stats'
 import { fetchActiveNhlSeasonId } from '@/lib/nhl-active-season'
 const REST = 'https://api.nhle.com/stats/rest/en'
 
@@ -360,25 +360,37 @@ async function fetchStreaksForStats(gameType: number, nhlSeason = NHL_SEASON): P
 export default async function StatistiquesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ saison?: string }>
+  searchParams: Promise<{ saison?: string; saisonNhl?: string }>
 }) {
-  const { saison } = await searchParams
+  const { saison, saisonNhl } = await searchParams
   const gameType = saison === 'series' ? 3 : 2
 
   // Saison NHL active (lue depuis pool_seasons — évite de hardcoder 20252026)
-  const nhlSeason = await fetchActiveNhlSeasonId(gameType === 3)
+  const activeNhlSeason = await fetchActiveNhlSeasonId(gameType === 3)
+  const seasonOptions = recentNhlSeasons(activeNhlSeason)
+
+  // Saisons passées : uniquement en mode "régulière" — le mode "séries" reste lié aux
+  // choix réels du pool des séries pour la saison active, pas un historique navigable.
+  const nhlSeason = gameType === 2 && saisonNhl && seasonOptions.some(s => s.id === saisonNhl)
+    ? saisonNhl
+    : activeNhlSeason
+  const isCurrentSeason = nhlSeason === activeNhlSeason
 
   const [skaters, goalies, takenNames, rookieNames, currentTeamMap, playoffPicksMap, streaksMap] = await Promise.all([
     fetchSkaters(gameType, nhlSeason),
     fetchGoalies(gameType, nhlSeason),
+    // Disponibilité = état du jour dans le pool, indépendant de la saison de stats consultée
+    // (contrairement au statut recrue ELC et aux séquences, ci-dessous) — toujours pertinente.
     fetchTakenNames(),
-    fetchRookieNames(),
+    isCurrentSeason ? fetchRookieNames() : Promise.resolve([] as string[]),
     fetchCurrentTeamMap(),
     gameType === 3 ? fetchPlayoffPicksMap() : Promise.resolve({} as Record<string, string[]>),
-    Promise.race([
-      fetchStreaksForStats(gameType, nhlSeason),
-      new Promise<Record<number, StreakInfo>>(resolve => setTimeout(() => resolve({}), 5000)),
-    ]),
+    isCurrentSeason
+      ? Promise.race([
+          fetchStreaksForStats(gameType, nhlSeason),
+          new Promise<Record<number, StreakInfo>>(resolve => setTimeout(() => resolve({}), 5000)),
+        ])
+      : Promise.resolve({} as Record<number, StreakInfo>),
   ])
 
   // Replace multi-team abbrevs ("2 TM", "ANA,CGY", etc.) with the player's current team from DB
@@ -406,6 +418,9 @@ export default async function StatistiquesPage({
         gameMode={saison === 'series' ? 'series' : 'regular'}
         playoffPicksMap={playoffPicksMap}
         streaksMap={streaksMap}
+        seasonOptions={seasonOptions}
+        selectedNhlSeason={nhlSeason}
+        showTimeSensitiveOverlay={isCurrentSeason}
       />
     </div>
   )

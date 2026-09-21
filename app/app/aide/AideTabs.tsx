@@ -111,20 +111,42 @@ const SECTIONS: Section[] = [
           <li>• <strong>Libérez</strong> un joueur pour le retirer de votre alignement.</li>
           <li>• <strong>Activez ou remettez en banque</strong> une recrue encore protégée, à tout moment.</li>
           <li>• Vos changements doivent respecter les limites du pool (voir Règlements) : maximum 12 attaquants / 6 défenseurs / 2 gardiens actifs, minimum 2 réservistes, et votre masse salariale sous le cap.</li>
+          <li>• Libérer un joueur en cours de saison le met automatiquement au <strong>ballotage</strong> (onglet Ballotage, voir plus bas) — les autres poolers ont un délai pour le réclamer.</li>
         </ul>
-        <p className="text-xs text-gray-400 mt-3 italic">Avant le début officiel de la saison, ces mêmes ajustements se font plutôt depuis <strong>Repêchage agents libres</strong> (voir plus bas).</p>
+        <p className="text-xs text-gray-400 mt-3 italic">Avant le début officiel de la saison, ces mêmes ajustements se font plutôt depuis <strong>Signatures des agents libres</strong> (Alignements, voir plus bas).</p>
+      </div>
+    ),
+  },
+  {
+    id: 'guide-ballotage',
+    tab: 'guide',
+    title: 'Ballotage',
+    keywords: 'ballotage reclamer liberer joueur delai priorite classement onglet gestion effectifs',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Onglet <strong>Ballotage</strong> de Gestion d&apos;effectifs — quand un joueur est libéré
+          en cours de saison, il y apparaît et devient réclamable par n&apos;importe quel autre pooler
+          pendant un délai limité.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• Cliquez <strong>Réclamer</strong> pour signaler votre intérêt — vous pouvez réclamer plusieurs joueurs en même temps.</li>
+          <li>• Si plusieurs poolers réclament le même joueur, celui avec la <strong>priorité la plus haute</strong> (pire classé au moment de la libération) le remporte.</li>
+          <li>• Si personne ne réclame avant la fin du délai, le joueur redevient simplement un agent libre normal.</li>
+          <li>• Le joueur remporté arrive sur votre alignement en <strong>réserviste</strong> — activez-le ensuite vous-même si vous le souhaitez.</li>
+        </ul>
       </div>
     ),
   },
   {
     id: 'guide-agents-libres',
     tab: 'guide',
-    title: 'Repêchage des agents libres (pré-saison)',
-    keywords: 'repechage agents libres presaison file attente tour signature admin bac a sable simulation liberer recrue pret alignement',
+    title: 'Signatures des agents libres (pré-saison)',
+    keywords: 'repechage signatures agents libres presaison file attente tour signature admin bac a sable simulation liberer recrue pret alignement',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez-y via <strong>Repêchage → Repêchage agents libres</strong>. C&apos;est l&apos;étape de préparation avant chaque
+          Accédez-y via <strong>Alignements → Signatures des agents libres</strong>. C&apos;est l&apos;étape de préparation avant chaque
           nouvelle saison, où chaque pooler ajuste son alignement et où des agents libres sont signés à tour de rôle.
         </p>
         <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Tableau de bord partagé</h4>
@@ -143,6 +165,32 @@ const SECTIONS: Section[] = [
           Pendant votre tour, la signature d&apos;un agent libre repéré dans le bac à sable est effectuée par l&apos;administrateur en votre nom.
           Vous pouvez aussi <strong>passer votre tour</strong> si vous n&apos;avez personne à signer.
         </p>
+      </div>
+    ),
+  },
+  {
+    id: 'guide-simulation',
+    tab: 'guide',
+    title: 'Simulation',
+    keywords: 'simulation bac a sable transaction echange test scenario sauvegarder ir ltir actif reserviste agent libre recrue toute la saison',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Accédez-y via <strong>Alignements → Simulation</strong> — testez des changements d&apos;alignement <strong>toute l&apos;année</strong>,
+          pas seulement en pré-saison. Rien n&apos;est jamais appliqué pour de vrai : pour un vrai changement, utilisez Gestion d&apos;effectifs.
+        </p>
+        <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Onglet Mon alignement</h4>
+        <ul className="text-sm text-gray-700 space-y-1.5 mb-4">
+          <li>• Retirez un de vos joueurs, ajoutez un agent libre (ou un joueur déjà possédé par un autre pooler, identifié en orange — pratique pour simuler une transaction) ou une recrue de votre banque.</li>
+          <li>• Chaque joueur ajouté a un statut à choisir : <strong>Actif / Réserviste / IR</strong>.</li>
+          <li>• <strong>Scénarios sauvegardés</strong> : donnez un nom à votre simulation pour la retrouver plus tard — plusieurs scénarios peuvent être gardés en parallèle.</li>
+        </ul>
+        <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Onglet Transaction</h4>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• Choisissez un autre pooler pour voir les deux alignements côte à côte.</li>
+          <li>• Utilisez le bouton <strong>→</strong> pour envoyer un de vos joueurs chez l&apos;autre pooler (ou l&apos;inverse) et voir l&apos;impact sur les deux masses salariales en même temps.</li>
+          <li>• Les mêmes outils que Mon alignement (agent libre, recrue de banque, statut Actif/Réserviste/IR) sont disponibles des deux côtés.</li>
+        </ul>
       </div>
     ),
   },
@@ -285,6 +333,27 @@ const SECTIONS: Section[] = [
       </div>
     ),
   },
+  {
+    id: 'guide-projections',
+    tab: 'guide',
+    title: 'Projections',
+    keywords: 'projections nhl.com cbs tendance points par match saison derniere progression disponible filtre',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Accédez-y via <strong>LNH → Statistiques → Projections</strong> — regroupe en un seul tableau ce qui est normalement
+          visible joueur par joueur dans le panneau détail (cliquable depuis n&apos;importe quelle page via le nom d&apos;un joueur).
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• Colonnes <strong>NHL.com</strong> et <strong>CBS</strong> : projections externes collées manuellement, mises à jour ponctuellement.</li>
+          <li>• <strong>Saison dernière</strong> : total réel de la saison précédente.</li>
+          <li>• <strong>Pts/Match (tend.)</strong> et <strong>Tendance 3 saisons</strong> : rythme pondéré sur les dernières saisons réelles (repère rapide, pas une vraie projection) — ignore les saisons à moins de 10 matchs pour éviter un chiffre faussé par un tout petit échantillon.</li>
+          <li>• <strong>Progression</strong> (↑ / ↓ / →) : compare le rythme des 2 dernières saisons qualifiées.</li>
+          <li>• Séparé en onglets Attaquants / Défenseurs / Gardiens, avec le même point vert de disponibilité que Statistiques LNH.</li>
+        </ul>
+      </div>
+    ),
+  },
 
   // ── RÈGLEMENTS ────────────────────────────────────────────────────────────
   {
@@ -321,11 +390,11 @@ const SECTIONS: Section[] = [
     keywords: 'recrue banque draft repeche elc agent libre protection saisons contrat masse salariale expiration automatique activer liberer',
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
-        <li>• Un joueur <strong>repêché</strong> par le pool reste protégé au maximum <strong>5 saisons</strong> après son année de repêchage — mais perd la protection dès la fin de son contrat d&apos;entrée (ELC), même avant les 5 ans si l&apos;ELC se termine plus tôt.</li>
-        <li>• Un joueur signé comme <strong>agent libre</strong> reste protégé tant que son ELC est actif, sans limite de nombre de saisons.</li>
+        <li>• Un joueur <strong>repêché</strong> par le pool reste protégé pendant <strong>5 saisons</strong> après son année de repêchage, peu importe la durée de son contrat d&apos;entrée (ELC) — la fin de l&apos;ELC ne fait pas perdre la protection avant ces 5 ans. Vous gardez donc l&apos;option de le laisser en banque même une fois son ELC terminé.</li>
+        <li>• Un joueur signé comme <strong>agent libre</strong> reste protégé tant que son ELC est actif, sans limite de nombre de saisons (pas de fenêtre de 5 ans pour lui).</li>
         <li>• Un joueur en banque de recrues ne compte pas dans la masse salariale, même s&apos;il joue dans la LNH.</li>
-        <li>• Quand la protection expire, la perte du statut recrue est <strong>automatique</strong> : s&apos;il était déjà actif ou réserviste, il reste où il est ; s&apos;il était encore en banque, il est activé automatiquement. Aucune action requise de votre part à ce moment précis.</li>
-        <li>• Vous pouvez vous-même <strong>activer ou remettre en banque</strong> n&apos;importe quelle recrue encore protégée en tout temps, depuis Gestion d&apos;effectifs ou le repêchage des agents libres.</li>
+        <li>• Quand la protection expire <strong>pour de vrai</strong> (5 ans écoulés pour un repêché, ELC terminé pour un agent libre), la perte du statut recrue est <strong>automatique</strong> : s&apos;il était déjà actif ou réserviste, il reste où il est ; s&apos;il était encore en banque, il est activé automatiquement. Aucune action requise de votre part à ce moment précis.</li>
+        <li>• Vous pouvez vous-même <strong>activer ou remettre en banque</strong> n&apos;importe quelle recrue encore protégée en tout temps, depuis Gestion d&apos;effectifs ou Signatures des agents libres (ce dernier seulement avant le début de la saison).</li>
       </ul>
     ),
   },
@@ -337,16 +406,31 @@ const SECTIONS: Section[] = [
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
         <li>• Les <strong>échanges entre poolers</strong> (joueurs, choix de repêchage) sont effectués par l&apos;administrateur.</li>
-        <li>• Les ajustements sur votre propre alignement (actif/réserviste, libération, recrues) se font en libre-service via <strong>Gestion d&apos;effectifs</strong> une fois la saison démarrée, ou via <strong>Repêchage agents libres</strong> avant le début de la saison.</li>
+        <li>• Les ajustements sur votre propre alignement (actif/réserviste, libération, recrues) se font en libre-service via <strong>Gestion d&apos;effectifs</strong> une fois la saison démarrée, ou via <strong>Signatures des agents libres</strong> avant le début de la saison.</li>
+        <li>• Pour tester l&apos;impact d&apos;un changement ou d&apos;un échange avant de le faire pour de vrai, voir <strong>Simulation</strong> — disponible toute l&apos;année, purement en aperçu.</li>
         <li>• <span className="italic text-gray-400">Règles additionnelles à venir (nombre d&apos;échanges permis, délai de désactivation, etc.)</span></li>
+      </ul>
+    ),
+  },
+  {
+    id: 'regl-ballotage',
+    tab: 'reglements',
+    title: 'Ballotage',
+    keywords: 'ballotage reclamer liberer priorite classement delai',
+    content: (
+      <ul className="text-sm text-gray-700 space-y-1.5">
+        <li>• S&apos;applique uniquement aux libérations en <strong>cours de saison</strong> (pas aux libérations de la phase pré-saison).</li>
+        <li>• La priorité de réclamation est l&apos;<strong>ordre inverse du classement</strong> au moment précis de la libération — elle ne change pas même si le classement bouge ensuite.</li>
+        <li>• Le délai de réclamation est configurable par l&apos;administrateur (par défaut 3 jours).</li>
+        <li>• En cas de réclamations multiples sur le même joueur, seule la priorité tranche.</li>
       </ul>
     ),
   },
   {
     id: 'regl-agents-libres',
     tab: 'reglements',
-    title: 'Repêchage des agents libres (pré-saison)',
-    keywords: 'repechage agents libres presaison ordre tour phase liberation passer signature admin',
+    title: 'Signatures des agents libres (pré-saison)',
+    keywords: 'repechage signatures agents libres presaison ordre tour phase liberation passer signature admin',
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
         <li>• Se déroule avant le début de chaque nouvelle saison, une fois le repêchage des recrues terminé.</li>

@@ -27,7 +27,7 @@ export async function demarrerSaisonAction(saisonId: number): Promise<{
 
   const { data: saison } = await db
     .from('pool_seasons')
-    .select('season_started, saison_start_date')
+    .select('season, season_started, saison_start_date')
     .eq('id', saisonId)
     .single()
   if (!saison) return { error: 'Saison introuvable.' }
@@ -58,9 +58,13 @@ export async function demarrerSaisonAction(saisonId: number): Promise<{
     .eq('is_active', true)
   if (updateErr) return { error: updateErr.message }
 
+  // season_started_at (David, 2026-09-21) — horodatage réel du démarrage, distinct de
+  // saison_start_date (date calendaire configurée à l'avance) : sert de point de départ pour
+  // le délai d'ajustement de 48h accordé aux poolers déclarés "prêt" par l'admin plutôt que par
+  // eux-mêmes (voir submitBatchAction, gestion-effectifs/actions.ts).
   const { error: flagErr } = await db
     .from('pool_seasons')
-    .update({ season_started: true })
+    .update({ season_started: true, season_started_at: new Date().toISOString() })
     .eq('id', saisonId)
   if (flagErr) return { error: flagErr.message }
 
@@ -71,5 +75,10 @@ export async function demarrerSaisonAction(saisonId: number): Promise<{
   revalidatePath('/gestion-effectifs')
   revalidatePath('/admin/nouvelle-saison')
 
-  return { summary: `Saison démarrée — ${totalPoolers} pooler(s) validés, ${count ?? 0} ligne(s) d'alignement datées au ${saison.saison_start_date}.` }
+  // Nom de la saison inclus explicitement (David, 2026-09-21) — cette page bascule
+  // automatiquement sur la saison SUIVANTE dès que season_started passe à true (voir
+  // defaultTarget, admin/nouvelle-saison/page.tsx), donc ce message de succès et la carte
+  // "Démarrer la saison" juste au-dessus peuvent afficher deux saisons différentes au même
+  // moment — sans le nom explicite ici, ça donnait l'impression d'un résultat incohérent.
+  return { summary: `Saison ${saison.season} démarrée — ${totalPoolers} pooler(s) validés, ${count ?? 0} ligne(s) d'alignement datées au ${saison.saison_start_date}.` }
 }

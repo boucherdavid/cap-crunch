@@ -2,30 +2,30 @@
 
 import { useEffect, useState } from 'react'
 import DraftOrderEditor from '../admin/presaison/DraftOrderEditor'
-import FreeAgentSigner from '../admin/presaison/FreeAgentSigner'
 import {
   saveDraftOrderAction, initDraftOrderFromStandingsAction, setReleasePhaseAction,
-  startPresaisonDraftAction, advancePresaisonQueueAction, endPresaisonDraftAction,
-  adjustPresaisonTimerAction, resetPresaisonTimerAction, resetPresaisonDraftAction,
-  pausePresaisonTimerAction, resumePresaisonTimerAction, setPassModeAction,
+  startPresaisonDraftAction, resetPresaisonDraftAction, setPassModeAction,
+  removePoolerFromQueueAction,
 } from '../admin/presaison/actions'
 import type { PoolerCapInfo, DraftState } from '../admin/presaison/types'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 
-// Panneau admin rétractable (David, 2026-09-08) — porte l'ordre du repêchage, la phase de
-// libération, le tour en cours et la Zone de test sur /repechage-agents-libres, pour que
-// l'admin n'ait plus à jongler entre cette page et /admin/init?tab=presaison (qui reste
-// fonctionnelle, inchangée, comme filet de sécurité). Réutilise les mêmes Server Actions —
-// aucune logique métier dupliquée, juste une seconde surface d'affichage. Recharge la page
-// après chaque action mutante plutôt que de synchroniser un état local, même patron que le
-// reste de cette page (self-service, AutoReload).
+// Panneau admin rétractable (David, 2026-09-08, réorganisé en colonne de gauche le 2026-09-18)
+// — porte l'ordre du repêchage, la phase de libération, la file d'attente et la Zone de test
+// sur /repechage-agents-libres, pour que l'admin n'ait plus à jongler entre cette page et
+// /admin/init?tab=presaison (qui reste fonctionnelle, inchangée, comme filet de sécurité).
+// Le tour en cours (signature/Passer/chrono) a été extrait dans TourEnCoursPanel.tsx (David,
+// 2026-09-18) pour rester visible en haut de page sans avoir à déplier ce panneau — ce
+// panneau-ci ne garde que les réglages/actions moins fréquentes. Réutilise les mêmes Server
+// Actions — aucune logique métier dupliquée, juste une seconde surface d'affichage. Recharge
+// la page après chaque action mutante plutôt que de synchroniser un état local, même patron
+// que le reste de cette page (self-service, AutoReload).
 export default function AdminPanel({
-  saisonId, season, poolers, initialDraftOrder, draftState, nhlMinimumSalary, onSelectionChange,
+  saisonId, poolers, initialDraftOrder, draftState, nhlMinimumSalary, onSelectionChange,
 }: {
   saisonId: number
-  season: string
   poolers: PoolerCapInfo[]
   initialDraftOrder: string[]
   draftState: DraftState
@@ -62,32 +62,23 @@ export default function AdminPanel({
   const [togglingReleasePhase, setTogglingReleasePhase] = useState(false)
   const [resettingDraft, setResettingDraft] = useState(false)
   const [resetDraftMsg, setResetDraftMsg] = useState<string | null>(null)
+  const [removingId, setRemovingId] = useState<string | null>(null)
+  const [removeErr, setRemoveErr] = useState<string | null>(null)
   const [togglingPassMode, setTogglingPassMode] = useState(false)
-  const [now] = useState(() => Date.now())
-  const [freeAgentSelecting, setFreeAgentSelecting] = useState(false)
 
-  // Signale au parent (AgentsLibresDashboard) qu'une interaction en cours ici devrait mettre
-  // AutoReload en pause — un agent libre sélectionné pas encore signé, ou un ordre de
-  // repêchage réordonné localement pas encore sauvegardé (David, 2026-09-10, même famille de
-  // bug que les libérations/mises en banque : un rechargement en plein milieu perdait le
-  // travail non soumis, sans message d'erreur).
+  // Signale au parent (AgentsLibresDashboard) qu'un ordre de repêchage réordonné localement pas
+  // encore sauvegardé devrait mettre AutoReload en pause (David, 2026-09-10) — un rechargement
+  // en plein milieu perdrait le travail non soumis, sans message d'erreur. La sélection d'un
+  // agent libre pas encore signé a sa propre pause, gérée par TourEnCoursPanel.tsx depuis le
+  // 2026-09-18 (extrait de ce panneau).
   const orderDirty = JSON.stringify(draftOrder) !== JSON.stringify(initialDraftOrder)
   useEffect(() => {
-    onSelectionChange?.(freeAgentSelecting || orderDirty)
+    onSelectionChange?.(orderDirty)
     return () => onSelectionChange?.(false)
-  }, [freeAgentSelecting, orderDirty, onSelectionChange])
+  }, [orderDirty, onSelectionChange])
 
   const isDraftActive = draftState.is_active
   const isDraftDone = !isDraftActive && draftState.ended_at != null
-  const currentPoolerId = draftState.queue[0] ?? null
-  const currentPooler = poolers.find(p => p.id === currentPoolerId) ?? null
-  const nextPoolerName = draftState.queue[1] ? (poolers.find(p => p.id === draftState.queue[1])?.name ?? '?') : null
-  // turn_started_at=null pendant que is_active=true = chrono en pause — turn_duration_seconds
-  // tient alors le nombre de secondes gelées au moment de la pause (pausePresaisonTimerAction).
-  const isPaused = isDraftActive && draftState.turn_started_at === null
-  const remainingSeconds = draftState.turn_started_at
-    ? Math.max(0, draftState.turn_duration_seconds - Math.floor((now - new Date(draftState.turn_started_at).getTime()) / 1000))
-    : isPaused ? draftState.turn_duration_seconds : null
   const eligibleCount = draftOrder.filter(id => {
     const p = poolers.find(pp => pp.id === id)
     return p !== undefined && p.capSpace >= nhlMinimumSalary
@@ -128,7 +119,7 @@ export default function AdminPanel({
   }
 
   // Comportement de "Passer" (David, 2026-09-08) — choisi avant de démarrer le repêchage,
-  // voir advancePresaisonQueueAction pour l'effet réel.
+  // voir advancePresaisonQueueAction (TourEnCoursPanel.tsx) pour l'effet réel.
   const handleSetPassMode = async (skipOne: boolean) => {
     setTogglingPassMode(true)
     try {
@@ -152,46 +143,21 @@ export default function AdminPanel({
     }
   }
 
-  const handlePass = async () => {
+  // Retirer un pooler de la file pour de bon (David, 2026-09-18) — distinct de "Passer" : utile
+  // quand un pooler a déjà un alignement complet (12A/6D/2G + min. 2 rés.) et n'a pas besoin de
+  // dépenser plus de cap, ou n'est pas connecté pour se retirer lui-même (voir
+  // leaveDraftQueueAction côté pooler, même mécanique).
+  const handleRemoveFromQueue = async (poolerId: string, poolerName: string) => {
+    if (!window.confirm(`Retirer ${poolerName} de la file du repêchage ? Il ne sera plus rappelé pour signer, même s'il reste de l'espace cap.`)) return
+    setRemovingId(poolerId); setRemoveErr(null)
     try {
-      await advancePresaisonQueueAction(saisonId, true)
-      window.location.reload()
-    } catch { /* le tour reste affiché tel quel, l'admin peut réessayer */ }
+      const result = await removePoolerFromQueueAction(saisonId, poolerId)
+      if (result.error) { setRemovingId(null); setRemoveErr(result.error) } else { window.location.reload() }
+    } catch {
+      setRemovingId(null); setRemoveErr('Erreur inattendue — réessaie.')
+    }
   }
-  // Bug corrigé le 2026-09-08 : onSign ne faisait que recharger la page sans jamais appeler
-  // advancePresaisonQueueAction — le pooler courant restait indéfiniment en tête de file
-  // après une signature réussie. isPass=false : une signature va toujours en fin de file.
-  const handleSignAdvance = async () => {
-    try {
-      await advancePresaisonQueueAction(saisonId, false)
-    } catch { /* la signature a déjà eu lieu ; on recharge quand même pour refléter l'état réel */ }
-    window.location.reload()
-  }
-  const handleEndDraft = async () => {
-    try {
-      await endPresaisonDraftAction(saisonId)
-      window.location.reload()
-    } catch { /* rien à réinitialiser côté client, l'admin peut réessayer */ }
-  }
-  const handleTimerAdjust = async (delta: number) => {
-    try {
-      await adjustPresaisonTimerAction(saisonId, delta)
-      window.location.reload()
-    } catch { /* chrono inchangé, l'admin peut réessayer */ }
-  }
-  const handleTimerReset = async () => {
-    try {
-      await resetPresaisonTimerAction(saisonId)
-      window.location.reload()
-    } catch { /* chrono inchangé, l'admin peut réessayer */ }
-  }
-  const handlePauseToggle = async () => {
-    try {
-      if (isPaused) await resumePresaisonTimerAction(saisonId)
-      else await pausePresaisonTimerAction(saisonId)
-      window.location.reload()
-    } catch { /* chrono inchangé, l'admin peut réessayer */ }
-  }
+
   const handleReset = async () => {
     if (!window.confirm('Réinitialiser le repêchage pré-saison ? Toutes les signatures seront annulées.')) return
     setResettingDraft(true)
@@ -205,9 +171,6 @@ export default function AdminPanel({
     }
   }
 
-  // Pas de overflow-hidden sur le conteneur ci-dessous (David, 2026-09-10) — coupait le
-  // dropdown flottant de FreeAgentSigner ; aucun enfant ici n'a besoin d'être clippé aux
-  // coins arrondis.
   return (
     <div className="bg-blue-50 border border-blue-200 rounded-lg mb-6">
       <button
@@ -224,10 +187,10 @@ export default function AdminPanel({
 
       {expanded && (
         <div className="px-4 pb-4 space-y-4">
-          <div className={`rounded-lg p-4 flex items-center justify-between flex-wrap gap-3 ${draftState.release_phase_open ? 'bg-amber-50 border border-amber-200' : 'bg-white border border-gray-200'}`}>
+          <div className={`rounded-lg p-4 flex flex-col gap-3 ${draftState.release_phase_open ? 'bg-amber-50 border border-amber-200' : 'bg-white border border-gray-200'}`}>
             <div>
               <p className="text-sm font-semibold text-gray-800">Phase de libération de joueurs</p>
-              <p className="text-xs text-gray-500 mt-0.5 max-w-md">
+              <p className="text-xs text-gray-500 mt-0.5">
                 {draftState.release_phase_open
                   ? 'Ouverte — les poolers peuvent libérer n’importe quel joueur signé. Ferme-la une fois tout le monde ajusté.'
                   : 'Fermée — seules les recrues de banque restent activables/libérables. Le repêchage peut démarrer.'}
@@ -236,7 +199,7 @@ export default function AdminPanel({
             <button
               onClick={() => handleSetReleasePhase(!draftState.release_phase_open)}
               disabled={togglingReleasePhase}
-              className={`text-sm px-4 py-2 rounded-lg font-medium disabled:opacity-40 shrink-0 ${draftState.release_phase_open ? 'bg-amber-600 text-white hover:bg-amber-700' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+              className={`text-sm px-4 py-2 rounded-lg font-medium disabled:opacity-40 ${draftState.release_phase_open ? 'bg-amber-600 text-white hover:bg-amber-700' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
             >
               {togglingReleasePhase ? '...' : draftState.release_phase_open ? 'Fermer la libération de joueurs' : 'Ouvrir la libération de joueurs'}
             </button>
@@ -250,8 +213,13 @@ export default function AdminPanel({
                   ✓ Dernier repêchage terminé.
                 </p>
               )}
-              <p className="text-xs text-gray-400 mb-3">
+              <p className="text-xs text-gray-400 mb-1">
                 Seuil de participation : {fmt(nhlMinimumSalary)} d&apos;espace cap.
+              </p>
+              <p className="text-xs text-gray-400 mb-3">
+                Sert aussi de priorité au ballotage jusqu&apos;au 1er novembre (avant que le
+                classement réel de la saison ait du sens) — l&apos;ajuster ici l&apos;ajuste
+                partout.
               </p>
 
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3">
@@ -318,47 +286,29 @@ export default function AdminPanel({
             </div>
           )}
 
-          {isDraftActive && currentPooler && (
+          {isDraftActive && draftState.queue.length > 0 && (
             <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3 className="font-semibold text-gray-800 text-sm">
-                    Tour de : <span className="text-blue-700">{currentPooler.name}</span>
-                    {isPaused && <span className="ml-2 text-xs font-medium align-middle text-amber-600">⏸ En pause</span>}
-                    {remainingSeconds !== null && !isPaused && (
-                      <span className={`ml-2 text-xs font-mono align-middle ${remainingSeconds <= 10 ? 'text-red-600' : remainingSeconds <= 30 ? 'text-amber-600' : 'text-gray-400'}`}>
-                        ⏱ {String(Math.floor(remainingSeconds / 60)).padStart(2, '0')}:{String(remainingSeconds % 60).padStart(2, '0')}
-                      </span>
-                    )}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <button onClick={handlePauseToggle} className="text-xs text-gray-400 hover:text-gray-700 border rounded px-2 py-0.5">
-                      {isPaused ? '▶ Reprendre' : '⏸ Pause'}
-                    </button>
-                    <button onClick={() => handleTimerAdjust(-30)} className="text-xs text-gray-400 hover:text-gray-700 border rounded px-2 py-0.5">-30s</button>
-                    <button onClick={() => handleTimerAdjust(30)} className="text-xs text-gray-400 hover:text-gray-700 border rounded px-2 py-0.5">+30s</button>
-                    <button onClick={handleTimerReset} className="text-xs text-gray-400 hover:text-gray-700 border rounded px-2 py-0.5">↺ Réinitialiser le chrono</button>
-                  </div>
-                </div>
-                <button onClick={handleEndDraft} className="text-xs text-gray-400 hover:text-red-600 border rounded px-2 py-1">
-                  Terminer le repêchage
-                </button>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                File d&apos;attente — retirer un pooler qui n&apos;a plus besoin de jouer
+              </p>
+              <div className="space-y-1">
+                {draftState.queue.map((id, idx) => {
+                  const p = poolers.find(pp => pp.id === id)
+                  return (
+                    <div key={id} className="flex items-center justify-between text-xs text-gray-600 py-0.5">
+                      <span>{idx === 0 ? <strong className="text-blue-700">{p?.name ?? id}</strong> : p?.name ?? id}</span>
+                      <button
+                        onClick={() => handleRemoveFromQueue(id, p?.name ?? id)}
+                        disabled={removingId === id}
+                        className="text-[10px] px-1.5 py-0.5 border rounded text-gray-400 hover:text-red-600 hover:border-red-300 disabled:opacity-40"
+                      >
+                        {removingId === id ? '...' : 'Retirer'}
+                      </button>
+                    </div>
+                  )
+                })}
               </div>
-
-              <FreeAgentSigner
-                pooler={currentPooler}
-                saisonId={saisonId}
-                season={season}
-                onSign={handleSignAdvance}
-                threshold={nhlMinimumSalary}
-                onSelectionChange={setFreeAgentSelecting}
-              />
-
-              <div className="border-t pt-3 mt-3">
-                <button onClick={handlePass} className="text-sm text-gray-500 hover:text-gray-700 border rounded-lg px-4 py-2 hover:bg-gray-50">
-                  Passer{nextPoolerName ? ` → ${nextPoolerName}` : ''}
-                </button>
-              </div>
+              {removeErr && <p className="text-xs text-red-600 mt-1.5">{removeErr}</p>}
             </div>
           )}
 
