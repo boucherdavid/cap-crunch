@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getEffectiveCap } from '@/lib/capUtils'
 import {
   createTradeOffer, respondToTradeOffer, confirmTradeReady, resolveExpiredTradeOffers,
   type TradeItemInput,
@@ -11,7 +12,7 @@ import {
 // /poolers/[id], voir app/app/simulation/actions.ts pour le même principe) ────────────────────
 
 export type TradeableItem =
-  | { kind: 'player'; playerId: number; name: string; position: string | null; teamCode: string | null; playerType: 'actif' | 'reserviste' | 'recrue' }
+  | { kind: 'player'; playerId: number; name: string; position: string | null; teamCode: string | null; playerType: 'actif' | 'reserviste' | 'recrue'; capNumber: number }
   | { kind: 'pick'; pickId: number; round: number; season: string }
 
 export async function listTradeableAssetsAction(poolerId: string, saisonId: number): Promise<TradeableItem[]> {
@@ -19,10 +20,12 @@ export async function listTradeableAssetsAction(poolerId: string, saisonId: numb
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
-  const [{ data: rosterRows }, { data: pickRows }] = await Promise.all([
+  const [{ data: saison }, { data: settings }, { data: rosterRows }, { data: pickRows }] = await Promise.all([
+    supabase.from('pool_seasons').select('season').eq('id', saisonId).single(),
+    supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
     supabase
       .from('pooler_rosters')
-      .select('player_id, player_type, players (first_name, last_name, position, teams (code))')
+      .select('player_id, player_type, players (first_name, last_name, position, teams (code), player_contracts (season, cap_number))')
       .eq('pooler_id', poolerId).eq('pool_season_id', saisonId).eq('is_active', true)
       .in('player_type', ['actif', 'reserviste', 'recrue']),
     supabase
@@ -30,6 +33,8 @@ export async function listTradeableAssetsAction(poolerId: string, saisonId: numb
       .select('id, round, pool_seasons (season)')
       .eq('current_owner_id', poolerId).eq('is_used', false),
   ])
+  const season = saison?.season ?? ''
+  const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const players: TradeableItem[] = ((rosterRows ?? []) as any[]).map(r => ({
@@ -39,6 +44,7 @@ export async function listTradeableAssetsAction(poolerId: string, saisonId: numb
     position: r.players?.position ?? null,
     teamCode: r.players?.teams?.code ?? null,
     playerType: r.player_type,
+    capNumber: getEffectiveCap(r.players?.player_contracts, season, unsignedMultiplier).cap,
   }))
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const picks: TradeableItem[] = ((pickRows ?? []) as any[]).map(p => ({

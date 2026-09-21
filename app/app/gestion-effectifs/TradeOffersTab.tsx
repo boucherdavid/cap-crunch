@@ -7,6 +7,19 @@ import {
   type TradeOfferView, type TradeableItem,
 } from './trade-actions'
 import { listOtherPoolersAction } from '../simulation/actions'
+import { getPlayerBucket } from '@/lib/rosterLimits'
+
+const fmtCap = (n: number) =>
+  new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+
+const GROUP_LABEL: Record<string, string> = { forward: 'Attaquants', defense: 'Défenseurs', goalie: 'Gardiens', recrue: 'Recrues', pick: 'Choix de repêchage' }
+const GROUP_ORDER = ['forward', 'defense', 'goalie', 'recrue', 'pick']
+
+function groupKey(i: TradeableItem): string {
+  if (i.kind === 'pick') return 'pick'
+  if (i.playerType === 'recrue') return 'recrue'
+  return getPlayerBucket(i.position)
+}
 
 const STATUS_LABEL: Record<string, string> = {
   pending_target: 'En attente de réponse',
@@ -29,23 +42,37 @@ function ItemPicker({
   title: string; items: TradeableItem[]; selected: Set<string>; onToggle: (key: string) => void
 }) {
   const key = (i: TradeableItem) => i.kind === 'player' ? `player-${i.playerId}` : `pick-${i.pickId}`
+  const groups = GROUP_ORDER
+    .map(g => ({ label: GROUP_LABEL[g], items: items.filter(i => groupKey(i) === g) }))
+    .filter(g => g.items.length > 0)
+
   return (
     <div>
       <p className="text-xs font-semibold text-gray-500 uppercase mb-1">{title}</p>
-      <div className="border border-gray-200 rounded-lg max-h-64 overflow-y-auto divide-y">
+      <div className="border border-gray-200 rounded-lg max-h-72 overflow-y-auto">
         {items.length === 0 && <p className="text-xs text-gray-400 p-2">Rien à échanger.</p>}
-        {items.map(i => {
-          const k = key(i)
-          const label = i.kind === 'player'
-            ? `${i.name}${i.position ? ` (${i.position}${i.teamCode ? ', ' + i.teamCode : ''})` : ''} — ${i.playerType}`
-            : `Choix ronde ${i.round} (${i.season})`
-          return (
-            <label key={k} className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-gray-50 cursor-pointer">
-              <input type="checkbox" checked={selected.has(k)} onChange={() => onToggle(k)} />
-              {label}
-            </label>
-          )
-        })}
+        {groups.map(g => (
+          <div key={g.label} className="border-b border-gray-200 last:border-0">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-2 pt-1.5">{g.label}</p>
+            <div className="divide-y">
+              {g.items.map(i => {
+                const k = key(i)
+                const label = i.kind === 'player'
+                  ? `${i.name}${i.position ? ` (${i.position}${i.teamCode ? ', ' + i.teamCode : ''})` : ''}`
+                  : `Choix ronde ${i.round} (${i.season})`
+                return (
+                  <label key={k} className="flex items-center justify-between gap-2 px-2 py-1.5 text-sm hover:bg-gray-50 cursor-pointer">
+                    <span className="flex items-center gap-2 min-w-0">
+                      <input type="checkbox" checked={selected.has(k)} onChange={() => onToggle(k)} />
+                      <span className="truncate">{label}</span>
+                    </span>
+                    {i.kind === 'player' && <span className="text-xs text-gray-500 shrink-0">{fmtCap(i.capNumber)}</span>}
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
