@@ -780,6 +780,13 @@ revue le 2026-09-14 :**
   `/admin/transactions`, même philosophie que la protection recrue/`cap_signing_watch`
   ci-dessus. Un claim `awarded` reste visible dans l'historique de l'onglet Ballotage
   (`STATUS_LABEL`/`STATUS_COLOR`, `BallotageTab.tsx`) pendant qu'il attend.
+- **Comptes de réclamations/refus jamais exposés aux poolers tant qu'un claim est ouvert
+  (David, 2026-09-21)** — `getWaiverClaimsAction` ne renvoie plus `claimCount`/`refusedCount`
+  (supprimés de `WaiverClaimView`) et sa requête sur `waiver_claim_requests` est filtrée
+  `.eq('pooler_id', user.id)` — un pooler ne voit jamais même via le réseau qui d'autre a
+  réclamé/refusé, seulement son propre statut. Repéré par David : ces comptes révélaient de
+  l'info stratégique (qui est intéressé) avant que la priorité tranche. Une fois résolu, seul
+  le nom du gagnant apparaît dans "Activité récente" (jamais les comptes), inchangé.
 - **Lien cliquable dans les courriels/push (David, 2026-09-21)** — même patron que babillard/
   planification (`process.env.NEXT_PUBLIC_SITE_URL` + `<a href>`, "Voir sur Cap Crunch") : la
   notification de libération et le "garanti" pointent vers `/gestion-effectifs?tab=ballotage`

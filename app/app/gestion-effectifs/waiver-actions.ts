@@ -12,8 +12,6 @@ export type WaiverClaimView = {
   teamCode: string | null
   releasedByName: string
   expiresAt: string
-  claimCount: number
-  refusedCount: number
   // 'claimed'/'refused' une fois que ce pooler a agi sur ce claim, sinon null (David,
   // 2026-09-21) — remplace l'ancien booléen alreadyClaimed, insuffisant pour distinguer les
   // deux réponses possibles.
@@ -61,19 +59,19 @@ export async function getWaiverClaimsAction(saisonId: number): Promise<{
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const claimIds = (openClaims ?? []).map((c: any) => c.id)
-  const claimCounts = new Map<number, number>()
-  const refusedCounts = new Map<number, number>()
+  // Ni le compte de réclamations ni de refus ne sont exposés aux poolers tant qu'un claim est
+  // 'open' (David, 2026-09-21) — ça révélerait qui est intéressé/pas intéressé avant que tout
+  // soit décidé, une info stratégique que personne ne devrait voir avant la résolution. Seul le
+  // statut du pooler courant (`myStatus`) est nécessaire pour canClaim/canRefuse.
   const myStatusByClaimId = new Map<number, 'claimed' | 'refused'>()
   if (claimIds.length > 0) {
     const { data: requests } = await supabase
       .from('waiver_claim_requests')
       .select('waiver_claim_id, pooler_id, status')
+      .eq('pooler_id', user.id)
       .in('waiver_claim_id', claimIds)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const r of (requests ?? []) as any[]) {
-      const counts = r.status === 'refused' ? refusedCounts : claimCounts
-      counts.set(r.waiver_claim_id, (counts.get(r.waiver_claim_id) ?? 0) + 1)
-      if (r.pooler_id === user.id) myStatusByClaimId.set(r.waiver_claim_id, r.status)
+    for (const r of requests ?? []) {
+      myStatusByClaimId.set(r.waiver_claim_id, r.status as 'claimed' | 'refused')
     }
   }
 
@@ -89,8 +87,6 @@ export async function getWaiverClaimsAction(saisonId: number): Promise<{
       teamCode: c.players?.teams?.code ?? null,
       releasedByName: c.poolers?.name ?? '—',
       expiresAt: c.expires_at,
-      claimCount: claimCounts.get(c.id) ?? 0,
-      refusedCount: refusedCounts.get(c.id) ?? 0,
       myStatus,
       canClaim: !isReleaser && myStatus !== 'claimed' && myStatus !== 'refused',
       // Refuser reste permis après avoir réclamé (change d'avis) — jamais l'inverse, voir

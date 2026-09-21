@@ -21,6 +21,20 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-21 (suite — masquer les comptes de réclamations/refus tant qu'un claim est ouvert)
+
+**[Fix] — fuite d'info stratégique : compte de réclamations/refus visible avant résolution**
+(`app/app/gestion-effectifs/{waiver-actions.ts,BallotageTab.tsx}`) :
+- David a repéré qu'un pooler pouvait voir "1 réclamation · 5 refus" sur un claim encore
+  ouvert — révèle qui est intéressé/pas intéressé avant que la priorité tranche, une info que
+  personne ne devrait avoir avant la décision finale.
+- Supprimé `claimCount`/`refusedCount` de `WaiverClaimView` et de l'affichage. La requête sur
+  `waiver_claim_requests` (`getWaiverClaimsAction`) est en plus filtrée `.eq('pooler_id',
+  user.id)` — ferme la fuite à la source (pas juste côté UI) : un pooler ne reçoit jamais les
+  lignes des autres, seulement la sienne pour calculer `myStatus`/`canClaim`/`canRefuse`.
+- Vérifié : `tsc --noEmit`, `eslint` (seule erreur restante, préexistante — `set-state-in-
+  effect` dans `BallotageTab.tsx`) et `next build` passent.
+
 ### 2026-09-21 (suite — lien cliquable vers l'app dans les courriels/push de ballotage)
 
 **[Feature] — lien "Voir sur Cap Crunch" dans les notifications de ballotage**

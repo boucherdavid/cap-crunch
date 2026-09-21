@@ -97,8 +97,6 @@ export default function BallotageTab({ saisonId }: { saisonId: number }) {
                 </div>
                 <div className="text-xs text-gray-500">
                   Libéré par {c.releasedByName} — {formatExpiry(c.expiresAt)}
-                  {c.claimCount > 0 && ` — ${c.claimCount} réclamation${c.claimCount > 1 ? 's' : ''}`}
-                  {c.refusedCount > 0 && ` · ${c.refusedCount} refus`}
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
