@@ -523,8 +523,11 @@ export default function PresaisonManager({
               ✓ Dernier repêchage terminé — tous les poolers éligibles ont complété leur tour ou n&apos;ont plus d&apos;espace suffisant.
             </p>
           )}
+          <p className="text-xs text-gray-400 mb-1">
+            Seuil de participation : {fmt(data.nhlMinimumSalary)} d&apos;espace cap. En dessous, le pooler est retiré automatiquement de la file.
+          </p>
           <p className="text-xs text-gray-400 mb-4">
-            Seuil de participation : {fmt(data.nhlMinimumSalary)} d'espace cap. En dessous, le pooler est retiré automatiquement de la file.
+            Sert aussi de priorité au ballotage jusqu&apos;au 1er novembre (avant que le classement réel de la saison ait du sens) — l&apos;ajuster ici l&apos;ajuste partout.
           </p>
 
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">

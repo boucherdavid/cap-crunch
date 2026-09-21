@@ -703,8 +703,17 @@ revue le 2026-09-14 :**
   pré-saison (`/repechage-agents-libres`) ne déclenchent jamais de ballotage — hors scope
   (elles tournent de toute façon toujours avant que `season_started` bascule à `true`).
 - Priorité : `priority_snapshot` (JSONB, ordre = priorité décroissante) **snapshotté** au
-  moment de la libération via `buildStandings()` (`app/lib/standings.ts`) inversé — pire
-  classé en premier. Ni recalculé, ni mis à jour si le classement change avant la résolution.
+  moment de la libération, pire classé en premier. Ni recalculé, ni mis à jour si le classement
+  change avant la résolution. Deux sources selon la date (`computeWaiverPriority`,
+  `app/lib/waiverClaims.ts`, David 2026-09-21) : **avant le 1er novembre** de l'année de début
+  de saison, utilise `pool_seasons.presaison_draft_order` tel quel (même ordre — pire en
+  premier — déjà utilisé pour le repêchage des recrues/agents libres, déjà ajustable
+  manuellement via `DraftOrderEditor.tsx`) plutôt que le classement réel, qui n'a pas encore de
+  sens en tout début de saison (`buildStandings()` retournerait un tableau vide tant qu'aucun
+  match n'est joué). **À partir du 1er novembre**, classement réel de la saison en cours
+  (`buildStandings()` inversé) comme avant ; si ce classement est encore vide à ce moment-là
+  (cas limite), repli sur `presaison_draft_order` plutôt que de bloquer le ballotage. Coupure du
+  1er novembre volontairement approximative (pas d'heure de l'Est à la seconde près).
 - Fenêtre : `app_settings.waiver_claim_hours` (défaut 72h/3 jours, éditable dans
   `/admin/effectifs?tab=conformite`, même formulaire que `unsigned_player_cap_multiplier`/
   `cap_deadline_days`), snapshottée dans `waiver_claims.window_hours` à la création.

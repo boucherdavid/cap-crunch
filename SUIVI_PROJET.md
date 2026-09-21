@@ -21,6 +21,43 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-21 (suite — ordre du ballotage basé sur presaison_draft_order avant le 1er novembre)
+
+**[Feature] — Priorité du ballotage : ordre pré-saison avant le 1er novembre, classement réel après**
+(`app/lib/waiverClaims.ts`, `app/app/repechage-agents-libres/AdminPanel.tsx`,
+`app/app/admin/presaison/PresaisonManager.tsx`) :
+- David : l'ordre du ballotage doit se baser sur le classement final de la saison précédente
+  jusqu'au 31 octobre (le classement réel de la nouvelle saison n'a pas encore de sens à ce
+  moment-là), puis sur le classement réel à partir du 1er novembre. Besoin de pouvoir ajuster
+  cet ordre manuellement, et si possible le partager avec le repêchage des recrues/agents
+  libres plutôt que d'avoir un mécanisme séparé pour chaque outil.
+- Repéré que `pool_seasons.presaison_draft_order` répond déjà à tout ça : déjà "inverse du
+  classement final de la saison précédente" (`initDraftOrderFromStandingsAction`), déjà
+  ajustable manuellement (`DraftOrderEditor.tsx`), déjà utilisé pour le repêchage des recrues
+  et des agents libres, et déjà dans la même convention "pire en premier" que
+  `waiver_claims.priority_snapshot` — aucun nouveau champ/table nécessaire, juste brancher le
+  ballotage dessus pour la fenêtre pré-1er-novembre.
+- Nouvelle fonction `computeWaiverPriority` (`app/lib/waiverClaims.ts`) : avant le 1er novembre
+  de l'année de début de saison, retourne `presaison_draft_order` tel quel ; à partir du 1er
+  novembre, classement réel (`buildStandings()` inversé, comme avant) ; si ce classement est
+  encore vide à ce moment-là (cas limite), repli sur `presaison_draft_order` plutôt que de
+  bloquer le ballotage. `createWaiverClaimForRelease` utilise maintenant cette fonction au lieu
+  d'appeler `buildStandings()` sans condition.
+- Recommandation suivie par David plutôt qu'un ordre complètement indépendant par outil : une
+  seule source ajustable manuellement pour la fenêtre où les données réelles n'ont pas de sens,
+  bascule automatique vers le classement réel dès qu'il en a — donne déjà des "ordres
+  différents selon la phase" sans maintenir deux configurations séparées.
+- Note ajoutée dans les deux éditeurs d'ordre existants (`AdminPanel.tsx` sur
+  `/repechage-agents-libres`, `PresaisonManager.tsx` sur `/admin/init?tab=presaison`) :
+  précise que cet ordre sert aussi de priorité au ballotage jusqu'au 1er novembre.
+- Contexte particulièrement pertinent maintenant : `computeReverseStandingsOrder` (utilisé par
+  "Initialiser à partir du classement précédent") ne peut plus calculer automatiquement l'ordre
+  2026-27 en prod depuis le vidage de l'historique 2025-26 (voir entrée du 2026-09-20) — David
+  devra saisir l'ordre manuellement cette année via l'éditeur existant, exactement le
+  mécanisme que ce changement vient de finaliser de brancher partout.
+- Validé avec `tsc --noEmit` et `eslint` (0 nouvelle erreur — corrigé au passage 2 apostrophes
+  non échappées sur les lignes touchées de `PresaisonManager.tsx`).
+
 ### 2026-09-21 (suite — nom de saison explicite dans le message de succès "Démarrer la saison")
 
 **[Fix] — Ambiguïté entre le message de succès et la carte "Démarrer la saison" affichée**

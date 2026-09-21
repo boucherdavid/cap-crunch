@@ -213,8 +213,13 @@ export default function AdminPanel({
                   ✓ Dernier repêchage terminé.
                 </p>
               )}
-              <p className="text-xs text-gray-400 mb-3">
+              <p className="text-xs text-gray-400 mb-1">
                 Seuil de participation : {fmt(nhlMinimumSalary)} d&apos;espace cap.
+              </p>
+              <p className="text-xs text-gray-400 mb-3">
+                Sert aussi de priorité au ballotage jusqu&apos;au 1er novembre (avant que le
+                classement réel de la saison ait du sens) — l&apos;ajuster ici l&apos;ajuste
+                partout.
               </p>
 
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3">

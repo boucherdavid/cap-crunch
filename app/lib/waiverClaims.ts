@@ -15,6 +15,37 @@ import { validateRosterLimits } from '@/lib/rosterLimits'
 // La résolution (signature du joueur au gagnant) est donc écrite directement ici plutôt que
 // réutiliser applyTransactionItems, en dupliquant le strict minimum de sa logique 'sign'.
 
+// Avant le 1er novembre de l'année de début de saison, le classement réel n'a pas encore de
+// sens (peu ou pas de matchs joués) — David, 2026-09-21. Coupure volontairement approximative
+// (pas d'heure de l'Est à la seconde près comme dateRanges.ts) : une différence de quelques
+// heures autour de minuit n'a aucune conséquence réelle sur l'équité du ballotage ici.
+function isBeforeNovemberFirst(season: string): boolean {
+  const startYear = parseInt(season.split('-')[0], 10)
+  return new Date() < new Date(startYear, 10, 1) // mois 0-indexé : 10 = novembre
+}
+
+// Ordre de priorité du ballotage (David, 2026-09-21) — avant le 1er novembre, utilise
+// `pool_seasons.presaison_draft_order` (même ordre, même convention "pire en premier", déjà
+// utilisé pour le repêchage des recrues et des agents libres, déjà ajustable manuellement via
+// l'éditeur d'ordre existant — DraftOrderEditor.tsx) plutôt que le classement réel de la saison
+// en cours, qui n'a pas encore de sens en tout début de saison (buildStandings() retournerait
+// un tableau vide tant qu'aucun match n'est joué). À partir du 1er novembre, le classement réel
+// prévaut ; s'il est encore indisponible à ce moment-là (cas limite), on retombe sur
+// presaison_draft_order plutôt que de bloquer complètement le ballotage.
+async function computeWaiverPriority(
+  admin: ReturnType<typeof createAdminClient>,
+  saisonId: number,
+  season: string,
+  presaisonDraftOrder: string[] | null,
+): Promise<string[] | null> {
+  if (isBeforeNovemberFirst(season) && presaisonDraftOrder && presaisonDraftOrder.length > 0) {
+    return presaisonDraftOrder
+  }
+  const standings = await buildStandings(admin, saisonId)
+  if (standings.length > 0) return standings.map(s => s.poolerId).reverse()
+  return presaisonDraftOrder && presaisonDraftOrder.length > 0 ? presaisonDraftOrder : null
+}
+
 async function playerLabel(admin: ReturnType<typeof createAdminClient>, playerId: number): Promise<string> {
   const { data } = await admin.from('players').select('first_name, last_name').eq('id', playerId).single()
   return data ? `${data.last_name}, ${data.first_name}` : `joueur #${playerId}`
@@ -37,18 +68,17 @@ async function notifyAllPoolersExcept(excludePoolerId: string | null, title: str
 export async function createWaiverClaimForRelease(saisonId: number, playerId: number, releasedByPoolerId: string) {
   const admin = createAdminClient()
 
-  const { data: saison } = await admin.from('pool_seasons').select('season_started').eq('id', saisonId).single()
+  const { data: saison } = await admin.from('pool_seasons').select('season, season_started, presaison_draft_order').eq('id', saisonId).single()
   if (!saison?.season_started) return
 
-  const [standings, { data: settings }, { data: releaser }] = await Promise.all([
-    buildStandings(admin, saisonId),
+  const [prioritySnapshot, { data: settings }, { data: releaser }] = await Promise.all([
+    computeWaiverPriority(admin, saisonId, saison.season, saison.presaison_draft_order),
     admin.from('app_settings').select('waiver_claim_hours').eq('id', 1).maybeSingle(),
     admin.from('poolers').select('name').eq('id', releasedByPoolerId).single(),
   ])
-  if (standings.length === 0) return // classement indisponible (ex: aucun match joué) — pas de ballotage possible sans ordre de priorité
+  if (!prioritySnapshot) return // ni classement réel ni ordre pré-saison disponible — pas de ballotage possible sans ordre de priorité
 
   const windowHours = settings?.waiver_claim_hours ?? 72
-  const prioritySnapshot = standings.map(s => s.poolerId).reverse() // pire classé en premier = priorité la plus haute
   const now = new Date()
   const expiresAt = new Date(now.getTime() + windowHours * 3_600_000)
 
