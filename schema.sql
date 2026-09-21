@@ -1007,7 +1007,8 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 --   released_by_pooler_id UUID REFERENCES poolers(id),
 --   released_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 --   priority_snapshot JSONB NOT NULL,        -- array de pooler_id, ordre = priorité (pire classé en premier)
---   window_hours INTEGER NOT NULL,           -- snapshot de app_settings.waiver_claim_hours à la création
+--   window_hours INTEGER NOT NULL,           -- legacy (jours*24), plus lu — voir window_days
+--   window_days INTEGER,                     -- snapshot de app_settings.waiver_claim_days à la création
 --   expires_at TIMESTAMPTZ NOT NULL,
 --   status VARCHAR(20) NOT NULL DEFAULT 'open',  -- open | awarded | resolved_claimed | resolved_unclaimed | blocked
 --   resolved_at TIMESTAMPTZ,
@@ -1066,3 +1067,14 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 -- (staging d'abord, puis prod) :
 --
 -- ALTER TABLE waiver_claims ADD COLUMN IF NOT EXISTS awarded_at TIMESTAMPTZ;
+
+-- Migration 2026-09-21 (suite) : fenêtre de réclamation par jour civil (heure de l'Est) plutôt
+-- qu'un délai roulant en heures — un joueur libéré un jour J reste réclamable jusqu'à 23h59 ET
+-- du jour J+`waiver_claim_days` (défaut 2), attribué le lendemain (computeWaiverWindow(),
+-- app/lib/waiverClaims.ts), plus simple à retenir qu'une heure limite qui dépend de l'heure
+-- exacte de la libération. Remplace `waiver_claim_hours`/`window_hours` (colonnes conservées,
+-- plus lues) par `waiver_claim_days`/`window_days`. À exécuter une seule fois dans le SQL
+-- Editor Supabase (staging d'abord, puis prod) :
+--
+-- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS waiver_claim_days INTEGER NOT NULL DEFAULT 2;
+-- ALTER TABLE waiver_claims ADD COLUMN IF NOT EXISTS window_days INTEGER;

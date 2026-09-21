@@ -552,6 +552,12 @@ existants) — pas des pages à part entière.
   reculer n'apporte rien et n'affiche qu'un avertissement trompeur). Branché dans
   `/gestion-effectifs` et `/admin/transactions` ; **pas** dans `/admin/historique`, qui saisit
   délibérément des dates passées et doit garder le comportement d'origine sans plancher.
+  Même plancher appliqué directement (sans passer par `computeTypeChangeAddedAt`, pas de ligne
+  existante à consulter pour un nouvel ajout) dans `addNewPlayer` (`gestion-effectifs/
+  actions.ts`, David 2026-09-21) — une signature (agent libre, ballotage) faite après
+  "Démarrer la saison" mais avant la vraie date de début affichait sinon une date de début
+  trompeuse dans le popup de périodes, repéré en testant le ballotage dans une fenêtre où
+  `season_started=true` mais `saison_start_date` pas encore atteinte.
 - **Périodes affichées** (`PlayerContrib.periods`, popup ↩ dans `/classement` et
   `/poolers/[id]`) : une entrée par fenêtre **active** contiguë (via `activeSegments()`), pas
   une entrée par ligne `pooler_rosters`. Un joueur réactivé plusieurs fois sans jamais quitter
@@ -721,9 +727,20 @@ revue le 2026-09-14 :**
   (`buildStandings()` inversé) comme avant ; si ce classement est encore vide à ce moment-là
   (cas limite), repli sur `presaison_draft_order` plutôt que de bloquer le ballotage. Coupure du
   1er novembre volontairement approximative (pas d'heure de l'Est à la seconde près).
-- Fenêtre : `app_settings.waiver_claim_hours` (défaut 72h/3 jours, éditable dans
-  `/admin/effectifs?tab=conformite`, même formulaire que `unsigned_player_cap_multiplier`/
-  `cap_deadline_days`), snapshottée dans `waiver_claims.window_hours` à la création.
+- **Fenêtre par jour civil, pas par délai roulant (David, 2026-09-21)** — `app_settings.
+  waiver_claim_days` (défaut 2, éditable dans `/admin/effectifs?tab=conformite`, même
+  formulaire que `unsigned_player_cap_multiplier`/`cap_deadline_days`) : un joueur libéré un
+  jour J reste réclamable jusqu'à **23h59 heure de l'Est du jour J+N**, peu importe l'heure
+  exacte de la libération (ex: libéré lundi, `waiver_claim_days=2` → réclamable jusqu'à
+  mercredi 23h59, attribué le jeudi) — remplace l'ancien délai roulant en heures
+  (`waiver_claim_hours`, ex-défaut 72h), dont l'heure limite exacte dépendait de l'heure de la
+  libération et prêtait à confusion. `computeWaiverWindow()` (`app/lib/waiverClaims.ts`)
+  calcule `expiresAt` = minuit ET du jour **suivant** le dernier jour réclamable (le moment
+  exact où `resolveExpiredWaiverClaims()` peut résoudre le claim) ; l'affichage humain
+  (notification, `formatExpiry()` dans `BallotageTab.tsx`) recule d'une minute pour montrer
+  "23h59" plutôt que "00h00 le lendemain". Snapshotté dans `waiver_claims.window_days` à la
+  création (`window_hours`/`waiver_claim_hours` conservés en base pour compat historique, plus
+  lus par le code).
 - Réclamation : `/gestion-effectifs` → onglet **Ballotage**, ouvert à tous les poolers
   (`submitWaiverClaimAction`, `gestion-effectifs/waiver-actions.ts`) — sauf le pooler qui vient
   de libérer le joueur. Plusieurs réclamations possibles sur la même claim ; seule la priorité

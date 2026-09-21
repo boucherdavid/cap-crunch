@@ -34,12 +34,12 @@ export async function loadCapWatchDataAction(saisonId: number): Promise<{
   entries?: CapWatchEntry[]
   unsignedMultiplier?: number
   capDeadlineDays?: number
-  waiverClaimHours?: number
+  waiverClaimDays?: number
 }> {
   const supabase = await createClient()
 
   const [{ data: settings }, { data: rows }] = await Promise.all([
-    supabase.from('app_settings').select('unsigned_player_cap_multiplier, cap_deadline_days, waiver_claim_hours').eq('id', 1).maybeSingle(),
+    supabase.from('app_settings').select('unsigned_player_cap_multiplier, cap_deadline_days, waiver_claim_days').eq('id', 1).maybeSingle(),
     supabase
       .from('cap_signing_watch')
       .select('id, status, estimated_cap, real_cap, created_at, flagged_at, deadline_at, resolved_at, poolers(id, name), players(id, first_name, last_name)')
@@ -67,14 +67,14 @@ export async function loadCapWatchDataAction(saisonId: number): Promise<{
     entries,
     unsignedMultiplier: settings?.unsigned_player_cap_multiplier ?? 1.20,
     capDeadlineDays: settings?.cap_deadline_days ?? 7,
-    waiverClaimHours: settings?.waiver_claim_hours ?? 72,
+    waiverClaimDays: settings?.waiver_claim_days ?? 2,
   }
 }
 
 export async function updateCapSettingsAction(
   unsignedMultiplier: number,
   capDeadlineDays: number,
-  waiverClaimHours: number,
+  waiverClaimDays: number,
 ): Promise<{ error?: string }> {
   const check = await requireAdmin()
   if ('error' in check) return check
@@ -82,7 +82,7 @@ export async function updateCapSettingsAction(
 
   const { error } = await supabase
     .from('app_settings')
-    .update({ unsigned_player_cap_multiplier: unsignedMultiplier, cap_deadline_days: capDeadlineDays, waiver_claim_hours: waiverClaimHours })
+    .update({ unsigned_player_cap_multiplier: unsignedMultiplier, cap_deadline_days: capDeadlineDays, waiver_claim_days: waiverClaimDays })
     .eq('id', 1)
   if (error) return { error: error.message }
 

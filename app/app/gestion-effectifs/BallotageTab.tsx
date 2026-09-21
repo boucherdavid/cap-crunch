@@ -20,11 +20,14 @@ const STATUS_COLOR: Record<string, string> = {
 }
 
 function formatExpiry(iso: string) {
-  const d = new Date(iso)
-  const diffMs = d.getTime() - Date.now()
+  const raw = new Date(iso)
+  const diffMs = raw.getTime() - Date.now()
   if (diffMs <= 0) return 'Expire sous peu'
   const hours = Math.round(diffMs / 3_600_000)
-  const when = d.toLocaleString('fr-CA', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Toronto' })
+  // expiresAt = minuit ET du jour où le claim devient résolvable (David, 2026-09-21) — on
+  // recule d'une minute pour l'affichage humain ("23 sept., 23h59", la vraie date limite pour
+  // réclamer) plutôt que le début du jour suivant, qui prêterait à confusion.
+  const when = new Date(raw.getTime() - 60_000).toLocaleString('fr-CA', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Toronto' })
   return hours < 48 ? `${when} (dans ${hours}h)` : when
 }
 

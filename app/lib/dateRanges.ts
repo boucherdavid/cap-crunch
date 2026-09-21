@@ -17,7 +17,7 @@ function isoWeekday(dateStr: string): number {
 
 /** Instant UTC correspondant à minuit heure de l'Est pour une date "YYYY-MM-DD" — gère
  * l'heure d'été/hiver (contrairement à un simple décalage fixe -04:00/-05:00). */
-function localMidnightUTC(dateStr: string): Date {
+export function localMidnightUTC(dateStr: string): Date {
   const guess = new Date(`${dateStr}T00:00:00Z`)
   const fmt = new Intl.DateTimeFormat('en-US', {
     timeZone: TZ, hourCycle: 'h23',

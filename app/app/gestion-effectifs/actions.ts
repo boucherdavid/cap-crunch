@@ -573,6 +573,13 @@ export async function submitBatchAction(input: {
     const conflict = await checkFutureRosterConflict(db, input.poolerId, playerId, input.saisonId, changedAt, playerType)
     if (conflict.error) throw new Error(conflict.error)
 
+    // Plancher à saison_start_date (David, 2026-09-21) — même logique que computeTypeChangeAddedAt
+    // pour une ligne existante : une signature faite après "Démarrer la saison" mais avant la
+    // vraie date de début n'a manqué aucun match, donc added_at ne doit pas afficher une date
+    // antérieure trompeuse (ex: signature le 21 pour un vrai début le 29). Repéré via le popup
+    // de périodes d'un joueur signé au ballotage pendant ce genre de fenêtre de test.
+    const newAddedAt = minAddedAtTs && changedAt < minAddedAtTs ? minAddedAtTs : changedAt
+
     const { data: existing } = await db
       .from('pooler_rosters').select('id')
       .eq('pooler_id', input.poolerId).eq('player_id', playerId)
@@ -580,12 +587,12 @@ export async function submitBatchAction(input: {
     // Pas de date tant que la saison n'est pas démarrée pour de vrai (David, 2026-09-02).
     if (existing) {
       await db.from('pooler_rosters')
-        .update({ is_active: true, player_type: playerType, removed_at: null, added_at: isPreseason ? null : changedAt, ...rookieFields }).eq('id', existing.id)
+        .update({ is_active: true, player_type: playerType, removed_at: null, added_at: isPreseason ? null : newAddedAt, ...rookieFields }).eq('id', existing.id)
     } else {
       await db.from('pooler_rosters').insert({
         pooler_id: input.poolerId, player_id: playerId,
         pool_season_id: input.saisonId, player_type: playerType, is_active: true,
-        added_at: isPreseason ? null : changedAt, ...rookieFields,
+        added_at: isPreseason ? null : newAddedAt, ...rookieFields,
       })
     }
 

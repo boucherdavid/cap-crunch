@@ -3,6 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPushToUsers } from '@/lib/push'
 import { sendEmailToIds } from '@/lib/email'
 import { buildStandings } from '@/lib/standings'
+import { getTodayET, addDaysToDate } from '@/lib/daily-recap'
+import { localMidnightUTC } from '@/lib/dateRanges'
 
 // Délai laissé au gagnant pour compléter lui-même sa transaction (voir resolveExpiredWaiverClaims
 // et resolveExpiredAwardedClaims plus bas) — même ordre de grandeur que les autres délais de
@@ -48,6 +50,20 @@ async function computeWaiverPriority(
   return presaisonDraftOrder && presaisonDraftOrder.length > 0 ? presaisonDraftOrder : null
 }
 
+// Fenêtre de réclamation par jour civil (heure de l'Est), pas par nombre d'heures fixe (David,
+// 2026-09-21) — un joueur libéré n'importe quand un jour J reste réclamable jusqu'à 23h59 ET
+// du jour J+`days` (ex: libéré lundi, `days=2` → réclamable jusqu'à mercredi 23h59, attribué le
+// jeudi), plutôt qu'un délai roulant en heures dont l'heure limite exacte dépend de l'heure de
+// la libération — plus simple à retenir pour les poolers. `deadlineDay` (dernier jour où on peut
+// réclamer) sert à l'affichage humain ; `expiresAt` est le début du jour SUIVANT (minuit ET),
+// le moment exact où resolveExpiredWaiverClaims() peut résoudre le claim.
+function computeWaiverWindow(days: number): { deadlineDay: string; expiresAt: Date } {
+  const releaseDay = getTodayET()
+  const deadlineDay = addDaysToDate(releaseDay, days)
+  const resolvableDay = addDaysToDate(deadlineDay, 1)
+  return { deadlineDay, expiresAt: localMidnightUTC(resolvableDay) }
+}
+
 async function playerLabel(admin: ReturnType<typeof createAdminClient>, playerId: number): Promise<string> {
   const { data } = await admin.from('players').select('first_name, last_name').eq('id', playerId).single()
   return data ? `${data.last_name}, ${data.first_name}` : `joueur #${playerId}`
@@ -75,14 +91,14 @@ export async function createWaiverClaimForRelease(saisonId: number, playerId: nu
 
   const [prioritySnapshot, { data: settings }, { data: releaser }] = await Promise.all([
     computeWaiverPriority(admin, saisonId, saison.season, saison.presaison_draft_order),
-    admin.from('app_settings').select('waiver_claim_hours').eq('id', 1).maybeSingle(),
+    admin.from('app_settings').select('waiver_claim_days').eq('id', 1).maybeSingle(),
     admin.from('poolers').select('name').eq('id', releasedByPoolerId).single(),
   ])
   if (!prioritySnapshot) return // ni classement réel ni ordre pré-saison disponible — pas de ballotage possible sans ordre de priorité
 
-  const windowHours = settings?.waiver_claim_hours ?? 72
+  const windowDays = settings?.waiver_claim_days ?? 2
   const now = new Date()
-  const expiresAt = new Date(now.getTime() + windowHours * 3_600_000)
+  const { deadlineDay, expiresAt } = computeWaiverWindow(windowDays)
 
   const { error } = await admin.from('waiver_claims').insert({
     pool_season_id: saisonId,
@@ -90,7 +106,8 @@ export async function createWaiverClaimForRelease(saisonId: number, playerId: nu
     released_by_pooler_id: releasedByPoolerId,
     released_at: now.toISOString(),
     priority_snapshot: prioritySnapshot,
-    window_hours: windowHours,
+    window_days: windowDays,
+    window_hours: windowDays * 24, // legacy, conservé pour compat — plus utilisé pour le calcul
     expires_at: expiresAt.toISOString(),
     status: 'open',
   })
@@ -100,7 +117,7 @@ export async function createWaiverClaimForRelease(saisonId: number, playerId: nu
   }
 
   const label = await playerLabel(admin, playerId)
-  const deadline = expiresAt.toLocaleString('fr-CA', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Toronto' })
+  const deadline = `${new Date(`${deadlineDay}T12:00:00Z`).toLocaleDateString('fr-CA', { dateStyle: 'medium', timeZone: 'America/Toronto' })} 23h59`
   await notifyAllPoolersExcept(
     releasedByPoolerId,
     'Cap Crunch — Ballotage',

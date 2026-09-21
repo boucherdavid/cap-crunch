@@ -21,6 +21,55 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-21 (suite — fenêtre de ballotage par jour civil + plancher de date pour les nouvelles signatures)
+
+**[Fix] — date de début trompeuse pour une nouvelle signature en fenêtre de test**
+(`app/app/gestion-effectifs/actions.ts`) :
+- Testé en staging : Jérôme complète son ballotage gagné, mais le popup de périodes affiche
+  "21 sept." (date réelle de la transaction) au lieu de la vraie date de début de saison
+  (29 sept.) — la saison est démarrée pour de vrai (`season_started=true`, testé le 20) mais
+  `saison_start_date` (29 sept.) n'est pas encore atteinte, donc aucun match n'a en réalité été
+  manqué. Même symptôme que le plancher `minEffectiveTs` déjà ajouté plus tôt aujourd'hui pour
+  `computeTypeChangeAddedAt`, mais `addNewPlayer` (signature/ballotage — nouvelle ligne, pas de
+  ligne existante à reculer) ne passait pas par cette fonction et n'avait donc pas le plancher.
+- Correction : même plancher appliqué directement dans `addNewPlayer` — `added_at` ne descend
+  jamais sous `saison_start_date`. S'applique à toute nouvelle signature (agent libre, LTIR,
+  ballotage), pas seulement au ballotage. Sans impact sur les points en saison réelle (le
+  plancher ne change rien une fois `saison_start_date` atteinte).
+
+**[Feature] — fenêtre de ballotage par jour civil (23h59 ET) plutôt qu'un délai roulant en heures**
+(modifiés : `app/lib/{waiverClaims.ts,dateRanges.ts}`, `app/app/gestion-effectifs/
+BallotageTab.tsx`, `app/app/admin/effectifs/{cap-watch-actions.ts,CapWatchManager.tsx,
+page.tsx}`, `schema.sql`) :
+- David a proposé une règle plus simple à retenir : un joueur libéré un jour J reste
+  réclamable jusqu'à 23h59 heure de l'Est du jour J+N (N=2 par défaut), attribué le lendemain
+  — peu importe l'heure exacte de la libération. Exemple donné : libéré lundi 21 → réclamable
+  jusqu'à mercredi 23 23h59 → attribué jeudi 24. Remplace l'ancien délai roulant en heures
+  (`waiver_claim_hours`, défaut 72h), dont l'heure limite exacte dépendait de l'heure de la
+  libération.
+- `computeWaiverWindow()` (nouveau, `app/lib/waiverClaims.ts`) calcule `expiresAt` = minuit ET
+  du jour suivant le dernier jour réclamable — le moment exact où `resolveExpiredWaiverClaims`
+  peut résoudre le claim. `localMidnightUTC()` (`app/lib/dateRanges.ts`, déjà utilisée pour le
+  classement hebdomadaire/mensuel — gère la bascule heure d'été/hiver) exportée pour être
+  réutilisée ici. L'affichage humain (notification de libération, `formatExpiry()` dans
+  `BallotageTab.tsx`) recule d'une minute pour montrer "23h59" plutôt que "00h00 le lendemain",
+  qui aurait prêté à confusion.
+- Nouveau réglage admin `app_settings.waiver_claim_days` (défaut 2), même formulaire que
+  `unsigned_player_cap_multiplier`/`cap_deadline_days` dans `/admin/effectifs?tab=conformite` —
+  remplace `waiver_claim_hours` dans l'UI et le code (colonnes `waiver_claim_hours`/
+  `waiver_claims.window_hours` conservées en base pour l'historique, plus lues). Renommage
+  complet `waiverClaimHours`→`waiverClaimDays` dans `cap-watch-actions.ts`/
+  `CapWatchManager.tsx`/`page.tsx`.
+- Migration `schema.sql` fournie (`app_settings.waiver_claim_days`, `waiver_claims.
+  window_days`) — **pas encore exécutée en base**, à rouler par David (staging d'abord, puis
+  prod).
+- Confirmé avec David : le délai de grâce de 48h pour que le gagnant complète sa transaction
+  (`COMPLETION_GRACE_HOURS`, ajouté plus tôt aujourd'hui) reste un délai roulant en heures,
+  inchangé — seule la fenêtre de réclamation initiale passe en jours civils.
+- Vérifié : `tsc --noEmit`, `eslint` (une seule nouvelle erreur, apostrophe non échappée dans
+  `CapWatchManager.tsx`, corrigée) et `next build` passent. Pas testé de bout en bout en base
+  (migration pas encore appliquée).
+
 ### 2026-09-21 (suite — analyser un joueur au ballotage dans le simulateur + le gagnant complète sa transaction lui-même)
 
 **[Feature] — bouton "Analyser" sur un claim de ballotage → pré-remplit /simulation**

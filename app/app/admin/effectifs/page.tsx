@@ -173,7 +173,7 @@ export default async function AdminEffectifsPage({
                 initialEntries={capWatchData.entries ?? []}
                 initialMultiplier={capWatchData.unsignedMultiplier ?? 1.20}
                 initialDeadlineDays={capWatchData.capDeadlineDays ?? 7}
-                initialWaiverClaimHours={capWatchData.waiverClaimHours ?? 72}
+                initialWaiverClaimDays={capWatchData.waiverClaimDays ?? 2}
               />
           }
         </div>
