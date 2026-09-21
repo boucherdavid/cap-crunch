@@ -198,6 +198,8 @@ Hockey_Pool_App/
   saison+pooler — voir section 5)
 - `waiver_claims`/`waiver_claim_requests` (ballotage en cours de saison — une claim par
   libération, une request par pooler l'ayant réclamée — voir section 6)
+- `trade_offers`/`trade_offer_items` (transactions proposées entre poolers, approbation admin
+  — voir section 6)
 
 **Conventions :**
 - Statuts joueurs : `ELC`, `RFA`, `UFA`
@@ -221,9 +223,10 @@ saisie pooler ; distinct de `/admin/transactions`, l'outil admin) `/classement`
 heure de l'Est ; navigation précédent/suivant, voir section 6) `/resultats`
 (récap veille)
 `/gestion-series` (soumettre ses choix séries) `/classement-series` (classement séries)
-`/gestion-effectifs` (2 onglets, David 2026-09-15 : **Mouvements**, l'outil existant ; et
-**Ballotage**, réclamer un joueur libéré en cours de saison — voir section 6) `/draft-center`
-(classement des prospects, vue publique)
+`/gestion-effectifs` (3 onglets, David 2026-09-15, **Échanges** ajouté le 2026-09-21 :
+**Mouvements**, l'outil existant ; **Ballotage**, réclamer un joueur libéré en cours de
+saison ; **Échanges**, proposer/répondre à des transactions entre poolers — voir section 6
+pour les trois) `/draft-center` (classement des prospects, vue publique)
 `/dashboard` (redirige vers son propre alignement) `/compte` `/signaler` `/aide` `/offline`
 `/planification` (sondage type Doodle pour une rencontre — vue pooler : ses disponibilités,
 le résumé, le babillard propre au sondage ; notifie les admins par push à chaque
@@ -424,7 +427,7 @@ composant, pas de `?subtab=`), donc pas d'accès par URL directe comme pour `/ad
 | `/admin/pool` | `poolers` Poolers · `config` Configuration (sous-onglets `Saisons` / `Général` / `Pointage Saison` — `Général` = ex-"Pool Saison", renommé le 2026-09-01) |
 | `/admin/communaute` | `communication` Communication (feedback + notifs) · `babillard` Babillard (publier/supprimer des communications, ajouté le 2026-09-02) · `suivi` Suivi (activité) · `planification` Planification (sondage type Doodle, admin) |
 | `/admin/init` | `rosters` Rosters initiaux · `recrues` Banque de recrues · `choix` Choix de repêchage (← réassigner le propriétaire d'un pick échangé hors-app) — réglages one-shot déjà en place pour la saison courante |
-| `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) |
+| `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé + depuis le 2026-09-21, approbation des transactions entre poolers, `TradeApprovalManager.tsx`) |
 | `/admin/donnees` | `pipeline` Pipeline salaires/contrats/repêchages (doc, `PlayerMerge`) · `prospects` Classement des prospects |
 | `/admin/series` | pas d'onglets — vue unique (avancement des séries), message si aucune saison séries active. Retiré du dropdown Admin le 2026-08-28 (ne servait qu'aux tests, pas d'usage normal du pool des séries) — route et code conservés, toujours atteignable directement par URL. Depuis le 2026-08-30, également retiré du sous-menu "Pool Séries" côté pooler (voir ci-dessous) — plus aucun point d'entrée dans la nav, seulement l'URL directe |
 
@@ -953,6 +956,42 @@ corrigée le 2026-09-20 :**
   confirmé en pratique par un test tombé dans les pourriels avant ce correctif.
 - Limite connue et assumée : le risque de classement en pourriel n'est jamais nul avec un compte
   personnel (contrairement à un domaine vérifié) — compromis accepté sciemment par David.
+
+**Transactions proposées entre poolers (`app/lib/tradeOffers.ts`) — David, 2026-09-21 :**
+- Un pooler propose un échange de joueurs (actif/réserviste/recrue) et/ou de choix de
+  repêchage à un autre pooler (onglet **Échanges** de `/gestion-effectifs`, à côté de
+  Mouvements/Ballotage — visible seulement sur la vraie page pooler, pas dans le hub admin
+  `/admin/effectifs?tab=mouvements`, où il n'y a pas de `selfPoolerId` fiable). Flux : pooler
+  visé accepte/refuse (pas de contre-offre en v1) → si accepté, l'admin approuve/rejette
+  (`/admin/effectifs?tab=conformite`, `TradeApprovalManager.tsx`) → si approuvé, **rien n'est
+  encore transféré**.
+- **Tout-ou-rien pour les deux (David, 2026-09-21)** : après l'approbation admin, les deux
+  poolers ont `app_settings.trade_completion_days` jours (défaut 3) pour confirmer que le
+  résultat entre dans leur masse/composition (12/6/2 + cap, via `validateRosterLimits` — les
+  recrues et choix ne comptent pas, comme partout ailleurs). Chacun ajuste au besoin via
+  Mouvements avant de confirmer. **Rien n'est écrit dans `pooler_rosters`/`pool_draft_picks`
+  avant que les DEUX aient confirmé** — l'échange s'exécute d'un coup (`executeTradeOffer()`)
+  seulement à ce moment-là. Si le délai passe avant que les deux confirment, l'échange est
+  annulé pour les deux (`status='cancelled_expired'`) — aucun rollback nécessaire puisque rien
+  n'a jamais été écrit ; à refaire au besoin. Résolution paresseuse
+  (`resolveExpiredTradeOffers()`), même patron que le ballotage.
+- Une recrue échangée reste une recrue chez le receveur (`rookie_type`/`pool_draft_year`
+  transférés tels quels) — aucun choix actif/réserviste à faire, aucun impact cap/composition.
+  Un choix de repêchage transfère juste `pool_draft_picks.current_owner_id`. Seuls les joueurs
+  actif/réserviste ont un type à choisir à la confirmation (`chosen_type` sur
+  `trade_offer_items`) et comptent dans la validation 12/6/2 + cap.
+- Écriture directe à l'exécution (pas de réutilisation d'`applyTransactionItems`,
+  `admin/transactions/actions.ts`, même raison de cycle d'import que `waiverClaims.ts`) —
+  duplique le strict minimum de la logique `'transfer'` déjà en place là-bas (même vocabulaire
+  `roster_change_log`, un seul en-tête `transactions` + un `transaction_items` par item pour
+  que `/journal-transactions` affiche l'échange comme un tout).
+- Scopé à la saison démarrée (`season_started=true`) — un échange pré-saison passe par le
+  filet de sécurité admin existant (`/admin/transactions`, `action_type='transfer'`, déjà
+  fonctionnel et sans délai puisque la conformité n'est pas exigée avant le début de saison),
+  pas encore couvert par cet outil.
+- RLS `trade_offers`/`trade_offer_items` : lecture publique + admin seulement en écriture,
+  même patron que `waiver_claims` — toutes les écritures passent par `createAdminClient()`
+  depuis des Server Actions qui font leur propre vérification d'autorisation.
 
 ---
 

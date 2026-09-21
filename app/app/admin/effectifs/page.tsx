@@ -7,7 +7,8 @@ import TransactionBuilder from '../transactions/TransactionBuilder'
 import HistoriqueManager from '../historique/HistoriqueManager'
 import { getHistLogAction } from '../historique/historique-actions'
 import CapWatchManager from './CapWatchManager'
-import { loadCapWatchDataAction } from './cap-watch-actions'
+import TradeApprovalManager from './TradeApprovalManager'
+import { loadCapWatchDataAction, getPendingTradeOffersForAdminAction } from './cap-watch-actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,11 +39,18 @@ export default async function AdminEffectifsPage({
   let saisonConformite: any = null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let capWatchData: any = { entries: [], unsignedMultiplier: 1.20, capDeadlineDays: 7 }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let pendingTradeOffers: any[] = []
   if (activeTab === 'conformite') {
     const { data: sr } = await supabase.from('pool_seasons').select('id, season').eq('is_active', true).eq('is_playoff', false).single()
     saisonConformite = sr
     if (saisonConformite) {
-      capWatchData = await loadCapWatchDataAction(saisonConformite.id)
+      const [cw, to] = await Promise.all([
+        loadCapWatchDataAction(saisonConformite.id),
+        getPendingTradeOffersForAdminAction(saisonConformite.id),
+      ])
+      capWatchData = cw
+      pendingTradeOffers = to.offers ?? []
     }
   }
 
@@ -168,13 +176,21 @@ export default async function AdminEffectifsPage({
           </p>
           {!saisonConformite
             ? <p className="text-gray-500">Aucune saison active.</p>
-            : <CapWatchManager
-                saisonId={saisonConformite.id}
-                initialEntries={capWatchData.entries ?? []}
-                initialMultiplier={capWatchData.unsignedMultiplier ?? 1.20}
-                initialDeadlineDays={capWatchData.capDeadlineDays ?? 7}
-                initialWaiverClaimDays={capWatchData.waiverClaimDays ?? 2}
-              />
+            : (
+              <>
+                <CapWatchManager
+                  saisonId={saisonConformite.id}
+                  initialEntries={capWatchData.entries ?? []}
+                  initialMultiplier={capWatchData.unsignedMultiplier ?? 1.20}
+                  initialDeadlineDays={capWatchData.capDeadlineDays ?? 7}
+                  initialWaiverClaimDays={capWatchData.waiverClaimDays ?? 2}
+                />
+                <div className="bg-white rounded-lg shadow p-5 mt-6 max-w-4xl">
+                  <h2 className="font-semibold text-gray-700 text-sm mb-3">Transactions entre poolers à approuver</h2>
+                  <TradeApprovalManager initialOffers={pendingTradeOffers} />
+                </div>
+              </>
+            )
           }
         </div>
       )}

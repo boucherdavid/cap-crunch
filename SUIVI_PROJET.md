@@ -21,6 +21,63 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-21 (suite — transactions proposées entre poolers, avec approbation admin)
+
+**[Feature] — outil de transactions entre poolers (proposer/accepter/approuver/confirmer)**
+(nouveaux : `app/lib/tradeOffers.ts`, `app/app/gestion-effectifs/{trade-actions.ts,
+TradeOffersTab.tsx}`, `app/app/admin/effectifs/TradeApprovalManager.tsx` ; modifiés :
+`app/app/gestion-effectifs/{GestionEffectifsManager.tsx,page.tsx}`,
+`app/app/admin/effectifs/{cap-watch-actions.ts,page.tsx}`, `schema.sql`) :
+- David : besoin d'un outil pour que les poolers se proposent eux-mêmes des échanges (joueurs
+  actif/réserviste/recrue et choix de repêchage) plutôt que de tout faire passer par l'admin —
+  mais l'admin doit garder un droit de veto. Conçu ensemble sur plusieurs échanges : proposer →
+  le pooler visé accepte/refuse (pas de contre-offre en v1, décision explicite de David) →
+  l'admin approuve/rejette → une fois approuvé, les deux poolers ont un délai pour confirmer
+  que le résultat entre dans leur masse/composition, ajustant au besoin via Mouvements avant de
+  confirmer — le menu montre déjà les joueurs concernés (pas de recherche manuelle).
+- **Règle clé de David** : si l'un des deux ne confirme pas dans le délai (`app_settings.
+  trade_completion_days`, défaut 3 jours), l'échange s'annule **pour les deux** — chacun
+  conserve ses joueurs, à refaire au besoin. Implémenté en ne transférant RIEN (ni joueurs, ni
+  recrues, ni choix) tant que les deux n'ont pas confirmé — l'exécution est un seul geste
+  atomique une fois les deux prêts, donc l'annulation par expiration n'a jamais besoin de
+  rollback (rien n'a été écrit).
+- Nouvelles tables `trade_offers`/`trade_offer_items` (voir `schema.sql`) — même patron RLS
+  que `waiver_claims` (lecture publique, écritures via `createAdminClient()` depuis des Server
+  Actions qui vérifient elles-mêmes l'autorisation).
+- Nouvel onglet **Échanges** dans `/gestion-effectifs` (à côté de Mouvements/Ballotage) —
+  visible seulement sur la vraie page pooler (`selfPoolerId` requis), pas dans le hub admin
+  `/admin/effectifs?tab=mouvements` qui réutilise le même composant sans identité pooler
+  fiable (aurait proposé "au nom" du pooler sélectionné dans le picker mais créé la transaction
+  au nom réel de l'admin — trompeur, explicitement mis de côté). Compose une proposition en
+  parcourant les actifs échangeables des deux côtés (réutilise `listOtherPoolersAction` de
+  `/simulation`).
+- Approbation admin ajoutée dans `/admin/effectifs?tab=conformite` (à côté de la Conformité cap
+  existante, choix confirmé avec David) — `TradeApprovalManager.tsx`.
+- Une recrue échangée reste une recrue chez le receveur (transfert direct de `rookie_type`/
+  `pool_draft_year`, aucun choix actif/réserviste, aucun impact cap) ; un choix de repêchage
+  transfère juste `current_owner_id`. Seuls les joueurs actif/réserviste ont un type à choisir
+  et comptent dans `validateRosterLimits` à la confirmation.
+- Exécution finale dupliquée depuis la logique `'transfer'` d'`admin/transactions/actions.ts`
+  (même raison de cycle d'import déjà documentée pour `waiverClaims.ts` — pas de réutilisation
+  directe), avec le même vocabulaire `roster_change_log` et un seul en-tête `transactions` +
+  un `transaction_items` par item pour un affichage cohérent dans `/journal-transactions`.
+- Bugs trouvés et corrigés en écrivant le code (avant tout test, faute de migration exécutée) :
+  `await` utilisé dans un callback non-`async` passé à `after()` (`confirmTradeReady`) ; le
+  premier jet ne distinguait pas une recrue reçue d'un joueur actif/réserviste à la
+  confirmation (le sélecteur Actif/Réserviste s'affichait même pour une recrue, sans effet
+  réel) — corrigé en exposant `currentPlayerType` sur chaque item pour filtrer l'affichage.
+- Scopé à la saison démarrée — un échange pré-saison reste gérable via `/admin/transactions`
+  (`action_type='transfer'`, déjà fonctionnel, pas de contrainte de conformité avant le début
+  de saison de toute façon).
+- Migration `schema.sql` fournie (`trade_offers`, `trade_offer_items`, `app_settings.
+  trade_completion_days`, policies RLS) — **pas encore exécutée en base**, à rouler par David
+  (staging d'abord, puis prod) avant que l'outil fonctionne.
+- Vérifié : `tsc --noEmit`, `eslint` (erreurs restantes toutes préexistantes, confirmées) et
+  `next build` passent. **Pas testé de bout en bout** (migration pas encore appliquée, feature
+  volumineuse construite en une seule passe) — à valider attentivement par David une fois la
+  migration roulée, en particulier le cas d'annulation par expiration et le mélange joueur/
+  recrue/choix dans un même échange.
+
 ### 2026-09-21 (suite — outil de backup manuel hors-ligne)
 
 **[Feature] — outil HTML autonome de backup des alignements**

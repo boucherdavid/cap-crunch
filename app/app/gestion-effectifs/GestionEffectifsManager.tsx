@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useTransition } from 'react'
 import MovementHistoryPanel from '@/components/MovementHistoryPanel'
 import BallotageTab from './BallotageTab'
+import TradeOffersTab from './TradeOffersTab'
 import {
   getPoolerRosterAction,
   searchPlayersAction,
@@ -299,7 +300,7 @@ export default function GestionEffectifsManager({
   isAdmin: boolean
   // Onglet initial (lien "Voir sur Cap Crunch" depuis un courriel/push de ballotage,
   // `/gestion-effectifs?tab=ballotage` — David, 2026-09-21). Optionnel, défaut 'mouvements'.
-  initialTab?: 'mouvements' | 'ballotage'
+  initialTab?: 'mouvements' | 'ballotage' | 'echanges'
   poolers?: { id: string; name: string }[]
   selfPoolerId?: string
   selfPoolerName?: string
@@ -310,7 +311,7 @@ export default function GestionEffectifsManager({
   maxSignaturesAl: number
   maxSignaturesLtir: number
 }) {
-  const [activeTab, setActiveTab] = useState<'mouvements' | 'ballotage'>(initialTab ?? 'mouvements')
+  const [activeTab, setActiveTab] = useState<'mouvements' | 'ballotage' | 'echanges'>(initialTab ?? 'mouvements')
 
   const [poolerId, setPoolerId]           = useState(selfPoolerId ?? '')
   const [roster, setRoster]               = useState<RosterForPooler | null>(null)
@@ -958,14 +959,22 @@ export default function GestionEffectifsManager({
     </div>
   )
 
+  // "Échanges" seulement sur la vraie page pooler (David, 2026-09-21) — pas dans le hub admin
+  // /admin/effectifs?tab=mouvements, où selfPoolerId n'est pas fourni : les Server Actions de
+  // proposition/confirmation dérivent le pooler de la session courante (comme Ballotage), donc
+  // proposer "au nom" du pooler sélectionné dans le picker Mouvements créerait une transaction
+  // au nom réel de l'admin plutôt que du pooler affiché — trompeur, hors scope pour l'instant.
+  const availableTabs = selfPoolerId ? (['mouvements', 'ballotage', 'echanges'] as const) : (['mouvements', 'ballotage'] as const)
+  const TAB_LABEL: Record<string, string> = { mouvements: 'Mouvements', ballotage: 'Ballotage', echanges: 'Échanges' }
+
   const tabs = (
     <div className="flex gap-2 mb-6 border-b border-gray-200">
-      {(['mouvements', 'ballotage'] as const).map(tab => (
+      {availableTabs.map(tab => (
         <button key={tab} onClick={() => setActiveTab(tab)}
           className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
             activeTab === tab ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}>
-          {tab === 'mouvements' ? 'Mouvements' : 'Ballotage'}
+          {TAB_LABEL[tab]}
         </button>
       ))}
     </div>
@@ -976,6 +985,15 @@ export default function GestionEffectifsManager({
       <div className={isAdmin ? '' : 'max-w-3xl mx-auto'}>
         {tabs}
         <BallotageTab saisonId={saisonId} />
+      </div>
+    )
+  }
+
+  if (activeTab === 'echanges' && selfPoolerId) {
+    return (
+      <div className={isAdmin ? '' : 'max-w-3xl mx-auto'}>
+        {tabs}
+        <TradeOffersTab saisonId={saisonId} selfPoolerId={selfPoolerId} />
       </div>
     )
   }

@@ -130,10 +130,30 @@ const SECTIONS: Section[] = [
           pendant un délai limité.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
-          <li>• Cliquez <strong>Réclamer</strong> pour signaler votre intérêt — vous pouvez réclamer plusieurs joueurs en même temps.</li>
+          <li>• Cliquez <strong>Réclamer</strong> pour signaler votre intérêt — vous pouvez réclamer plusieurs joueurs en même temps. <strong>Refuser</strong> est optionnel, mais si tous les poolers plus prioritaires que vous refusent, vous êtes averti que vous allez l&apos;obtenir sans attendre la fin du délai.</li>
           <li>• Si plusieurs poolers réclament le même joueur, celui avec la <strong>priorité la plus haute</strong> (pire classé au moment de la libération) le remporte.</li>
           <li>• Si personne ne réclame avant la fin du délai, le joueur redevient simplement un agent libre normal.</li>
-          <li>• Le joueur remporté arrive sur votre alignement en <strong>réserviste</strong> — activez-le ensuite vous-même si vous le souhaitez.</li>
+          <li>• Une fois gagné, un bandeau apparaît dans l&apos;onglet <strong>Mouvements</strong> pour l&apos;ajouter vous-même à votre alignement (actif ou réserviste, au choix) — ajustez au besoin (libération) pour rester conforme, vous avez 48h pour le faire.</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
+    id: 'guide-echanges',
+    tab: 'guide',
+    title: 'Échanges entre poolers',
+    keywords: 'echange transaction proposer accepter refuser approbation admin delai confirmer',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Onglet <strong>Échanges</strong> de Gestion d&apos;effectifs — proposez un échange de joueurs
+          (actif, réserviste ou recrue) et/ou de choix de repêchage à un autre pooler.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• Le pooler visé doit <strong>accepter ou refuser</strong> votre proposition.</li>
+          <li>• Si accepté, l&apos;<strong>admin doit approuver</strong> l&apos;échange avant que quoi que ce soit ne bouge.</li>
+          <li>• Une fois approuvé, vous avez un délai pour <strong>confirmer</strong> que le résultat entre dans votre masse salariale et votre composition (12/6/2 + réservistes) — ajustez au besoin dans Mouvements avant de confirmer.</li>
+          <li>• L&apos;échange s&apos;exécute seulement une fois que <strong>les deux poolers</strong> ont confirmé. Si l&apos;un des deux ne confirme pas à temps, l&apos;échange est annulé pour les deux — personne ne perd rien, à refaire au besoin.</li>
         </ul>
       </div>
     ),
@@ -405,10 +425,9 @@ const SECTIONS: Section[] = [
     keywords: 'transactions echanges admin nombre delai desactivation agent libre regles gestion effectifs self service',
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
-        <li>• Les <strong>échanges entre poolers</strong> (joueurs, choix de repêchage) sont effectués par l&apos;administrateur.</li>
+        <li>• Les <strong>échanges entre poolers</strong> (joueurs, choix de repêchage) se proposent vous-même via l&apos;onglet <strong>Échanges</strong> de Gestion d&apos;effectifs — voir les règles détaillées plus bas. L&apos;admin garde un droit d&apos;approbation sur chacun.</li>
         <li>• Les ajustements sur votre propre alignement (actif/réserviste, libération, recrues) se font en libre-service via <strong>Gestion d&apos;effectifs</strong> une fois la saison démarrée, ou via <strong>Signatures des agents libres</strong> avant le début de la saison.</li>
         <li>• Pour tester l&apos;impact d&apos;un changement ou d&apos;un échange avant de le faire pour de vrai, voir <strong>Simulation</strong> — disponible toute l&apos;année, purement en aperçu.</li>
-        <li>• <span className="italic text-gray-400">Règles additionnelles à venir (nombre d&apos;échanges permis, délai de désactivation, etc.)</span></li>
       </ul>
     ),
   },
@@ -421,8 +440,25 @@ const SECTIONS: Section[] = [
       <ul className="text-sm text-gray-700 space-y-1.5">
         <li>• S&apos;applique uniquement aux libérations en <strong>cours de saison</strong> (pas aux libérations de la phase pré-saison).</li>
         <li>• La priorité de réclamation est l&apos;<strong>ordre inverse du classement</strong> au moment précis de la libération — elle ne change pas même si le classement bouge ensuite.</li>
-        <li>• Le délai de réclamation est configurable par l&apos;administrateur (par défaut 3 jours).</li>
+        <li>• Réclamable jusqu&apos;à <strong>23h59 (heure de l&apos;Est) du 2e jour suivant</strong> la libération (délai configurable par l&apos;administrateur) — attribué le lendemain de cette date limite.</li>
         <li>• En cas de réclamations multiples sur le même joueur, seule la priorité tranche.</li>
+        <li>• Une fois gagné, vous avez <strong>48h</strong> pour l&apos;ajouter vous-même à votre alignement, sinon l&apos;administrateur doit intervenir manuellement.</li>
+      </ul>
+    ),
+  },
+  {
+    id: 'regl-echanges',
+    tab: 'reglements',
+    title: 'Échanges entre poolers',
+    keywords: 'echange transaction proposer accepter refuser approbation admin delai confirmer annulation',
+    content: (
+      <ul className="text-sm text-gray-700 space-y-1.5">
+        <li>• Peuvent inclure des joueurs actif/réserviste/recrue et des choix de repêchage, dans n&apos;importe quelle combinaison.</li>
+        <li>• Le pooler visé peut seulement <strong>accepter ou refuser</strong> — pas de contre-offre pour l&apos;instant.</li>
+        <li>• Une fois accepté, l&apos;<strong>administrateur doit approuver</strong> avant que quoi que ce soit ne bouge.</li>
+        <li>• Une fois approuvé, les deux poolers ont un délai (configurable par l&apos;administrateur, par défaut 3 jours) pour confirmer que le résultat respecte leurs limites d&apos;alignement (12/6/2 + cap).</li>
+        <li>• Si l&apos;un des deux ne confirme pas à temps, l&apos;échange est <strong>annulé pour les deux</strong> — rien n&apos;a changé, à refaire au besoin.</li>
+        <li>• S&apos;applique uniquement en <strong>cours de saison</strong> — un échange en pré-saison se fait par l&apos;administrateur.</li>
       </ul>
     ),
   },

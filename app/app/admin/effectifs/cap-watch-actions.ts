@@ -1,9 +1,11 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
 import { getEffectiveCap } from '@/lib/capUtils'
+import { adminDecideTradeOffer } from '@/lib/tradeOffers'
 
 async function requireAdmin() {
   const supabase = await createClient()
@@ -260,6 +262,76 @@ export async function releaseFlaggedPlayerAction(watchId: number): Promise<{ err
     status: 'admin_released', released_by: user.id, resolved_at: new Date().toISOString(),
   }).eq('id', watchId)
   if (error) return { error: error.message }
+
+  revalidatePath('/admin/effectifs')
+  return {}
+}
+
+// ─── Transactions entre poolers en attente d'approbation admin (David, 2026-09-21) ────────────
+
+export type AdminTradeOfferItemView = { kind: 'player' | 'pick'; label: string; fromName: string; toName: string }
+export type AdminTradeOfferView = {
+  id: number
+  proposerName: string
+  targetName: string
+  createdAt: string
+  decidedAt: string | null
+  items: AdminTradeOfferItemView[]
+}
+
+export async function getPendingTradeOffersForAdminAction(saisonId: number): Promise<{ error?: string; offers?: AdminTradeOfferView[] }> {
+  const check = await requireAdmin()
+  if ('error' in check) return check
+
+  const db = createAdminClient()
+  const { data: rows } = await db
+    .from('trade_offers')
+    .select('id, created_at, decided_at, proposer:poolers!proposer_pooler_id (id, name), target:poolers!target_pooler_id (id, name)')
+    .eq('pool_season_id', saisonId)
+    .eq('status', 'pending_admin')
+    .order('decided_at')
+  if (!rows || rows.length === 0) return { offers: [] }
+
+  const offerIds = rows.map(r => r.id)
+  const { data: itemRows } = await db
+    .from('trade_offer_items')
+    .select('trade_offer_id, from_pooler_id, to_pooler_id, item_type, player_id, pick_id')
+    .in('trade_offer_id', offerIds)
+
+  const playerIds = (itemRows ?? []).filter(i => i.item_type === 'player').map(i => i.player_id!)
+  const pickIds = (itemRows ?? []).filter(i => i.item_type === 'pick').map(i => i.pick_id!)
+  const [{ data: players }, { data: picks }] = await Promise.all([
+    playerIds.length > 0 ? db.from('players').select('id, first_name, last_name, position').in('id', playerIds) : Promise.resolve({ data: [] }),
+    pickIds.length > 0 ? db.from('pool_draft_picks').select('id, round, pool_seasons (season)').in('id', pickIds) : Promise.resolve({ data: [] }),
+  ])
+  const playerLabel = new Map((players ?? []).map(p => [p.id, `${p.last_name}, ${p.first_name}${p.position ? ` (${p.position})` : ''}`]))
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pickLabel = new Map(((picks ?? []) as any[]).map(p => [p.id, `Choix ronde ${p.round} (${p.pool_seasons?.season ?? '?'})`]))
+
+  return {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    offers: (rows as any[]).map(r => ({
+      id: r.id,
+      proposerName: r.proposer?.name ?? '—',
+      targetName: r.target?.name ?? '—',
+      createdAt: r.created_at,
+      decidedAt: r.decided_at,
+      items: (itemRows ?? []).filter(i => i.trade_offer_id === r.id).map(i => ({
+        kind: i.item_type as 'player' | 'pick',
+        label: i.item_type === 'player' ? (playerLabel.get(i.player_id!) ?? '?') : (pickLabel.get(i.pick_id!) ?? '?'),
+        fromName: i.from_pooler_id === r.proposer?.id ? r.proposer.name : r.target?.name ?? '—',
+        toName: i.to_pooler_id === r.proposer?.id ? r.proposer.name : r.target?.name ?? '—',
+      })),
+    })),
+  }
+}
+
+export async function adminDecideTradeOfferAction(tradeOfferId: number, approve: boolean): Promise<{ error?: string }> {
+  const check = await requireAdmin()
+  if ('error' in check) return check
+
+  const result = await adminDecideTradeOffer(tradeOfferId, approve)
+  if (result.error) return result
 
   revalidatePath('/admin/effectifs')
   return {}
