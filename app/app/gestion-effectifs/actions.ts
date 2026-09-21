@@ -9,7 +9,7 @@ import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/roste
 import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { validateRosterLimits } from '@/lib/rosterLimits'
-import { createWaiverClaimForRelease } from '@/lib/waiverClaims'
+import { createWaiverClaimForRelease, isPlayerUnderActiveWaiverClaim } from '@/lib/waiverClaims'
 
 export type PlayerType = 'actif' | 'reserviste' | 'ltir' | 'recrue'
 
@@ -86,6 +86,10 @@ export type BatchActionInput = {
   newPlayerId?: number
   newPlayerType?: 'actif' | 'reserviste' | 'recrue'
   releaseEntryId?: number
+  // Requis pour type='ballotage' — id du waiver_claims 'awarded' que cette action complète,
+  // revalidé côté serveur (voir addNewPlayer, actions.ts) pour empêcher d'ajouter n'importe
+  // quel joueur sous cette étiquette sans avoir vraiment gagné un ballotage (David, 2026-09-21).
+  waiverClaimId?: number
 }
 
 // ─── Read actions ─────────────────────────────────────────────────────────────
@@ -185,16 +189,26 @@ export async function getPoolerRosterAction(
 export async function searchPlayersAction(
   query: string,
   season: string,
+  saisonId: number,
 ): Promise<PlayerSearchResult[]> {
   if (query.length < 2) return []
   const supabase = await createClient()
-  const { data } = await supabase
+  const db = createAdminClient()
+  // Exclut les joueurs présentement au ballotage (réclamation ouverte ou gagnée en attente de
+  // complétion) — jamais signables via la recherche normale, seulement via le bouton
+  // "Ballotage" pré-rempli du gagnant (David, 2026-09-21). Filtre côté recherche pour l'UX ;
+  // addNewPlayer revalide de toute façon au moment de la soumission.
+  const { data: lockedClaims } = await db.from('waiver_claims').select('player_id')
+    .eq('pool_season_id', saisonId).in('status', ['open', 'awarded'])
+  const lockedIds = (lockedClaims ?? []).map(c => c.player_id)
+
+  let q = supabase
     .from('players')
     .select('id, first_name, last_name, position, nhl_id, teams (code), player_contracts (season, cap_number)')
     .or(`last_name.ilike.%${query}%,first_name.ilike.%${query}%`)
     .eq('is_available', true)
-    .order('last_name')
-    .limit(20)
+  if (lockedIds.length > 0) q = q.not('id', 'in', `(${lockedIds.join(',')})`)
+  const { data } = await q.order('last_name').limit(20)
   return (data ?? []).map((p: any) => ({
     id: p.id,
     firstName: p.first_name,
@@ -222,6 +236,49 @@ export async function getSigningCountsAction(
     al:   rows.filter(r => r.change_type === 'signature_agent_libre').length,
     ltir: rows.filter(r => r.change_type === 'signature_ltir').length,
   }
+}
+
+export type AwardedClaim = {
+  id: number
+  playerId: number
+  playerName: string
+  position: string | null
+  teamCode: string | null
+  capNumber: number | null
+  awardedAt: string
+}
+
+// Claims de ballotage gagnés par ce pooler, en attente qu'il complète lui-même sa transaction
+// (David, 2026-09-21) — alimente le bandeau "Ballotage" de GestionEffectifsManager.tsx, seule
+// source normale d'un waiverClaimId valide pour addNewPlayer (voir plus bas).
+export async function getAwardedWaiverClaimsAction(saisonId: number, poolerId: string, season: string): Promise<AwardedClaim[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data: poolerSelf } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  const isAdmin = poolerSelf?.is_admin ?? false
+  if (!isAdmin && user.id !== poolerId) return []
+
+  const db = createAdminClient()
+  const { data } = await db
+    .from('waiver_claims')
+    .select('id, player_id, awarded_at, players (first_name, last_name, position, teams (code), player_contracts (season, cap_number))')
+    .eq('pool_season_id', saisonId)
+    .eq('status', 'awarded')
+    .eq('awarded_to_pooler_id', poolerId)
+    .order('awarded_at')
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data ?? []) as any[]).map(c => ({
+    id: c.id,
+    playerId: c.player_id,
+    playerName: `${c.players?.last_name ?? ''}, ${c.players?.first_name ?? ''}`,
+    position: c.players?.position ?? null,
+    teamCode: c.players?.teams?.code ?? null,
+    capNumber: c.players?.player_contracts?.find((ct: { season: string }) => ct.season === season)?.cap_number ?? null,
+    awardedAt: c.awarded_at,
+  }))
 }
 
 // ─── Submit action ────────────────────────────────────────────────────────────
@@ -464,7 +521,30 @@ export async function submitBatchAction(input: {
     }
   }
 
-  async function addNewPlayer(playerId: number, playerType: 'actif' | 'reserviste' | 'recrue', signingType: 'al' | 'ltir' | 'ballotage') {
+  async function addNewPlayer(playerId: number, playerType: 'actif' | 'reserviste' | 'recrue', signingType: 'al' | 'ltir' | 'ballotage', waiverClaimId?: number) {
+    if (signingType === 'ballotage') {
+      // Revalidation serveur (David, 2026-09-21) — l'étiquette "Ballotage" ne complète jamais
+      // un joueur au hasard : seulement un claim réellement 'awarded' à CE pooler pour CE
+      // joueur, jamais déjà complété par ailleurs. Voir getAwardedWaiverClaimsAction, dont le
+      // bouton pré-rempli est la seule source normale de waiverClaimId.
+      if (!isAdmin) {
+        if (!waiverClaimId) throw new Error('Réclamation de ballotage manquante.')
+        const { data: claim } = await db.from('waiver_claims')
+          .select('id, status, player_id, awarded_to_pooler_id, pool_season_id').eq('id', waiverClaimId).maybeSingle()
+        if (!claim || claim.pool_season_id !== input.saisonId || claim.status !== 'awarded'
+          || claim.awarded_to_pooler_id !== input.poolerId || claim.player_id !== playerId) {
+          throw new Error('Cette réclamation de ballotage est introuvable ou déjà résolue.')
+        }
+      }
+    } else if (!isAdmin) {
+      // Un joueur présentement au ballotage (réclamation ouverte ou gagnée en attente) ne se
+      // signe jamais par la voie normale — seulement via le bouton "Ballotage" du gagnant
+      // (David, 2026-09-21).
+      if (await isPlayerUnderActiveWaiverClaim(db, input.saisonId, playerId)) {
+        throw new Error('Ce joueur est présentement au ballotage — pas signable directement.')
+      }
+    }
+
     // Validate budget (non-admins seulement, ballotage exempt)
     if (!isAdmin && signingType !== 'ballotage') {
       if (signingType === 'ltir') {
@@ -522,6 +602,12 @@ export async function submitBatchAction(input: {
     }
 
     await log(playerId, logType, null, playerType)
+
+    // Finalise le claim une fois le joueur réellement ajouté (David, 2026-09-21) — n'arrive
+    // qu'ici, après tous les checks/écritures ci-dessus, jamais en cas d'erreur plus haut.
+    if (signingType === 'ballotage' && waiverClaimId) {
+      await db.from('waiver_claims').update({ status: 'resolved_claimed', resolved_at: new Date().toISOString() }).eq('id', waiverClaimId)
+    }
   }
 
   // ─── Validation de l'état final (poolers seulement — override admin délibéré) ─────────────
@@ -669,7 +755,7 @@ export async function submitBatchAction(input: {
 
         case 'ballotage':
           if (!action.newPlayerId || !action.newPlayerType) throw new Error('Joueur manquant (ballotage)')
-          await addNewPlayer(action.newPlayerId, action.newPlayerType, 'ballotage')
+          await addNewPlayer(action.newPlayerId, action.newPlayerType, 'ballotage', action.waiverClaimId)
           break
 
         case 'release': {

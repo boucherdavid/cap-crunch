@@ -2,10 +2,11 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { resolveExpiredWaiverClaims, checkGuaranteedWaiverWinner } from '@/lib/waiverClaims'
+import { resolveExpiredWaiverClaims, resolveExpiredAwardedClaims, checkGuaranteedWaiverWinner } from '@/lib/waiverClaims'
 
 export type WaiverClaimView = {
   id: number
+  playerId: number
   playerName: string
   position: string | null
   teamCode: string | null
@@ -40,6 +41,7 @@ export async function getWaiverClaimsAction(saisonId: number): Promise<{
   if (!user) return { error: 'Non authentifié.' }
 
   await resolveExpiredWaiverClaims(saisonId)
+  await resolveExpiredAwardedClaims(saisonId)
 
   const [{ data: openClaims }, { data: history }] = await Promise.all([
     supabase
@@ -50,10 +52,10 @@ export async function getWaiverClaimsAction(saisonId: number): Promise<{
       .order('expires_at'),
     supabase
       .from('waiver_claims')
-      .select('id, status, resolved_at, players (first_name, last_name), releaser:poolers!released_by_pooler_id (name), winner:poolers!awarded_to_pooler_id (name)')
+      .select('id, status, resolved_at, awarded_at, players (first_name, last_name), releaser:poolers!released_by_pooler_id (name), winner:poolers!awarded_to_pooler_id (name)')
       .eq('pool_season_id', saisonId)
-      .in('status', ['resolved_claimed', 'resolved_unclaimed', 'blocked'])
-      .order('resolved_at', { ascending: false })
+      .in('status', ['resolved_claimed', 'resolved_unclaimed', 'blocked', 'awarded'])
+      .order('id', { ascending: false })
       .limit(10),
   ])
 
@@ -81,6 +83,7 @@ export async function getWaiverClaimsAction(saisonId: number): Promise<{
     const isReleaser = c.released_by_pooler_id === user.id
     return {
       id: c.id,
+      playerId: c.player_id,
       playerName: `${c.players?.last_name ?? ''}, ${c.players?.first_name ?? ''}`,
       position: c.players?.position ?? null,
       teamCode: c.players?.teams?.code ?? null,

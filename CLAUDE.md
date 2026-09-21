@@ -729,18 +729,46 @@ revue le 2026-09-14 :**
   de libérer le joueur. Plusieurs réclamations possibles sur la même claim ; seule la priorité
   tranche à la résolution.
 - Résolution : **paresseuse**, au chargement de l'onglet Ballotage (`getWaiverClaimsAction`
-  appelle `resolveExpiredWaiverClaims()` en premier — même patron que
+  appelle `resolveExpiredWaiverClaims()` puis `resolveExpiredAwardedClaims()` — même patron que
   `syncExpiredRookieProtection`, `admin/presaison/actions.ts` — pas de tâche planifiée). Pour
   chaque claim `open` dont `expires_at` est passé : aucune réclamation → `resolved_unclaimed`
-  (le joueur reste un agent libre normal, aucune action supplémentaire) ; sinon le gagnant
-  (premier `pooler_id` de `priority_snapshot` parmi les requérants) reçoit le joueur en
-  **réserviste** (jamais actif — évite de dépasser 12/6/2 automatiquement ; le gagnant
-  réactive lui-même ensuite), journalisé `roster_change_log.change_type='ballotage'` (déjà un
-  libellé reconnu, `CHANGE_LABEL` dans `poolers/[id]/PoolerPageTabs.tsx`) + une vraie ligne
-  `transactions`/`transaction_items` (visible dans `/journal-transactions`). Si la résolution
-  échoue (ex: cap du gagnant dépassé) : `status='blocked'`, `error_message` rempli,
-  `console.error` — l'admin résout manuellement via `/admin/transactions` (filet de sécurité,
-  même philosophie que la protection recrue ci-dessus).
+  (le joueur reste un agent libre normal) ; sinon le gagnant (premier `pooler_id` de
+  `priority_snapshot` parmi les requérants) passe le claim à **`status='awarded'`**
+  (`awarded_to_pooler_id`, `awarded_at`) et est notifié par push/courriel.
+- **Complétion par le gagnant, pas d'ajout automatique (David, 2026-09-21)** — avant cette date,
+  la résolution ajoutait directement le joueur en réserviste au gagnant, ce qui pouvait dépasser
+  son cap et finir `status='blocked'`, obligeant l'admin à intervenir à chaque fois. Le gagnant
+  complète maintenant lui-même sa transaction depuis `/gestion-effectifs` (onglet Mouvements) :
+  tant qu'il a un claim `awarded`, un bandeau ambre y affiche le joueur avec deux boutons
+  "Ajouter (Réserviste)"/"Ajouter (Actif)" (`getAwardedWaiverClaimsAction`,
+  `handleAddAwardedClaim`, `GestionEffectifsManager.tsx`) qui poussent directement une action
+  `type='ballotage'` dans le panier, sans passer par la recherche manuelle — le joueur et le
+  `waiverClaimId` viennent du claim, pas d'un choix libre. Le pooler ajoute au besoin une
+  libération dans le même lot : `submitBatchAction` revalide tout le panier avec
+  `validateRosterLimits` comme n'importe quel autre lot, ce qui force la conformité sans jamais
+  bloquer l'admin. Revalidation serveur dans `addNewPlayer` (`gestion-effectifs/actions.ts`) :
+  un `type='ballotage'` non-admin exige un `waiverClaimId` pointant vers un claim `awarded` à ce
+  pooler pour ce joueur exact, sinon rejeté — empêche d'ajouter n'importe quel joueur sous cette
+  étiquette. Une fois l'ajout réussi, le claim passe `resolved_claimed`.
+- **Garde-fou contre la signature directe d'un joueur au ballotage (David, 2026-09-21)** — un
+  joueur avec un claim `open` ou `awarded` est exclu de la recherche libre-service normale
+  (`searchPlayersAction`) et, en profondeur, bloqué dans `addNewPlayer` pour tout signingType
+  autre que `'ballotage'` (`isPlayerUnderActiveWaiverClaim()`, `app/lib/waiverClaims.ts`) —
+  seul le bandeau ci-dessus peut l'ajouter, tant que la réclamation n'est pas résolue/expirée.
+  Ne s'applique pas à l'admin (`/admin/transactions` reste le filet de sécurité, y compris pour
+  compléter manuellement un claim `blocked` après le délai ci-dessous).
+- **Délai de grâce de 48h pour compléter (`COMPLETION_GRACE_HOURS`, `app/lib/waiverClaims.ts`)**
+  — si le gagnant n'a rien fait 48h après `awarded_at`, `resolveExpiredAwardedClaims()` passe le
+  claim à `status='blocked'` (`error_message` rempli) : l'admin traite alors manuellement via
+  `/admin/transactions`, même philosophie que la protection recrue/`cap_signing_watch`
+  ci-dessus. Un claim `awarded` reste visible dans l'historique de l'onglet Ballotage
+  (`STATUS_LABEL`/`STATUS_COLOR`, `BallotageTab.tsx`) pendant qu'il attend.
+- **Analyser dans le simulateur avant de réclamer (David, 2026-09-21)** — bouton "Analyser" sur
+  chaque claim ouvert de `BallotageTab.tsx`, lien vers `/simulation?addPlayer=<playerId>` :
+  pré-remplit l'onglet "Mon alignement" avec ce joueur en simulation
+  (`loadPlayerByIdAction`, `app/simulation/actions.ts`, `preloadPlayerId` sur
+  `SimulationTool.tsx`) pour évaluer l'impact avant de s'engager, sans rien soumettre. Pure
+  lecture, aucun lien avec la réclamation elle-même.
 - Écriture directe (pas de réutilisation d'`applyTransactionItems`, `admin/transactions/
   actions.ts`) : `waiverClaims.ts` importe `applyTransactionItems` nulle part — un import dans
   l'autre sens (`admin/transactions/actions.ts` appelle `createWaiverClaimForRelease` pour

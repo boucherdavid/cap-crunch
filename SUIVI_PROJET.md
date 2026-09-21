@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-10
+Derniere mise a jour: 2026-09-21
 
 ## Role du fichier
 
@@ -20,6 +20,66 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-09-21 (suite — analyser un joueur au ballotage dans le simulateur + le gagnant complète sa transaction lui-même)
+
+**[Feature] — bouton "Analyser" sur un claim de ballotage → pré-remplit /simulation**
+(modifiés : `app/app/gestion-effectifs/{BallotageTab.tsx,waiver-actions.ts}`,
+`app/app/simulation/{actions.ts,page.tsx,SimulationTool.tsx}`) :
+- David voulait pouvoir évaluer l'impact d'une réclamation de ballotage sur son alignement
+  avant de s'engager. Ajout d'un lien "Analyser" sur chaque claim ouvert de `BallotageTab.tsx`
+  vers `/simulation?addPlayer=<playerId>` — `SimulationPage` lit le paramètre, `SimulationTool`
+  charge ce joueur (`loadPlayerByIdAction`, nouvelle action) et l'ajoute automatiquement à la
+  simulation "Mon alignement" au chargement (`preloadPlayerId`, une seule fois). Pure lecture,
+  rien n'est soumis — même outil que la simulation habituelle, juste pré-rempli.
+- `WaiverClaimView` expose maintenant `playerId` (`waiver-actions.ts`), nécessaire pour
+  construire le lien.
+- Vérifié : `tsc --noEmit`, `eslint` (erreurs restantes toutes préexistantes, confirmées via
+  `git diff`) et `next build` passent.
+
+**[Feature] — le gagnant du ballotage complète lui-même sa transaction, plus d'ajout auto bloquant**
+(modifiés : `app/lib/waiverClaims.ts`, `app/app/gestion-effectifs/{actions.ts,waiver-actions.ts,
+BallotageTab.tsx,GestionEffectifsManager.tsx}`, `schema.sql`) :
+- David : l'ancien ajout automatique en réserviste à la résolution pouvait dépasser le cap du
+  gagnant et finir `status='blocked'`, obligeant l'admin à intervenir à chaque fois — "il faut
+  forcer une résolution pour que l'alignement soit conforme, l'admin ne devrait pas être obligé
+  d'intervenir". Décidé avec David (3 questions confirmées) : remplacer l'auto-ajout par un
+  nouveau statut `awarded` + lien pré-rempli vers Gestion d'effectifs, délai de grâce de 48h
+  avant intervention admin, et blocage de la signature normale d'un joueur au ballotage.
+- `resolveExpiredWaiverClaims()` ne signe plus le gagnant : passe le claim à `status='awarded'`
+  (`awarded_to_pooler_id`, `awarded_at`) et notifie par push/courriel. Ancienne fonction
+  `resolveClaimToWinner` (écriture directe pooler_rosters/transactions/roster_change_log)
+  supprimée en entier — plus nécessaire, la complétion passe maintenant par
+  `submitBatchAction` normal.
+- `/gestion-effectifs` (onglet Mouvements) : bandeau ambre "Ballotage gagné" tant que le
+  pooler a un claim `awarded` (`getAwardedWaiverClaimsAction`), avec deux boutons "Ajouter
+  (Réserviste)"/"Ajouter (Actif)" qui poussent directement une action `type='ballotage'`
+  (avec son `waiverClaimId`) dans le panier — pas de recherche manuelle, le joueur vient du
+  claim. Le pooler ajoute au besoin une libération dans le même lot ; `validateRosterLimits`
+  s'applique comme pour n'importe quel autre lot, ce qui force la conformité sans jamais
+  bloquer l'admin. `addNewPlayer` (`actions.ts`) revalide côté serveur que le `waiverClaimId`
+  pointe vers un claim `awarded` à ce pooler pour ce joueur exact avant d'écrire quoi que ce
+  soit, puis marque `resolved_claimed` une fois l'ajout réussi.
+- Garde-fou ajouté : un joueur avec un claim `open`/`awarded` est exclu de la recherche
+  libre-service normale (`searchPlayersAction`) et bloqué en profondeur dans `addNewPlayer`
+  pour toute signature hors `'ballotage'` (`isPlayerUnderActiveWaiverClaim()`) — jamais
+  applicable à l'admin (`/admin/transactions` reste le filet de sécurité). Repéré comme un
+  vrai trou en investiguant la faisabilité : rien n'empêchait avant ça de signer normalement
+  un joueur pourtant déjà au ballotage.
+- Délai de grâce : `resolveExpiredAwardedClaims()` (`COMPLETION_GRACE_HOURS=48`) passe le
+  claim `blocked` si le gagnant n'a rien fait 48h après `awarded_at` — l'admin traite alors
+  manuellement via `/admin/transactions`, même philosophie que la protection recrue/
+  `cap_signing_watch`. Un claim `awarded` reste visible dans l'historique de l'onglet
+  Ballotage (nouveau libellé amber "Gagné — en attente...").
+- Migration `schema.sql` fournie (`ALTER TABLE waiver_claims ADD COLUMN IF NOT EXISTS
+  awarded_at TIMESTAMPTZ;`) — **pas encore exécutée en base**, à rouler par David (staging
+  d'abord, puis prod) avant que ce flux fonctionne réellement.
+- Vérifié : `tsc --noEmit`, `eslint` (erreurs restantes toutes préexistantes) et `next build`
+  passent. Pas testé de bout en bout en base (migration pas encore appliquée) — à valider par
+  David une fois la migration roulée.
+- Idée explicitement écartée par David en cours de discussion : laisser un pooler
+  pré-déclarer une libération conditionnelle *avant* même de gagner un ballotage — "Oublions
+  ce point", pas construit.
 
 ### 2026-09-21 (suite — bouton "Refuser" au ballotage + notification de gain anticipée)
 

@@ -106,6 +106,42 @@ export async function searchSimulationPlayersAction(
   return { players: filtered, truncated }
 }
 
+// Charge un seul joueur par id — utilisé pour pré-remplir la simulation depuis un lien externe
+// (ex: "Analyser" sur un joueur au ballotage, BallotageTab.tsx). Toujours traité comme un agent
+// libre (owner_name null) : un joueur au ballotage n'est possédé par personne pendant sa
+// fenêtre de réclamation (David, 2026-09-21).
+export async function loadPlayerByIdAction(saisonId: number, playerId: number): Promise<{ player: SimulationPlayerResult | null }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { player: null }
+
+  const { data: saison } = await supabase.from('pool_seasons').select('season').eq('id', saisonId).single()
+  if (!saison) return { player: null }
+
+  const { data: p } = await supabase
+    .from('players')
+    .select('id, first_name, last_name, position, teams (code), player_contracts (season, cap_number, is_elc)')
+    .eq('id', playerId)
+    .maybeSingle()
+  if (!p) return { player: null }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const contract = ((p as any).player_contracts ?? []).find((c: { season: string }) => c.season === saison.season)
+  return {
+    player: {
+      id: p.id,
+      first_name: p.first_name,
+      last_name: p.last_name,
+      position: p.position ?? null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      team_code: (p as any).teams?.code ?? null,
+      cap_number: contract?.cap_number ?? 0,
+      is_elc: contract?.is_elc ?? false,
+      owner_name: null,
+    },
+  }
+}
+
 export type SimRosterEntry = {
   roster_id: number
   player_id: number

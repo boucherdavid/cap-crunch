@@ -3,9 +3,11 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPushToUsers } from '@/lib/push'
 import { sendEmailToIds } from '@/lib/email'
 import { buildStandings } from '@/lib/standings'
-import { checkFutureRosterConflict } from '@/lib/rosterTypeChange'
-import { getEffectiveCap } from '@/lib/capUtils'
-import { validateRosterLimits } from '@/lib/rosterLimits'
+
+// Délai laissé au gagnant pour compléter lui-même sa transaction (voir resolveExpiredWaiverClaims
+// et resolveExpiredAwardedClaims plus bas) — même ordre de grandeur que les autres délais de
+// grâce de l'app (48h), pas besoin d'en faire un réglage admin distinct pour l'instant.
+const COMPLETION_GRACE_HOURS = 48
 
 // Ballotage en cours de saison — file de réclamation par priorité quand un pooler libère un
 // joueur (saison démarrée seulement, voir CLAUDE.md section 6). Pas d'import depuis
@@ -168,6 +170,14 @@ export async function checkGuaranteedWaiverWinner(waiverClaimId: number) {
 // l'onglet Ballotage (même patron que syncExpiredRookieProtection, admin/presaison/actions.ts) :
 // pas de tâche planifiée, la résolution se fait au premier chargement de page qui suit
 // l'expiration.
+//
+// David, 2026-09-21 — ne signe plus le gagnant automatiquement (l'ancien ajout direct en
+// réserviste pouvait dépasser son cap et finir 'blocked', obligeant l'admin à intervenir à
+// chaque fois). Le claim passe plutôt à 'awarded' : le gagnant est notifié et complète lui-même
+// sa transaction depuis Gestion d'effectifs (bouton "Ballotage" pré-rempli, voir
+// gestion-effectifs/actions.ts addNewPlayer/getAwardedWaiverClaimsAction) — soumise comme
+// n'importe quel lot, donc revalidée par validateRosterLimits à ce moment-là, ce qui force le
+// pooler à ajouter lui-même une libération si besoin plutôt que de bloquer l'admin.
 export async function resolveExpiredWaiverClaims(saisonId: number) {
   const admin = createAdminClient()
 
@@ -178,10 +188,6 @@ export async function resolveExpiredWaiverClaims(saisonId: number) {
     .eq('status', 'open')
     .lte('expires_at', new Date().toISOString())
   if (!expired || expired.length === 0) return
-
-  const { data: saison } = await admin.from('pool_seasons').select('season, pool_cap').eq('id', saisonId).single()
-  const { data: settingsRow } = await admin.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle()
-  const unsignedMultiplier = settingsRow?.unsigned_player_cap_multiplier ?? 1.20
 
   for (const claim of expired as { id: number; player_id: number; released_by_pooler_id: string; priority_snapshot: string[] }[]) {
     // status='claimed' seulement (David, 2026-09-21) — un refus explicite (bouton "Refuser",
@@ -199,75 +205,63 @@ export async function resolveExpiredWaiverClaims(saisonId: number) {
 
     const requesterIds = new Set(requests.map(r => r.pooler_id))
     const winnerId = claim.priority_snapshot.find(id => requesterIds.has(id)) ?? requests[0].pooler_id
-
-    const result = await resolveClaimToWinner(admin, saisonId, saison?.season ?? '', saison?.pool_cap ?? 0, unsignedMultiplier, claim.player_id, winnerId)
-    if (result.error) {
-      console.error('resolveExpiredWaiverClaims: résolution bloquée —', result.error)
-      await admin.from('waiver_claims').update({ status: 'blocked', error_message: result.error }).eq('id', claim.id)
-      continue
-    }
+    const now = new Date().toISOString()
 
     await admin.from('waiver_claims').update({
-      status: 'resolved_claimed', resolved_at: new Date().toISOString(), awarded_to_pooler_id: winnerId,
+      status: 'awarded', awarded_to_pooler_id: winnerId, awarded_at: now,
     }).eq('id', claim.id)
 
     const label = await playerLabel(admin, claim.player_id)
     after(() => Promise.all([
-      sendPushToUsers([winnerId], { title: 'Cap Crunch — Ballotage', body: `Tu as remporté le ballotage pour ${label}.`, url: '/gestion-effectifs' }).catch(() => {}),
-      sendEmailToIds([winnerId], { subject: 'Cap Crunch — Ballotage remporté', html: `<p>Tu as remporté le ballotage pour <strong>${label}</strong>. Il est maintenant sur ton alignement (réserviste).</p>` }).catch(() => {}),
+      sendPushToUsers([winnerId], {
+        title: 'Cap Crunch — Ballotage',
+        body: `Tu as remporté le ballotage pour ${label} — complète ta transaction dans Gestion d'effectifs (48h).`,
+        url: '/gestion-effectifs',
+      }).catch(() => {}),
+      sendEmailToIds([winnerId], {
+        subject: 'Cap Crunch — Ballotage remporté',
+        html: `<p>Tu as remporté le ballotage pour <strong>${label}</strong>.</p>
+               <p>Rends-toi dans Gestion d'effectifs (onglet Mouvements) pour l'ajouter à ton alignement — un bouton "Ballotage" pré-rempli t'attend. Ajoute au besoin une libération pour rester conforme. Tu as 48h, après quoi l'admin devra intervenir manuellement.</p>`,
+      }).catch(() => {}),
     ]))
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function resolveClaimToWinner(admin: any, saisonId: number, season: string, poolCap: number, unsignedMultiplier: number, playerId: number, winnerId: string): Promise<{ error?: string }> {
-  const [{ data: player }, { data: winnerRoster }] = await Promise.all([
-    admin.from('players').select('position, player_contracts (season, cap_number)').eq('id', playerId).single(),
-    admin.from('pooler_rosters').select('id, player_type, players (position, player_contracts (season, cap_number))')
-      .eq('pooler_id', winnerId).eq('pool_season_id', saisonId).eq('is_active', true),
-  ])
-  if (!player) return { error: 'Joueur introuvable.' }
+// Filet de sécurité (David, 2026-09-21) — si le gagnant n'a pas complété sa transaction dans le
+// délai (COMPLETION_GRACE_HOURS), le claim passe 'blocked' pour que l'admin le traite
+// manuellement via /admin/transactions, même philosophie que cap_signing_watch. Appelé
+// paresseusement au chargement de l'onglet Ballotage, comme resolveExpiredWaiverClaims.
+export async function resolveExpiredAwardedClaims(saisonId: number) {
+  const admin = createAdminClient()
+  const cutoff = new Date(Date.now() - COMPLETION_GRACE_HOURS * 3_600_000).toISOString()
 
-  const cap = getEffectiveCap(player.player_contracts, season, unsignedMultiplier).cap
-  const virtualEntries = [
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...(winnerRoster ?? []).map((r: any) => ({
-      player_type: r.player_type, position: r.players?.position ?? null,
-      capNumber: getEffectiveCap(r.players?.player_contracts, season, unsignedMultiplier).cap,
-    })),
-    { player_type: 'reserviste', position: player.position ?? null, capNumber: cap },
-  ]
-  const limitError = validateRosterLimits(virtualEntries, poolCap)
-  if (limitError) return { error: limitError }
+  const { data: stale } = await admin
+    .from('waiver_claims')
+    .select('id')
+    .eq('pool_season_id', saisonId)
+    .eq('status', 'awarded')
+    .lte('awarded_at', cutoff)
+  if (!stale || stale.length === 0) return
 
-  const now = new Date().toISOString()
-  const conflict = await checkFutureRosterConflict(admin, winnerId, playerId, saisonId, now, 'reserviste')
-  if (conflict.error) return conflict
+  await admin.from('waiver_claims').update({
+    status: 'blocked',
+    error_message: "Le gagnant n'a pas complété sa transaction dans le délai de 48h — à traiter manuellement.",
+  }).in('id', stale.map(c => c.id))
+}
 
-  const { data: existing } = await admin.from('pooler_rosters').select('id')
-    .eq('pooler_id', winnerId).eq('player_id', playerId).eq('pool_season_id', saisonId).maybeSingle()
-  if (existing) {
-    const { error } = await admin.from('pooler_rosters')
-      .update({ is_active: true, player_type: 'reserviste', removed_at: null, added_at: now }).eq('id', existing.id)
-    if (error) return { error: error.message }
-  } else {
-    const { error } = await admin.from('pooler_rosters')
-      .insert({ pooler_id: winnerId, player_id: playerId, pool_season_id: saisonId, player_type: 'reserviste', is_active: true, added_at: now })
-    if (error) return { error: error.message }
-  }
-
-  const { data: tx, error: txErr } = await admin.from('transactions')
-    .insert({ pool_season_id: saisonId, notes: 'Ballotage', created_by: null }).select('id').single()
-  if (txErr) return { error: txErr.message }
-  await admin.from('transaction_items').insert({
-    transaction_id: tx.id, action_type: 'sign', to_pooler_id: winnerId, player_id: playerId, new_player_type: 'reserviste',
-  })
-
-  await admin.from('roster_change_log').insert({
-    player_id: playerId, pooler_id: winnerId, pool_season_id: saisonId,
-    change_type: 'ballotage', old_type: null, new_type: 'reserviste',
-    changed_by: null, changed_at: now, is_admin_override: true,
-  })
-
-  return {}
+// Garde-fou contre une signature normale d'un joueur présentement au ballotage (David,
+// 2026-09-21) — 'open' (réclamation en cours) et 'awarded' (gagné, en attente que le gagnant
+// complète sa transaction) sont tous deux exclus : le joueur n'est un agent libre normal que
+// s'il n'a jamais été réclamé ou une fois le claim résolu/expiré.
+export async function isPlayerUnderActiveWaiverClaim(
+  admin: ReturnType<typeof createAdminClient>, saisonId: number, playerId: number,
+): Promise<boolean> {
+  const { data } = await admin
+    .from('waiver_claims')
+    .select('id')
+    .eq('pool_season_id', saisonId)
+    .eq('player_id', playerId)
+    .in('status', ['open', 'awarded'])
+    .maybeSingle()
+  return !!data
 }

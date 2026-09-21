@@ -1,16 +1,19 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, useEffect, useTransition, useCallback } from 'react'
 import { getWaiverClaimsAction, submitWaiverClaimAction, refuseWaiverClaimAction } from './waiver-actions'
 import type { WaiverClaimView, WaiverHistoryEntry } from './waiver-actions'
 
 const STATUS_LABEL: Record<string, string> = {
+  awarded: 'Gagné — en attente que le gagnant complète sa transaction',
   resolved_claimed: 'Remporté',
   resolved_unclaimed: 'Non réclamé — redevenu agent libre',
   blocked: 'Résolution bloquée — contacte l\'admin',
 }
 
 const STATUS_COLOR: Record<string, string> = {
+  awarded: 'text-amber-600',
   resolved_claimed: 'text-green-700',
   resolved_unclaimed: 'text-gray-500',
   blocked: 'text-red-700',
@@ -96,6 +99,13 @@ export default function BallotageTab({ saisonId }: { saisonId: number }) {
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  href={`/simulation?addPlayer=${c.playerId}`}
+                  className="border border-gray-300 text-gray-600 px-3 py-1.5 rounded text-sm font-medium hover:bg-gray-50"
+                  title="Voir l'impact sur ton alignement dans le simulateur, sans engagement"
+                >
+                  Analyser
+                </Link>
                 {c.myStatus === 'claimed' && <span className="text-sm text-green-700 font-medium">Déjà réclamé ✓</span>}
                 {c.myStatus === 'refused' && <span className="text-sm text-gray-400 font-medium">Refusé</span>}
                 {c.canClaim && (

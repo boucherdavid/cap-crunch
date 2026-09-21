@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import {
   loadRosterForSimulationAction, listScenariosAction, loadScenarioAction,
   saveScenarioAction, deleteScenarioAction, listOtherPoolersAction, loadRecrueBankForPoolerAction,
+  loadPlayerByIdAction,
   type SimRosterEntry, type ScenarioData,
 } from './actions'
 import { listTeamsAction } from '../repechage-agents-libres/actions'
@@ -56,11 +57,15 @@ function sendEntry(entry: SimEntry, from: ReturnType<typeof useSimState>, to: Re
 }
 
 export default function SimulationTool({
-  me, saisonId, season,
+  me, saisonId, season, preloadPlayerId,
 }: {
   me: { id: string; name: string }
   saisonId: number
   season: string
+  // Pré-remplit "Mon alignement" avec ce joueur en simulation (lien "Analyser" depuis l'onglet
+  // Ballotage de /gestion-effectifs, David 2026-09-21) — pour évaluer l'impact d'une réclamation
+  // avant de s'engager, sans rien soumettre pour de vrai.
+  preloadPlayerId?: number
 }) {
   const [tab, setTab] = useState<Tab>('moi')
 
@@ -92,6 +97,19 @@ export default function SimulationTool({
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saisonId, me.id])
+
+  // Ajoute automatiquement le joueur pré-rempli (lien "Analyser" depuis Ballotage) une fois
+  // l'alignement chargé — une seule fois, même si l'effet ré-exécute (David, 2026-09-21).
+  const [preloadDone, setPreloadDone] = useState(false)
+  useEffect(() => {
+    if (loading || preloadDone || !preloadPlayerId) return
+    setPreloadDone(true)
+    loadPlayerByIdAction(saisonId, preloadPlayerId).then(res => {
+      const p = res.player
+      if (p) myState.addFA({ id: p.id, first_name: p.first_name, last_name: p.last_name, position: p.position, cap_number: p.cap_number, ownerName: p.owner_name })
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, preloadDone, preloadPlayerId, saisonId])
 
   // ── Scénarios sauvegardés (onglet "Mon alignement" seulement) — David, 2026-09-14.
   const [scenarios, setScenarios] = useState<Scenario[]>([])

@@ -7,6 +7,7 @@ import {
   getPoolerRosterAction,
   searchPlayersAction,
   getSigningCountsAction,
+  getAwardedWaiverClaimsAction,
   submitBatchAction,
 } from './actions'
 import type {
@@ -17,6 +18,7 @@ import type {
   PlayerSearchResult,
   BatchActionInput,
   SigningCounts,
+  AwardedClaim,
 } from './actions'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -40,6 +42,7 @@ type CartItem = {
   newPlayerEntry?: RosterEntry
   newPlayerType?: 'actif' | 'reserviste' | 'recrue'
   newPlayerId?: number
+  waiverClaimId?: number
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -154,6 +157,7 @@ function cartItemToInput(item: CartItem): BatchActionInput {
     releaseEntryId:    item.releaseEntry?.id,
     newPlayerId:       item.newPlayerId,
     newPlayerType:     item.newPlayerType,
+    waiverClaimId:     item.waiverClaimId,
   }
 }
 
@@ -203,9 +207,9 @@ function EntrySelect({
 }
 
 function PlayerSearch({
-  label, season, onSelect,
+  label, season, saisonId, onSelect,
 }: {
-  label: string; season: string; onSelect: (p: PlayerSearchResult) => void
+  label: string; season: string; saisonId: number; onSelect: (p: PlayerSearchResult) => void
 }) {
   const [query, setQuery]       = useState('')
   const [results, setResults]   = useState<PlayerSearchResult[]>([])
@@ -216,11 +220,11 @@ function PlayerSearch({
     if (query.length < 2) { setResults([]); return }
     const t = setTimeout(async () => {
       setLoading(true)
-      setResults(await searchPlayersAction(query, season))
+      setResults(await searchPlayersAction(query, season, saisonId))
       setLoading(false)
     }, 300)
     return () => clearTimeout(t)
-  }, [query, season])
+  }, [query, season, saisonId])
 
   if (selected) {
     return (
@@ -308,6 +312,8 @@ export default function GestionEffectifsManager({
   const [roster, setRoster]               = useState<RosterForPooler | null>(null)
   const [loadingRoster, setLoadingRoster] = useState(false)
   const [dbCounts, setDbCounts]           = useState<SigningCounts>({ al: 0, ltir: 0 })
+  // Claims de ballotage gagnés en attente (David, 2026-09-21) — voir bandeau plus bas.
+  const [awardedClaims, setAwardedClaims] = useState<AwardedClaim[]>([])
 
   // Cart
   const [cart, setCart] = useState<CartItem[]>([])
@@ -343,6 +349,11 @@ export default function GestionEffectifsManager({
   const projected = useMemo(
     () => roster ? projectRoster(roster, cart) : null,
     [roster, cart],
+  )
+
+  const cartClaimIds = useMemo(
+    () => new Set(cart.filter(c => c.waiverClaimId != null).map(c => c.waiverClaimId)),
+    [cart],
   )
 
   const capUsed  = useMemo(() => projected ? computeCap(projected) : 0, [projected])
@@ -392,9 +403,11 @@ export default function GestionEffectifsManager({
     Promise.all([
       getPoolerRosterAction(poolerId, saisonId, season),
       getSigningCountsAction(poolerId, saisonId),
-    ]).then(([r, counts]) => {
+      getAwardedWaiverClaimsAction(saisonId, poolerId, season),
+    ]).then(([r, counts, claims]) => {
       setRoster(r)
       setDbCounts(counts)
+      setAwardedClaims(claims)
       setLoadingRoster(false)
     })
   }, [poolerId, saisonId, season])
@@ -531,6 +544,34 @@ export default function GestionEffectifsManager({
     setError(null); setSuccess(false)
   }
 
+  // Ajoute directement un claim de ballotage gagné au panier — pas de recherche manuelle, le
+  // joueur et le waiverClaimId viennent du claim lui-même (David, 2026-09-21). Voir le bandeau
+  // "Ballotage" plus bas.
+  function handleAddAwardedClaim(claim: AwardedClaim, playerType: 'actif' | 'reserviste') {
+    const [lastName, firstName] = claim.playerName.split(', ')
+    const newPlayerEntry: RosterEntry = {
+      id: -claim.id,
+      playerId: claim.playerId,
+      playerType,
+      firstName: firstName ?? '',
+      lastName: lastName ?? claim.playerName,
+      position: claim.position,
+      teamCode: claim.teamCode,
+      nhlId: null,
+      capNumber: claim.capNumber,
+      isEstimatedCap: false,
+      lastDeactivatedAt: null,
+      recrueEligible: false,
+    }
+    setCart(c => [...c, {
+      localId: crypto.randomUUID(), type: 'ballotage',
+      label: `Ballotage : ${claim.playerName} (${STATUS_LABEL[playerType]})`,
+      newPlayerEntry, newPlayerId: claim.playerId, newPlayerType: playerType,
+      waiverClaimId: claim.id,
+    }])
+    setError(null); setSuccess(false)
+  }
+
   function handleSubmit() {
     setError(null)
     setSubmitWarning(null)
@@ -548,12 +589,14 @@ export default function GestionEffectifsManager({
         setCart([])
         resetAddForm()
         setHistoryRefresh(k => k + 1)
-        const [r, counts] = await Promise.all([
+        const [r, counts, claims] = await Promise.all([
           getPoolerRosterAction(poolerId, saisonId, season),
           getSigningCountsAction(poolerId, saisonId),
+          getAwardedWaiverClaimsAction(saisonId, poolerId, season),
         ])
         setRoster(r)
         setDbCounts(counts)
+        setAwardedClaims(claims)
       }
     })
   }
@@ -660,14 +703,14 @@ export default function GestionEffectifsManager({
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <EntrySelect label="Actif à mettre sur LTIR" entries={projected.actifs} value={addLtirId} onChange={setAddLtirId} />
-            <PlayerSearch key={searchKey} label="Agent libre à signer (actif)" season={season} onSelect={setAddNewPlayer} />
+            <PlayerSearch key={searchKey} label="Agent libre à signer (actif)" season={season} saisonId={saisonId} onSelect={setAddNewPlayer} />
           </div>
         )
       case 'sign':
       case 'ballotage':
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <PlayerSearch key={searchKey} label={addType === 'ballotage' ? 'Joueur réclamé au ballotage' : 'Joueur à signer'} season={season} onSelect={setAddNewPlayer} />
+            <PlayerSearch key={searchKey} label={addType === 'ballotage' ? 'Joueur réclamé au ballotage' : 'Joueur à signer'} season={season} saisonId={saisonId} onSelect={setAddNewPlayer} />
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Rôle</label>
               <select value={addNewPlayerType} onChange={e => setAddNewPlayerType(e.target.value as 'actif' | 'reserviste' | 'recrue')}
@@ -744,6 +787,33 @@ export default function GestionEffectifsManager({
           )}
         </div>
       )}
+
+      {/* Ballotage gagné en attente de complétion (David, 2026-09-21) */}
+      {awardedClaims.filter(c => !cartClaimIds.has(c.id)).map(c => (
+        <div key={c.id} className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex flex-wrap items-center gap-3">
+          <div className="flex-1 min-w-0 text-sm">
+            <p className="font-semibold text-amber-800">
+              Ballotage gagné : {c.playerName}
+              {(c.position || c.teamCode) && (
+                <span className="font-normal text-amber-700"> ({[c.position, c.teamCode].filter(Boolean).join(', ')})</span>
+              )}
+            </p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Ajoute-le à ton panier et complète au besoin (libération) pour rester conforme — 48h pour agir, sinon l&apos;admin devra intervenir.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => handleAddAwardedClaim(c, 'reserviste')}
+              className="bg-amber-600 text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-amber-700">
+              Ajouter (Réserviste)
+            </button>
+            <button onClick={() => handleAddAwardedClaim(c, 'actif')}
+              className="border border-amber-300 text-amber-700 px-3 py-1.5 rounded text-sm font-medium hover:bg-amber-100">
+              Ajouter (Actif)
+            </button>
+          </div>
+        </div>
+      ))}
 
       {/* Add-action form */}
       {roster && projected && (

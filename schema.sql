@@ -1009,9 +1009,10 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 --   priority_snapshot JSONB NOT NULL,        -- array de pooler_id, ordre = priorité (pire classé en premier)
 --   window_hours INTEGER NOT NULL,           -- snapshot de app_settings.waiver_claim_hours à la création
 --   expires_at TIMESTAMPTZ NOT NULL,
---   status VARCHAR(20) NOT NULL DEFAULT 'open',  -- open | resolved_claimed | resolved_unclaimed | blocked
+--   status VARCHAR(20) NOT NULL DEFAULT 'open',  -- open | awarded | resolved_claimed | resolved_unclaimed | blocked
 --   resolved_at TIMESTAMPTZ,
 --   awarded_to_pooler_id UUID REFERENCES poolers(id),
+--   awarded_at TIMESTAMPTZ,  -- passage à 'awarded' — départ du délai de 48h pour que le gagnant complète sa transaction
 --   error_message TEXT
 -- );
 --
@@ -1053,3 +1054,15 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 --
 -- ALTER TABLE waiver_claim_requests ADD COLUMN IF NOT EXISTS status VARCHAR(10) NOT NULL DEFAULT 'claimed';
 -- ALTER TABLE waiver_claim_requests ADD COLUMN IF NOT EXISTS guaranteed_notified_at TIMESTAMPTZ;
+
+-- Migration 2026-09-21 (suite) : le gagnant du ballotage complète lui-même sa transaction au
+-- lieu d'un ajout automatique en réserviste (qui pouvait dépasser son cap et bloquer,
+-- obligeant l'admin à intervenir à chaque fois — voir CLAUDE.md section 6, ballotage). Le
+-- claim passe par un nouveau statut 'awarded' (`status` reste VARCHAR(20) libre, pas de
+-- contrainte CHECK à modifier) le temps que le gagnant soumette lui-même l'ajout depuis
+-- Gestion d'effectifs (bouton "Ballotage" pré-rempli) ; `awarded_at` sert de départ au délai
+-- de grâce de 48h (resolveExpiredAwardedClaims, app/lib/waiverClaims.ts) avant de passer
+-- 'blocked' si le gagnant n'a rien fait. À exécuter une seule fois dans le SQL Editor Supabase
+-- (staging d'abord, puis prod) :
+--
+-- ALTER TABLE waiver_claims ADD COLUMN IF NOT EXISTS awarded_at TIMESTAMPTZ;
