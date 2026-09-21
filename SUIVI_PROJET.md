@@ -21,6 +21,18 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-21 (suite — notification "modifié par l'admin" envoyée à tort quand l'admin gère son propre alignement)
+
+**[Fix] — notification push envoyée à l'admin pour ses propres mouvements**
+(`app/app/gestion-effectifs/actions.ts`) :
+- David (admin) a reçu "Votre alignement a été modifié par l'admin" en complétant lui-même sa
+  transaction de ballotage — confusant, puisque c'est lui qui vient de le faire.
+- Cause : `submitBatchAction` envoyait cette notification dès que l'appelant est admin
+  (`isAdmin`), sans vérifier que `input.poolerId` correspond à un AUTRE pooler que
+  l'utilisateur connecté. Condition corrigée en `isAdmin && input.poolerId !== user.id`.
+- Vérifié : `tsc --noEmit`, `eslint` (erreurs restantes toutes préexistantes) et `next build`
+  passent.
+
 ### 2026-09-21 (suite — masquer les comptes de réclamations/refus tant qu'un claim est ouvert)
 
 **[Fix] — fuite d'info stratégique : compte de réclamations/refus visible avant résolution**

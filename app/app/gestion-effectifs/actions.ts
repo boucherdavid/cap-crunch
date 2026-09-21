@@ -783,7 +783,10 @@ export async function submitBatchAction(input: {
       }
     }
 
-    if (isAdmin) {
+    // Seulement quand l'admin agit pour un AUTRE pooler (David, 2026-09-21) — un admin qui
+    // gère son propre alignement (isAdmin=true, input.poolerId===user.id) n'a pas besoin
+    // d'être notifié qu'"un admin" l'a modifié, c'est lui-même.
+    if (isAdmin && input.poolerId !== user.id) {
       const n = input.actions.length
       // after() : voir le commentaire dans lib/threadNotify.ts.
       after(() => sendPushToUser(input.poolerId, {
