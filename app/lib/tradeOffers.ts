@@ -131,7 +131,7 @@ export async function respondToTradeOffer(tradeOfferId: number, poolerId: string
   after(() => sendPushToAdmins({
     title: 'Cap Crunch — Transaction à approuver',
     body: 'Un échange entre poolers attend ton approbation.',
-    url: '/admin/effectifs?tab=conformite',
+    url: '/admin/effectifs?tab=approbation',
   }).catch(() => {}))
   return {}
 }

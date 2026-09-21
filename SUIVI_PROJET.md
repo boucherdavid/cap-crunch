@@ -21,6 +21,21 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-21 (suite — l'approbation des échanges obtient son propre onglet admin)
+
+**[Fix] — "Conformité cap" ne parlait pas pour l'approbation des échanges**
+(`app/app/admin/effectifs/page.tsx`, `app/lib/tradeOffers.ts`) :
+- David a testé le flux complet (proposer comme Jérôme, accepter comme Paule dans un vrai
+  navigateur séparé — Firefox, après avoir découvert que deux fenêtres privées du même
+  navigateur partagent leurs cookies, donc pas vraiment deux sessions isolées) — bloqué en
+  cherchant où approuver : le bloc était noyé au bas de l'onglet "Conformité cap", qui ne
+  correspond pas du tout à ce qu'on y cherche.
+- Nouvel onglet dédié **Approbation** dans `/admin/effectifs`, juste à côté de Transactions —
+  `TradeApprovalManager.tsx` déplacé de l'onglet Conformité cap vers ce nouvel onglet, avec sa
+  propre saison chargée séparément. Lien de notification admin (`respondToTradeOffer`,
+  `app/lib/tradeOffers.ts`) mis à jour vers `/admin/effectifs?tab=approbation`.
+- Vérifié : `tsc --noEmit`, `eslint` et `next build` passent.
+
 ### 2026-09-21 (suite — transactions proposées entre poolers, avec approbation admin)
 
 **[Feature] — outil de transactions entre poolers (proposer/accepter/approuver/confirmer)**

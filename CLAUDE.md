@@ -427,7 +427,7 @@ composant, pas de `?subtab=`), donc pas d'accès par URL directe comme pour `/ad
 | `/admin/pool` | `poolers` Poolers · `config` Configuration (sous-onglets `Saisons` / `Général` / `Pointage Saison` — `Général` = ex-"Pool Saison", renommé le 2026-09-01) |
 | `/admin/communaute` | `communication` Communication (feedback + notifs) · `babillard` Babillard (publier/supprimer des communications, ajouté le 2026-09-02) · `suivi` Suivi (activité) · `planification` Planification (sondage type Doodle, admin) |
 | `/admin/init` | `rosters` Rosters initiaux · `recrues` Banque de recrues · `choix` Choix de repêchage (← réassigner le propriétaire d'un pick échangé hors-app) — réglages one-shot déjà en place pour la saison courante |
-| `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé + depuis le 2026-09-21, approbation des transactions entre poolers, `TradeApprovalManager.tsx`) |
+| `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `approbation` Approbation (transactions entre poolers en attente, `TradeApprovalManager.tsx` — onglet ajouté le 2026-09-21) · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) |
 | `/admin/donnees` | `pipeline` Pipeline salaires/contrats/repêchages (doc, `PlayerMerge`) · `prospects` Classement des prospects |
 | `/admin/series` | pas d'onglets — vue unique (avancement des séries), message si aucune saison séries active. Retiré du dropdown Admin le 2026-08-28 (ne servait qu'aux tests, pas d'usage normal du pool des séries) — route et code conservés, toujours atteignable directement par URL. Depuis le 2026-08-30, également retiré du sous-menu "Pool Séries" côté pooler (voir ci-dessous) — plus aucun point d'entrée dans la nav, seulement l'URL directe |
 
@@ -963,8 +963,9 @@ corrigée le 2026-09-20 :**
   Mouvements/Ballotage — visible seulement sur la vraie page pooler, pas dans le hub admin
   `/admin/effectifs?tab=mouvements`, où il n'y a pas de `selfPoolerId` fiable). Flux : pooler
   visé accepte/refuse (pas de contre-offre en v1) → si accepté, l'admin approuve/rejette
-  (`/admin/effectifs?tab=conformite`, `TradeApprovalManager.tsx`) → si approuvé, **rien n'est
-  encore transféré**.
+  (onglet **Approbation** de `/admin/effectifs`, `TradeApprovalManager.tsx` — onglet dédié
+  depuis le 2026-09-21, David ayant trouvé "Conformité cap" pas assez explicite pour ça) → si
+  approuvé, **rien n'est encore transféré**.
 - **Tout-ou-rien pour les deux (David, 2026-09-21)** : après l'approbation admin, les deux
   poolers ont `app_settings.trade_completion_days` jours (défaut 3) pour confirmer que le
   résultat entre dans leur masse/composition (12/6/2 + cap, via `validateRosterLimits` — les

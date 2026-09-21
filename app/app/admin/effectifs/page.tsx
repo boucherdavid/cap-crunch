@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic'
 const TABS = [
   { id: 'mouvements',   label: 'Mouvements' },
   { id: 'transactions', label: 'Transactions' },
+  { id: 'approbation',  label: 'Approbation' },
   { id: 'historique',   label: 'Historique' },
   { id: 'conformite',   label: 'Conformité cap' },
 ]
@@ -39,17 +40,24 @@ export default async function AdminEffectifsPage({
   let saisonConformite: any = null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let capWatchData: any = { entries: [], unsignedMultiplier: 1.20, capDeadlineDays: 7 }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let pendingTradeOffers: any[] = []
   if (activeTab === 'conformite') {
     const { data: sr } = await supabase.from('pool_seasons').select('id, season').eq('is_active', true).eq('is_playoff', false).single()
     saisonConformite = sr
     if (saisonConformite) {
-      const [cw, to] = await Promise.all([
-        loadCapWatchDataAction(saisonConformite.id),
-        getPendingTradeOffersForAdminAction(saisonConformite.id),
-      ])
-      capWatchData = cw
+      capWatchData = await loadCapWatchDataAction(saisonConformite.id)
+    }
+  }
+
+  // ── Approbation (transactions entre poolers) — David, 2026-09-21 ────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let saisonApprobation: any = null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let pendingTradeOffers: any[] = []
+  if (activeTab === 'approbation') {
+    const { data: sr } = await supabase.from('pool_seasons').select('id, season').eq('is_active', true).eq('is_playoff', false).single()
+    saisonApprobation = sr
+    if (saisonApprobation) {
+      const to = await getPendingTradeOffersForAdminAction(saisonApprobation.id)
       pendingTradeOffers = to.offers ?? []
     }
   }
@@ -176,21 +184,28 @@ export default async function AdminEffectifsPage({
           </p>
           {!saisonConformite
             ? <p className="text-gray-500">Aucune saison active.</p>
-            : (
-              <>
-                <CapWatchManager
-                  saisonId={saisonConformite.id}
-                  initialEntries={capWatchData.entries ?? []}
-                  initialMultiplier={capWatchData.unsignedMultiplier ?? 1.20}
-                  initialDeadlineDays={capWatchData.capDeadlineDays ?? 7}
-                  initialWaiverClaimDays={capWatchData.waiverClaimDays ?? 2}
-                />
-                <div className="bg-white rounded-lg shadow p-5 mt-6 max-w-4xl">
-                  <h2 className="font-semibold text-gray-700 text-sm mb-3">Transactions entre poolers à approuver</h2>
-                  <TradeApprovalManager initialOffers={pendingTradeOffers} />
-                </div>
-              </>
-            )
+            : <CapWatchManager
+                saisonId={saisonConformite.id}
+                initialEntries={capWatchData.entries ?? []}
+                initialMultiplier={capWatchData.unsignedMultiplier ?? 1.20}
+                initialDeadlineDays={capWatchData.capDeadlineDays ?? 7}
+                initialWaiverClaimDays={capWatchData.waiverClaimDays ?? 2}
+              />
+          }
+        </div>
+      )}
+
+      {/* ── Approbation (transactions entre poolers) ── */}
+      {activeTab === 'approbation' && (
+        <div className="max-w-4xl">
+          <h1 className="text-2xl font-bold text-gray-800 mb-1">Approbation</h1>
+          <p className="text-sm text-gray-500 mb-6">
+            Transactions entre poolers acceptées par les deux parties, en attente de ton
+            approbation avant que quoi que ce soit ne bouge.
+          </p>
+          {!saisonApprobation
+            ? <p className="text-gray-500">Aucune saison active.</p>
+            : <TradeApprovalManager initialOffers={pendingTradeOffers} />
           }
         </div>
       )}
