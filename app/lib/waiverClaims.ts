@@ -11,6 +11,15 @@ import { localMidnightUTC } from '@/lib/dateRanges'
 // grâce de l'app (48h), pas besoin d'en faire un réglage admin distinct pour l'instant.
 const COMPLETION_GRACE_HOURS = 48
 
+// Lien cliquable dans les courriels/push de ballotage (David, 2026-09-21) — même patron que
+// babillard/planification (`process.env.NEXT_PUBLIC_SITE_URL`, absolu requis pour un
+// courriel). `?tab=ballotage` pré-sélectionne l'onglet Ballotage de Gestion d'effectifs
+// (`GestionEffectifsManager.tsx`, `initialTab`) ; les notifications "tu as gagné" pointent
+// plutôt vers l'onglet Mouvements (défaut, pas de query param) où se trouve le bandeau à agir.
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? ''
+const BALLOTAGE_TAB_PATH = '/gestion-effectifs?tab=ballotage'
+const MOUVEMENTS_PATH = '/gestion-effectifs'
+
 // Ballotage en cours de saison — file de réclamation par priorité quand un pooler libère un
 // joueur (saison démarrée seulement, voir CLAUDE.md section 6). Pas d'import depuis
 // admin/transactions/actions.ts ici délibérément : ce fichier-là importera
@@ -69,14 +78,18 @@ async function playerLabel(admin: ReturnType<typeof createAdminClient>, playerId
   return data ? `${data.last_name}, ${data.first_name}` : `joueur #${playerId}`
 }
 
-async function notifyAllPoolersExcept(excludePoolerId: string | null, title: string, body: string, subject: string, html: string) {
+function linkHtml(path: string): string {
+  return `<p><a href="${SITE_URL}${path}">Voir sur Cap Crunch</a></p>`
+}
+
+async function notifyAllPoolersExcept(excludePoolerId: string | null, title: string, body: string, subject: string, html: string, path: string) {
   const admin = createAdminClient()
   const { data: poolers } = await admin.from('poolers').select('id')
   const ids = (poolers ?? []).map(p => p.id).filter(id => id !== excludePoolerId)
   if (ids.length === 0) return
   after(() => Promise.all([
-    sendPushToUsers(ids, { title, body, url: '/gestion-effectifs' }).catch(() => {}),
-    sendEmailToIds(ids, { subject, html }).catch(() => {}),
+    sendPushToUsers(ids, { title, body, url: path }).catch(() => {}),
+    sendEmailToIds(ids, { subject, html: `${html}${linkHtml(path)}` }).catch(() => {}),
   ]))
 }
 
@@ -125,6 +138,7 @@ export async function createWaiverClaimForRelease(saisonId: number, playerId: nu
     'Cap Crunch — Ballotage',
     `<p><strong>${label}</strong> a été libéré par ${releaser?.name ?? 'un pooler'}.</p>
      <p>Réclamable jusqu'au ${deadline} dans l'onglet Ballotage de Gestion d'effectifs.</p>`,
+    BALLOTAGE_TAB_PATH,
   )
 }
 
@@ -174,11 +188,11 @@ export async function checkGuaranteedWaiverWinner(waiverClaimId: number) {
     sendPushToUsers([leaderId], {
       title: 'Cap Crunch — Ballotage',
       body: `Tout le monde devant toi a refusé ${label} — tu vas l'obtenir à la fin du délai.`,
-      url: '/gestion-effectifs',
+      url: BALLOTAGE_TAB_PATH,
     }).catch(() => {}),
     sendEmailToIds([leaderId], {
       subject: 'Cap Crunch — Ballotage (résultat garanti)',
-      html: `<p>Tout le monde devant toi au classement de priorité a refusé <strong>${label}</strong> — tu vas l'obtenir à la fin du délai de réclamation, même si quelqu'un d'autre le réclame encore après toi.</p>`,
+      html: `<p>Tout le monde devant toi au classement de priorité a refusé <strong>${label}</strong> — tu vas l'obtenir à la fin du délai de réclamation, même si quelqu'un d'autre le réclame encore après toi.</p>${linkHtml(BALLOTAGE_TAB_PATH)}`,
     }).catch(() => {}),
   ]))
 }
@@ -233,12 +247,12 @@ export async function resolveExpiredWaiverClaims(saisonId: number) {
       sendPushToUsers([winnerId], {
         title: 'Cap Crunch — Ballotage',
         body: `Tu as remporté le ballotage pour ${label} — complète ta transaction dans Gestion d'effectifs (48h).`,
-        url: '/gestion-effectifs',
+        url: MOUVEMENTS_PATH,
       }).catch(() => {}),
       sendEmailToIds([winnerId], {
         subject: 'Cap Crunch — Ballotage remporté',
         html: `<p>Tu as remporté le ballotage pour <strong>${label}</strong>.</p>
-               <p>Rends-toi dans Gestion d'effectifs (onglet Mouvements) pour l'ajouter à ton alignement — un bouton "Ballotage" pré-rempli t'attend. Ajoute au besoin une libération pour rester conforme. Tu as 48h, après quoi l'admin devra intervenir manuellement.</p>`,
+               <p>Rends-toi dans Gestion d'effectifs (onglet Mouvements) pour l'ajouter à ton alignement — un bouton "Ballotage" pré-rempli t'attend. Ajoute au besoin une libération pour rester conforme. Tu as 48h, après quoi l'admin devra intervenir manuellement.</p>${linkHtml(MOUVEMENTS_PATH)}`,
       }).catch(() => {}),
     ]))
   }

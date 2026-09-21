@@ -5,7 +5,12 @@ import GestionEffectifsManager from './GestionEffectifsManager'
 export const metadata = { title: 'Gestion d\'effectifs' }
 export const dynamic = 'force-dynamic'
 
-export default async function GestionEffectifsPage() {
+export default async function GestionEffectifsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>
+}) {
+  const { tab } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -69,6 +74,7 @@ export default async function GestionEffectifsPage() {
       </p>
       <GestionEffectifsManager
         isAdmin={isAdmin}
+        initialTab={tab === 'ballotage' ? 'ballotage' : 'mouvements'}
         selfPoolerId={pooler.id}
         selfPoolerName={pooler.name}
         saisonId={saison.id}

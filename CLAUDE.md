@@ -780,6 +780,12 @@ revue le 2026-09-14 :**
   `/admin/transactions`, même philosophie que la protection recrue/`cap_signing_watch`
   ci-dessus. Un claim `awarded` reste visible dans l'historique de l'onglet Ballotage
   (`STATUS_LABEL`/`STATUS_COLOR`, `BallotageTab.tsx`) pendant qu'il attend.
+- **Lien cliquable dans les courriels/push (David, 2026-09-21)** — même patron que babillard/
+  planification (`process.env.NEXT_PUBLIC_SITE_URL` + `<a href>`, "Voir sur Cap Crunch") : la
+  notification de libération et le "garanti" pointent vers `/gestion-effectifs?tab=ballotage`
+  (`GestionEffectifsManager.tsx` accepte `initialTab`, lu depuis `?tab=` par `page.tsx`) ; la
+  notification "tu as remporté" pointe vers `/gestion-effectifs` (onglet Mouvements par défaut,
+  où se trouve le bandeau à compléter).
 - **Analyser dans le simulateur avant de réclamer (David, 2026-09-21)** — bouton "Analyser" sur
   chaque claim ouvert de `BallotageTab.tsx`, lien vers `/simulation?addPlayer=<playerId>` :
   pré-remplit l'onglet "Mon alignement" avec ce joueur en simulation

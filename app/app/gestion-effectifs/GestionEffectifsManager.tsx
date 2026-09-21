@@ -285,6 +285,7 @@ const ACTION_DEFS: { type: ActionType; label: string; description: string; admin
 
 export default function GestionEffectifsManager({
   isAdmin,
+  initialTab,
   poolers,
   selfPoolerId,
   selfPoolerName,
@@ -296,6 +297,9 @@ export default function GestionEffectifsManager({
   maxSignaturesLtir,
 }: {
   isAdmin: boolean
+  // Onglet initial (lien "Voir sur Cap Crunch" depuis un courriel/push de ballotage,
+  // `/gestion-effectifs?tab=ballotage` — David, 2026-09-21). Optionnel, défaut 'mouvements'.
+  initialTab?: 'mouvements' | 'ballotage'
   poolers?: { id: string; name: string }[]
   selfPoolerId?: string
   selfPoolerName?: string
@@ -306,7 +310,7 @@ export default function GestionEffectifsManager({
   maxSignaturesAl: number
   maxSignaturesLtir: number
 }) {
-  const [activeTab, setActiveTab] = useState<'mouvements' | 'ballotage'>('mouvements')
+  const [activeTab, setActiveTab] = useState<'mouvements' | 'ballotage'>(initialTab ?? 'mouvements')
 
   const [poolerId, setPoolerId]           = useState(selfPoolerId ?? '')
   const [roster, setRoster]               = useState<RosterForPooler | null>(null)

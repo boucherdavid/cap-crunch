@@ -21,6 +21,24 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-21 (suite — lien cliquable vers l'app dans les courriels/push de ballotage)
+
+**[Feature] — lien "Voir sur Cap Crunch" dans les notifications de ballotage**
+(modifiés : `app/lib/waiverClaims.ts`, `app/app/gestion-effectifs/{page.tsx,
+GestionEffectifsManager.tsx}`) :
+- David a testé le courriel de libération (fenêtre par jour civil confirmée : "Réclamable
+  jusqu'au 23 sept. 2026 23h59") mais voulait un lien cliquable vers l'app, pas juste du texte.
+- Repris le patron déjà utilisé par babillard/planification (`process.env.
+  NEXT_PUBLIC_SITE_URL` + `<a href>`, libellé "Voir sur Cap Crunch") — `waiverClaims.ts`
+  n'avait jamais eu ce lien depuis sa création. Ajouté aux 3 notifications (libération,
+  "garanti", "tu as remporté").
+- Au passage, `/gestion-effectifs` accepte maintenant `?tab=ballotage` pour pré-sélectionner
+  l'onglet (`GestionEffectifsManager.tsx`, prop `initialTab`) — la notification de libération/
+  "garanti" y pointe directement plutôt que sur l'onglet Mouvements par défaut. La notification
+  "tu as remporté" pointe vers Mouvements (défaut), où se trouve le bandeau à compléter.
+- Vérifié : `tsc --noEmit`, `eslint` (2 erreurs restantes, toutes préexistantes — `resetAddForm`
+  accédée avant déclaration, confirmé via `git diff`) et `next build` passent.
+
 ### 2026-09-21 (suite — fenêtre de ballotage par jour civil + plancher de date pour les nouvelles signatures)
 
 **[Fix] — date de début trompeuse pour une nouvelle signature en fenêtre de test**
