@@ -94,7 +94,7 @@ export default function ProjectionsTable({
 
   // Fond pâle par source de projection (David, 2026-09-22) — aide à repérer d'un coup d'œil
   // quelle colonne vient d'où (NHL.com/CBS/Pool Pro/Hockey Mag.) sans dépendre de l'en-tête.
-  const SOURCE_BG = { nhlCom: 'bg-gray-100', cbs: 'bg-blue-50', poolPro: 'bg-red-50', hockeyMagazine: 'bg-yellow-50' } as const
+  const SOURCE_BG = { nhlCom: '', cbs: 'bg-blue-50', poolPro: 'bg-red-50', hockeyMagazine: 'bg-yellow-50' } as const
 
   const unit = tab === 'goalies' ? 'vict.' : 'pts'
   const rows = tab === 'goalies' ? filteredGoalies : tab === 'defense' ? filteredDefense : filteredForwards
