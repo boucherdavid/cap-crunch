@@ -21,6 +21,40 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-22 (suite — en-têtes fixes pour repêchage/prospects + stats junior dans Repêchage LNH)
+
+**[Feature] — en-tête de tableau fixe pour Classement des prospects (`/draft-center`)**
+(`app/app/draft-center/DraftCenterTable.tsx`) — même correctif que les autres tableaux
+aujourd'hui (`overflow-auto max-h-[75vh]` + `sticky top-0` sur chaque `<th>`), avec une
+nuance : les 2 premières colonnes (Moy./Joueur) étaient déjà figées horizontalement
+(`sticky left-*`) pour rester visibles au défilement latéral — elles reçoivent maintenant
+aussi `top-0` pour un coin figé dans les deux sens, d'où un z-index plus élevé (z-20 contre
+z-10 pour les autres en-têtes) afin de passer par-dessus au croisement.
+
+**[Feature] — bandeaux année/ronde fixes + stats de la dernière saison junior dans
+`/repechage` (Repêchage LNH)** (`app/app/repechage/page.tsx`,
+`app/app/repechage/RepechageTable.tsx`) :
+- Ce tableau n'a pas de `<thead>` classique (chaque ronde est son propre mini-tableau, sans
+  colonnes bornées en hauteur) — le correctif overflow-auto/max-h des autres tableaux ne
+  s'applique pas ici. À la place : les bandeaux "Repêchage {année}" et "Ronde {round}"
+  deviennent `sticky` (empilés — année en haut `top-0 z-20`, ronde juste dessous
+  `top-[52px] z-10`, valeur approximative de la hauteur du bandeau année) pour toujours savoir
+  où on se trouve dans une liste de 1000+ choix. Pas de conteneur borné nécessaire ici : ces
+  bandeaux ne sont pas dans un `overflow-x-auto`, sticky s'accroche donc directement à la page.
+- **3 nouvelles colonnes** : équipe junior/université, PJ et PTS de la dernière saison avant
+  repêchage — mêmes données que `/draft-center` (table `draft_prospects`), jumelées par
+  (année de repêchage, nom normalisé). `draft_prospects` ne couvre que le repêchage à venir
+  (2026 actuellement, pas d'historique pour 2021-2025) — ces 3 colonnes affichent `—` pour les
+  années plus anciennes, ce qui est normal (ces joueurs sont déjà dans la LNH, leurs stats
+  junior pré-repêchage n'ont jamais été conservées).
+- Ajout d'une première vraie ligne d'en-tête (`<thead>`, non sticky — les mini-tableaux par
+  ronde sont courts, pas nécessaire) pour clarifier ces nouvelles colonnes, le tableau n'en
+  avait jamais eu (colonnes reconnaissables par position/contenu seulement jusqu'ici).
+- Vérifié : `tsc --noEmit` passe ; lint comparé par `git stash` (baseline 8 `any` dans
+  `page.tsx`, retombé à 8 après avoir retiré une annotation `any` redondante que j'avais
+  ajoutée par réflexe — le tableau `.map()` infère déjà le type sans elle, même patron que la
+  correction du journal des transactions plus tôt cette session).
+
 ### 2026-09-22 (suite — colonne CBS vide sur /statistiques/projections : requête tronquée à 1000 lignes)
 
 **[Fix] — `page.tsx` de /statistiques/projections ne paginait pas sa requête `player_projections`**

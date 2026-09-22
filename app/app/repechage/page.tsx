@@ -105,6 +105,19 @@ export default async function RepechagePage() {
     }
   }
 
+  // Équipe/PJ/PTS de la dernière saison avant repêchage (David, 2026-09-22) — mêmes données
+  // que /draft-center, mais draft_prospects ne couvre que le repêchage à venir (pas d'historique
+  // pour les années passées) : jumelé par (année, nom normalisé), '—' si absent pour l'année.
+  const { data: prospectStats } = await supabase
+    .from('draft_prospects')
+    .select('draft_year, first_name, last_name, team, games_played, points')
+  const prospectStatsMap = new Map<string, { team: string | null; games_played: number | null; points: number | null }>(
+    (prospectStats ?? []).map((p) => [
+      `${p.draft_year}|${normName(p.first_name)} ${normName(p.last_name)}`,
+      { team: p.team, games_played: p.games_played, points: p.points },
+    ]),
+  )
+
   const matchedPlayerIds = new Set<number>()
 
   const picks = allPicks
@@ -123,6 +136,9 @@ export default async function RepechagePage() {
 
       if (dbPlayerId) matchedPlayerIds.add(dbPlayerId)
 
+      const prospectKey = `${p.draftYear}|${normName(p.firstName)} ${normName(p.lastName)}`
+      const prospectStat = prospectStatsMap.get(prospectKey)
+
       return {
         player_id: dbPlayerId ?? p.playerId,
         first_name: p.firstName,
@@ -133,6 +149,9 @@ export default async function RepechagePage() {
         draft_overall: p.overallPickNumber,
         team_code: p.triCode ?? null,
         status: null,
+        prospect_team: prospectStat?.team ?? null,
+        prospect_games_played: prospectStat?.games_played ?? null,
+        prospect_points: prospectStat?.points ?? null,
         pooler_name: dbPlayerId ? (poolerByPlayerId.get(dbPlayerId) ?? null) : null,
       }
     })
@@ -154,6 +173,9 @@ export default async function RepechagePage() {
           draft_overall: null,
           team_code: null,
           status: null,
+          prospect_team: null,
+          prospect_games_played: null,
+          prospect_points: null,
           pooler_name: poolerName,
         })
       }
