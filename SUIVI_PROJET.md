@@ -21,6 +21,28 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-22 (suite — Journal des transactions : tableau compact + recherche par pooler)
+
+**[Feature] — tableau compact pour tous les mouvements sauf les échanges + filtre par pooler**
+(`app/app/journal-transactions/TransactionsClient.tsx`) :
+- David a confirmé la direction proposée : garder les cartes deux colonnes pour Échanges, mais
+  passer tout le reste (Ballotage/Signatures/LTIR/Gestion, et le mélange des deux dans "Tous")
+  en tableau compact — plus dense que l'ancien affichage en cartes avec une liste à plat par
+  transaction. Ajout d'un champ de recherche qui filtre par nom de pooler (donneur OU
+  receveur), toutes catégories confondues.
+- Au passage, confirmé par lecture de code (question de David) : `app/app/admin/rosters/
+  actions.ts` (Mode Init/Rosters initiaux, Banque de recrues) n'écrit **jamais** dans
+  `transactions`/`transaction_items` — recherche exhaustive dans tout le fichier, zéro
+  occurrence. Le Journal des transactions ne peut donc jamais afficher la reconstruction
+  manuelle des alignements en prod, confirmé avant que David s'y attaque.
+- `rowInfo()` (nouveau) dérive Pooler/Joueur/Mouvement en colonnes structurées à partir de la
+  même logique que `itemDescription()` (conservée pour le repli de `TradeCard` si jamais aucun
+  item 'transfer' n'est trouvable). `visible` se scinde en `tradeTxs` (cartes) et `tableRows`
+  (une ligne par item, éclatée au besoin sur plusieurs transactions) selon la classification
+  existante (`classifyTx`).
+- Vérifié : `tsc --noEmit`, `eslint` (10 erreurs `any` restantes contre 11 avant ce changement
+  — légère amélioration, pas de régression) et `next build` passent.
+
 ### 2026-09-22 (suite — affichage deux colonnes des échanges dans le Journal des transactions)
 
 **[Feature+Fix] — Journal des transactions : échanges affichés en deux colonnes + bug "undefined promeut"**

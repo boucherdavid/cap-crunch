@@ -140,6 +140,37 @@ function formatDate(iso: string) {
   })
 }
 
+// Colonnes structurées pour l'affichage tabulaire (David, 2026-09-22) — même données que
+// itemDescription() mais en morceaux séparés plutôt qu'en phrase, pour un tableau compact
+// (Signatures/LTIR/Gestion/Ballotage — pas Échanges, qui garde son affichage deux colonnes).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rowInfo(item: any): { pooler: string; player: string; detail: string } {
+  const from = item.from_pooler?.name ?? DASH
+  const to = item.to_pooler?.name ?? DASH
+  const player = item.players
+    ? `${item.players.last_name}, ${item.players.first_name} (${item.players.teams?.code ?? DASH}) ${item.players.position ?? ''}`
+    : '?'
+  const oldT = item.old_player_type ? typeLabel[item.old_player_type] ?? item.old_player_type : null
+  const newT = item.new_player_type ? typeLabel[item.new_player_type] ?? item.new_player_type : null
+
+  switch (item.action_type) {
+    case 'ballotage':
+      return { pooler: `${from} → ${to}`, player, detail: 'Ballotage' }
+    case 'sign':
+      return { pooler: to, player, detail: `Signature (${newT})` }
+    case 'promote':
+      return { pooler: to, player, detail: `Promotion → ${newT}` }
+    case 'reactivate':
+      return { pooler: to, player, detail: `Retour LTIR → ${newT}` }
+    case 'release':
+      return { pooler: from, player, detail: 'Libération' }
+    case 'type_change':
+      return { pooler: item.from_pooler?.name ?? to, player, detail: `${oldT} → ${newT}` }
+    default:
+      return { pooler: from !== DASH ? from : to, player, detail: item.action_type }
+  }
+}
+
 export default function TransactionsClient({
   transactions,
   saison,
@@ -153,6 +184,7 @@ export default function TransactionsClient({
 }) {
   const router = useRouter()
   const [tab, setTab] = useState<TabKey>('tous')
+  const [poolerSearch, setPoolerSearch] = useState('')
 
   const classified = transactions.map((tx: any) => ({
     ...tx,
@@ -168,8 +200,22 @@ export default function TransactionsClient({
     gestion: classified.filter(tx => tx._tab === 'gestion').length,
   }
 
-  const visible = tab === 'tous' ? classified : classified.filter(tx => tx._tab === tab)
-  const itemBg = TAB_COLORS[tab]
+  const byTab = tab === 'tous' ? classified : classified.filter(tx => tx._tab === tab)
+  const needle = poolerSearch.trim().toLowerCase()
+  const visible = !needle ? byTab : byTab.filter(tx =>
+    (tx.transaction_items ?? []).some((item: { from_pooler?: { name?: string }; to_pooler?: { name?: string } }) =>
+      item.from_pooler?.name?.toLowerCase().includes(needle) || item.to_pooler?.name?.toLowerCase().includes(needle),
+    ),
+  )
+
+  // Échanges gardent leur affichage deux colonnes (TradeCard) ; tout le reste passe en tableau
+  // compact — une ligne par mouvement, même en éclatant les items sur plusieurs transactions
+  // (David, 2026-09-22).
+  const tradeTxs = visible.filter(tx => tx._tab === 'echanges')
+  const tableTxs = visible.filter(tx => tx._tab !== 'echanges')
+  const tableRows = tableTxs.flatMap(tx =>
+    (tx.transaction_items ?? []).map((item: { id: number }) => ({ tx, item, ...rowInfo(item) })),
+  )
 
   return (
     <div>
@@ -194,7 +240,7 @@ export default function TransactionsClient({
       </div>
 
       {/* Onglets */}
-      <div className="flex gap-1 mb-6 border-b border-gray-200 overflow-x-auto">
+      <div className="flex gap-1 mb-4 border-b border-gray-200 overflow-x-auto">
         {TABS.map(t => (
           <button
             key={t.key}
@@ -217,37 +263,59 @@ export default function TransactionsClient({
         ))}
       </div>
 
+      <input
+        type="text"
+        value={poolerSearch}
+        onChange={e => setPoolerSearch(e.target.value)}
+        placeholder="Filtrer par pooler..."
+        className="w-full sm:w-64 border border-gray-200 rounded-lg px-3 py-1.5 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+
       {visible.length === 0 && (
         <p className="text-gray-400 text-sm">Aucune transaction dans cette catégorie.</p>
       )}
 
-      <div className="space-y-4">
-        {visible.map((tx: any) => (
-          <div key={tx.id} className="bg-white rounded-lg shadow p-5">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                {tx.notes && <p className="font-medium text-gray-800">{tx.notes}</p>}
-                <p className="text-xs text-gray-400 mt-0.5">{formatDate(tx.created_at)}</p>
+      {tableRows.length > 0 && (
+        <div className="bg-white rounded-lg shadow overflow-x-auto mb-4">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-gray-400 uppercase border-b border-gray-100">
+                <th className="px-3 py-2 font-medium">Date</th>
+                <th className="px-3 py-2 font-medium">Pooler</th>
+                <th className="px-3 py-2 font-medium">Joueur</th>
+                <th className="px-3 py-2 font-medium">Mouvement</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tableRows.map(({ tx, item, pooler, player, detail }) => (
+                <tr key={item.id} className={`border-b border-gray-50 last:border-0 ${TAB_COLORS[tx._tab as TabKey]}`}>
+                  <td className="px-3 py-1.5 whitespace-nowrap text-gray-500">{formatDate(tx.created_at)}</td>
+                  <td className="px-3 py-1.5 whitespace-nowrap text-gray-700">{pooler}</td>
+                  <td className="px-3 py-1.5 text-gray-700">{player}</td>
+                  <td className="px-3 py-1.5 text-gray-700">{detail}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {tradeTxs.length > 0 && (
+        <div className="space-y-4">
+          {tradeTxs.map((tx: any) => (
+            <div key={tx.id} className="bg-white rounded-lg shadow p-5">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  {tx.notes && <p className="font-medium text-gray-800">{tx.notes}</p>}
+                  <p className="text-xs text-gray-400 mt-0.5">{formatDate(tx.created_at)}</p>
+                </div>
+                <span className="text-xs text-gray-300">#{tx.id}</span>
               </div>
-              <span className="text-xs text-gray-300">#{tx.id}</span>
+              <TradeCard items={tx.transaction_items ?? []} />
             </div>
-            {tx._tab === 'echanges'
-              ? <TradeCard items={tx.transaction_items ?? []} />
-              : (
-                <ul className="space-y-1">
-                  {(tx.transaction_items ?? []).map((item: any) => {
-                    const bg = tab === 'tous' ? TAB_COLORS[tx._tab as TabKey] : itemBg
-                    return (
-                      <li key={item.id} className={`text-sm text-gray-700 ${bg} px-3 py-1.5 rounded`}>
-                        {itemDescription(item)}
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
