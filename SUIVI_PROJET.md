@@ -21,6 +21,34 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-22 (suite — projections Hockey Le Magazine : 4ᵉ source)
+
+**[Feature] — import des prévisions du "Guide des Poolers 2026-2027" de Hockey Le Magazine**
+(`python_script/source/hockey_magazine_2026_27.csv`, `python_script/
+import_projections_hockey_magazine.py`, `app/app/statistiques/projections/page.tsx`,
+`app/app/statistiques/projections/ProjectionsTable.tsx`) :
+- 6 nouvelles photos (`photos/Hockey_Magazine_*.jpg`, non commitées) — mise en page différente
+  de Pool Pro : un seul classement combiné **TOP 360 meilleurs marqueurs** (attaquants et
+  défenseurs mélangés, triés par points) sur 4 pages, puis un **TOP 100 Défenseurs** et un
+  **TOP 40 Gardiens** séparés. Le TOP 100 Défenseurs chevauche volontairement le TOP 360 (mêmes
+  joueurs/points pour les ~78 premiers), sauf pour les défenseurs les moins productifs (rangs
+  79-100, sous la coupure à 31 pts du TOP 360) — ces ~22 joueurs ajoutés à la suite dans le même
+  CSV plutôt que dans un fichier séparé, pour ne rien dupliquer côté import.
+- Script `import_projections_hockey_magazine.py` cloné de `import_projections_pool_pro.py`
+  (même patron : dry-run par défaut, `--apply` + confirmation), avec en plus le garde-fou
+  `dedup_by_player()` ajouté plus tôt aujourd'hui dans l'import CBS (2 sources qui se
+  chevauchent = même risque de collision qu'un fichier avec 2 feuilles).
+- Jumelage : **382/382 patineurs et 40/40 gardiens trouvés du premier coup** — 0 non trouvé, 0
+  ambigu, 0 collision, aucun écart >40 pts avec NHL.com. Nouvelle source
+  `player_projections.source='hockey_magazine'` : 422 lignes importées en staging.
+- Balayage anti-doublons complet (même méthode que pour CBS/Pool Pro, 246 noms de famille en
+  double vérifiés) : **0 cas suspect** après cet import — confirme qu'aucune nouvelle fiche
+  orpheline n'a capté une projection par erreur.
+- `/statistiques/projections` : 4ᵉ colonne triable "Hockey Mag." à côté de NHL.com/CBS/Pool Pro.
+- Vérifié : `tsc --noEmit` passe.
+- Toujours en attente de la validation finale de David avant de répliquer en prod (avec les 6
+  corrections de doublons + le ré-import CBS de la session, voir entrée précédente).
+
 ### 2026-09-22 (suite — 6 doublons de fiches joueurs trouvés et corrigés, ré-import CBS complet)
 
 **[Fix] — jumelages de projections corrompus par des fiches `players` en double** — David a
