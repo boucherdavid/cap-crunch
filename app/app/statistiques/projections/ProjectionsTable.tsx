@@ -92,6 +92,10 @@ export default function ProjectionsTable({
   const sortHeaderClass = (key: SortKey) =>
     `text-right px-4 py-3 font-medium cursor-pointer select-none ${sortKey === key ? 'text-blue-700' : 'text-gray-600 hover:text-gray-800'}`
 
+  // Fond pâle par source de projection (David, 2026-09-22) — aide à repérer d'un coup d'œil
+  // quelle colonne vient d'où (NHL.com/CBS/Pool Pro/Hockey Mag.) sans dépendre de l'en-tête.
+  const SOURCE_BG = { nhlCom: 'bg-gray-100', cbs: 'bg-blue-50', poolPro: 'bg-red-50', hockeyMagazine: 'bg-yellow-50' } as const
+
   const unit = tab === 'goalies' ? 'vict.' : 'pts'
   const rows = tab === 'goalies' ? filteredGoalies : tab === 'defense' ? filteredDefense : filteredForwards
 
@@ -163,10 +167,10 @@ export default function ProjectionsTable({
               <th className="text-left px-4 py-3 font-medium text-gray-600">{tab === 'goalies' ? 'Gardien' : 'Joueur'}</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Équipe</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Pos</th>
-              <th className={sortHeaderClass('nhlCom')} onClick={() => setSortKey('nhlCom')}>NHL.com</th>
-              <th className={sortHeaderClass('cbs')} onClick={() => setSortKey('cbs')}>CBS</th>
-              <th className={sortHeaderClass('poolPro')} onClick={() => setSortKey('poolPro')}>Pool Pro</th>
-              <th className={sortHeaderClass('hockeyMagazine')} onClick={() => setSortKey('hockeyMagazine')}>Hockey Mag.</th>
+              <th className={`${sortHeaderClass('nhlCom')} ${SOURCE_BG.nhlCom}`} onClick={() => setSortKey('nhlCom')}>NHL.com</th>
+              <th className={`${sortHeaderClass('cbs')} ${SOURCE_BG.cbs}`} onClick={() => setSortKey('cbs')}>CBS</th>
+              <th className={`${sortHeaderClass('poolPro')} ${SOURCE_BG.poolPro}`} onClick={() => setSortKey('poolPro')}>Pool Pro</th>
+              <th className={`${sortHeaderClass('hockeyMagazine')} ${SOURCE_BG.hockeyMagazine}`} onClick={() => setSortKey('hockeyMagazine')}>Hockey Mag.</th>
               <th className={`${sortHeaderClass('lastSeasonValue')} hidden sm:table-cell`} onClick={() => setSortKey('lastSeasonValue')}>Saison dernière</th>
               <th
                 className={`${sortHeaderClass('trendPerGame')} hidden sm:table-cell`}
@@ -194,16 +198,16 @@ export default function ProjectionsTable({
                   </td>
                   <td className="px-4 py-2.5"><TeamBadge code={p.team} /></td>
                   <td className="px-4 py-2.5 text-gray-500 hidden sm:table-cell">{p.position ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900">
+                  <td className={`px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900 ${SOURCE_BG.nhlCom}`}>
                     {p.nhlCom ?? '—'}
                   </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900">
+                  <td className={`px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900 ${SOURCE_BG.cbs}`}>
                     {p.cbs ?? '—'}
                   </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900">
+                  <td className={`px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900 ${SOURCE_BG.poolPro}`}>
                     {p.poolPro ?? '—'}
                   </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900">
+                  <td className={`px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900 ${SOURCE_BG.hockeyMagazine}`}>
                     {p.hockeyMagazine ?? '—'}
                   </td>
                   <td className="px-4 py-2.5 text-right tabular-nums text-gray-600 hidden sm:table-cell">
