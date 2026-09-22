@@ -16,6 +16,7 @@ export type ProjectionRow = {
   available: boolean
   nhlCom: number | null
   cbs: number | null
+  poolPro: number | null
   lastSeasonValue: number | null
   trend: number | null
   trendSeasons: number
@@ -162,7 +163,7 @@ export default async function ProjectionsPage() {
         .from('player_projections')
         .select('player_id, source, projected_points, projected_wins, players(nhl_id, first_name, last_name, position, teams(code))')
         .eq('season', poolSeason)
-        .in('source', ['nhl_com', 'cbs'])
+        .in('source', ['nhl_com', 'cbs', 'pool_pro'])
     : { data: null }
 
   const byPlayer = new Map<number, Omit<ProjectionRow, 'trend' | 'trendSeasons' | 'trendPerGame' | 'trendGames' | 'trendDirection' | 'lastSeasonValue' | 'available'>>()
@@ -173,11 +174,12 @@ export default async function ProjectionsPage() {
     const entry = byPlayer.get(r.player_id) ?? {
       nhlId: p.nhl_id, firstName: p.first_name, lastName: p.last_name,
       position: p.position, team: p.teams?.code ?? null, isGoalie,
-      nhlCom: null, cbs: null,
+      nhlCom: null, cbs: null, poolPro: null,
     }
     const value = isGoalie ? r.projected_wins : r.projected_points
     if (r.source === 'nhl_com') entry.nhlCom = value
     if (r.source === 'cbs') entry.cbs = value
+    if (r.source === 'pool_pro') entry.poolPro = value
     byPlayer.set(r.player_id, entry)
   }
 

@@ -939,7 +939,7 @@ CREATE TABLE player_projections (
   id SERIAL PRIMARY KEY,
   player_id INTEGER REFERENCES players(id) ON DELETE CASCADE,
   season VARCHAR(10) NOT NULL,      -- '2026-27'
-  source VARCHAR(20) NOT NULL,      -- 'nhl_com', 'espn'
+  source VARCHAR(20) NOT NULL,      -- 'nhl_com', 'cbs', 'pool_pro'
   projected_points INTEGER,         -- attaquants/défenseurs
   projected_wins INTEGER,           -- gardiens
   imported_at TIMESTAMPTZ DEFAULT NOW(),

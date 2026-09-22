@@ -7,7 +7,7 @@ import PlayerLink from '@/components/PlayerLink'
 import { normalizeSearch } from '@/lib/normalizeSearch'
 
 type Tab = 'forwards' | 'defense' | 'goalies'
-type SortKey = 'nhlCom' | 'cbs' | 'lastSeasonValue' | 'trendPerGame' | 'trend'
+type SortKey = 'nhlCom' | 'cbs' | 'poolPro' | 'lastSeasonValue' | 'trendPerGame' | 'trend'
 
 // position peut être multi-poste ("LD,RD", "C,LW"...) — jamais juste "D" seul dans nos données —
 // et nullable (`players.position`). Les codes attaquants (C/LW/RW) ne contiennent jamais la
@@ -103,11 +103,11 @@ export default function ProjectionsTable({
       </div>
 
       <p className="text-sm text-gray-500 mb-4">
-        NHL.com et CBS Sports (projections externes collées manuellement), la saison dernière
-        réelle, et une tendance pondérée sur les saisons réelles récentes (rythme par match projeté
-        sur 82 matchs — repère rapide, pas une vraie projection ; ignore les saisons à moins de 10
-        matchs) avec sa progression (↑/↓/→) — mêmes chiffres que le panneau détail joueur,
-        regroupés ici pour comparer plus facilement.
+        NHL.com, CBS Sports et Pool Pro (projections externes collées/transcrites manuellement),
+        la saison dernière réelle, et une tendance pondérée sur les saisons réelles récentes
+        (rythme par match projeté sur 82 matchs — repère rapide, pas une vraie projection ; ignore
+        les saisons à moins de 10 matchs) avec sa progression (↑/↓/→) — mêmes chiffres que le
+        panneau détail joueur, regroupés ici pour comparer plus facilement.
       </p>
 
       <div className="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-3 items-center">
@@ -165,6 +165,7 @@ export default function ProjectionsTable({
               <th className="text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Pos</th>
               <th className={sortHeaderClass('nhlCom')} onClick={() => setSortKey('nhlCom')}>NHL.com</th>
               <th className={sortHeaderClass('cbs')} onClick={() => setSortKey('cbs')}>CBS</th>
+              <th className={sortHeaderClass('poolPro')} onClick={() => setSortKey('poolPro')}>Pool Pro</th>
               <th className={`${sortHeaderClass('lastSeasonValue')} hidden sm:table-cell`} onClick={() => setSortKey('lastSeasonValue')}>Saison dernière</th>
               <th
                 className={`${sortHeaderClass('trendPerGame')} hidden sm:table-cell`}
@@ -180,7 +181,7 @@ export default function ProjectionsTable({
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={11} className="text-center py-12 text-gray-400">Aucun joueur ne correspond aux filtres.</td>
+                <td colSpan={12} className="text-center py-12 text-gray-400">Aucun joueur ne correspond aux filtres.</td>
               </tr>
             ) : (
               rows.map((p, i) => (
@@ -197,6 +198,9 @@ export default function ProjectionsTable({
                   </td>
                   <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900">
                     {p.cbs ?? '—'}
+                  </td>
+                  <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900">
+                    {p.poolPro ?? '—'}
                   </td>
                   <td className="px-4 py-2.5 text-right tabular-nums text-gray-600 hidden sm:table-cell">
                     {p.lastSeasonValue ?? '—'}
