@@ -269,7 +269,7 @@ export async function releaseFlaggedPlayerAction(watchId: number): Promise<{ err
 
 // ─── Transactions entre poolers en attente d'approbation admin (David, 2026-09-21) ────────────
 
-export type AdminTradeOfferItemView = { kind: 'player' | 'pick'; label: string; fromName: string; toName: string }
+export type AdminTradeOfferItemView = { kind: 'player' | 'pick'; label: string; fromName: string; toName: string; capNumber: number | null }
 export type AdminTradeOfferView = {
   id: number
   proposerName: string
@@ -277,6 +277,10 @@ export type AdminTradeOfferView = {
   createdAt: string
   decidedAt: string | null
   items: AdminTradeOfferItemView[]
+  // Total des salaires donnés par chacun (David, 2026-09-22) — pour voir d'un coup d'œil
+  // l'ampleur de l'échange, choix de repêchage exclus (pas de salaire).
+  proposerCapGiven: number
+  targetCapGiven: number
 }
 
 export async function getPendingTradeOffersForAdminAction(saisonId: number): Promise<{ error?: string; offers?: AdminTradeOfferView[] }> {
@@ -284,12 +288,19 @@ export async function getPendingTradeOffersForAdminAction(saisonId: number): Pro
   if ('error' in check) return check
 
   const db = createAdminClient()
-  const { data: rows } = await db
-    .from('trade_offers')
-    .select('id, created_at, decided_at, proposer:poolers!proposer_pooler_id (id, name), target:poolers!target_pooler_id (id, name)')
-    .eq('pool_season_id', saisonId)
-    .eq('status', 'pending_admin')
-    .order('decided_at')
+  const [saisonRes, settingsRes, rowsRes] = await Promise.all([
+    db.from('pool_seasons').select('season').eq('id', saisonId).single(),
+    db.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
+    db
+      .from('trade_offers')
+      .select('id, created_at, decided_at, proposer:poolers!proposer_pooler_id (id, name), target:poolers!target_pooler_id (id, name)')
+      .eq('pool_season_id', saisonId)
+      .eq('status', 'pending_admin')
+      .order('decided_at'),
+  ])
+  const season = saisonRes.data?.season ?? ''
+  const unsignedMultiplier = settingsRes.data?.unsigned_player_cap_multiplier ?? 1.20
+  const rows = rowsRes.data
   if (!rows || rows.length === 0) return { offers: [] }
 
   const offerIds = rows.map(r => r.id)
@@ -301,28 +312,35 @@ export async function getPendingTradeOffersForAdminAction(saisonId: number): Pro
   const playerIds = (itemRows ?? []).filter(i => i.item_type === 'player').map(i => i.player_id!)
   const pickIds = (itemRows ?? []).filter(i => i.item_type === 'pick').map(i => i.pick_id!)
   const [{ data: players }, { data: picks }] = await Promise.all([
-    playerIds.length > 0 ? db.from('players').select('id, first_name, last_name, position').in('id', playerIds) : Promise.resolve({ data: [] }),
+    playerIds.length > 0 ? db.from('players').select('id, first_name, last_name, position, player_contracts (season, cap_number)').in('id', playerIds) : Promise.resolve({ data: [] }),
     pickIds.length > 0 ? db.from('pool_draft_picks').select('id, round, pool_seasons (season)').in('id', pickIds) : Promise.resolve({ data: [] }),
   ])
   const playerLabel = new Map((players ?? []).map(p => [p.id, `${p.last_name}, ${p.first_name}${p.position ? ` (${p.position})` : ''}`]))
+  const playerCap = new Map((players ?? []).map(p => [p.id, getEffectiveCap(p.player_contracts, season, unsignedMultiplier).cap]))
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pickLabel = new Map(((picks ?? []) as any[]).map(p => [p.id, `Choix ronde ${p.round} (${p.pool_seasons?.season ?? '?'})`]))
 
   return {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    offers: (rows as any[]).map(r => ({
-      id: r.id,
-      proposerName: r.proposer?.name ?? '—',
-      targetName: r.target?.name ?? '—',
-      createdAt: r.created_at,
-      decidedAt: r.decided_at,
-      items: (itemRows ?? []).filter(i => i.trade_offer_id === r.id).map(i => ({
+    offers: (rows as any[]).map(r => {
+      const items = (itemRows ?? []).filter(i => i.trade_offer_id === r.id).map(i => ({
         kind: i.item_type as 'player' | 'pick',
         label: i.item_type === 'player' ? (playerLabel.get(i.player_id!) ?? '?') : (pickLabel.get(i.pick_id!) ?? '?'),
         fromName: i.from_pooler_id === r.proposer?.id ? r.proposer.name : r.target?.name ?? '—',
         toName: i.to_pooler_id === r.proposer?.id ? r.proposer.name : r.target?.name ?? '—',
-      })),
-    })),
+        capNumber: i.item_type === 'player' ? (playerCap.get(i.player_id!) ?? 0) : null,
+      }))
+      return {
+        id: r.id,
+        proposerName: r.proposer?.name ?? '—',
+        targetName: r.target?.name ?? '—',
+        createdAt: r.created_at,
+        decidedAt: r.decided_at,
+        items,
+        proposerCapGiven: items.filter(i => i.fromName === r.proposer?.name).reduce((s, i) => s + (i.capNumber ?? 0), 0),
+        targetCapGiven: items.filter(i => i.fromName === r.target?.name).reduce((s, i) => s + (i.capNumber ?? 0), 0),
+      }
+    }),
   }
 }
 

@@ -5,6 +5,25 @@ import { sendEmailToIds } from '@/lib/email'
 import { checkFutureRosterConflict } from '@/lib/rosterTypeChange'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { validateRosterLimits, type RosterLimitEntry } from '@/lib/rosterLimits'
+import { isRookieProtectionExpired, isElcActiveForSeason } from '@/lib/rookieProtection'
+
+// Même vocabulaire roster_change_log que pickChangeType (admin/transactions/actions.ts,
+// privée) — dupliquée ici plutôt qu'importée pour éviter un cycle (voir le commentaire en tête
+// de ce fichier). Doit rester identique pour que /journal-transactions et poolers/[id]
+// affichent le même libellé peu importe l'outil d'origine.
+function pickChangeType(oldType: string | null, newType: string | null): string {
+  if (!newType) return oldType === 'actif' ? 'deactivation' : 'retrait'
+  if (oldType === 'ltir' && newType === 'actif') return 'retour_ltir'
+  if (newType === 'actif') return 'activation'
+  if (!oldType) {
+    if (newType === 'reserviste') return 'ajout_reserviste'
+    if (newType === 'recrue') return 'ajout_recrue'
+    if (newType === 'ltir') return 'ltir'
+  }
+  if (oldType === 'actif') return 'deactivation'
+  if (newType === 'ltir') return 'ltir'
+  return 'changement_type'
+}
 
 // Transactions proposées entre poolers, avec approbation admin (David, 2026-09-21) — voir
 // schema.sql (migration trade_offers/trade_offer_items) pour le détail du flux complet.
@@ -183,14 +202,22 @@ export async function adminDecideTradeOffer(tradeOfferId: number, approve: boole
 // (validateRosterLimits), donc libérer un joueur "pour faire de la place" avant que l'échange
 // ne s'exécute y serait refusé (11 attaquants, par exemple). Ces actions sont donc appliquées
 // avec les items de l'échange dans le MÊME geste, validées comme un seul état final, jamais
-// séparément — même principe que le panier de Mouvements.
-export type TradeExtraAction = { playerId: number; action: 'release' | 'change_status'; newType?: 'actif' | 'reserviste' }
+// séparément — même principe que le panier de Mouvements. `demote_to_recrue`/`promote_recrue`
+// ajoutés le 2026-09-22 (David) pour couvrir le cas où libérer/activer une recrue de banque
+// aide aussi à rester conforme, sans perdre le joueur comme le ferait une libération complète.
+export type TradeExtraAction =
+  | { playerId: number; action: 'release' }
+  | { playerId: number; action: 'change_status'; newType: 'actif' | 'reserviste' }
+  | { playerId: number; action: 'demote_to_recrue' }
+  | { playerId: number; action: 'promote_recrue'; newType: 'actif' | 'reserviste' }
 
 // Construit l'état viruel du roster ACTIF/RÉSERVISTE d'un pooler après application des items
 // de cet échange qui le concernent (retire ce qu'il donne, ajoute ce qu'il reçoit avec le type
 // choisi) et des ajustements supplémentaires qu'il a choisis — pour revalider 12/6/2 + cap avant
 // de le laisser confirmer. Les recrues/choix ne comptent pas dans cette validation (comme
-// partout ailleurs dans l'app).
+// partout ailleurs dans l'app) : `demote_to_recrue` retire simplement l'entrée,
+// `promote_recrue` doit la chercher séparément puisque les recrues sont exclues de `entries`
+// au départ.
 async function simulatePostTradeRoster(
   admin: ReturnType<typeof createAdminClient>, poolerId: string, saisonId: number, season: string, unsignedMultiplier: number,
   items: { from_pooler_id: string; to_pooler_id: string; item_type: string; player_id: number | null }[],
@@ -203,21 +230,27 @@ async function simulatePostTradeRoster(
     .eq('pooler_id', poolerId).eq('pool_season_id', saisonId).eq('is_active', true)
 
   const entries = new Map<number, RosterLimitEntry>()
+  const recrueRows = new Map<number, { position: string | null; capNumber: number }>()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const row of (currentRows ?? []) as any[]) {
+    const capNumber = getEffectiveCap(row.players?.player_contracts, season, unsignedMultiplier).cap
+    if (row.player_type === 'recrue') {
+      recrueRows.set(row.player_id, { position: row.players?.position ?? null, capNumber })
+      continue
+    }
     if (row.player_type !== 'actif' && row.player_type !== 'reserviste') continue
-    entries.set(row.player_id, {
-      player_type: row.player_type,
-      position: row.players?.position ?? null,
-      capNumber: getEffectiveCap(row.players?.player_contracts, season, unsignedMultiplier).cap,
-    })
+    entries.set(row.player_id, { player_type: row.player_type, position: row.players?.position ?? null, capNumber })
   }
 
   for (const extra of extraActions) {
-    if (extra.action === 'release') entries.delete(extra.playerId)
-    else if (extra.action === 'change_status' && extra.newType) {
+    if (extra.action === 'release' || extra.action === 'demote_to_recrue') {
+      entries.delete(extra.playerId)
+    } else if (extra.action === 'change_status') {
       const existing = entries.get(extra.playerId)
       if (existing) entries.set(extra.playerId, { ...existing, player_type: extra.newType })
+    } else if (extra.action === 'promote_recrue') {
+      const recrue = recrueRows.get(extra.playerId)
+      if (recrue) entries.set(extra.playerId, { player_type: extra.newType, position: recrue.position, capNumber: recrue.capNumber })
     }
   }
 
@@ -269,6 +302,28 @@ export async function confirmTradeReady(
   const givenByThisPooler = new Set(items.filter(i => i.item_type === 'player' && i.from_pooler_id === poolerId).map(i => i.player_id))
   for (const extra of extraActions) {
     if (givenByThisPooler.has(extra.playerId)) return { error: 'Un ajustement supplémentaire ne peut pas viser un joueur déjà inclus dans l\'échange.' }
+  }
+
+  // Éligibilité recrue (David, 2026-09-22) — même règle que le libre-service
+  // (repechage-agents-libres/actions.ts, submitSelfServiceAction) : `rookie_type` non-null sur
+  // la ligne actuelle pour retourner en banque ; simplement présent en banque pour en activer
+  // une (aucune éligibilité supplémentaire à l'activation, comme partout ailleurs).
+  const demoteIds = extraActions.filter(e => e.action === 'demote_to_recrue').map(e => e.playerId)
+  const promoteIds = extraActions.filter(e => e.action === 'promote_recrue').map(e => e.playerId)
+  if (demoteIds.length > 0 || promoteIds.length > 0) {
+    const { data: rows } = await admin
+      .from('pooler_rosters').select('player_id, player_type, rookie_type')
+      .eq('pooler_id', poolerId).eq('pool_season_id', offer.pool_season_id).eq('is_active', true)
+      .in('player_id', [...demoteIds, ...promoteIds])
+    const byId = new Map((rows ?? []).map(r => [r.player_id, r]))
+    for (const id of demoteIds) {
+      const row = byId.get(id)
+      if (!row || !row.rookie_type) return { error: "Un joueur à remettre en banque n'est plus sous protection recrue." }
+    }
+    for (const id of promoteIds) {
+      const row = byId.get(id)
+      if (!row || row.player_type !== 'recrue') return { error: 'Un joueur à activer est introuvable dans ta banque de recrues.' }
+    }
   }
 
   const { data: saison } = await admin.from('pool_seasons').select('season, pool_cap').eq('id', offer.pool_season_id).single()
@@ -333,11 +388,13 @@ async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tr
 
   const now = new Date().toISOString()
   const saisonId = offer.pool_season_id
+  const { data: saisonRow } = await admin.from('pool_seasons').select('season').eq('id', saisonId).single()
+  const season = saisonRow?.season ?? ''
 
   async function log(playerId: number, poolerId: string, oldType: string | null, newType: string | null) {
     await admin.from('roster_change_log').insert({
       player_id: playerId, pooler_id: poolerId, pool_season_id: saisonId,
-      change_type: newType ? (oldType ? 'changement_type' : (newType === 'recrue' ? 'ajout_recrue' : newType === 'actif' ? 'activation' : 'ajout_reserviste')) : (oldType === 'actif' ? 'deactivation' : 'retrait'),
+      change_type: pickChangeType(oldType, newType),
       old_type: oldType, new_type: newType, changed_by: null, changed_at: now, is_admin_override: true,
     })
   }
@@ -408,7 +465,7 @@ async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tr
   for (const [extraPoolerId, extraActions] of extraByPooler) {
     for (const extra of extraActions) {
       const { data: row } = await admin
-        .from('pooler_rosters').select('id, player_type')
+        .from('pooler_rosters').select('id, player_type, rookie_type, pool_draft_year')
         .eq('pooler_id', extraPoolerId).eq('player_id', extra.playerId).eq('pool_season_id', saisonId).eq('is_active', true)
         .maybeSingle()
       if (!row) continue // déjà retiré/changé entre-temps — ignoré plutôt que d'échouer tout l'échange
@@ -419,12 +476,48 @@ async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tr
         await admin.from('transaction_items').insert({
           transaction_id: tx.id, action_type: 'release', from_pooler_id: extraPoolerId, player_id: extra.playerId, old_player_type: row.player_type,
         })
-      } else if (extra.action === 'change_status' && extra.newType && extra.newType !== row.player_type) {
+        continue
+      }
+
+      const finalType = extra.action === 'demote_to_recrue' ? 'recrue' : extra.newType
+      const conflict = await checkFutureRosterConflict(admin, extraPoolerId, extra.playerId, saisonId, now, finalType)
+      if (conflict.error) return conflict
+
+      if (extra.action === 'change_status' && extra.newType !== row.player_type) {
         await admin.from('pooler_rosters').update({ player_type: extra.newType }).eq('id', row.id)
         await log(extra.playerId, extraPoolerId, row.player_type, extra.newType)
         await admin.from('transaction_items').insert({
           transaction_id: tx.id, action_type: 'type_change', from_pooler_id: extraPoolerId, player_id: extra.playerId,
           old_player_type: row.player_type, new_player_type: extra.newType,
+        })
+      } else if (extra.action === 'demote_to_recrue' && row.rookie_type) {
+        // rookie_type/pool_draft_year préservés tels quels — seul player_type change (même
+        // comportement que le self-service, voir TradeExtraAction plus haut).
+        await admin.from('pooler_rosters').update({ player_type: 'recrue' }).eq('id', row.id)
+        await log(extra.playerId, extraPoolerId, row.player_type, 'recrue')
+        await admin.from('transaction_items').insert({
+          transaction_id: tx.id, action_type: 'type_change', from_pooler_id: extraPoolerId, player_id: extra.playerId,
+          old_player_type: row.player_type, new_player_type: 'recrue',
+        })
+      } else if (extra.action === 'promote_recrue' && row.player_type === 'recrue') {
+        // N'efface rookie_type/pool_draft_year que si la protection est VRAIMENT expirée à cet
+        // instant (même règle que la promotion admin/self-service, admin/transactions/
+        // actions.ts) — sinon préservés, pour permettre une remise en banque ultérieure.
+        let rookieClearFields: { rookie_type: null; pool_draft_year: null } | Record<string, never> = {}
+        if (row.rookie_type) {
+          const { data: contractRow } = await admin
+            .from('player_contracts').select('is_elc').eq('player_id', extra.playerId).eq('season', season).maybeSingle()
+          const isElcActive = isElcActiveForSeason(contractRow ? [{ season, is_elc: contractRow.is_elc }] : [], season)
+          const seasonStartYear = parseInt(season.split('-')[0], 10)
+          if (isRookieProtectionExpired(row.rookie_type as 'repeche' | 'agent_libre', row.pool_draft_year, isElcActive, seasonStartYear)) {
+            rookieClearFields = { rookie_type: null, pool_draft_year: null }
+          }
+        }
+        await admin.from('pooler_rosters').update({ player_type: extra.newType, ...rookieClearFields }).eq('id', row.id)
+        await log(extra.playerId, extraPoolerId, 'recrue', extra.newType)
+        await admin.from('transaction_items').insert({
+          transaction_id: tx.id, action_type: 'promote', from_pooler_id: extraPoolerId, player_id: extra.playerId,
+          old_player_type: 'recrue', new_player_type: extra.newType,
         })
       }
     }

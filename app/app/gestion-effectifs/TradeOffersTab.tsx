@@ -79,7 +79,7 @@ function ItemPicker({
   )
 }
 
-export default function TradeOffersTab({ saisonId, selfPoolerId }: { saisonId: number; selfPoolerId: string }) {
+export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap }: { saisonId: number; selfPoolerId: string; poolCap: number }) {
   const [offers, setOffers] = useState<TradeOfferView[]>([])
   const [history, setHistory] = useState<TradeOfferView[]>([])
   const [loading, setLoading] = useState(true)
@@ -103,6 +103,11 @@ export default function TradeOffersTab({ saisonId, selfPoolerId }: { saisonId: n
   useEffect(() => {
     listTradeableAssetsAction(selfPoolerId, saisonId).then(setMyFullRoster)
   }, [selfPoolerId, saisonId])
+
+  // Masse actuelle (David, 2026-09-22) — recrues exclues, comme partout ailleurs dans l'app.
+  const myCapUsed = myFullRoster
+    .filter((i): i is Extract<TradeableItem, { kind: 'player' }> => i.kind === 'player' && i.playerType !== 'recrue')
+    .reduce((s, i) => s + i.capNumber, 0)
 
   // ── Nouvelle proposition ──────────────────────────────────────────────────
   const [composing, setComposing] = useState(false)
@@ -174,7 +179,10 @@ export default function TradeOffersTab({ saisonId, selfPoolerId }: { saisonId: n
 
   // Ajustements supplémentaires (David, 2026-09-22) — au besoin pour rester conforme, en plus
   // des joueurs déjà donnés/reçus dans l'échange. 'none' = aucun changement pour ce joueur.
-  type ExtraChoice = 'none' | 'release' | 'actif' | 'reserviste'
+  // 'demote'/'promote_*' couvrent le retour en banque / l'activation d'une recrue — pratique
+  // quand libérer un joueur ferait perdre un actif utile, alors que le mettre en banque (s'il
+  // est encore protégé) ou activer une recrue existante règle la composition sans rien perdre.
+  type ExtraChoice = 'none' | 'release' | 'actif' | 'reserviste' | 'demote' | 'promote_actif' | 'promote_reserviste'
   const [extraChoices, setExtraChoices] = useState<Record<number, Record<number, ExtraChoice>>>({})
 
   function setExtraChoice(offerId: number, playerId: number, choice: ExtraChoice) {
@@ -188,9 +196,11 @@ export default function TradeOffersTab({ saisonId, selfPoolerId }: { saisonId: n
       .filter(([, choice]) => choice !== 'none')
       .map(([playerIdStr, choice]) => {
         const playerId = Number(playerIdStr)
-        return choice === 'release'
-          ? { playerId, action: 'release' as const }
-          : { playerId, action: 'change_status' as const, newType: choice as 'actif' | 'reserviste' }
+        if (choice === 'release') return { playerId, action: 'release' as const }
+        if (choice === 'demote') return { playerId, action: 'demote_to_recrue' as const }
+        if (choice === 'promote_actif') return { playerId, action: 'promote_recrue' as const, newType: 'actif' as const }
+        if (choice === 'promote_reserviste') return { playerId, action: 'promote_recrue' as const, newType: 'reserviste' as const }
+        return { playerId, action: 'change_status' as const, newType: choice as 'actif' | 'reserviste' }
       })
     startTransition(async () => {
       const result = await confirmTradeReadyAction(offer.id, types, extras)
@@ -212,11 +222,15 @@ export default function TradeOffersTab({ saisonId, selfPoolerId }: { saisonId: n
             {composing ? 'Annuler' : '+ Nouvelle proposition'}
           </button>
         </div>
-        <p className="text-sm text-gray-500 mb-4">
+        <p className="text-sm text-gray-500 mb-2">
           Propose un échange de joueurs (actif, réserviste ou recrue) et/ou de choix de repêchage à un autre pooler.
           Il doit accepter, puis l&apos;admin doit approuver avant que rien ne bouge. Une fois approuvé, les deux
           poolers ont un délai pour confirmer que le résultat entre dans leur masse/composition — si l&apos;un des
           deux ne confirme pas à temps, l&apos;échange est annulé pour les deux.
+        </p>
+        <p className="text-xs text-gray-600 mb-4">
+          Ta masse actuelle : <strong>{fmtCap(myCapUsed)}</strong> / {fmtCap(poolCap)}
+          {' '}(reste <strong className={myCapUsed > poolCap ? 'text-red-600' : ''}>{fmtCap(poolCap - myCapUsed)}</strong>)
         </p>
 
         {composing && (
@@ -251,14 +265,26 @@ export default function TradeOffersTab({ saisonId, selfPoolerId }: { saisonId: n
                 <span className="text-xs text-gray-500">{STATUS_LABEL[o.status] ?? o.status}</span>
               </div>
               <div className="grid grid-cols-2 gap-3 mt-2 text-sm">
-                <div>
-                  <p className="text-xs text-gray-400 uppercase">Tu donnes</p>
-                  {o.give.length === 0 ? <p className="text-gray-400">—</p> : o.give.map((i, idx) => <p key={idx}>{i.label}</p>)}
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400 uppercase">Tu reçois</p>
-                  {o.receive.length === 0 ? <p className="text-gray-400">—</p> : o.receive.map((i, idx) => <p key={idx}>{i.label}</p>)}
-                </div>
+                {[
+                  { label: 'Tu donnes', list: o.give },
+                  { label: 'Tu reçois', list: o.receive },
+                ].map(({ label, list }) => {
+                  const total = list.reduce((s, i) => s + (i.capNumber ?? 0), 0)
+                  return (
+                    <div key={label}>
+                      <p className="text-xs text-gray-400 uppercase">{label}</p>
+                      {list.length === 0
+                        ? <p className="text-gray-400">—</p>
+                        : list.map((i, idx) => (
+                          <p key={idx} className="flex items-center justify-between gap-2">
+                            <span>{i.label}</span>
+                            {i.capNumber != null && <span className="text-xs text-gray-500 shrink-0">{fmtCap(i.capNumber)}</span>}
+                          </p>
+                        ))}
+                      {total > 0 && <p className="text-xs text-gray-500 font-medium mt-0.5 pt-0.5 border-t border-gray-100">Total : {fmtCap(total)}</p>}
+                    </div>
+                  )
+                })}
               </div>
 
               {o.status === 'pending_target' && !o.isProposer && (
@@ -282,8 +308,8 @@ export default function TradeOffersTab({ saisonId, selfPoolerId }: { saisonId: n
                         {o.receive.filter(i => i.kind === 'player' && i.currentPlayerType !== 'recrue').length > 0 && (
                           <div className="space-y-1 mb-2">
                             {o.receive.filter(i => i.kind === 'player' && i.currentPlayerType !== 'recrue').map(i => (
-                              <div key={i.id} className="flex items-center justify-between text-sm">
-                                <span>{i.label}</span>
+                              <div key={i.id} className="flex items-center justify-between text-sm gap-2">
+                                <span className="truncate">{i.label} {i.capNumber != null && <span className="text-xs text-gray-500">{fmtCap(i.capNumber)}</span>}</span>
                                 <select
                                   defaultValue=""
                                   onChange={e => setChosenType(o.id, i.id, e.target.value as 'actif' | 'reserviste')}
@@ -300,28 +326,41 @@ export default function TradeOffersTab({ saisonId, selfPoolerId }: { saisonId: n
                         {(() => {
                           const givenIds = new Set(o.give.filter(i => i.kind === 'player').map(i => i.id))
                           const adjustable = myFullRoster.filter(
-                            (i): i is Extract<TradeableItem, { kind: 'player' }> =>
-                              i.kind === 'player' && i.playerType !== 'recrue' && !givenIds.has(i.playerId),
+                            (i): i is Extract<TradeableItem, { kind: 'player' }> => i.kind === 'player' && !givenIds.has(i.playerId),
                           )
                           if (adjustable.length === 0) return null
                           return (
                             <div className="mb-2">
                               <p className="text-xs text-amber-700 mb-1">
-                                Si ça ne rentre pas encore, ajuste au besoin (sans avoir à aller dans Mouvements) :
+                                Si ça ne rentre pas encore, ajuste au besoin (sans avoir à aller dans Mouvements) — retourner
+                                une recrue encore protégée en banque ou en activer une peut aider sans rien libérer pour de bon :
                               </p>
-                              <div className="space-y-1 max-h-40 overflow-y-auto border border-amber-200 rounded bg-white p-1.5">
+                              <div className="space-y-1 max-h-52 overflow-y-auto border border-amber-200 rounded bg-white p-1.5">
                                 {adjustable.map(i => (
                                   <div key={i.playerId} className="flex items-center justify-between text-sm gap-2">
-                                    <span className="truncate">{i.name} <span className="text-gray-400">({i.playerType})</span></span>
+                                    <span className="truncate flex-1 min-w-0">
+                                      {i.name} <span className="text-gray-400">({i.playerType})</span>{' '}
+                                      <span className="text-xs text-gray-500">{fmtCap(i.capNumber)}</span>
+                                    </span>
                                     <select
                                       defaultValue="none"
                                       onChange={e => setExtraChoice(o.id, i.playerId, e.target.value as ExtraChoice)}
                                       className="border rounded px-2 py-1 text-xs shrink-0"
                                     >
                                       <option value="none">— Aucun changement —</option>
-                                      {i.playerType !== 'actif' && <option value="actif">→ Actif</option>}
-                                      {i.playerType !== 'reserviste' && <option value="reserviste">→ Réserviste</option>}
-                                      <option value="release">Libérer</option>
+                                      {i.playerType === 'recrue' ? (
+                                        <>
+                                          <option value="promote_actif">Activer → Actif</option>
+                                          <option value="promote_reserviste">Activer → Réserviste</option>
+                                        </>
+                                      ) : (
+                                        <>
+                                          {i.playerType !== 'actif' && <option value="actif">→ Actif</option>}
+                                          {i.playerType !== 'reserviste' && <option value="reserviste">→ Réserviste</option>}
+                                          {i.recrueEligible && <option value="demote">Retourner en banque</option>}
+                                          <option value="release">Libérer</option>
+                                        </>
+                                      )}
                                     </select>
                                   </div>
                                 ))}

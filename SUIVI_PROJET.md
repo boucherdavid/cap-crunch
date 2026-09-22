@@ -21,6 +21,42 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-22 (suite — retour en banque/activation de recrue + salaires visibles partout dans les échanges)
+
+**[Feature] — demote_to_recrue/promote_recrue en ajustement supplémentaire + salaires à chaque étape**
+(`app/lib/tradeOffers.ts`, `app/app/gestion-effectifs/{trade-actions.ts,TradeOffersTab.tsx,
+GestionEffectifsManager.tsx}`, `app/app/admin/effectifs/{cap-watch-actions.ts,
+TradeApprovalManager.tsx}`) :
+- David : en testant, a demandé deux choses. (1) Pouvoir retourner une recrue encore protégée
+  en banque ou en activer une comme ajustement supplémentaire à la confirmation — pas seulement
+  libérer/changer actif↔réserviste — utile quand libérer un joueur ferait perdre un actif alors
+  que le mettre en banque (s'il est encore éligible) ou activer une recrue existante réglerait
+  la composition sans rien perdre. (2) Voir les salaires à toutes les étapes de l'échange
+  (proposition, liste des offres, confirmation, approbation admin) et l'impact sur la masse —
+  pour les poolers ET pour l'admin (total échangé de chaque côté).
+- `TradeExtraAction` étendu avec `demote_to_recrue`/`promote_recrue` — éligibilité au retour en
+  banque = `rookie_type` non-null sur la ligne actuelle (même règle exacte que le libre-service
+  `submitSelfServiceAction`, confirmée via une recherche dédiée dans le code existant avant
+  d'implémenter, pour éviter de dupliquer une règle recrue incorrecte). L'activation
+  n'efface `rookie_type`/`pool_draft_year` que si `isRookieProtectionExpired()` est vraie à ce
+  moment précis (sinon préservés, pour permettre une remise en banque ultérieure) — même
+  logique que la promotion admin/self-service existante.
+- Bug corrigé au passage en implémentant : le `log()` interne d'`executeTradeOffer` dérivait le
+  `change_type` du journal avec sa propre logique ad hoc, divergente de `pickChangeType`
+  (utilisée partout ailleurs) — un changement de statut actif→réserviste via un ajustement
+  supplémentaire aurait été mal étiqueté ("changement_type" au lieu de "deactivation").
+  Remplacé par une copie exacte de `pickChangeType` (dupliquée pour éviter un cycle d'import,
+  même raison que le reste du fichier).
+- Salaires ajoutés : `TradeOfferItemView.capNumber` (liste des offres, total par côté),
+  `AdminTradeOfferItemView.capNumber` + `AdminTradeOfferView.proposerCapGiven`/
+  `targetCapGiven` (approbation admin), et un bandeau permanent "Ta masse actuelle : X / Y
+  (reste Z)" dans l'onglet Échanges basé sur `listTradeableAssetsAction`.
+- Migration `schema.sql` : aucune nouvelle colonne requise (réutilise `proposer_extra_actions`/
+  `target_extra_actions` déjà en place) — rien à rouler pour cette partie.
+- Vérifié : `tsc --noEmit`, `eslint` (4 erreurs restantes, toutes préexistantes — confirmées)
+  et `next build` passent. Pas testé de bout en bout (aucune recrue de test disponible dans la
+  fenêtre de session) — à valider par David.
+
 ### 2026-09-22 (suite — ajustements supplémentaires à la confirmation d'un échange)
 
 **[Fix] — impossible de libérer un joueur "pour faire de la place" avant l'exécution de l'échange**

@@ -990,7 +990,20 @@ corrigée le 2026-09-20 :**
   proposer_extra_actions`/`target_extra_actions` (JSONB), validé dans le même état final
   simulé que les items de l'échange, et appliqué avec eux à `executeTradeOffer()` seulement une
   fois les deux poolers prêts. UI : section "Si ça ne rentre pas encore, ajuste au besoin" dans
-  l'onglet Échanges, pas besoin d'aller dans Mouvements séparément.
+  l'onglet Échanges, pas besoin d'aller dans Mouvements séparément. Couvre aussi
+  `demote_to_recrue`/`promote_recrue` (David, 2026-09-22) — retourner une recrue encore
+  protégée en banque ou en activer une aide souvent à rester conforme sans avoir à libérer
+  quelqu'un pour de bon. Éligibilité au retour en banque = `rookie_type` non-null sur la ligne
+  actuelle, même règle que le libre-service (`repechage-agents-libres/actions.ts`,
+  `submitSelfServiceAction`) ; l'activation efface `rookie_type`/`pool_draft_year` seulement si
+  `isRookieProtectionExpired()` (`app/lib/rookieProtection.ts`) est vraie à ce moment précis,
+  sinon préservés — même règle que la promotion admin/self-service.
+- **Salaires visibles à toutes les étapes (David, 2026-09-22)** — proposition (déjà en place),
+  liste "Mes transactions" (`TradeOfferItemView.capNumber`, total par côté), confirmation
+  (ajustements supplémentaires), et approbation admin (`AdminTradeOfferItemView.capNumber`,
+  totaux `proposerCapGiven`/`targetCapGiven` sur `AdminTradeOfferView`). L'onglet Échanges
+  affiche aussi en permanence la masse actuelle du pooler et l'espace restant sous le cap
+  (`TradeOffersTab.tsx`, à partir de `listTradeableAssetsAction`).
 - Écriture directe à l'exécution (pas de réutilisation d'`applyTransactionItems`,
   `admin/transactions/actions.ts`, même raison de cycle d'import que `waiverClaims.ts`) —
   duplique le strict minimum de la logique `'transfer'` déjà en place là-bas (même vocabulaire

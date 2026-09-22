@@ -12,7 +12,7 @@ import {
 // /poolers/[id], voir app/app/simulation/actions.ts pour le même principe) ────────────────────
 
 export type TradeableItem =
-  | { kind: 'player'; playerId: number; name: string; position: string | null; teamCode: string | null; playerType: 'actif' | 'reserviste' | 'recrue'; capNumber: number }
+  | { kind: 'player'; playerId: number; name: string; position: string | null; teamCode: string | null; playerType: 'actif' | 'reserviste' | 'recrue'; capNumber: number; recrueEligible: boolean }
   | { kind: 'pick'; pickId: number; round: number; season: string }
 
 export async function listTradeableAssetsAction(poolerId: string, saisonId: number): Promise<TradeableItem[]> {
@@ -25,7 +25,7 @@ export async function listTradeableAssetsAction(poolerId: string, saisonId: numb
     supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
     supabase
       .from('pooler_rosters')
-      .select('player_id, player_type, players (first_name, last_name, position, teams (code), player_contracts (season, cap_number))')
+      .select('player_id, player_type, rookie_type, players (first_name, last_name, position, teams (code), player_contracts (season, cap_number))')
       .eq('pooler_id', poolerId).eq('pool_season_id', saisonId).eq('is_active', true)
       .in('player_type', ['actif', 'reserviste', 'recrue']),
     supabase
@@ -45,6 +45,9 @@ export async function listTradeableAssetsAction(poolerId: string, saisonId: numb
     teamCode: r.players?.teams?.code ?? null,
     playerType: r.player_type,
     capNumber: getEffectiveCap(r.players?.player_contracts, season, unsignedMultiplier).cap,
+    // Éligible à retourner en banque (même règle que le libre-service — rookie_type non-null
+    // sur la ligne) : sans objet pour une recrue, déjà en banque.
+    recrueEligible: r.player_type !== 'recrue' && !!r.rookie_type,
   }))
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const picks: TradeableItem[] = ((pickRows ?? []) as any[]).map(p => ({
@@ -119,6 +122,8 @@ export type TradeOfferItemView = {
   // reste une recrue chez le receveur, aucun choix à faire (voir executeTradeOffer,
   // app/lib/tradeOffers.ts).
   currentPlayerType: 'actif' | 'reserviste' | 'recrue' | null
+  // Salaire du joueur (David, 2026-09-22) — null pour un choix de repêchage.
+  capNumber: number | null
 }
 
 export type TradeOfferView = {
@@ -138,21 +143,27 @@ async function resolveItemLabels(
   db: ReturnType<typeof createAdminClient>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   items: any[],
-): Promise<Map<string, string>> {
+  season: string,
+  unsignedMultiplier: number,
+): Promise<{ labels: Map<string, string>; caps: Map<string, number> }> {
   const playerIds = items.filter(i => i.item_type === 'player').map(i => i.player_id)
   const pickIds = items.filter(i => i.item_type === 'pick').map(i => i.pick_id)
-  const map = new Map<string, string>()
+  const labels = new Map<string, string>()
+  const caps = new Map<string, number>()
 
   if (playerIds.length > 0) {
-    const { data } = await db.from('players').select('id, first_name, last_name, position').in('id', playerIds)
-    for (const p of data ?? []) map.set(`player-${p.id}`, `${p.last_name}, ${p.first_name}${p.position ? ` (${p.position})` : ''}`)
+    const { data } = await db.from('players').select('id, first_name, last_name, position, player_contracts (season, cap_number)').in('id', playerIds)
+    for (const p of data ?? []) {
+      labels.set(`player-${p.id}`, `${p.last_name}, ${p.first_name}${p.position ? ` (${p.position})` : ''}`)
+      caps.set(`player-${p.id}`, getEffectiveCap(p.player_contracts, season, unsignedMultiplier).cap)
+    }
   }
   if (pickIds.length > 0) {
     const { data } = await db.from('pool_draft_picks').select('id, round, pool_seasons (season)').in('id', pickIds)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const p of (data ?? []) as any[]) map.set(`pick-${p.id}`, `Choix ronde ${p.round} (${p.pool_seasons?.season ?? '?'})`)
+    for (const p of (data ?? []) as any[]) labels.set(`pick-${p.id}`, `Choix ronde ${p.round} (${p.pool_seasons?.season ?? '?'})`)
   }
-  return map
+  return { labels, caps }
 }
 
 export async function getMyTradeOffersAction(saisonId: number): Promise<{
@@ -168,6 +179,13 @@ export async function getMyTradeOffersAction(saisonId: number): Promise<{
   await resolveExpiredTradeOffers(saisonId)
 
   const db = createAdminClient()
+  const [{ data: saison }, { data: settings }] = await Promise.all([
+    db.from('pool_seasons').select('season').eq('id', saisonId).single(),
+    db.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
+  ])
+  const season = saison?.season ?? ''
+  const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
+
   const { data: rows } = await db
     .from('trade_offers')
     .select('id, status, proposer_pooler_id, target_pooler_id, created_at, completion_deadline, proposer_ready_at, target_ready_at, proposer:poolers!proposer_pooler_id (name), target:poolers!target_pooler_id (name)')
@@ -192,7 +210,7 @@ export async function getMyTradeOffersAction(saisonId: number): Promise<{
       .in('trade_offer_id', relevantIds)
     allItems = data ?? []
   }
-  const labels = await resolveItemLabels(db, allItems)
+  const { labels, caps } = await resolveItemLabels(db, allItems, season, unsignedMultiplier)
   for (const item of allItems) {
     if (!itemsByOffer.has(item.trade_offer_id)) itemsByOffer.set(item.trade_offer_id, [])
     itemsByOffer.get(item.trade_offer_id)!.push(item)
@@ -214,15 +232,19 @@ export async function getMyTradeOffersAction(saisonId: number): Promise<{
   function toView(r: any): TradeOfferView {
     const isProposer = r.proposer_pooler_id === userId
     const items = itemsByOffer.get(r.id) ?? []
-    const toItemView = (item: typeof items[number]): TradeOfferItemView => ({
-      kind: item.item_type as 'player' | 'pick',
-      id: (item.item_type === 'player' ? item.player_id : item.pick_id) ?? 0,
-      label: labels.get(`${item.item_type}-${item.item_type === 'player' ? item.player_id : item.pick_id}`) ?? '?',
-      fromPoolerId: item.from_pooler_id,
-      toPoolerId: item.to_pooler_id,
-      chosenType: item.chosen_type as 'actif' | 'reserviste' | null,
-      currentPlayerType: item.item_type === 'player' ? (playerTypeById.get(item.player_id!) ?? null) : null,
-    })
+    const toItemView = (item: typeof items[number]): TradeOfferItemView => {
+      const key = `${item.item_type}-${item.item_type === 'player' ? item.player_id : item.pick_id}`
+      return {
+        kind: item.item_type as 'player' | 'pick',
+        id: (item.item_type === 'player' ? item.player_id : item.pick_id) ?? 0,
+        label: labels.get(key) ?? '?',
+        fromPoolerId: item.from_pooler_id,
+        toPoolerId: item.to_pooler_id,
+        chosenType: item.chosen_type as 'actif' | 'reserviste' | null,
+        currentPlayerType: item.item_type === 'player' ? (playerTypeById.get(item.player_id!) ?? null) : null,
+        capNumber: caps.get(key) ?? null,
+      }
+    }
     return {
       id: r.id,
       status: r.status,

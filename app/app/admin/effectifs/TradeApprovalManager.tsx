@@ -3,6 +3,9 @@
 import { useState, useTransition } from 'react'
 import { adminDecideTradeOfferAction, type AdminTradeOfferView } from './cap-watch-actions'
 
+const fmtCap = (n: number) =>
+  new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+
 export default function TradeApprovalManager({ initialOffers }: { initialOffers: AdminTradeOfferView[] }) {
   const [offers, setOffers] = useState(initialOffers)
   const [pending, startTransition] = useTransition()
@@ -28,13 +31,22 @@ export default function TradeApprovalManager({ initialOffers }: { initialOffers:
         <div key={o.id} className="border border-gray-200 rounded-lg p-4">
           <p className="text-sm font-semibold text-gray-800 mb-2">{o.proposerName} ↔ {o.targetName}</p>
           <div className="grid grid-cols-2 gap-4 mb-3">
-            {[o.proposerName, o.targetName].map(name => (
+            {[
+              { name: o.proposerName, total: o.proposerCapGiven },
+              { name: o.targetName, total: o.targetCapGiven },
+            ].map(({ name, total }) => (
               <div key={name}>
                 <p className="text-xs font-semibold text-gray-500 uppercase mb-1">{name} donne</p>
                 <ul className="text-sm text-gray-700 space-y-0.5">
-                  {o.items.filter(i => i.fromName === name).map((i, idx) => <li key={idx}>{i.label}</li>)}
+                  {o.items.filter(i => i.fromName === name).map((i, idx) => (
+                    <li key={idx} className="flex items-center justify-between gap-2">
+                      <span>{i.label}</span>
+                      {i.capNumber != null && <span className="text-xs text-gray-500 shrink-0">{fmtCap(i.capNumber)}</span>}
+                    </li>
+                  ))}
                   {o.items.filter(i => i.fromName === name).length === 0 && <li className="text-gray-400">—</li>}
                 </ul>
+                <p className="text-xs text-gray-500 font-medium mt-1 pt-1 border-t border-gray-100">Total : {fmtCap(total)}</p>
               </div>
             ))}
           </div>

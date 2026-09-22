@@ -993,7 +993,7 @@ export default function GestionEffectifsManager({
     return (
       <div className={isAdmin ? '' : 'max-w-3xl mx-auto'}>
         {tabs}
-        <TradeOffersTab saisonId={saisonId} selfPoolerId={selfPoolerId} />
+        <TradeOffersTab saisonId={saisonId} selfPoolerId={selfPoolerId} poolCap={poolCap} />
       </div>
     )
   }
