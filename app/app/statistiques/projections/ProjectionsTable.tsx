@@ -161,26 +161,29 @@ export default function ProjectionsTable({
       <div className="bg-white rounded-lg shadow overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-gray-50 border-b">
-              <th className="text-left px-4 py-3 font-medium text-gray-600 w-8">#</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600 w-5" title="Disponibilité" />
-              <th className="text-left px-4 py-3 font-medium text-gray-600">{tab === 'goalies' ? 'Gardien' : 'Joueur'}</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Équipe</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Pos</th>
-              <th className={`${sortHeaderClass('nhlCom')} ${SOURCE_BG.nhlCom}`} onClick={() => setSortKey('nhlCom')}>NHL.com</th>
-              <th className={`${sortHeaderClass('cbs')} ${SOURCE_BG.cbs}`} onClick={() => setSortKey('cbs')}>CBS</th>
-              <th className={`${sortHeaderClass('poolPro')} ${SOURCE_BG.poolPro}`} onClick={() => setSortKey('poolPro')}>Pool Pro</th>
-              <th className={`${sortHeaderClass('hockeyMagazine')} ${SOURCE_BG.hockeyMagazine}`} onClick={() => setSortKey('hockeyMagazine')}>Hockey Mag.</th>
-              <th className={`${sortHeaderClass('lastSeasonValue')} hidden sm:table-cell`} onClick={() => setSortKey('lastSeasonValue')}>Saison dernière</th>
+            {/* En-tête fixe au défilement (David, 2026-09-22) — sticky posé sur chaque <th>
+                plutôt que sur <thead> pour un support navigateur plus fiable ; chaque cellule a
+                son propre fond opaque (sinon le contenu défilé serait visible en transparence). */}
+            <tr className="border-b">
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-8">#</th>
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-5" title="Disponibilité" />
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">{tab === 'goalies' ? 'Gardien' : 'Joueur'}</th>
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Équipe</th>
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Pos</th>
+              <th className={`sticky top-0 z-10 ${sortHeaderClass('nhlCom')} ${SOURCE_BG.nhlCom || 'bg-gray-50'}`} onClick={() => setSortKey('nhlCom')}>NHL.com</th>
+              <th className={`sticky top-0 z-10 ${sortHeaderClass('cbs')} ${SOURCE_BG.cbs}`} onClick={() => setSortKey('cbs')}>CBS</th>
+              <th className={`sticky top-0 z-10 ${sortHeaderClass('poolPro')} ${SOURCE_BG.poolPro}`} onClick={() => setSortKey('poolPro')}>Pool Pro</th>
+              <th className={`sticky top-0 z-10 ${sortHeaderClass('hockeyMagazine')} ${SOURCE_BG.hockeyMagazine}`} onClick={() => setSortKey('hockeyMagazine')}>Hockey Mag.</th>
+              <th className={`sticky top-0 z-10 bg-gray-50 ${sortHeaderClass('lastSeasonValue')} hidden sm:table-cell`} onClick={() => setSortKey('lastSeasonValue')}>Saison dernière</th>
               <th
-                className={`${sortHeaderClass('trendPerGame')} hidden sm:table-cell`}
+                className={`sticky top-0 z-10 bg-gray-50 ${sortHeaderClass('trendPerGame')} hidden sm:table-cell`}
                 onClick={() => setSortKey('trendPerGame')}
                 title="Rythme par match de la tendance 3 saisons (colonne suivante) — pas celui de la saison dernière seule."
               >
                 Pts/Match (tend.)
               </th>
-              <th className={sortHeaderClass('trend')} onClick={() => setSortKey('trend')}>Tendance 3 saisons</th>
-              <th className="text-center px-4 py-3 font-medium text-gray-600" title="Progression saison après saison">Prog.</th>
+              <th className={`sticky top-0 z-10 bg-gray-50 ${sortHeaderClass('trend')}`} onClick={() => setSortKey('trend')}>Tendance 3 saisons</th>
+              <th className="sticky top-0 z-10 bg-gray-50 text-center px-4 py-3 font-medium text-gray-600" title="Progression saison après saison">Prog.</th>
             </tr>
           </thead>
           <tbody>
