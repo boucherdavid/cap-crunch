@@ -981,6 +981,16 @@ corrigée le 2026-09-20 :**
   Un choix de repêchage transfère juste `pool_draft_picks.current_owner_id`. Seuls les joueurs
   actif/réserviste ont un type à choisir à la confirmation (`chosen_type` sur
   `trade_offer_items`) et comptent dans la validation 12/6/2 + cap.
+- **Ajustements supplémentaires à la confirmation (David, 2026-09-22)** — Mouvements exige
+  TOUJOURS exactement 12/6/2 à la soumission (`validateRosterLimits`), donc un pooler ne peut
+  pas y libérer un joueur "pour faire de la place" avant que l'échange ne s'exécute (tomberait
+  à 11 attaquants, refusé). La confirmation (`confirmTradeReady`) accepte donc en plus un
+  tableau `TradeExtraAction[]` (libération ou changement de statut actif↔réserviste d'un joueur
+  du pooler NON impliqué dans l'échange lui-même) — stocké sur `trade_offers.
+  proposer_extra_actions`/`target_extra_actions` (JSONB), validé dans le même état final
+  simulé que les items de l'échange, et appliqué avec eux à `executeTradeOffer()` seulement une
+  fois les deux poolers prêts. UI : section "Si ça ne rentre pas encore, ajuste au besoin" dans
+  l'onglet Échanges, pas besoin d'aller dans Mouvements séparément.
 - Écriture directe à l'exécution (pas de réutilisation d'`applyTransactionItems`,
   `admin/transactions/actions.ts`, même raison de cycle d'import que `waiverClaims.ts`) —
   duplique le strict minimum de la logique `'transfer'` déjà en place là-bas (même vocabulaire

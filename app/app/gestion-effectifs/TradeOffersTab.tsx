@@ -6,6 +6,7 @@ import {
   listTradeableAssetsAction,
   type TradeOfferView, type TradeableItem,
 } from './trade-actions'
+import type { TradeExtraAction } from '@/lib/tradeOffers'
 import { listOtherPoolersAction } from '../simulation/actions'
 import { getPlayerBucket } from '@/lib/rosterLimits'
 
@@ -96,11 +97,17 @@ export default function TradeOffersTab({ saisonId, selfPoolerId }: { saisonId: n
 
   useEffect(() => { load() }, [load])
 
+  // Alignement complet du pooler courant — utilisé pour les ajustements supplémentaires à la
+  // confirmation (David, 2026-09-22), chargé une seule fois (indépendant de la composition).
+  const [myFullRoster, setMyFullRoster] = useState<TradeableItem[]>([])
+  useEffect(() => {
+    listTradeableAssetsAction(selfPoolerId, saisonId).then(setMyFullRoster)
+  }, [selfPoolerId, saisonId])
+
   // ── Nouvelle proposition ──────────────────────────────────────────────────
   const [composing, setComposing] = useState(false)
   const [otherPoolers, setOtherPoolers] = useState<{ id: string; name: string }[]>([])
   const [targetId, setTargetId] = useState('')
-  const [myAssets, setMyAssets] = useState<TradeableItem[]>([])
   const [theirAssets, setTheirAssets] = useState<TradeableItem[]>([])
   const [mySelected, setMySelected] = useState<Set<string>>(new Set())
   const [theirSelected, setTheirSelected] = useState<Set<string>>(new Set())
@@ -109,8 +116,6 @@ export default function TradeOffersTab({ saisonId, selfPoolerId }: { saisonId: n
   useEffect(() => {
     if (!composing) return
     listOtherPoolersAction().then(res => setOtherPoolers(res.poolers))
-    listTradeableAssetsAction(selfPoolerId, saisonId).then(setMyAssets)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [composing])
 
   useEffect(() => {
@@ -167,11 +172,28 @@ export default function TradeOffersTab({ saisonId, selfPoolerId }: { saisonId: n
     setChosenTypes(prev => ({ ...prev, [offerId]: { ...prev[offerId], [playerId]: type } }))
   }
 
+  // Ajustements supplémentaires (David, 2026-09-22) — au besoin pour rester conforme, en plus
+  // des joueurs déjà donnés/reçus dans l'échange. 'none' = aucun changement pour ce joueur.
+  type ExtraChoice = 'none' | 'release' | 'actif' | 'reserviste'
+  const [extraChoices, setExtraChoices] = useState<Record<number, Record<number, ExtraChoice>>>({})
+
+  function setExtraChoice(offerId: number, playerId: number, choice: ExtraChoice) {
+    setExtraChoices(prev => ({ ...prev, [offerId]: { ...prev[offerId], [playerId]: choice } }))
+  }
+
   function handleConfirm(offer: TradeOfferView) {
     setError(null)
     const types = chosenTypes[offer.id] ?? {}
+    const extras: TradeExtraAction[] = Object.entries(extraChoices[offer.id] ?? {})
+      .filter(([, choice]) => choice !== 'none')
+      .map(([playerIdStr, choice]) => {
+        const playerId = Number(playerIdStr)
+        return choice === 'release'
+          ? { playerId, action: 'release' as const }
+          : { playerId, action: 'change_status' as const, newType: choice as 'actif' | 'reserviste' }
+      })
     startTransition(async () => {
-      const result = await confirmTradeReadyAction(offer.id, types)
+      const result = await confirmTradeReadyAction(offer.id, types, extras)
       if (result.error) setError(result.error)
       load()
     })
@@ -205,7 +227,7 @@ export default function TradeOffersTab({ saisonId, selfPoolerId }: { saisonId: n
             </select>
             {targetId && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <ItemPicker title="Tu donnes" items={myAssets} selected={mySelected} onToggle={k => toggle(setMySelected, k)} />
+                <ItemPicker title="Tu donnes" items={myFullRoster} selected={mySelected} onToggle={k => toggle(setMySelected, k)} />
                 <ItemPicker title="Tu reçois" items={theirAssets} selected={theirSelected} onToggle={k => toggle(setTheirSelected, k)} />
               </div>
             )}
@@ -275,6 +297,38 @@ export default function TradeOffersTab({ saisonId, selfPoolerId }: { saisonId: n
                             ))}
                           </div>
                         )}
+                        {(() => {
+                          const givenIds = new Set(o.give.filter(i => i.kind === 'player').map(i => i.id))
+                          const adjustable = myFullRoster.filter(
+                            (i): i is Extract<TradeableItem, { kind: 'player' }> =>
+                              i.kind === 'player' && i.playerType !== 'recrue' && !givenIds.has(i.playerId),
+                          )
+                          if (adjustable.length === 0) return null
+                          return (
+                            <div className="mb-2">
+                              <p className="text-xs text-amber-700 mb-1">
+                                Si ça ne rentre pas encore, ajuste au besoin (sans avoir à aller dans Mouvements) :
+                              </p>
+                              <div className="space-y-1 max-h-40 overflow-y-auto border border-amber-200 rounded bg-white p-1.5">
+                                {adjustable.map(i => (
+                                  <div key={i.playerId} className="flex items-center justify-between text-sm gap-2">
+                                    <span className="truncate">{i.name} <span className="text-gray-400">({i.playerType})</span></span>
+                                    <select
+                                      defaultValue="none"
+                                      onChange={e => setExtraChoice(o.id, i.playerId, e.target.value as ExtraChoice)}
+                                      className="border rounded px-2 py-1 text-xs shrink-0"
+                                    >
+                                      <option value="none">— Aucun changement —</option>
+                                      {i.playerType !== 'actif' && <option value="actif">→ Actif</option>}
+                                      {i.playerType !== 'reserviste' && <option value="reserviste">→ Réserviste</option>}
+                                      <option value="release">Libérer</option>
+                                    </select>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        })()}
                         <button onClick={() => handleConfirm(o)} disabled={isPending}
                           className="bg-amber-600 text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-amber-700 disabled:opacity-50">
                           Confirmer ma part

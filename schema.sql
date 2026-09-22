@@ -1136,3 +1136,17 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 -- CREATE POLICY "Lecture publique trade_offer_items" ON trade_offer_items FOR SELECT USING (true);
 -- CREATE POLICY "Admin gère trade_offer_items" ON trade_offer_items FOR ALL
 --   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- Migration 2026-09-22 : ajustements supplémentaires à la confirmation d'un échange (David) —
+-- Mouvements exige TOUJOURS exactement 12/6/2 à la soumission (validateRosterLimits), donc un
+-- pooler ne peut pas y libérer un joueur "pour faire de la place" avant que l'échange ne
+-- s'exécute (il tomberait à 11 attaquants, refusé) : il faut que la libération/le changement de
+-- statut fasse partie du même geste que la confirmation, validé comme un seul état final —
+-- même principe que le panier de Mouvements. Stocke les actions choisies par chaque pooler côté
+-- `trade_offers` (JSONB, tableau de { playerId, action: 'release'|'change_status', newType? }),
+-- appliquées avec les items de l'échange seulement une fois les deux poolers prêts (voir
+-- confirmTradeReady/executeTradeOffer, app/lib/tradeOffers.ts). À exécuter une seule fois dans
+-- le SQL Editor Supabase (staging d'abord, puis prod) :
+--
+-- ALTER TABLE trade_offers ADD COLUMN IF NOT EXISTS proposer_extra_actions JSONB;
+-- ALTER TABLE trade_offers ADD COLUMN IF NOT EXISTS target_extra_actions JSONB;

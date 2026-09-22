@@ -178,14 +178,24 @@ export async function adminDecideTradeOffer(tradeOfferId: number, approve: boole
 
 // ─── Confirmation de conformité + exécution ───────────────────────────────────
 
+// Ajustements supplémentaires soumis par un pooler en même temps que sa confirmation (David,
+// 2026-09-22) — Mouvements exige TOUJOURS exactement 12/6/2 à la soumission
+// (validateRosterLimits), donc libérer un joueur "pour faire de la place" avant que l'échange
+// ne s'exécute y serait refusé (11 attaquants, par exemple). Ces actions sont donc appliquées
+// avec les items de l'échange dans le MÊME geste, validées comme un seul état final, jamais
+// séparément — même principe que le panier de Mouvements.
+export type TradeExtraAction = { playerId: number; action: 'release' | 'change_status'; newType?: 'actif' | 'reserviste' }
+
 // Construit l'état viruel du roster ACTIF/RÉSERVISTE d'un pooler après application des items
 // de cet échange qui le concernent (retire ce qu'il donne, ajoute ce qu'il reçoit avec le type
-// choisi) — pour revalider 12/6/2 + cap avant de le laisser confirmer. Les recrues/choix ne
-// comptent pas dans cette validation (comme partout ailleurs dans l'app).
+// choisi) et des ajustements supplémentaires qu'il a choisis — pour revalider 12/6/2 + cap avant
+// de le laisser confirmer. Les recrues/choix ne comptent pas dans cette validation (comme
+// partout ailleurs dans l'app).
 async function simulatePostTradeRoster(
   admin: ReturnType<typeof createAdminClient>, poolerId: string, saisonId: number, season: string, unsignedMultiplier: number,
   items: { from_pooler_id: string; to_pooler_id: string; item_type: string; player_id: number | null }[],
   chosenTypes: Record<number, 'actif' | 'reserviste'>,
+  extraActions: TradeExtraAction[],
 ): Promise<RosterLimitEntry[]> {
   const { data: currentRows } = await admin
     .from('pooler_rosters')
@@ -201,6 +211,14 @@ async function simulatePostTradeRoster(
       position: row.players?.position ?? null,
       capNumber: getEffectiveCap(row.players?.player_contracts, season, unsignedMultiplier).cap,
     })
+  }
+
+  for (const extra of extraActions) {
+    if (extra.action === 'release') entries.delete(extra.playerId)
+    else if (extra.action === 'change_status' && extra.newType) {
+      const existing = entries.get(extra.playerId)
+      if (existing) entries.set(extra.playerId, { ...existing, player_type: extra.newType })
+    }
   }
 
   const givenPlayerIds = items.filter(i => i.item_type === 'player' && i.from_pooler_id === poolerId).map(i => i.player_id!)
@@ -228,6 +246,7 @@ async function simulatePostTradeRoster(
 
 export async function confirmTradeReady(
   tradeOfferId: number, poolerId: string, chosenTypes: Record<number, 'actif' | 'reserviste'>,
+  extraActions: TradeExtraAction[] = [],
 ): Promise<{ error?: string }> {
   const admin = createAdminClient()
   const { data: offer } = await admin
@@ -245,13 +264,20 @@ export async function confirmTradeReady(
     .eq('trade_offer_id', tradeOfferId)
   if (!items) return { error: 'Items introuvables.' }
 
+  // Un ajustement supplémentaire ne peut pas viser un joueur déjà donné dans l'échange lui-même
+  // (déjà géré par l'item) — évite un double traitement incohérent.
+  const givenByThisPooler = new Set(items.filter(i => i.item_type === 'player' && i.from_pooler_id === poolerId).map(i => i.player_id))
+  for (const extra of extraActions) {
+    if (givenByThisPooler.has(extra.playerId)) return { error: 'Un ajustement supplémentaire ne peut pas viser un joueur déjà inclus dans l\'échange.' }
+  }
+
   const { data: saison } = await admin.from('pool_seasons').select('season, pool_cap').eq('id', offer.pool_season_id).single()
   const { data: settingsRow } = await admin.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle()
   const unsignedMultiplier = settingsRow?.unsigned_player_cap_multiplier ?? 1.20
 
-  const virtual = await simulatePostTradeRoster(admin, poolerId, offer.pool_season_id, saison?.season ?? '', unsignedMultiplier, items, chosenTypes)
+  const virtual = await simulatePostTradeRoster(admin, poolerId, offer.pool_season_id, saison?.season ?? '', unsignedMultiplier, items, chosenTypes, extraActions)
   const limitError = validateRosterLimits(virtual, saison?.pool_cap ?? 0)
-  if (limitError) return { error: `Ton alignement ne serait pas conforme après cet échange : ${limitError}. Ajuste-le dans Mouvements avant de confirmer.` }
+  if (limitError) return { error: `Ton alignement ne serait pas conforme après cet échange : ${limitError}. Ajoute un ajustement supplémentaire (libération ou changement de statut) avant de confirmer.` }
 
   // Enregistre le type choisi pour chaque joueur reçu par CE pooler (pas de type pour une
   // recrue ou un choix, ignoré silencieusement).
@@ -264,7 +290,11 @@ export async function confirmTradeReady(
 
   const now = new Date().toISOString()
   const isProposer = offer.proposer_pooler_id === poolerId
-  await admin.from('trade_offers').update(isProposer ? { proposer_ready_at: now } : { target_ready_at: now }).eq('id', tradeOfferId)
+  await admin.from('trade_offers').update(
+    isProposer
+      ? { proposer_ready_at: now, proposer_extra_actions: extraActions }
+      : { target_ready_at: now, target_extra_actions: extraActions },
+  ).eq('id', tradeOfferId)
 
   const bothReady = isProposer ? !!offer.target_ready_at : !!offer.proposer_ready_at
   if (bothReady) {
@@ -289,7 +319,10 @@ export async function confirmTradeReady(
 // logique 'transfer' déjà en place là-bas, pour un résultat cohérent avec les échanges
 // admin-initiés (même vocabulaire roster_change_log).
 async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tradeOfferId: number): Promise<{ error?: string }> {
-  const { data: offer } = await admin.from('trade_offers').select('id, pool_season_id').eq('id', tradeOfferId).single()
+  const { data: offer } = await admin
+    .from('trade_offers')
+    .select('id, pool_season_id, proposer_pooler_id, target_pooler_id, proposer_extra_actions, target_extra_actions')
+    .eq('id', tradeOfferId).single()
   if (!offer) return { error: 'Échange introuvable.' }
 
   const { data: items } = await admin
@@ -361,6 +394,39 @@ async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tr
         transaction_id: tx.id, action_type: 'transfer', from_pooler_id: item.from_pooler_id, to_pooler_id: item.to_pooler_id,
         player_id: item.player_id, old_player_type: srcRow.player_type, new_player_type: destType,
       })
+    }
+  }
+
+  // Ajustements supplémentaires choisis par chaque pooler à la confirmation (libération ou
+  // changement de statut d'un joueur non impliqué dans l'échange lui-même, pour rester
+  // conforme — David, 2026-09-22). Appliqués ici, dans le même geste que les items de
+  // l'échange, jamais séparément (voir TradeExtraAction plus haut).
+  const extraByPooler: [string, TradeExtraAction[]][] = [
+    [offer.proposer_pooler_id, (offer.proposer_extra_actions as TradeExtraAction[] | null) ?? []],
+    [offer.target_pooler_id, (offer.target_extra_actions as TradeExtraAction[] | null) ?? []],
+  ]
+  for (const [extraPoolerId, extraActions] of extraByPooler) {
+    for (const extra of extraActions) {
+      const { data: row } = await admin
+        .from('pooler_rosters').select('id, player_type')
+        .eq('pooler_id', extraPoolerId).eq('player_id', extra.playerId).eq('pool_season_id', saisonId).eq('is_active', true)
+        .maybeSingle()
+      if (!row) continue // déjà retiré/changé entre-temps — ignoré plutôt que d'échouer tout l'échange
+
+      if (extra.action === 'release') {
+        await admin.from('pooler_rosters').update({ is_active: false, removed_at: now }).eq('id', row.id)
+        await log(extra.playerId, extraPoolerId, row.player_type, null)
+        await admin.from('transaction_items').insert({
+          transaction_id: tx.id, action_type: 'release', from_pooler_id: extraPoolerId, player_id: extra.playerId, old_player_type: row.player_type,
+        })
+      } else if (extra.action === 'change_status' && extra.newType && extra.newType !== row.player_type) {
+        await admin.from('pooler_rosters').update({ player_type: extra.newType }).eq('id', row.id)
+        await log(extra.playerId, extraPoolerId, row.player_type, extra.newType)
+        await admin.from('transaction_items').insert({
+          transaction_id: tx.id, action_type: 'type_change', from_pooler_id: extraPoolerId, player_id: extra.playerId,
+          old_player_type: row.player_type, new_player_type: extra.newType,
+        })
+      }
     }
   }
 

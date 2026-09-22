@@ -21,6 +21,28 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-22 (suite — ajustements supplémentaires à la confirmation d'un échange)
+
+**[Fix] — impossible de libérer un joueur "pour faire de la place" avant l'exécution de l'échange**
+(`app/lib/tradeOffers.ts`, `app/app/gestion-effectifs/{trade-actions.ts,TradeOffersTab.tsx}`,
+`schema.sql`) :
+- David a repéré un vrai trou en testant : si un pooler doit libérer un joueur pour que
+  l'échange rentre dans sa composition (ex: 11 attaquants après le don, qui redeviendraient 12
+  avec le joueur reçu), il ne peut pas le faire dans Mouvements séparément — cet outil exige
+  TOUJOURS exactement 12/6/2 à la soumission, donc une libération seule y serait refusée (11
+  attaquants, en attendant l'arrivée du joueur de l'échange qui n'a pas encore eu lieu).
+- Corrigé en étendant la confirmation elle-même : le pooler peut maintenant, dans le même
+  geste que "Confirmer ma part", libérer ou changer le statut (actif↔réserviste) d'un joueur
+  NON impliqué dans l'échange — validé comme un seul état final avec les items de l'échange,
+  stocké (`trade_offers.proposer_extra_actions`/`target_extra_actions`, JSONB) et appliqué
+  seulement une fois les deux poolers prêts, exactement comme le reste de l'échange (rien avant
+  ça). Nouvelle section "Si ça ne rentre pas encore, ajuste au besoin" sous le choix de type
+  des joueurs reçus.
+- Migration `schema.sql` fournie (`trade_offers.proposer_extra_actions`/
+  `target_extra_actions`) — **pas encore exécutée en base**, à rouler en staging puis prod.
+- Vérifié : `tsc --noEmit`, `eslint` (2 erreurs restantes, préexistantes — confirmées via
+  `git diff`) et `next build` passent.
+
 ### 2026-09-21 (suite — l'approbation des échanges obtient son propre onglet admin)
 
 **[Fix] — "Conformité cap" ne parlait pas pour l'approbation des échanges**

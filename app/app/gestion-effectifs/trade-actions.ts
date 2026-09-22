@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getEffectiveCap } from '@/lib/capUtils'
 import {
   createTradeOffer, respondToTradeOffer, confirmTradeReady, resolveExpiredTradeOffers,
-  type TradeItemInput,
+  type TradeItemInput, type TradeExtraAction,
 } from '@/lib/tradeOffers'
 
 // ─── Parcourir les actifs échangeables d'un pooler (soi-même ou un autre — déjà public via
@@ -96,11 +96,13 @@ export async function respondToTradeOfferAction(tradeOfferId: number, accept: bo
   return respondToTradeOffer(tradeOfferId, user.id, accept)
 }
 
-export async function confirmTradeReadyAction(tradeOfferId: number, chosenTypes: Record<number, 'actif' | 'reserviste'>): Promise<{ error?: string }> {
+export async function confirmTradeReadyAction(
+  tradeOfferId: number, chosenTypes: Record<number, 'actif' | 'reserviste'>, extraActions: TradeExtraAction[] = [],
+): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié.' }
-  return confirmTradeReady(tradeOfferId, user.id, chosenTypes)
+  return confirmTradeReady(tradeOfferId, user.id, chosenTypes, extraActions)
 }
 
 // ─── Lecture ──────────────────────────────────────────────────────────────────
