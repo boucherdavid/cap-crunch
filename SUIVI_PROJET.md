@@ -21,6 +21,67 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-22 (suite — projections Pool Pro : 3ᵉ source dans /statistiques/projections)
+
+**[Feature] — import des prévisions 2026-2027 du magazine "Pool Pro" (David, photos transcrites
+manuellement)** (`python_script/source/pool_pro_2026_27.csv`, `python_script/
+import_projections_pool_pro.py`, `app/app/statistiques/projections/page.tsx`,
+`app/app/statistiques/projections/ProjectionsTable.tsx`, `schema.sql`) :
+- David a fourni 4 photos (`photos/Pool_Pro-*.jpg`, non commitées) du magazine papier — 250
+  attaquants, 100 défenseurs, 50 gardiens (rang/nom/équipe/PTS ou V). Transcrites à la main dans
+  `source/pool_pro_2026_27.csv` (rang, nom, équipe, is_goalie, valeur), équipes déjà normalisées
+  aux codes LNH standards utilisés en base (le magazine utilise `FLO`, la base `FLA`).
+- `import_projections_pool_pro.py` suit exactement le patron de `import_projections_cbs.py` —
+  réutilise `projections_common.py` (jumelage nom+équipe → nom seul → nom de famille+équipe),
+  dry-run par défaut, `--apply` + confirmation `oui` pour écrire. Nouvelle source
+  `player_projections.source='pool_pro'`.
+- Jumelage vérifié manuellement : 400/400 joueurs trouvés (350 patineurs + 50 gardiens), dont 19
+  jumelages approximatifs (équipe du magazine différente de celle en base, ou surnom — ex: "JJ
+  Peterka" → "John-Jason Peterka") — chacun confirmé correct par requête directe avant l'import.
+  Un seul vrai accroc : "Axel Sandin-Pellikka" (trait d'union) vs "Axel Sandin Pellikka" (espace)
+  en base — corrigé dans le CSV plutôt que dans le matcher (cas isolé).
+- **Importé en staging seulement** (`--apply` confirmé) — pas encore en prod, à faire une fois
+  David satisfait du rendu.
+- `/statistiques/projections` (page + table) : 3ᵉ colonne triable "Pool Pro" à côté de NHL.com/
+  CBS, même traitement (nombre affiché tel quel, `—` si absent). `schema.sql` : commentaire de
+  colonne `source` mis à jour (`'nhl_com', 'cbs', 'pool_pro'`).
+- Vérifié : `tsc --noEmit` passe. Pas de nouveau composant/logique de tri — même patron que les
+  2 sources existantes, juste une colonne de plus.
+- Prochaine étape : David valide visuellement en local (contre staging), puis import en prod
+  (`python import_projections_pool_pro.py --apply` avec `python_script/.env`, sans le
+  `.env.staging`).
+
+### 2026-09-22 (suite — Backup manuel : gestion complète, pas juste consultation)
+
+**[Feature] — extension majeure de l'outil de backup HTML** (`python_script/
+generate_backup_tool.py`) — après l'avoir livré comme outil de lecture seule + édition basique
+des alignements, David a demandé plusieurs ajouts pour vraiment pouvoir gérer le pool à la main
+en cas de pépin :
+- **Alignements triés comme le site** : actifs groupés par position (Attaquants/Défenseurs/
+  Gardiens), puis réservistes, puis recrues, LTIR en dernier — avec en-têtes de groupe.
+- **Ajout de joueur étendu à tous les joueurs LNH** (pas seulement ceux déjà repêchés) — menu
+  déplacé en haut de chaque carte (comme le formulaire du journal), groupé par équipe puis trié
+  position → salaire décroissant, avec le salaire affiché dans chaque option.
+- **Garde-fou anti-doublon** : un joueur déjà dans un alignement ne peut plus être ajouté
+  silencieusement ailleurs — confirmation proposée pour le déplacer (retrait + ajout, les deux
+  journalisés) ; refusé net si déjà dans le même alignement.
+- **Onglet "Choix de repêchage"** : une carte par pooler, ses choix par saison/ronde, origine
+  affichée si obtenu par échange (lecture seule, source `pool_draft_picks`).
+- **Onglet "Paramètres"** : sélecteur de **saison active pour les salaires** (recalcule en
+  direct la masse de tous les alignements, le menu d'ajout et la colonne surlignée dans
+  Contrats — sans régénérer le fichier), cap du pool éditable localement, rappel des règles de
+  composition (12/6/2 + min. 2 réservistes), et un tableau de conformité par pooler.
+- **Journal** : chaque mouvement d'alignement (ajout/retrait/changement de type) y génère
+  automatiquement une entrée (même vocabulaire `change_type` que l'app). Formulaire séparé pour
+  ajouter n'importe quelle entrée à la main, avec un champ **Date effective propre à chaque
+  saisie** (pas un réglage global — une saisie manuelle ne correspond pas forcément au moment où
+  le mouvement a eu lieu chez le pooler). Entrées manuelles supprimables individuellement.
+- Tout reste local (localStorage) — rien n'est jamais réécrit dans Supabase/l'app. Vérifié à
+  chaque étape par prévisualisation Artifact contre les données staging (pas de `next build`,
+  script Python autonome) + `node --check` sur le bloc `<script>` extrait avant publication.
+- Pas encore régénéré contre prod — David valide en staging le temps de finaliser ses
+  alignements prod.
+
 ### 2026-09-22 (suite — pastille de notification admin figée)
 
 **[Fix] — la pastille rouge de notifications ne se réinitialisait jamais après lecture**

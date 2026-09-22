@@ -116,11 +116,18 @@ python sync_staging_to_prod.py --apply   # exécution réelle — demande confir
 ```
 
 ```bash
-# Régénère l'outil de backup manuel (David, 2026-09-21) — snapshot HTML autonome (alignements,
-# table de contrats des joueurs rostered, journal des mouvements) de la saison active en PROD,
-# éditable à la main dans le navigateur (localStorage) sans dépendre de l'app/Supabase — filet
-# de sécurité en cas de pépin. Cible toujours prod (python_script/.env), comme les autres
-# scripts. Régénéré aussi automatiquement chaque dimanche (.github/workflows/backup_tool.yml).
+# Régénère l'outil de backup manuel (David, 2026-09-21, étendu le 2026-09-22) — snapshot HTML
+# autonome de la saison active en PROD, éditable à la main dans le navigateur (localStorage)
+# sans dépendre de l'app/Supabase — filet de sécurité en cas de pépin, mais aussi un vrai outil
+# de gestion manuelle : alignements triés par position/actif/réserviste/recrue comme le site,
+# ajout de n'importe quel joueur LNH (pas seulement ceux déjà repêchés), table de contrats de
+# tous les joueurs LNH, choix de repêchage par pooler, journal éditable (auto-loggé par les
+# ajustements d'alignement + saisie manuelle libre avec sa propre date effective), sélecteur de
+# saison active pour les salaires, cap du pool ajustable, conformité 12/6/2 par pooler. Cible
+# toujours prod (python_script/.env), comme les autres scripts — utiliser `.env.staging` pour
+# prévisualiser sans toucher prod. Régénéré aussi automatiquement chaque dimanche
+# (.github/workflows/backup_tool.yml), qui commite/pousse le fichier régénéré directement sur
+# la branche par défaut (backup/ n'est PAS dans .gitignore).
 cd python_script
 python generate_backup_tool.py   # écrit backup/pool_backup.html
 ```
