@@ -21,6 +21,20 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-22 (suite — jumelage cassé pour les noms à trait d'union/apostrophe/point)
+
+**[Fix] — normalisation de nom divergente entre le script d'extraction et la page**
+(`python_script/extract_draft_prospects_2026_stats.py`, `app/app/repechage/page.tsx`) — David
+a repéré "Louis-Félix Bourque" sans stats malgré une entrée valide dans le fichier source.
+Cause : `normalize()` (Python, construit la clé du JSON) ne remplaçait que les accents, alors
+que `normName()` (TSX, cherche dans le JSON à l'affichage) remplaçait *aussi* les traits
+d'union par des espaces — "louis-felix bourque" d'un côté, "louis felix bourque" de l'autre,
+jumelage silencieusement raté. Les deux normalisent maintenant identiquement : tout caractère
+non alphanumérique (trait d'union, apostrophe, point d'initiale...) devient un espace, pas
+seulement les accents. JSON régénéré ; 7 noms affectés dans ce fichier confirmés corrigés
+("J.P. Hurlbert", "Louis-Antoine Denault", etc.).
+- Vérifié : `tsc --noEmit` passe.
+
 ### 2026-09-22 (suite — stats junior de /repechage : fichier Excel dédié plutôt que draft_prospects)
 
 **[Fix] — source des colonnes équipe/PJ/PTS de `/repechage` changée pour un fichier Excel

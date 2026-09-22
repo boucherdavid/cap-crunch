@@ -20,9 +20,15 @@ OUTPUT_PATH = os.path.join(BASE_DIR, '..', 'app', 'lib', 'data', 'draftProspects
 
 
 def normalize(s: str) -> str:
+    # Même normalisation que normName() côté app/app/repechage/page.tsx — doit rester identique
+    # des deux côtés, sinon la clé de jumelage diverge silencieusement (trouvé par David,
+    # 2026-09-22 : "Louis-Félix" devenait "louis-felix" ici mais "louis felix" côté app, qui
+    # remplace aussi les traits d'union). Tout caractère non alphanumérique (trait d'union,
+    # apostrophe, point d'initiale...) est traité comme un espace, pas seulement les accents.
     import unicodedata
     s = unicodedata.normalize('NFKD', s or '').encode('ascii', 'ignore').decode()
-    return re.sub(r'\s+', ' ', s).strip().lower()
+    s = re.sub(r'[^a-zA-Z0-9]+', ' ', s)
+    return s.strip().lower()
 
 
 def parse_player_cell(raw: str):

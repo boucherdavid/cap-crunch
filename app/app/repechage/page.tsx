@@ -85,8 +85,12 @@ export default async function RepechagePage() {
     ]),
   )
 
+  // Doit rester identique \u00e0 normalize() dans extract_draft_prospects_2026_stats.py \u2014 tout
+  // caract\u00e8re non alphanum\u00e9rique (trait d'union, apostrophe, point...) trait\u00e9 comme un espace,
+  // pas seulement les accents (David, 2026-09-22 : "Louis-F\u00e9lix" ne jumelait pas car seul un
+  // des deux c\u00f4t\u00e9s rempla\u00e7ait le trait d'union).
   const normName = (s: string) =>
-    (s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/-/g, ' ').trim()
+    (s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
 
   // Récupérer les noms des joueurs en roster via requête directe (plus fiable que le join)
   const rosterPlayerIds = [...new Set(
