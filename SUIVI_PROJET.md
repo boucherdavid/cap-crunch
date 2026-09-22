@@ -21,6 +21,14 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-22 (suite — tri de la liste "Ajustements supplémentaires")
+
+**[Fix] — liste "Ajustements supplémentaires" triée : actifs par position, puis réservistes, puis recrues**
+(`app/app/gestion-effectifs/TradeOffersTab.tsx`) : liste jusqu'ici dans l'ordre brut de la
+requête. `sortForAdjust()` groupe maintenant Attaquants → Défenseurs → Gardiens (actifs) →
+Réservistes → Recrues, alphabétique par nom dans chaque groupe. Vérifié : `tsc --noEmit`,
+`eslint` (2 erreurs restantes, préexistantes) et `next build` passent.
+
 ### 2026-09-22 (suite — aperçu live de l'impact avant de confirmer un échange)
 
 **[Feature] — sommaire projeté (composition + cap) recalculé à chaque interaction, avant de confirmer**

@@ -22,6 +22,21 @@ function groupKey(i: TradeableItem): string {
   return getPlayerBucket(i.position)
 }
 
+// Tri de la liste "Ajustements supplémentaires" (David, 2026-09-22) — actifs groupés par
+// position (Attaquants/Défenseurs/Gardiens), puis réservistes, puis recrues à la fin ;
+// alphabétique par nom à l'intérieur de chaque groupe.
+const ADJUST_GROUP_ORDER = ['forward', 'defense', 'goalie', 'reserviste', 'recrue']
+function adjustGroupKey(i: Extract<TradeableItem, { kind: 'player' }>): string {
+  if (i.playerType === 'reserviste' || i.playerType === 'recrue') return i.playerType
+  return getPlayerBucket(i.position)
+}
+function sortForAdjust(items: Extract<TradeableItem, { kind: 'player' }>[]): Extract<TradeableItem, { kind: 'player' }>[] {
+  return [...items].sort((a, b) => {
+    const groupDiff = ADJUST_GROUP_ORDER.indexOf(adjustGroupKey(a)) - ADJUST_GROUP_ORDER.indexOf(adjustGroupKey(b))
+    return groupDiff !== 0 ? groupDiff : a.name.localeCompare(b.name)
+  })
+}
+
 const STATUS_LABEL: Record<string, string> = {
   pending_target: 'En attente de réponse',
   pending_admin: "En attente d'approbation admin",
@@ -377,9 +392,9 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap }: { sa
                         )}
                         {(() => {
                           const givenIds = new Set(o.give.filter(i => i.kind === 'player').map(i => i.id))
-                          const adjustable = myFullRoster.filter(
+                          const adjustable = sortForAdjust(myFullRoster.filter(
                             (i): i is Extract<TradeableItem, { kind: 'player' }> => i.kind === 'player' && !givenIds.has(i.playerId),
-                          )
+                          ))
                           if (adjustable.length === 0) return null
                           return (
                             <div className="mb-2">
