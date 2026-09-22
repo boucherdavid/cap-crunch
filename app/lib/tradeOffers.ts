@@ -527,7 +527,10 @@ async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tr
         await admin.from('pooler_rosters').update({ player_type: extra.newType, ...rookieClearFields }).eq('id', row.id)
         await log(extra.playerId, extraPoolerId, 'recrue', extra.newType)
         await admin.from('transaction_items').insert({
-          transaction_id: tx.id, action_type: 'promote', from_pooler_id: extraPoolerId, player_id: extra.playerId,
+          // 'promote' se lit "to_pooler promeut ce joueur" (TransactionsClient.tsx,
+          // journal-transactions) — pas from_pooler_id, sans quoi le journal affiche
+          // "undefined promeut..." (bug trouvé par David, 2026-09-22).
+          transaction_id: tx.id, action_type: 'promote', to_pooler_id: extraPoolerId, player_id: extra.playerId,
           old_player_type: 'recrue', new_player_type: extra.newType,
         })
       }

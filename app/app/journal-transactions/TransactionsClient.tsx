@@ -76,6 +76,64 @@ function itemDescription(item: any): string {
   }
 }
 
+// Affichage deux colonnes pour un échange entre poolers (David, 2026-09-22) — même patron que
+// l'onglet Échanges de Gestion d'effectifs ("Tu donnes"/"Tu reçois"), plus lisible que la liste
+// à plat d'origine. Les items 'transfer' (joueurs/choix qui changent de main) vont dans la
+// colonne du pooler qui les donne ; les ajustements de la même transaction (retour en banque,
+// activation de recrue, libération — ajoutés par un pooler pour rester conforme) s'affichent
+// en petit sous la colonne du pooler concerné, sans confondre les deux catégories.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function TradeCard({ items }: { items: any[] }) {
+  const transfers = items.filter(i => i.action_type === 'transfer')
+  const adjustments = items.filter(i => i.action_type !== 'transfer')
+
+  const poolerNames = Array.from(new Set(transfers.flatMap(i => [i.from_pooler?.name, i.to_pooler?.name]).filter(Boolean)))
+  if (poolerNames.length !== 2) {
+    // Cas limite (ex: aucun item 'transfer' trouvable) — repli sur la liste à plat habituelle.
+    return (
+      <ul className="space-y-1">
+        {items.map(item => (
+          <li key={item.id} className="text-sm text-gray-700 bg-blue-50 px-3 py-1.5 rounded">{itemDescription(item)}</li>
+        ))}
+      </ul>
+    )
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function transferLabel(item: any): string {
+    if (item.pick) {
+      const isOwn = item.pick.original_owner?.name === item.from_pooler?.name
+      return `Ronde ${item.pick.round} ${item.pick.pool_seasons?.season ?? ''}${!isOwn ? ` (de ${item.pick.original_owner?.name})` : ''}`
+    }
+    const p = item.players
+    return p ? `${p.last_name}, ${p.first_name} (${p.teams?.code ?? DASH}) ${p.position ?? ''}` : '?'
+  }
+
+  return (
+    <div>
+      <div className="grid grid-cols-2 gap-4">
+        {poolerNames.map(name => (
+          <div key={name}>
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">{name} donne</p>
+            <ul className="space-y-1">
+              {transfers.filter(i => i.from_pooler?.name === name).map(item => (
+                <li key={item.id} className="text-sm text-gray-700 bg-blue-50 px-3 py-1.5 rounded">{transferLabel(item)}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+      {adjustments.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-gray-100 space-y-1">
+          {adjustments.map(item => (
+            <p key={item.id} className="text-xs text-gray-500">{itemDescription(item)}</p>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('fr-CA', {
     year: 'numeric', month: 'long', day: 'numeric',
@@ -173,16 +231,20 @@ export default function TransactionsClient({
               </div>
               <span className="text-xs text-gray-300">#{tx.id}</span>
             </div>
-            <ul className="space-y-1">
-              {(tx.transaction_items ?? []).map((item: any) => {
-                const bg = tab === 'tous' ? TAB_COLORS[tx._tab as TabKey] : itemBg
-                return (
-                  <li key={item.id} className={`text-sm text-gray-700 ${bg} px-3 py-1.5 rounded`}>
-                    {itemDescription(item)}
-                  </li>
-                )
-              })}
-            </ul>
+            {tx._tab === 'echanges'
+              ? <TradeCard items={tx.transaction_items ?? []} />
+              : (
+                <ul className="space-y-1">
+                  {(tx.transaction_items ?? []).map((item: any) => {
+                    const bg = tab === 'tous' ? TAB_COLORS[tx._tab as TabKey] : itemBg
+                    return (
+                      <li key={item.id} className={`text-sm text-gray-700 ${bg} px-3 py-1.5 rounded`}>
+                        {itemDescription(item)}
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
           </div>
         ))}
       </div>

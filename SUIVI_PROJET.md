@@ -21,6 +21,28 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-22 (suite — affichage deux colonnes des échanges dans le Journal des transactions)
+
+**[Feature+Fix] — Journal des transactions : échanges affichés en deux colonnes + bug "undefined promeut"**
+(`app/app/journal-transactions/TransactionsClient.tsx`, `app/lib/tradeOffers.ts`) :
+- David a testé un échange complet de bout en bout avec succès (accepté, approuvé, confirmé
+  des deux côtés, y compris un retour en banque et une activation de recrue) — mais a repéré
+  un vrai bug dans le journal : "undefined promeut Connelly, Trevor... → Actif". Cause :
+  `executeTradeOffer()` écrivait l'item `transaction_items` d'une activation de recrue
+  (`action_type='promote'`) avec `from_pooler_id` au lieu de `to_pooler_id` — le journal
+  (`TransactionsClient.tsx`, `itemDescription()`) lit `to_pooler` pour ce type d'action.
+  Corrigé.
+- David a aussi demandé un meilleur affichage pour les échanges dans le Journal — la liste à
+  plat d'origine ("X donne Y à Z" ligne par ligne) n'était pas claire. Nouveau `TradeCard`
+  (même patron que l'onglet Échanges de Gestion d'effectifs) : deux colonnes "Pooler A donne"/
+  "Pooler B donne" pour les vrais items échangés (`action_type='transfer'`), avec les
+  ajustements supplémentaires de la même transaction (retour en banque, activation, libération)
+  affichés à part en dessous, pour ne pas les confondre avec l'échange lui-même. Repli sur la
+  liste à plat si jamais aucun item 'transfer' n'est trouvable (cas limite).
+- Vérifié : `tsc --noEmit`, `eslint` (11 erreurs `any` restantes — confirmé via un test avant/
+  après identique, toutes préexistantes dans ce fichier, mon nouveau code n'en ajoute aucune)
+  et `next build` passent.
+
 ### 2026-09-22 (suite — mauvaise règle d'éligibilité au retour en banque de recrue)
 
 **[Fix] — un joueur sur son ELC signé directement comme actif n'était pas reconnu éligible à la banque**
