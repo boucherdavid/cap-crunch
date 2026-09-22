@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-21
+Derniere mise a jour: 2026-09-22
 
 ## Role du fichier
 
@@ -20,6 +20,26 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-09-22 (suite — pastille de notification admin figée)
+
+**[Fix] — la pastille rouge de notifications ne se réinitialisait jamais après lecture**
+(`app/components/Navbar.tsx`) :
+- David a rapporté que la pastille rouge (dropdown Admin + sous-menu Communauté) restait
+  affichée même après avoir marqué les notifications comme lues depuis
+  `/admin/communaute?tab=communication`.
+- Cause : `unreadCount`/`unreadNotifCount` étaient initialisés via `useState(initial...)` sans
+  setter ni effet de synchronisation — contrairement à `userName`/`isAdmin`, qui ont déjà un
+  `useEffect` dédié pour se resynchroniser à chaque nouveau rendu du layout racine. `Navbar`
+  reste monté entre les navigations (layout partagé App Router), donc la valeur restait figée
+  à celle du tout premier chargement de la session, peu importe ce que `markAllReadAction`
+  faisait réellement en base (`notification_log.read_at`).
+- Corrigé en ajoutant `setUnreadCount`/`setUnreadNotifCount` + un `useEffect` qui les
+  resynchronise sur `[initialUnreadCount, initialUnreadNotifCount]`, même patron que pour
+  `userName`/`isAdmin`.
+- Vérifié : `tsc --noEmit` passe. Pas encore testé visuellement par David (à confirmer après
+  déploiement staging).
+- Commit : (à suivre)
 
 ### 2026-09-22 (suite — Journal des transactions : tableau compact + recherche par pooler)
 
