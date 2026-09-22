@@ -307,21 +307,23 @@ export default function StatsTable({
 
       {/* Table patineurs */}
       {tab === 'skaters' && (
-        <div className="bg-white rounded-lg shadow overflow-x-auto">
+        // max-h + overflow-auto (pas juste overflow-x-auto) : nécessaire pour que le sticky des
+        // <th> ait un effet visible — voir ProjectionsTable.tsx (David, 2026-09-22).
+        <div className="bg-white rounded-lg shadow overflow-auto max-h-[75vh]">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 border-b">
-                <th className="text-left px-4 py-3 font-medium text-gray-600 w-8">#</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 w-5" title="Disponibilité" />
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Joueur</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Équipe</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Pos</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">PJ</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Tps/M</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">B</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">A</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-800 font-semibold">Pts</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Pts/MJ</th>
+              <tr className="border-b">
+                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-8">#</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-5" title="Disponibilité" />
+                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Joueur</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Équipe</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Pos</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600">PJ</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Tps/M</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600">B</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600">A</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-800 font-semibold">Pts</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Pts/MJ</th>
               </tr>
             </thead>
             <tbody>
@@ -374,23 +376,25 @@ export default function StatsTable({
 
       {/* Table gardiens */}
       {tab === 'goalies' && (
-        <div className="bg-white rounded-lg shadow overflow-x-auto">
+        // max-h + overflow-auto (pas juste overflow-x-auto) : nécessaire pour que le sticky des
+        // <th> ait un effet visible — voir ProjectionsTable.tsx (David, 2026-09-22).
+        <div className="bg-white rounded-lg shadow overflow-auto max-h-[75vh]">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 border-b">
-                <th className="text-left px-4 py-3 font-medium text-gray-600 w-8">#</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 w-5" title="Disponibilité" />
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Gardien</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Équipe</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">PJ</th>
-                <th className="text-right px-4 py-3 font-medium text-green-700">V</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">D</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">DP</th>
-                <th className="text-right px-4 py-3 font-medium text-blue-700">BL</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">%Arr</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">Moy</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">B</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">A</th>
+              <tr className="border-b">
+                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-8">#</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-5" title="Disponibilité" />
+                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Gardien</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Équipe</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600">PJ</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-green-700">V</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">D</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">DP</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-blue-700">BL</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600">%Arr</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600">Moy</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">B</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">A</th>
               </tr>
             </thead>
             <tbody>
