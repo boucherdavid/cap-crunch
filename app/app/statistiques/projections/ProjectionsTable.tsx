@@ -158,7 +158,10 @@ export default function ProjectionsTable({
         )}
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-x-auto">
+      {/* max-h + overflow-auto (pas juste overflow-x-auto) : nécessaire pour que le sticky des
+          <th> ait un effet visible — un conteneur non borné en hauteur ne défile jamais
+          lui-même, donc rien à quoi le sticky puisse s'accrocher (David, 2026-09-22). */}
+      <div className="bg-white rounded-lg shadow overflow-auto max-h-[75vh]">
         <table className="w-full text-sm">
           <thead>
             {/* En-tête fixe au défilement (David, 2026-09-22) — sticky posé sur chaque <th>
