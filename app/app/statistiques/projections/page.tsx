@@ -159,16 +159,29 @@ export default async function ProjectionsPage() {
 
   const poolSeason = activeSeason?.season ?? null
 
-  const { data: rows } = poolSeason
-    ? await supabase
+  // Paginé par tranches de 1000 (limite PostgREST par requête) — avec 4 sources désormais
+  // (nhl_com/cbs/pool_pro/hockey_magazine), le total dépasse largement 1000 lignes et une
+  // requête simple se ferait tronquer silencieusement (repéré par David, 2026-09-22 : colonne
+  // CBS vide pour la plupart des joueurs malgré des données bien présentes en base).
+  const rows: RawProjection[] = []
+  if (poolSeason) {
+    let offset = 0
+    while (true) {
+      const { data: batch } = await supabase
         .from('player_projections')
         .select('player_id, source, projected_points, projected_wins, players(nhl_id, first_name, last_name, position, teams(code))')
         .eq('season', poolSeason)
         .in('source', ['nhl_com', 'cbs', 'pool_pro', 'hockey_magazine'])
-    : { data: null }
+        .range(offset, offset + 999)
+      const page = (batch as unknown as RawProjection[] | null) ?? []
+      rows.push(...page)
+      if (page.length < 1000) break
+      offset += 1000
+    }
+  }
 
   const byPlayer = new Map<number, Omit<ProjectionRow, 'trend' | 'trendSeasons' | 'trendPerGame' | 'trendGames' | 'trendDirection' | 'lastSeasonValue' | 'available'>>()
-  for (const r of (rows as unknown as RawProjection[] | null) ?? []) {
+  for (const r of rows) {
     const p = r.players
     if (!p) continue
     const isGoalie = p.position === 'G'

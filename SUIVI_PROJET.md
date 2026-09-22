@@ -21,6 +21,25 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-22 (suite — colonne CBS vide sur /statistiques/projections : requête tronquée à 1000 lignes)
+
+**[Fix] — `page.tsx` de /statistiques/projections ne paginait pas sa requête `player_projections`**
+(`app/app/statistiques/projections/page.tsx`) — David a repéré la colonne CBS vide (`—`) pour
+la plupart des joueurs malgré un import réussi. Cause : avec 4 sources maintenant (406+966+
+400+422 = 2194 lignes), la requête sans `.range()` se faisait tronquer en silence par la limite
+PostgREST par défaut (1000 lignes/requête) — les lignes des joueurs déjà couverts par
+l'ancienne source CBS (ids bas, ex: McDavid/Kucherov) passaient, celles des nouveaux joueurs
+couverts seulement depuis le ré-import d'aujourd'hui (ids plus élevés, la majorité) étaient
+coupées. Même piège que celui déjà corrigé dans `generate_backup_tool.py` plus tôt cette
+session (fetch `players` sans pagination) — confirmé par requête directe que les données
+étaient bien en base (ex: Nathan MacKinnon avait bien `cbs=139`) avant de conclure à un bug de
+requête plutôt qu'un problème d'import.
+- Corrigé en paginant par tranches de 1000 (boucle `while` + `.range()`), même patron que
+  `import_projections_pool_pro.py`/`import_supabase.py`.
+- Vérifié qu'aucune autre requête `player_projections` n'est à risque —
+  `PlayerSlideOver.tsx` filtre déjà par `nhl_id` (quelques lignes max par appel).
+- Vérifié : `tsc --noEmit` passe.
+
 ### 2026-09-22 (suite — projections Hockey Le Magazine : 4ᵉ source)
 
 **[Feature] — import des prévisions du "Guide des Poolers 2026-2027" de Hockey Le Magazine**
