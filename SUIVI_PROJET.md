@@ -21,6 +21,27 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-22 (suite — mauvaise règle d'éligibilité au retour en banque de recrue)
+
+**[Fix] — un joueur sur son ELC signé directement comme actif n'était pas reconnu éligible à la banque**
+(`app/lib/tradeOffers.ts`, `app/app/gestion-effectifs/trade-actions.ts`) :
+- David a testé : Lardis, Nick est sur son ELC mais n'avait que "→ Réserviste"/"Libérer" dans
+  les ajustements supplémentaires, pas "Retourner en banque". Cause : l'éligibilité codée hier
+  utilisait `rookie_type IS NOT NULL` sur la ligne `pooler_rosters` — la règle du **libre-service
+  pré-saison** (`repechage-agents-libres/actions.ts`), qui suppose que le joueur est déjà passé
+  par le repêchage du pool ou la banque. Un joueur signé directement comme actif alors qu'il
+  était encore sur son ELC n'a jamais `rookie_type` posé, même s'il reste réellement éligible.
+- Corrigé en reprenant la formule "fraîche" déjà utilisée par `deactivate()`/
+  `getPoolerRosterAction` (`gestion-effectifs/actions.ts`, le vrai équivalent Mouvements pour
+  la remise en banque en cours de saison) : `is_rookie`, `draft_year` dans la fenêtre de 5
+  saisons, ou statut ELC — appliquée à la fois côté validation serveur
+  (`confirmTradeReady`) et côté affichage (`listTradeableAssetsAction`). Ajout au passage du
+  classement rétroactif en `rookie_type='agent_libre'` au retour en banque s'il n'était jamais
+  classé, même comportement que `deactivate()`, sans quoi l'écriture aurait continué à
+  silencieusement ne rien faire pour ce même cas.
+- Vérifié : `tsc --noEmit`, `eslint` et `next build` passent. Pas encore retesté par David avec
+  Lardis après le correctif.
+
 ### 2026-09-22 (suite — tri de la liste "Ajustements supplémentaires")
 
 **[Fix] — liste "Ajustements supplémentaires" triée : actifs par position, puis réservistes, puis recrues**

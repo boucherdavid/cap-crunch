@@ -991,13 +991,20 @@ corrigée le 2026-09-20 :**
   simulé que les items de l'échange, et appliqué avec eux à `executeTradeOffer()` seulement une
   fois les deux poolers prêts. UI : section "Si ça ne rentre pas encore, ajuste au besoin" dans
   l'onglet Échanges, pas besoin d'aller dans Mouvements séparément. Couvre aussi
-  `demote_to_recrue`/`promote_recrue` (David, 2026-09-22) — retourner une recrue encore
-  protégée en banque ou en activer une aide souvent à rester conforme sans avoir à libérer
-  quelqu'un pour de bon. Éligibilité au retour en banque = `rookie_type` non-null sur la ligne
-  actuelle, même règle que le libre-service (`repechage-agents-libres/actions.ts`,
-  `submitSelfServiceAction`) ; l'activation efface `rookie_type`/`pool_draft_year` seulement si
-  `isRookieProtectionExpired()` (`app/lib/rookieProtection.ts`) est vraie à ce moment précis,
-  sinon préservés — même règle que la promotion admin/self-service.
+  `demote_to_recrue`/`promote_recrue` (David, 2026-09-22, éligibilité corrigée le même jour) —
+  retourner une recrue encore protégée en banque ou en activer une aide souvent à rester
+  conforme sans avoir à libérer quelqu'un pour de bon. **Éligibilité au retour en banque =
+  même formule "fraîche" que `deactivate()`/`getPoolerRosterAction`
+  (`gestion-effectifs/actions.ts`) : `is_rookie`, `draft_year` dans la fenêtre de 5 saisons, ou
+  statut ELC** — PAS `rookie_type` déjà posé sur la ligne (piège trouvé par David en testant :
+  un joueur signé directement comme actif alors qu'il était encore sur son ELC n'a jamais
+  `rookie_type`, mais reste tout à fait éligible à la banque ; `rookie_type IS NOT NULL` est la
+  règle du libre-service pré-saison — `repechage-agents-libres/actions.ts`,
+  `submitSelfServiceAction` —, pas celle applicable ici). Classement rétroactif en
+  `rookie_type='agent_libre'` au retour en banque s'il n'était encore jamais classé (même
+  comportement que `deactivate()`). L'activation efface `rookie_type`/`pool_draft_year`
+  seulement si `isRookieProtectionExpired()` (`app/lib/rookieProtection.ts`) est vraie à ce
+  moment précis, sinon préservés — même règle que la promotion admin/self-service.
 - **Salaires visibles à toutes les étapes (David, 2026-09-22)** — proposition (déjà en place),
   liste "Mes transactions" (`TradeOfferItemView.capNumber`, total par côté), confirmation
   (ajustements supplémentaires), et approbation admin (`AdminTradeOfferItemView.capNumber`,

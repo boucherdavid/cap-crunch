@@ -25,7 +25,7 @@ export async function listTradeableAssetsAction(poolerId: string, saisonId: numb
     supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
     supabase
       .from('pooler_rosters')
-      .select('player_id, player_type, rookie_type, players (first_name, last_name, position, teams (code), player_contracts (season, cap_number))')
+      .select('player_id, player_type, players (first_name, last_name, position, is_rookie, draft_year, status, teams (code), player_contracts (season, cap_number))')
       .eq('pooler_id', poolerId).eq('pool_season_id', saisonId).eq('is_active', true)
       .in('player_type', ['actif', 'reserviste', 'recrue']),
     supabase
@@ -35,6 +35,11 @@ export async function listTradeableAssetsAction(poolerId: string, saisonId: numb
   ])
   const season = saison?.season ?? ''
   const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
+  // Même formule "fraîche" que getPoolerRosterAction/deactivate() (gestion-effectifs/
+  // actions.ts) — PAS `rookie_type` déjà posé sur la ligne (David, 2026-09-22 : un joueur
+  // signé directement comme actif encore sur son ELC n'a jamais rookie_type, mais reste
+  // éligible à la banque).
+  const draftYearCutoff = parseInt(season.split('-')[0] || '0', 10) + 1 - 5
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const players: TradeableItem[] = ((rosterRows ?? []) as any[]).map(r => ({
@@ -45,9 +50,9 @@ export async function listTradeableAssetsAction(poolerId: string, saisonId: numb
     teamCode: r.players?.teams?.code ?? null,
     playerType: r.player_type,
     capNumber: getEffectiveCap(r.players?.player_contracts, season, unsignedMultiplier).cap,
-    // Éligible à retourner en banque (même règle que le libre-service — rookie_type non-null
-    // sur la ligne) : sans objet pour une recrue, déjà en banque.
-    recrueEligible: r.player_type !== 'recrue' && !!r.rookie_type,
+    recrueEligible: r.player_type !== 'recrue' && !!(
+      r.players?.is_rookie || (r.players?.draft_year != null && r.players.draft_year >= draftYearCutoff) || r.players?.status === 'ELC'
+    ),
   }))
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const picks: TradeableItem[] = ((pickRows ?? []) as any[]).map(p => ({
