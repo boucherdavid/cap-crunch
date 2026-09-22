@@ -21,6 +21,62 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-22 (suite — 6 doublons de fiches joueurs trouvés et corrigés, ré-import CBS complet)
+
+**[Fix] — jumelages de projections corrompus par des fiches `players` en double** — David a
+repéré via `/statistiques/projections` que Mitchell Marner (et d'autres) n'avaient pas de
+valeur Pool Pro/CBS malgré une source qui en a une. Investigation : plusieurs joueurs ont
+**deux lignes dans `players`** — une réelle (contrats, `nhl_id`, rostered, game logs) et une
+orpheline (souvent une variante de prénom — nickname vs nom complet — sans aucune donnée),
+créée on ne sait quand par un import antérieur. Le script de jumelage (`projections_common.py`,
+`match_player`) fait légitimement son travail mais tombe parfois sur l'orpheline plutôt que la
+vraie fiche. Trouvés et corrigés **en staging** (projection réassignée à la vraie fiche, doublon
+supprimé après vérification qu'il n'est référencé nulle part — `pooler_rosters`,
+`transaction_items`, `roster_change_log`, `player_contracts`, `player_projections`, etc.) :
+
+| Vraie fiche | Doublon supprimé | Source touchée |
+|---|---|---|
+| Janis Jérôme Moser (TBL) | "J.J. Moser" | NHL.com, Pool Pro |
+| Mitchell Marner (VGK) | "Mitch Marner" | Pool Pro |
+| Matthew Beniers (SEA) | "Matty Beniers" | Pool Pro |
+| Matthew Savoie (EDM) | "Matt Savoie" | NHL.com, Pool Pro |
+| Dmitri Simashev (UTA) | "Dmitriy Simashev" | CBS |
+
+Cas distinct : **Aliaksei Protas** (WSH, vétéran) n'est pas un doublon — son jeune frère **Ilya
+Protas** (WSH, recrue ELC 2024) est une fiche bien réelle et différente ; la projection CBS
+d'Aliaksei était collée par erreur sur la fiche d'Ilya (import du 13 septembre) — corrigée sans
+rien supprimer.
+- **Balayage exhaustif** (`players` groupés par nom de famille normalisé, avec et sans
+  contrainte d'équipe — 247 groupes en double au total) fait deux fois (avant et après le
+  ré-import CBS ci-dessous) pour confirmer qu'aucun autre cas ne traîne — 0 restant après ces 6
+  corrections.
+- **Pas encore appliqué en prod** — les mêmes doublons existent en prod (mêmes noms, IDs
+  différents), confirmé en lecture seule. En attente de la validation finale de David avant d'y
+  répliquer les mêmes corrections.
+
+**[Feature] — ré-import CBS avec fichier Excel mis à jour, couverture 366 → 966 lignes**
+(`python_script/import_projections_cbs.py`) — David a fourni un `CBS_Proj_2026-2027.xlsx` à
+jour (`excel/`, non commité) avec beaucoup plus de joueurs (618 attaquants + 330 défenseurs + 69
+gardiens, vs. l'import du 13 septembre). Deux corrections apportées au script :
+- **En-tête de colonne changé** : CBS utilise maintenant `PTS` au lieu de `P` pour les
+  patineurs — script rendu tolérant aux deux (`'pts' in header` sinon repli sur `'p'`), pour ne
+  pas se recasser au prochain renommage. `W` (gardiens) inchangé.
+- **Collisions de jumelage entre feuilles** (trouvé en creusant les 2 alertes de cohérement
+  `>40 pts` du dry-run) : deux **vrais joueurs distincts** portent exactement le même nom dans
+  ce fichier CBS — Sebastian Aho (attaquant CAR **et** défenseur PIT) et Elias Pettersson
+  (attaquant VAN **et** défenseur VAN). Notre base ne connaît qu'un des deux dans chaque cas ;
+  les deux lignes source jumelaient donc sur la même fiche, et comme la feuille Défenseurs est
+  traitée après Attaquants, sa valeur (non pertinente pour notre joueur) écrasait
+  silencieusement la bonne. Nouvelle fonction `dedup_by_player()` : quand plusieurs lignes
+  source jumellent sur le même `player_id`, ne garde que le jumelage exact (nom+équipe) ou le
+  premier trouvé, et journalise les autres comme des "collisions" explicites plutôt que de les
+  laisser s'écraser en silence — comportement générique, pas un cas spécial Aho/Pettersson.
+- Importé en staging : `cbs` passe de 366 à **966** lignes (`nhl_com`=406, `pool_pro`=400).
+- Vérifié : `PTS`/`W` toujours arrondis à l'entier (`round(float(raw_val))`, déjà en place,
+  confirmé toujours actif après le changement de colonne).
+- Prochaine étape : appliquer les 6 corrections de doublons + ce ré-import CBS en prod une fois
+  David satisfait du rendu en staging.
+
 ### 2026-09-22 (suite — projections Pool Pro : 3ᵉ source dans /statistiques/projections)
 
 **[Feature] — import des prévisions 2026-2027 du magazine "Pool Pro" (David, photos transcrites
