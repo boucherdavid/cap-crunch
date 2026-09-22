@@ -21,6 +21,27 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-22 (suite — stats junior de /repechage : fichier Excel dédié plutôt que draft_prospects)
+
+**[Fix] — source des colonnes équipe/PJ/PTS de `/repechage` changée pour un fichier Excel
+dédié** (`python_script/extract_draft_prospects_2026_stats.py`,
+`app/lib/data/draftProspects2026Stats.json`, `app/app/repechage/page.tsx`) — David a fourni
+`excel/nhl_draft_prospects_2026_stats_for_2025.xlsx` (mock draft LNH 2026 avec statistiques
+2025-26, non commité — `excel/` est gitignored) et demandé de ne plus utiliser `draft_prospects`
+(qui reste la source de `/draft-center`, inchangée) pour ces 3 colonnes.
+- `extract_draft_prospects_2026_stats.py` (usage ponctuel) parse le fichier — 224 prospects sur
+  7 rondes, colonnes Rang/Équipe repêcheuse/Joueur (nom+position+suffixe "Verified by..." à
+  nettoyer)/Équipe junior/Ligue/PJ/B/A/PTS — vers `app/lib/data/draftProspects2026Stats.json`
+  (nom normalisé comme clé de jumelage, pas besoin de séparer prénom/nom de cette feuille).
+  **Gardiens** (32 sur 224) : les colonnes B/A/PTS de la feuille sont réutilisées pour
+  moyenne/%arrêt sur ces lignes — `points` mis à `null` explicitement pour eux (seul PJ reste
+  valide), pour ne pas afficher une fausse valeur de points.
+- `page.tsx` importe ce JSON directement (bundlé au build, pas de requête réseau/DB) et jumelle
+  par nom normalisé, seulement pour `draft_year === 2026` (portée du fichier) — years
+  antérieures gardent `—`, comportement inchangé.
+- Vérifié : `tsc --noEmit` passe, lint stable (8 `any` dans `page.tsx`, comme avant ce
+  changement).
+
 ### 2026-09-22 (suite — en-têtes fixes pour repêchage/prospects + stats junior dans Repêchage LNH)
 
 **[Feature] — en-tête de tableau fixe pour Classement des prospects (`/draft-center`)**

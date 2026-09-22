@@ -1,10 +1,21 @@
 import { createClient } from '@/lib/supabase/server'
 import RepechageTable from './RepechageTable'
+import prospectStats2026 from '@/lib/data/draftProspects2026Stats.json'
 
 export const dynamic = 'force-dynamic'
 
 const PROTECTION_SEASONS = 5
 const NHL_RECORDS_URL = 'https://records.nhl.com/site/api/draft'
+
+// Équipe/PJ/PTS de la dernière saison avant repêchage (David, 2026-09-22) — extraites une fois
+// du fichier Excel fourni par David (voir python_script/extract_draft_prospects_2026_stats.py)
+// plutôt que de la table draft_prospects (qui reste la source de /draft-center, inchangée).
+// Ne couvre que le repêchage 2026 — jumelé par nom normalisé, '—' pour les autres années.
+const PROSPECT_STATS_DRAFT_YEAR = 2026
+const prospectStatsByName = new Map(
+  (prospectStats2026 as { fullNameNorm: string; team: string | null; gamesPlayed: number | null; points: number | null }[])
+    .map(p => [p.fullNameNorm, { team: p.team, games_played: p.gamesPlayed, points: p.points }]),
+)
 
 function getSaisonFinCourante() {
   const now = new Date()
@@ -105,19 +116,6 @@ export default async function RepechagePage() {
     }
   }
 
-  // Équipe/PJ/PTS de la dernière saison avant repêchage (David, 2026-09-22) — mêmes données
-  // que /draft-center, mais draft_prospects ne couvre que le repêchage à venir (pas d'historique
-  // pour les années passées) : jumelé par (année, nom normalisé), '—' si absent pour l'année.
-  const { data: prospectStats } = await supabase
-    .from('draft_prospects')
-    .select('draft_year, first_name, last_name, team, games_played, points')
-  const prospectStatsMap = new Map<string, { team: string | null; games_played: number | null; points: number | null }>(
-    (prospectStats ?? []).map((p) => [
-      `${p.draft_year}|${normName(p.first_name)} ${normName(p.last_name)}`,
-      { team: p.team, games_played: p.games_played, points: p.points },
-    ]),
-  )
-
   const matchedPlayerIds = new Set<number>()
 
   const picks = allPicks
@@ -136,8 +134,9 @@ export default async function RepechagePage() {
 
       if (dbPlayerId) matchedPlayerIds.add(dbPlayerId)
 
-      const prospectKey = `${p.draftYear}|${normName(p.firstName)} ${normName(p.lastName)}`
-      const prospectStat = prospectStatsMap.get(prospectKey)
+      const prospectStat = p.draftYear === PROSPECT_STATS_DRAFT_YEAR
+        ? prospectStatsByName.get(normName(`${p.firstName} ${p.lastName}`))
+        : undefined
 
       return {
         player_id: dbPlayerId ?? p.playerId,
