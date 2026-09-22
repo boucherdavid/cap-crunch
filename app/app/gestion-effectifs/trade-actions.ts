@@ -124,6 +124,9 @@ export type TradeOfferItemView = {
   currentPlayerType: 'actif' | 'reserviste' | 'recrue' | null
   // Salaire du joueur (David, 2026-09-22) — null pour un choix de repêchage.
   capNumber: number | null
+  // Position du joueur — null pour un choix de repêchage. Sert au sommaire d'impact projeté
+  // (composition F/D/G) dans TradeOffersTab.tsx.
+  position: string | null
 }
 
 export type TradeOfferView = {
@@ -145,17 +148,19 @@ async function resolveItemLabels(
   items: any[],
   season: string,
   unsignedMultiplier: number,
-): Promise<{ labels: Map<string, string>; caps: Map<string, number> }> {
+): Promise<{ labels: Map<string, string>; caps: Map<string, number>; positions: Map<string, string | null> }> {
   const playerIds = items.filter(i => i.item_type === 'player').map(i => i.player_id)
   const pickIds = items.filter(i => i.item_type === 'pick').map(i => i.pick_id)
   const labels = new Map<string, string>()
   const caps = new Map<string, number>()
+  const positions = new Map<string, string | null>()
 
   if (playerIds.length > 0) {
     const { data } = await db.from('players').select('id, first_name, last_name, position, player_contracts (season, cap_number)').in('id', playerIds)
     for (const p of data ?? []) {
       labels.set(`player-${p.id}`, `${p.last_name}, ${p.first_name}${p.position ? ` (${p.position})` : ''}`)
       caps.set(`player-${p.id}`, getEffectiveCap(p.player_contracts, season, unsignedMultiplier).cap)
+      positions.set(`player-${p.id}`, p.position ?? null)
     }
   }
   if (pickIds.length > 0) {
@@ -163,7 +168,7 @@ async function resolveItemLabels(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const p of (data ?? []) as any[]) labels.set(`pick-${p.id}`, `Choix ronde ${p.round} (${p.pool_seasons?.season ?? '?'})`)
   }
-  return { labels, caps }
+  return { labels, caps, positions }
 }
 
 export async function getMyTradeOffersAction(saisonId: number): Promise<{
@@ -210,7 +215,7 @@ export async function getMyTradeOffersAction(saisonId: number): Promise<{
       .in('trade_offer_id', relevantIds)
     allItems = data ?? []
   }
-  const { labels, caps } = await resolveItemLabels(db, allItems, season, unsignedMultiplier)
+  const { labels, caps, positions } = await resolveItemLabels(db, allItems, season, unsignedMultiplier)
   for (const item of allItems) {
     if (!itemsByOffer.has(item.trade_offer_id)) itemsByOffer.set(item.trade_offer_id, [])
     itemsByOffer.get(item.trade_offer_id)!.push(item)
@@ -243,6 +248,7 @@ export async function getMyTradeOffersAction(saisonId: number): Promise<{
         chosenType: item.chosen_type as 'actif' | 'reserviste' | null,
         currentPlayerType: item.item_type === 'player' ? (playerTypeById.get(item.player_id!) ?? null) : null,
         capNumber: caps.get(key) ?? null,
+        position: item.item_type === 'player' ? (positions.get(key) ?? null) : null,
       }
     }
     return {

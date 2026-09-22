@@ -1004,6 +1004,16 @@ corrigée le 2026-09-20 :**
   totaux `proposerCapGiven`/`targetCapGiven` sur `AdminTradeOfferView`). L'onglet Échanges
   affiche aussi en permanence la masse actuelle du pooler et l'espace restant sous le cap
   (`TradeOffersTab.tsx`, à partir de `listTradeableAssetsAction`).
+- **Aperçu live avant de confirmer (David, 2026-09-22)** — `computeProjection()`
+  (`TradeOffersTab.tsx`, JS pur côté client, aucun aller-retour serveur) recalcule à chaque
+  interaction (choix de type, ajustement supplémentaire) l'état final projeté : compte
+  attaquants/défenseurs/gardiens/réservistes et le cap total qui en résulterait — les joueurs
+  déjà donnés/reçus par l'échange ne comptent PAS encore dans l'alignement réel actuel tant que
+  l'échange n'est pas exécuté (rien n'est transféré avant que les deux confirment), donc ce
+  sommaire (retire les donnés, ajoute les reçus avec le type choisi, applique les ajustements)
+  est nécessaire pour avoir l'heure juste avant de cliquer "Confirmer ma part". Même logique
+  que `simulatePostTradeRoster` côté serveur (`app/lib/tradeOffers.ts`), dupliquée en JS pour
+  un retour instantané — la validation serveur reste la source de vérité à la soumission.
 - Écriture directe à l'exécution (pas de réutilisation d'`applyTransactionItems`,
   `admin/transactions/actions.ts`, même raison de cycle d'import que `waiverClaims.ts`) —
   duplique le strict minimum de la logique `'transfer'` déjà en place là-bas (même vocabulaire

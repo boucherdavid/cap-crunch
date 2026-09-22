@@ -8,7 +8,7 @@ import {
 } from './trade-actions'
 import type { TradeExtraAction } from '@/lib/tradeOffers'
 import { listOtherPoolersAction } from '../simulation/actions'
-import { getPlayerBucket } from '@/lib/rosterLimits'
+import { getPlayerBucket, ACTIVE_LIMITS } from '@/lib/rosterLimits'
 
 const fmtCap = (n: number) =>
   new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
@@ -189,10 +189,8 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap }: { sa
     setExtraChoices(prev => ({ ...prev, [offerId]: { ...prev[offerId], [playerId]: choice } }))
   }
 
-  function handleConfirm(offer: TradeOfferView) {
-    setError(null)
-    const types = chosenTypes[offer.id] ?? {}
-    const extras: TradeExtraAction[] = Object.entries(extraChoices[offer.id] ?? {})
+  function getExtraActions(offerId: number): TradeExtraAction[] {
+    return Object.entries(extraChoices[offerId] ?? {})
       .filter(([, choice]) => choice !== 'none')
       .map(([playerIdStr, choice]) => {
         const playerId = Number(playerIdStr)
@@ -202,11 +200,65 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap }: { sa
         if (choice === 'promote_reserviste') return { playerId, action: 'promote_recrue' as const, newType: 'reserviste' as const }
         return { playerId, action: 'change_status' as const, newType: choice as 'actif' | 'reserviste' }
       })
+  }
+
+  function handleConfirm(offer: TradeOfferView) {
+    setError(null)
+    const types = chosenTypes[offer.id] ?? {}
     startTransition(async () => {
-      const result = await confirmTradeReadyAction(offer.id, types, extras)
+      const result = await confirmTradeReadyAction(offer.id, types, getExtraActions(offer.id))
       if (result.error) setError(result.error)
       load()
     })
+  }
+
+  // Sommaire d'impact projeté (David, 2026-09-22) — recalcule l'état final AVANT de confirmer,
+  // à partir de l'alignement réel actuel (rien n'a encore été transféré à ce stade, seul
+  // "Confirmer ma part" déclenche l'exécution une fois les deux poolers prêts) : retire ce que
+  // ce pooler donne, ajoute ce qu'il reçoit avec le type choisi, applique les ajustements
+  // supplémentaires choisis — même logique que simulatePostTradeRoster côté serveur, en
+  // JS pur ici pour un aperçu live sans aller-retour serveur à chaque clic.
+  function computeProjection(offer: TradeOfferView) {
+    type Entry = { type: 'actif' | 'reserviste'; position: string | null; capNumber: number }
+    const entries = new Map<number, Entry>()
+    const recrueMap = new Map<number, { position: string | null; capNumber: number }>()
+    for (const i of myFullRoster) {
+      if (i.kind !== 'player') continue
+      if (i.playerType === 'recrue') { recrueMap.set(i.playerId, { position: i.position, capNumber: i.capNumber }); continue }
+      entries.set(i.playerId, { type: i.playerType, position: i.position, capNumber: i.capNumber })
+    }
+
+    for (const i of offer.give) if (i.kind === 'player') entries.delete(i.id)
+
+    let pendingChoice = false
+    for (const i of offer.receive) {
+      if (i.kind !== 'player' || i.currentPlayerType === 'recrue') continue
+      const chosen = chosenTypes[offer.id]?.[i.id]
+      if (!chosen) { pendingChoice = true; continue }
+      entries.set(i.id, { type: chosen, position: i.position, capNumber: i.capNumber ?? 0 })
+    }
+
+    for (const extra of getExtraActions(offer.id)) {
+      if (extra.action === 'release' || extra.action === 'demote_to_recrue') entries.delete(extra.playerId)
+      else if (extra.action === 'change_status') {
+        const cur = entries.get(extra.playerId)
+        if (cur) entries.set(extra.playerId, { ...cur, type: extra.newType })
+      } else if (extra.action === 'promote_recrue') {
+        const recrue = recrueMap.get(extra.playerId)
+        if (recrue) entries.set(extra.playerId, { type: extra.newType, position: recrue.position, capNumber: recrue.capNumber })
+      }
+    }
+
+    const all = Array.from(entries.values())
+    const actifs = all.filter(e => e.type === 'actif')
+    const reservistes = all.filter(e => e.type === 'reserviste')
+    const counts = { forward: 0, defense: 0, goalie: 0 }
+    for (const a of actifs) counts[getPlayerBucket(a.position)]++
+    const capUsed = all.reduce((s, e) => s + e.capNumber, 0)
+    const conform = !pendingChoice
+      && counts.forward === ACTIVE_LIMITS.forward && counts.defense === ACTIVE_LIMITS.defense && counts.goalie === ACTIVE_LIMITS.goalie
+      && reservistes.length >= 2 && capUsed <= poolCap
+    return { counts, reservistesCount: reservistes.length, capUsed, conform, pendingChoice }
   }
 
   if (loading) return <p className="text-sm text-gray-500">Chargement…</p>
@@ -365,6 +417,24 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap }: { sa
                                   </div>
                                 ))}
                               </div>
+                            </div>
+                          )
+                        })()}
+                        {(() => {
+                          const p = computeProjection(o)
+                          const compOk = p.counts.forward === ACTIVE_LIMITS.forward && p.counts.defense === ACTIVE_LIMITS.defense && p.counts.goalie === ACTIVE_LIMITS.goalie
+                          return (
+                            <div className={`text-xs rounded p-2 mb-2 border ${p.conform ? 'bg-green-50 border-green-200 text-green-800' : 'bg-white border-amber-300 text-gray-700'}`}>
+                              <p className="font-medium mb-0.5">
+                                Aperçu après cet échange {p.pendingChoice && <span className="font-normal text-gray-500">(en attente d&apos;un choix ci-dessus)</span>}
+                              </p>
+                              <p className={compOk ? '' : 'text-red-600'}>
+                                {p.counts.forward} attaquants · {p.counts.defense} défenseurs · {p.counts.goalie} gardiens
+                                {' '}({p.reservistesCount} réservistes)
+                              </p>
+                              <p className={p.capUsed > poolCap ? 'text-red-600' : ''}>
+                                Cap : {fmtCap(p.capUsed)} / {fmtCap(poolCap)} (reste {fmtCap(poolCap - p.capUsed)})
+                              </p>
                             </div>
                           )
                         })()}

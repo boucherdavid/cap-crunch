@@ -21,6 +21,29 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-22 (suite — aperçu live de l'impact avant de confirmer un échange)
+
+**[Feature] — sommaire projeté (composition + cap) recalculé à chaque interaction, avant de confirmer**
+(`app/app/gestion-effectifs/{trade-actions.ts,TradeOffersTab.tsx}`) :
+- David a remarqué que rien n'indiquait l'impact réel pendant qu'il ajustait les choix de type
+  et les ajustements supplémentaires, et a demandé un sommaire — en notant justement que
+  l'alignement réel actuel ne reflète pas encore l'échange (rien n'est transféré avant que les
+  deux poolers confirment), donc un sommaire correct doit déjà simuler le résultat plutôt que
+  d'afficher juste la masse courante.
+- `computeProjection()` (nouveau, `TradeOffersTab.tsx`) : reprend l'alignement réel
+  (`myFullRoster`), retire ce que ce pooler donne dans l'échange, ajoute ce qu'il reçoit avec
+  le type choisi, applique les ajustements supplémentaires en cours de saisie — recalcule en
+  JS pur (aucun aller-retour serveur) à chaque changement de sélection. Affiche
+  attaquants/défenseurs/gardiens/réservistes et le cap projeté (avec ce qui reste), en rouge si
+  hors limites, vert une fois conforme.
+- `TradeOfferItemView` gagne un champ `position` (jusqu'ici seulement encodé dans le libellé
+  texte) — nécessaire pour compter par groupe de position dans la projection.
+- Même logique que `simulatePostTradeRoster` côté serveur (source de vérité réelle à la
+  soumission) — dupliquée volontairement en JS pour un retour instantané sans latence réseau à
+  chaque clic.
+- Vérifié : `tsc --noEmit`, `eslint` (2 erreurs restantes, préexistantes — confirmées) et
+  `next build` passent.
+
 ### 2026-09-22 (suite — retour en banque/activation de recrue + salaires visibles partout dans les échanges)
 
 **[Feature] — demote_to_recrue/promote_recrue en ajustement supplémentaire + salaires à chaque étape**
