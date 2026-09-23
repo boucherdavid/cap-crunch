@@ -21,6 +21,47 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-23 (suite — accueil : activité du pool + actualité LNH, captures d'écran du guide)
+
+**[Recherche] — sources pour un futur suivi de blessures** : David a demandé de creuser avant
+de coder quoi que ce soit. Vérifié en direct (WebFetch) :
+- **CBS Sports** (`cbssports.com/nhl/injuries`) — meilleur candidat pour un suivi structuré :
+  page rendue côté serveur (pas de JS à contourner), organisée par équipe, colonnes
+  joueur/position/date de mise à jour/type de blessure/statut-retour prévu. Déjà une source de
+  confiance du pipeline (projections CBS) — même logique de jumelage de noms réutilisable.
+  Hockey-Reference et PoolExpert ont des tables similaires mais Sports-Reference a des
+  conditions d'utilisation plus strictes sur le scraping — écarté au profit de CBS.
+- **RSS général** — nhl.com n'a **aucun** flux RSS officiel (vérifié). ESPN, par contre, en a
+  un : `espn.com/espn/rss/nhl/news`, RSS 2.0 standard et valide, mis à jour en continu — zéro
+  scraping, contrairement à CBS.
+- Conclusion : suivi de blessures structuré = chantier séparé (nouveau script Python, nouvelle
+  table `player_injuries`, cron plus fréquent que le pipeline hebdo actuel — pas fait
+  aujourd'hui, à reprendre plus tard). Actualité LNH générale = bien plus petit, fait
+  aujourd'hui (voir ci-dessous).
+
+**[Feature] — deux nouveaux widgets sur la page d'accueil** (`app/app/page.tsx`) :
+- **Activité du pool** — les 6 derniers échanges/signatures/libérations-ballotage,
+  résumés en une phrase par transaction (`summarizeTransaction()`, même classification que
+  `TransactionsClient.tsx`/`/journal-transactions` mais condensée), avec lien "Tout voir" vers
+  le journal complet. Volontairement limité à ces 3 catégories (les plus "nouvelles" selon
+  David) — promotions/LTIR/changements de type restent dans le journal complet seulement.
+- **Actualité LNH** — les 6 dernières manchettes du flux RSS ESPN trouvé ci-dessus
+  (`fetchNhlNews()`), parsé à la main par regex (`extractXmlTag()`) plutôt que d'ajouter une
+  dépendance XML pour un besoin aussi simple — même esprit que les autres fetch externes déjà
+  dans ce fichier (`fetchTodayGames()`). Cache 30 min (`revalidate: 1800`). Chaque manchette
+  ouvre l'article ESPN dans un nouvel onglet.
+- Objectif de David : un accueil plus "tout-en-un" pour des poolers avec peu de temps — suivre
+  l'actualité et l'activité du pool sans naviguer ailleurs.
+- Vérifié : `tsc --noEmit` et `next build` passent, aucun warning.
+
+**[Feature] — captures d'écran intégrées au guide `/aide`** (`app/public/guide/*.png` nouveau,
+`app/app/aide/AideTabs.tsx`) : les 15 captures déposées par David dans `guide_app/screenshot/`
+(convenu en début de session) copiées vers `app/public/guide/` (noms nettoyés, ex.
+`Repêchage_LNH.png` → `repechage-lnh.png`) et branchées via le champ `screenshot` sur les 15
+sections concernées du Guide — y compris Statistiques LNH, dont la capture (940 joueurs)
+confirme que le bug d'affichage vide plus tôt dans la journée était bien résolu au moment de la
+prise. `guide_app/` reste le dépôt source, pas suivi par l'app elle-même.
+
 ### 2026-09-23 (suite — pick de repêchage affichant "Soumis" au lieu du nom de la recrue)
 
 **[Fix] — `/repechage-recrues` et `/admin/repechage` perdaient le nom d'une recrue déjà

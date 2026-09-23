@@ -203,6 +203,171 @@ function ScheduleList({
   )
 }
 
+// ---------- activité du pool ----------
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function playerName(p: any): string {
+  return p ? `${p.first_name} ${p.last_name}` : 'un joueur'
+}
+
+// Une ligne par transaction — reprend la même classification que TransactionsClient.tsx
+// (/journal-transactions) mais condensée en une phrase courte pour un widget d'accueil,
+// plutôt que le détail complet par item. Limité aux 3 catégories les plus "nouvelles"
+// (échanges, signatures, libérations/ballotage) — David, 2026-09-23 : le reste (promotions,
+// LTIR, changements de type) est moins pertinent pour un coup d'œil rapide.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function summarizeTransaction(items: any[]): string | null {
+  const transfers = items.filter(i => i.action_type === 'transfer')
+  if (transfers.length > 0) {
+    const names = Array.from(new Set(transfers.flatMap(i => [i.from_pooler?.name, i.to_pooler?.name]).filter(Boolean)))
+    return names.length === 2 ? `Échange entre ${names[0]} et ${names[1]}` : 'Échange entre poolers'
+  }
+  const ballotage = items.find(i => i.action_type === 'ballotage')
+  if (ballotage) return `${ballotage.to_pooler?.name ?? '?'} obtient ${playerName(ballotage.players)} au ballotage`
+  const releases = items.filter(i => i.action_type === 'release')
+  if (releases.length > 0) {
+    const from = releases[0].from_pooler?.name ?? '?'
+    return releases.length > 1 ? `${from} libère ${releases.length} joueurs` : `${from} libère ${playerName(releases[0].players)}`
+  }
+  const sign = items.find(i => i.action_type === 'sign')
+  if (sign) return `${sign.to_pooler?.name ?? '?'} signe ${playerName(sign.players)}`
+  return null
+}
+
+type PoolActivityItem = { id: number; createdAt: string; summary: string }
+
+async function fetchPoolActivity(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  poolSeasonId: number,
+  limit = 6,
+): Promise<PoolActivityItem[]> {
+  try {
+    const { data } = await supabase
+      .from('transactions')
+      .select(`
+        id, created_at,
+        transaction_items (
+          action_type,
+          from_pooler:poolers!from_pooler_id (name),
+          to_pooler:poolers!to_pooler_id (name),
+          players (first_name, last_name)
+        )
+      `)
+      .eq('pool_season_id', poolSeasonId)
+      .order('created_at', { ascending: false })
+      .limit(25)
+
+    const out: PoolActivityItem[] = []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const tx of (data ?? []) as any[]) {
+      const summary = summarizeTransaction(tx.transaction_items ?? [])
+      if (summary) out.push({ id: tx.id, createdAt: tx.created_at, summary })
+      if (out.length >= limit) break
+    }
+    return out
+  } catch {
+    return []
+  }
+}
+
+function fmtActivityDate(iso: string): string {
+  try {
+    const dayET = (d: Date) => new Intl.DateTimeFormat('fr-CA', {
+      timeZone: 'America/Toronto', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(d)
+    const d = new Date(iso)
+    if (dayET(d) === dayET(new Date())) return "Aujourd'hui"
+    if (dayET(d) === dayET(new Date(Date.now() - 86400000))) return 'Hier'
+    return new Intl.DateTimeFormat('fr-CA', {
+      timeZone: 'America/Toronto', day: 'numeric', month: 'short',
+    }).format(d).replace('.', '')
+  } catch { return '' }
+}
+
+function PoolActivityWidget({ items }: { items: PoolActivityItem[] }) {
+  if (items.length === 0) return null
+  return (
+    <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-slate-700 px-5 py-3 flex items-center justify-between">
+        <h2 className="text-white font-bold text-sm uppercase tracking-wide">Activité du pool</h2>
+        <Link href="/journal-transactions" className="text-xs text-slate-300 hover:text-white transition-colors">
+          Tout voir →
+        </Link>
+      </div>
+      <ul className="divide-y divide-gray-100">
+        {items.map(item => (
+          <li key={item.id} className="px-4 py-2.5 flex items-center justify-between gap-3">
+            <span className="text-sm text-gray-700">{item.summary}</span>
+            <span className="text-xs text-gray-400 shrink-0">{fmtActivityDate(item.createdAt)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+// ---------- actualité LNH (RSS) ----------
+
+type NewsItem = { title: string; link: string }
+
+function decodeXmlEntities(s: string): string {
+  return s
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#0*39;/g, "'")
+    .replace(/&amp;/g, '&')
+}
+
+function extractXmlTag(block: string, tag: string): string {
+  const m = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`))
+  if (!m) return ''
+  const raw = m[1].trim()
+  const cdata = raw.match(/^<!\[CDATA\[([\s\S]*?)\]\]>$/)
+  return decodeXmlEntities(cdata ? cdata[1] : raw)
+}
+
+// Flux RSS officiel d'ESPN (espn.com/espn/rss/nhl/news) — pas de flux officiel côté nhl.com
+// (vérifié, David 2026-09-23). Parsé à la main (regex) plutôt que d'ajouter une dépendance XML
+// pour un besoin aussi simple — même esprit que les autres fetch externes de cette page.
+async function fetchNhlNews(limit = 6): Promise<NewsItem[]> {
+  try {
+    const res = await fetch('https://www.espn.com/espn/rss/nhl/news', { next: { revalidate: 1800 } })
+    if (!res.ok) return []
+    const xml = await res.text()
+    const blocks = xml.match(/<item>[\s\S]*?<\/item>/g) ?? []
+    return blocks
+      .map(block => ({ title: extractXmlTag(block, 'title'), link: extractXmlTag(block, 'link') }))
+      .filter(n => n.title && n.link)
+      .slice(0, limit)
+  } catch {
+    return []
+  }
+}
+
+function NhlNewsWidget({ items }: { items: NewsItem[] }) {
+  if (items.length === 0) return null
+  return (
+    <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-slate-700 px-5 py-3">
+        <h2 className="text-white font-bold text-sm uppercase tracking-wide">Actualité LNH</h2>
+      </div>
+      <ul className="divide-y divide-gray-100">
+        {items.map((n, i) => (
+          <li key={i} className="px-4 py-2.5">
+            <a
+              href={n.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-gray-700 hover:text-blue-600 hover:underline"
+            >
+              {n.title}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 // ---------- header ----------
 
 function Header({
@@ -299,7 +464,11 @@ export default async function Home() {
   const playingTeams = new Set(todayGames.flatMap(g => [g.awayAbbrev, g.homeAbbrev]))
   const hasGames = todayGames.length > 0
 
-  const standings = saison ? await buildStandings(supabase, saison.id) : []
+  const [standings, poolActivity, nhlNews] = await Promise.all([
+    saison ? buildStandings(supabase, saison.id) : Promise.resolve([]),
+    saison ? fetchPoolActivity(supabase, saison.id) : Promise.resolve([]),
+    fetchNhlNews(),
+  ])
 
   // Classement séries depuis le cache BD + récap d'hier + joueurs en action séries
   let playoffStandings: { poolerId: string; poolerName: string; totalPoints: number; hierPts: number }[] = []
@@ -415,11 +584,14 @@ export default async function Home() {
               </div>
             )
           )}
+
+          <PoolActivityWidget items={poolActivity} />
         </div>
 
         <div className="space-y-4">
           <ScheduleList todayDate={todayDate} games={todayGames} />
           <ActivityTable activity={activity} todayDate={todayDate} hasGames={hasGames} />
+          <NhlNewsWidget items={nhlNews} />
         </div>
       </div>
     </div>

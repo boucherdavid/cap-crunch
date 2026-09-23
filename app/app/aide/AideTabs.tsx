@@ -112,6 +112,7 @@ const SECTIONS: Section[] = [
     title: 'Mon équipe',
     keywords: 'equipe alignement roster organisation actif reserviste recrue ltir picks repechage cap masse salariale pooler switcher',
     href: '/dashboard',
+    screenshot: '/guide/mon-equipe.png',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -151,6 +152,7 @@ const SECTIONS: Section[] = [
     title: 'Gestion d\'effectifs',
     keywords: 'gestion effectifs self service actif reserviste liberer recrue banque promouvoir cap limite saison demarree',
     href: '/gestion-effectifs',
+    screenshot: '/guide/gestion-effectifs.png',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -174,6 +176,7 @@ const SECTIONS: Section[] = [
     title: 'Ballotage',
     keywords: 'ballotage reclamer liberer joueur delai priorite classement onglet gestion effectifs',
     href: '/gestion-effectifs?tab=ballotage',
+    screenshot: '/guide/ballotage.png',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -196,6 +199,7 @@ const SECTIONS: Section[] = [
     title: 'Échanges entre poolers',
     keywords: 'echange transaction proposer accepter refuser approbation admin delai confirmer',
     href: '/gestion-effectifs?tab=echanges',
+    screenshot: '/guide/echanges.png',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -217,6 +221,7 @@ const SECTIONS: Section[] = [
     title: 'Signatures des agents libres (pré-saison)',
     keywords: 'repechage signatures agents libres presaison file attente tour signature admin bac a sable simulation liberer recrue pret alignement',
     href: '/repechage-agents-libres',
+    screenshot: '/guide/agents-libres.png',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -248,6 +253,7 @@ const SECTIONS: Section[] = [
     title: 'Simulation',
     keywords: 'simulation bac a sable transaction echange test scenario sauvegarder ir ltir actif reserviste agent libre recrue toute la saison',
     href: '/simulation',
+    screenshot: '/guide/simulation.png',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -275,6 +281,7 @@ const SECTIONS: Section[] = [
     title: 'Classement',
     keywords: 'classement rang points buts passes victoires gardien joueurs action ce soir widget hebdomadaire mensuel semaine mois',
     href: '/classement',
+    screenshot: '/guide/classement.png',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -383,6 +390,7 @@ const SECTIONS: Section[] = [
     title: 'Calendrier LNH',
     keywords: 'calendrier matchs semaine equipe vue mensuel analyse joueurs prochains jours schedule filtre',
     href: '/calendrier',
+    screenshot: '/guide/calendrier.png',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -407,6 +415,7 @@ const SECTIONS: Section[] = [
     title: 'Statistiques LNH',
     keywords: 'statistiques stats lnh patineurs gardiens points victoires toggle saison series disponible recrue filtre',
     href: '/statistiques',
+    screenshot: '/guide/statistiques-lnh.png',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -427,6 +436,7 @@ const SECTIONS: Section[] = [
     title: 'Statistiques AHL',
     keywords: 'ahl statistiques ligue developpement prospects recrue banque disponible filtre',
     href: '/statistiques/ahl',
+    screenshot: '/guide/statistiques-ahl.png',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -446,6 +456,7 @@ const SECTIONS: Section[] = [
     title: 'Projections',
     keywords: 'projections nhl.com cbs tendance points par match saison derniere progression disponible filtre',
     href: '/statistiques/projections',
+    screenshot: '/guide/projections.png',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -468,6 +479,7 @@ const SECTIONS: Section[] = [
     title: 'Contrats LNH',
     keywords: 'contrats lnh joueurs salaire cap statut elc rfa ufa disponibilite table',
     href: '/joueurs',
+    screenshot: '/guide/contrats-lnh.png',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -487,6 +499,7 @@ const SECTIONS: Section[] = [
     title: 'Classement pré-repêchage',
     keywords: 'classement pre repechage prospects draft center rang sources annee',
     href: '/draft-center',
+    screenshot: '/guide/draft-center.png',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -505,6 +518,7 @@ const SECTIONS: Section[] = [
     title: 'Repêchage LNH',
     keywords: 'repechage lnh resultats reel rondes equipe stats junior 2026',
     href: '/repechage',
+    screenshot: '/guide/repechage-lnh.png',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -523,6 +537,7 @@ const SECTIONS: Section[] = [
     title: 'Repêchage interne',
     keywords: 'repechage interne recrues pool saison qui a repeche qui',
     href: '/repechage-recrues',
+    screenshot: '/guide/repechage-recrues.png',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
