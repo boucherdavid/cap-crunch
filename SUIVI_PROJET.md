@@ -19,6 +19,26 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-09-23 (suite — onglet "Prochains matchs" sur la page d'alignement)
+
+**[Feature] — l'onglet Analyse de `/calendrier` déménage sur `/poolers/[id]`, renommé
+"Prochains matchs"** (`app/lib/nhlWeeklySchedule.ts` nouveau, `app/components/
+UpcomingGamesAnalysis.tsx` nouveau, `app/app/poolers/[id]/{page.tsx,PoolerPageTabs.tsx}`,
+`app/app/calendrier/{page.tsx,CalendrierClient.tsx}`) — suite logique de la discussion sur la
+sidebar : David trouvait que le résumé "mes joueurs cette semaine" avait plus sa place avec
+l'alignement qu'avec le calendrier LNH général.
+- Logique extraite dans `app/lib/nhlWeeklySchedule.ts` (fetch NHL, fenêtre glissante 7 jours,
+  `fetchOrgPlayersForPooler()`) et `app/components/UpcomingGamesAnalysis.tsx` (l'affichage,
+  repris tel quel de l'ex-`AnalyseTab`) — partagés entre les deux pages plutôt que dupliqués.
+- Sur `/poolers/[id]`, 5ᵉ onglet "Prochains matchs" — fonctionne pour **n'importe quel
+  pooler affiché** (pas juste soi-même), cohérent avec le reste de la page.
+- `/calendrier` perd son onglet Analyse (et sa barre d'onglets, devenue inutile à un seul
+  onglet) — garde seulement Matchs (navigation jour par jour, filtre équipe/mode séries).
+- Vérifié : `tsc --noEmit` et `next build` passent. `curl` sur `/calendrier` et `/poolers`
+  confirme un rendu sans erreur serveur (pas de session authentifiée disponible ici pour
+  tester `/poolers/[id]` directement ni l'interactivité des onglets — à valider par David).
+- CLAUDE.md section 5-6 mises à jour.
+
 ### 2026-09-23 (suite — affinage des groupes de la sidebar : regroupement par propriété)
 
 Après le premier jet de la sidebar (voir plus bas), David a proposé un principe

@@ -9,6 +9,7 @@ import { fetchStreaks, DEFAULT_INDICATOR_CONFIG } from '@/lib/streaks'
 import type { StreakInfo } from '@/lib/streaks'
 import { fetchActiveNhlSeasonId } from '@/lib/nhl-active-season'
 import { getEffectiveCap } from '@/lib/capUtils'
+import { todayET, fetchSchedule7, fetchOrgPlayersForPooler } from '@/lib/nhlWeeklySchedule'
 
 const DASH = '\u2014'
 const STAR = '\u2605'
@@ -344,6 +345,16 @@ export default async function PoolerPage({ params }: { params: Promise<{ id: str
     supabase.from('player_injuries').select('player_id, injury_type, status'),
   ])
   const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
+
+  // Onglet "Prochains matchs" (David, 2026-09-23) — ex-onglet "Analyse" de /calendrier,
+  // déplacé ici : combien de matchs pour les joueurs de CET alignement (pas juste le sien),
+  // dans les prochains jours.
+  const today = todayET()
+  const [schedule7, allOrgPlayers] = await Promise.all([
+    fetchSchedule7(today),
+    saison ? fetchOrgPlayersForPooler(supabase, id, saison.id) : Promise.resolve([]),
+  ])
+
   const injuriesByPlayerId = new Map(
     (injuriesData ?? []).map(row => [row.player_id, { injuryType: row.injury_type as string, status: row.status as string }])
   )
@@ -626,6 +637,9 @@ export default async function PoolerPage({ params }: { params: Promise<{ id: str
         alignementPlayers={alignementPlayers}
         streaks={streaks}
         changeLog={changeLog}
+        allOrgPlayers={allOrgPlayers}
+        schedule7={schedule7}
+        today={today}
       />
     </div>
   )

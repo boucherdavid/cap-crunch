@@ -438,7 +438,7 @@ sont deux natures de contenu différentes.**
 | Mon équipe (nouveau nom de groupe — le lien "Mon alignement", ex-"Mon équipe", garde son nom de page inchangé depuis le renommage plus haut le même jour) | Mon alignement · Gestion d'effectifs · Simulation — "ce qui m'appartient / que je contrôle" |
 | Le pool | Tous les alignements (ex-"Équipes") · Journal des transactions — "ce qui concerne les autres poolers" |
 | Classement | Saison complète · Hebdomadaire · Mensuel |
-| Statistiques (ex-partie de "LNH") | LNH · Projections · AHL · Calendrier (déplacé depuis Alignements — le calendrier LNH général n'est pas propre à un alignement ; le résumé personnel "mes joueurs cette semaine", lui, reste pour l'instant sur `/calendrier` avec le reste — idée en attente : en faire un onglet à part sur `/poolers/[id]`, pas encore construit) |
+| Statistiques (ex-partie de "LNH") | LNH · Projections · AHL · Calendrier (déplacé depuis Alignements — le calendrier LNH général n'est pas propre à un alignement ; le résumé personnel "mes joueurs cette semaine" a été extrait dans un onglet séparé sur `/poolers/[id]`, voir ci-dessous) |
 | Blessures | Lien autonome (plus regroupé sous "LNH", qui cachait la page selon le retour du pooler) |
 | Contrats LNH | Lien autonome (ex-sous-item de "LNH") |
 | Prospects LNH (ex-"Recrues", réduit) | Classement pré-repêchage · Repêchage LNH — référence sur le vrai repêchage LNH, rien de propre au pool |
@@ -461,6 +461,26 @@ repêchage. Route (`/repechage-agents-libres`), noms de fonctions et de tables
 (`presaison_draft_state`, etc.) inchangés à travers tous ces déplacements — seul le
 regroupement/libellé visible (menu, titre de page `<h1>`) a changé, pour éviter un chantier de
 renommage profond à faible valeur pour des changements qui ne touchent que l'affichage.
+
+**Onglet "Prochains matchs" sur `/poolers/[id]` (David, 2026-09-23)** — 5ᵉ onglet ajouté
+(Alignement/Masse Salariale/Recrues/Historique existants + celui-ci), ex-onglet "Analyse" de
+`/calendrier` : combien de matchs jouent les joueurs actif/réserviste/recrue d'un alignement
+dans les prochains jours (horizon 2-7J réglable, filtre par type de joueur, code couleur
+vert/bleu/gris). Fonctionne pour **n'importe quel pooler affiché**, pas seulement l'utilisateur
+connecté — utile pour évaluer l'horaire de quelqu'un avant un échange. Logique extraite dans
+deux fichiers partagés pour éviter la duplication :
+- `app/lib/nhlWeeklySchedule.ts` — fetch de l'API NHL publique (`fetchWeek`/`fetchSchedule7`,
+  fenêtre glissante des 7 prochains jours), `todayET()`/`addDays()`, et
+  `fetchOrgPlayersForPooler()` (actif/réserviste/recrue d'un pooler pour une saison, pas les
+  LTIR qui ne jouent pas).
+- `app/components/UpcomingGamesAnalysis.tsx` — le composant d'affichage (grille de joueurs +
+  compteur de matchs), extrait tel quel de l'ex-`AnalyseTab` de `/calendrier`.
+
+`/calendrier` (`CalendrierClient.tsx`) n'a donc plus qu'un seul onglet (Matchs) — la barre
+d'onglets y a été retirée en même temps que l'onglet Analyse, devenue inutile pour un seul
+onglet. `page.tsx` de `/calendrier` ne calcule plus `schedule7`/`allOrgPlayers` (utilise le
+`fetchWeek()` partagé pour sa propre navigation jour par jour, indépendante de la fenêtre
+glissante de 7 jours).
 
 **`/transactions` renommé `/journal-transactions` le 2026-09-01** (David) : c'est un historique
 en lecture seule (aucune saisie pooler), et le nom "Transactions" était réservé pour un futur

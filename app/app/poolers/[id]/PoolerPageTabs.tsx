@@ -6,8 +6,10 @@ import PlayerLink from '@/components/PlayerLink'
 import type { PlayerContrib, PeriodContrib } from '@/lib/standings'
 import type { StreakInfo, GoalieBadgeType } from '@/lib/streaks'
 import StreakLegend from '@/components/StreakLegend'
+import UpcomingGamesAnalysis from '@/components/UpcomingGamesAnalysis'
+import type { DaySchedule, OrgPlayer } from '@/lib/nhlWeeklySchedule'
 
-type Tab = 'masse-salariale' | 'alignement' | 'historique' | 'recrues'
+type Tab = 'masse-salariale' | 'alignement' | 'historique' | 'recrues' | 'prochains-matchs'
 
 type ChangeLogEntry = {
   id: number
@@ -221,12 +223,18 @@ export default function PoolerPageTabs({
   alignementPlayers,
   streaks,
   changeLog,
+  allOrgPlayers,
+  schedule7,
+  today,
 }: {
   masseSalarialeContent: React.ReactNode
   recruesContent: React.ReactNode
   alignementPlayers: PlayerContrib[]
   streaks: Record<number, StreakInfo>
   changeLog: ChangeLogEntry[]
+  allOrgPlayers: OrgPlayer[]
+  schedule7: DaySchedule[]
+  today: string
 }) {
   const [tab, setTab] = useState<Tab>('alignement')
   const [periodPopup, setPeriodPopup] = useState<PlayerContrib | null>(null)
@@ -267,6 +275,9 @@ export default function PoolerPageTabs({
         <button className={btnClass('recrues')} onClick={() => setTab('recrues')}>
           Recrues
         </button>
+        <button className={btnClass('prochains-matchs')} onClick={() => setTab('prochains-matchs')}>
+          Prochains matchs
+        </button>
         <button className={btnClass('historique')} onClick={() => setTab('historique')}>
           Historique
           {changeLog.length > 0 && (
@@ -278,6 +289,10 @@ export default function PoolerPageTabs({
       {tab === 'masse-salariale' && masseSalarialeContent}
 
       {tab === 'recrues' && recruesContent}
+
+      {tab === 'prochains-matchs' && (
+        <UpcomingGamesAnalysis allOrgPlayers={allOrgPlayers} schedule7={schedule7} today={today} />
+      )}
 
       {tab === 'alignement' && (
         <div className="space-y-4">
