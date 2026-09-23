@@ -347,8 +347,9 @@ function NhlNewsWidget({ items }: { items: NewsItem[] }) {
   if (items.length === 0) return null
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="bg-slate-700 px-5 py-3">
+      <div className="bg-slate-700 px-5 py-3 flex items-center justify-between">
         <h2 className="text-white font-bold text-sm uppercase tracking-wide">Actualité LNH</h2>
+        <span className="text-xs text-slate-300">Source : ESPN</span>
       </div>
       <ul className="divide-y divide-gray-100">
         {items.map((n, i) => (
