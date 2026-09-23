@@ -410,16 +410,38 @@ redondant dont l'erreur ne s'affichait nulle part — fusionné en un seul bouto
 "Démarrer/Relancer le repêchage", toujours visible avec l'éditeur d'ordre tant que le
 repêchage n'est pas activement en cours.
 
-**Menu pooler (`Navbar.tsx`) — réorganisé le 2026-08-30, ordre/regroupement affinés le
-2026-09-01, "Repêchage" scindé en Alignements/Recrues le 2026-09-14 :**
+**Menu pooler (`Navbar.tsx`) — refonte en sidebar le 2026-09-23 (David, suite à un retour de
+pooler : regroupements/libellés horizontaux pas clairs). Historique des menus horizontaux
+(2026-08-30 → 2026-09-14) ci-dessous pour mémoire, remplacé par l'arborescence latérale
+décrite juste après.**
 
-| Dropdown | Contenu |
+**Architecture sidebar (David, 2026-09-23)** — barre du haut minimale et fixe (`sticky top-0`,
+logo + installer PWA + avatar compte), sidebar de navigation séparée : persistante à gauche en
+desktop (`<aside className="hidden md:block fixed top-14 left-0 bottom-0 w-64">`,
+`layout.tsx` compense avec `md:pl-64` sur le contenu), tiroir superposé en mobile (glisse
+depuis la gauche, backdrop, ouvert par le hamburger de la barre du haut). Les deux réutilisent
+le même composant `NavTree`/tableau `NAV_GROUPS` (source unique — l'ancien menu dupliquait une
+liste desktop et une liste mobile séparées, source d'oublis). Chaque section est un groupe
+repliable (arborescence, pas tout déplié d'un coup) ; le groupe contenant la page courante se
+déplie automatiquement au chargement et après chaque navigation, le reste reste replié tant
+qu'on ne clique pas dessus.
+
+| Section | Contenu |
 |---|---|
-| Alignements (ex-Pool Saison) | Mon équipe · Équipes · Journal des transactions — puis séparateur — Gestion d'effectifs · Simulation · Signatures des agents libres (les 3 premiers = consultation, les 3 derniers = action) |
-| Classement | Saison complète · Hebdomadaire · Mensuel — sorti d'Alignements pour son propre menu |
-| LNH | 3 sections : Statistiques (LNH, AHL ; sous-item Projections) · Calendrier · Contrats (ex-"Contrats LNH", ex-item à plat) |
-| Recrues (ex-"Repêchage") | Classement pré-repêchage (ex-"Classement des prospects") · Repêchage LNH · Repêchage interne (ex-"Repêchage recrues") — réordonné et renommé le 2026-09-14 (David) |
-| Ressources | Babillard (global, ajouté le 2026-09-02) · Planification · Aide & Règlements (déplacé du menu Compte/avatar) |
+| Alignements | Mon alignement (ex-"Mon équipe") · Tous les alignements (ex-"Équipes") · Calendrier (déplacé de LNH — les poolers le voyaient comme lié à leurs alignements, pas aux stats) · Journal des transactions — puis séparateur — Gestion d'effectifs · Simulation · Signatures des agents libres |
+| Classement | Saison complète · Hebdomadaire · Mensuel |
+| Statistiques (ex-partie de "LNH") | LNH · Projections · AHL |
+| Blessures | Lien autonome (plus regroupé sous "LNH", qui cachait la page selon le retour du pooler) |
+| Contrats LNH | Lien autonome (ex-sous-item de "LNH") |
+| Recrues | Classement pré-repêchage · Repêchage LNH · Repêchage interne |
+| Communauté (scindé de "Ressources", trop vague) | Babillard · Planification |
+| Aide (scindé de "Ressources") | Aide & Règlements · À propos |
+| Admin (admin seulement) | Deux sous-groupes inchangés : Opérations courantes · Mise en place saisonnière |
+
+**Historique horizontal (2026-08-30 → 2026-09-14, remplacé) :** dropdowns Alignements ·
+Classement · LNH (Statistiques/Calendrier/Contrats regroupés) · Recrues · Ressources
+(Babillard/Planification/Aide regroupés) — c'est justement ce regroupement "LNH"/"Ressources"
+que le retour du pooler a identifié comme peu clair, d'où la scission ci-dessus.
 
 **"Repêchage agents libres" déplacé d'Recrues vers Alignements, renommé "Signatures des
 agents libres" (David, 2026-09-14)** — repositionné une fois `/repechage-agents-libres`

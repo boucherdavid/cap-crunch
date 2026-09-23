@@ -21,6 +21,57 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-23 (suite — refonte de la navigation en sidebar, suite à un retour de pooler)
+
+David a discuté avec un autre pooler : l'organisation des menus et la nomenclature n'étaient
+pas toujours claires — "Ressources" trop vague, "LNH" regroupait Statistiques/Contrats/
+Blessures sans que ce soit évident, le Calendrier semblait mal placé (lié aux alignements pour
+un pooler, pas aux stats LNH), "Mon équipe"/"Équipes" ne parlaient pas clairement. Discuté
+d'abord une option de renommages/déplacements mineurs en gardant la barre horizontale, mais le
+constat qu'aplatir "LNH"/"Ressources" ferait passer le menu horizontal à ~9 items au premier
+niveau (trop serré) a mené David à choisir une refonte plus profonde : passer à un panneau
+latéral avec arborescence.
+
+**[Feature] — refonte complète de `Navbar.tsx` en sidebar + tiroir mobile**
+(`app/components/Navbar.tsx`, `app/app/layout.tsx`) :
+- Barre du haut minimale et fixe (`sticky top-0`) : logo/Accueil, bouton Installer PWA, avatar
+  compte. Sidebar séparée : persistante à gauche en desktop (`fixed top-14 left-0 bottom-0
+  w-64`), tiroir superposé glissant depuis la gauche en mobile (backdrop, ouvert par le
+  hamburger de la barre du haut, ferme au clic sur un lien ou en dehors). `layout.tsx` ajoute
+  `md:pl-64` sur le contenu pour compenser la sidebar fixe desktop (pas nécessaire en mobile,
+  où le tiroir est superposé plutôt qu'en colonne).
+- Les deux (desktop et mobile) partagent maintenant la **même** source de données
+  (`NAV_GROUPS`/`NavTree`) — l'ancien menu horizontal dupliquait deux listes de liens
+  distinctes (une par dropdown desktop, une par section mobile), un vrai risque d'oubli à
+  chaque futur changement de menu. Chaque section est un groupe repliable (vraie
+  arborescence) ; le groupe contenant la page courante se déplie automatiquement au chargement
+  et après chaque navigation (`useEffect` sur `pathname`), le reste reste replié tant qu'on ne
+  clique pas dessus — évite d'avoir à tout dérouler pour trouver où on est, sans pour autant
+  tout afficher en permanence.
+- **Réorganisation du contenu**, en réponse directe au retour du pooler :
+  - **Alignements** : "Mon équipe" → **Mon alignement**, "Équipes" → **Tous les alignements**
+    (vocabulaire "alignement" déjà utilisé partout ailleurs dans l'app — règlements, onglets —
+    plutôt que "équipe", ambigu avec équipe LNH). **Calendrier déplacé ici** depuis LNH (David :
+    ça sert surtout à voir qui de nos joueurs joue, donc plus proche des alignements que des
+    stats LNH).
+  - **LNH scindé** : "Statistiques" (LNH/Projections/AHL) reste groupé — trois vues du même
+    type de données — mais **Blessures** et **Contrats LNH** deviennent des liens autonomes au
+    premier niveau (ex-sous-items cachés dans "LNH").
+  - **Ressources scindé** en **Communauté** (Babillard, Planification — fait aussi écho au hub
+    admin `/admin/communaute`) et **Aide** (Aide & Règlements, À propos).
+- Vérifié : `tsc --noEmit` et `next build` passent. Serveur de dev déjà en cours (`localhost:3000`)
+  relancé à chaud (hot reload) sans erreur — `curl` confirme un rendu sans crash serveur
+  (`/login`, qui partage le même layout) et la présence des nouvelles classes/textes attendus.
+  **Pas de vérification visuelle en navigateur connecté** (interactions : ouverture du tiroir,
+  clic pour replier/déplier un groupe, glissement de l'animation) — à valider par David,
+  justement avec l'aperçu mobile qu'il vient de mettre en place.
+- CLAUDE.md section 5 mise à jour (nouvelle architecture documentée, ancien tableau de menus
+  horizontaux conservé comme historique).
+
+**Prochaine étape suggérée** : valider visuellement en local/staging (desktop + l'aperçu
+mobile de David), en particulier avec le pooler qui avait signalé la confusion au départ —
+demander si la nouvelle organisation lui parle mieux.
+
 ### 2026-09-23 (suite — page dédiée /statistiques/blessures + cron déplacé à midi ET)
 
 **[Chore] — cron des blessures déplacé de 11h à 16h UTC** (`.github/workflows/injuries.yml`) :

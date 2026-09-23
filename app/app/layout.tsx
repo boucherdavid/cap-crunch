@@ -82,10 +82,14 @@ export default async function RootLayout({
       <body className="bg-gray-50 min-h-screen">
         <ServiceWorkerProvider />
         <Navbar initialUserName={userName} initialIsAdmin={isAdmin} initialUnreadCount={unreadCount} initialUnreadNotifCount={unreadNotifCount} />
-        <InstallBanner />
-        <main className="max-w-7xl mx-auto px-4 py-6">
-          {children}
-        </main>
+        {/* md:pl-64 compense la sidebar desktop fixe (Navbar.tsx) — pas nécessaire sur mobile,
+            où la nav devient un tiroir superposé plutôt qu'une colonne permanente. */}
+        <div className="md:pl-64">
+          <InstallBanner />
+          <main className="max-w-7xl mx-auto px-4 py-6">
+            {children}
+          </main>
+        </div>
         <Suspense>
           <PlayerSlideOver />
         </Suspense>
