@@ -6,6 +6,7 @@ import type { AhlSkater, AhlGoalie, AhlSeasonInfo } from '@/lib/ahl-stats'
 import TeamBadge from '@/components/TeamBadge'
 import { normalizeSearch } from '@/lib/normalizeSearch'
 import { normName } from '@/lib/nhl-stats'
+import DataLoadWarning from '@/components/DataLoadWarning'
 
 type Tab = 'skaters' | 'goalies'
 
@@ -107,6 +108,10 @@ export default function AhlStatsTable({
           </span>
         </div>
       </div>
+
+      {((tab === 'skaters' && skaters.length === 0) || (tab === 'goalies' && goalies.length === 0)) && (
+        <DataLoadWarning label={tab === 'skaters' ? 'les patineurs' : 'les gardiens'} />
+      )}
 
       {/* Filtres */}
       <div className="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-3 items-center">

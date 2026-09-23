@@ -535,6 +535,27 @@ const SECTIONS: Section[] = [
     ),
   },
 
+  {
+    id: 'guide-donnees-vides',
+    tab: 'guide',
+    title: 'Une page de données semble vide ou incomplète',
+    keywords: 'vide bug erreur recharger cache donnees manquantes probleme passager lnh ahl calendrier repechage statistiques',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Les statistiques LNH/AHL, le calendrier et les résultats de repêchage proviennent de sources externes
+          et sont gardés en mémoire quelques minutes à quelques heures pour accélérer l&apos;affichage.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• Si une de ces pages semble vide ou vous manque des joueurs de façon inattendue, il s&apos;agit le plus souvent d&apos;un <strong>accroc passager</strong> avec la source externe plutôt que d&apos;une vraie perte de données.</li>
+          <li>• Sur Statistiques LNH et AHL, un bandeau rouge avec un bouton <strong>Recharger la page</strong> apparaît automatiquement dans ce cas.</li>
+          <li>• Ailleurs, un simple rechargement de la page règle généralement le problème.</li>
+          <li>• Si ça persiste après quelques essais, utilisez <strong>Signaler un problème</strong> (menu de votre compte).</li>
+        </ul>
+      </div>
+    ),
+  },
+
   // ── RÈGLEMENTS ────────────────────────────────────────────────────────────
   {
     id: 'regl-alignement',

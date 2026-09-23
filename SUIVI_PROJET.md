@@ -21,6 +21,43 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-23 (suite — bandeau « données non chargées » + tip aide)
+
+**[Fix investigation] — `/statistiques` affichait 0 joueur pour la saison 2025-26** : David
+a repéré ça en prenant des captures d'écran pour le guide. Vérifié directement l'API NHL
+publique avec la requête exacte que fait l'app (`seasonId=20252026`, patineurs et gardiens) —
+répond correctement (430 Ko, <1s). Conclusion : accroc passager de l'API externe au moment de
+la requête, pas un bug de logique ni une perte de données. Confirmé par David : en rechargeant
+quelques minutes plus tard, les données étaient revenues — donc pas un problème de cache serveur
+qui serait resté « collé » (le `revalidate: 86400` de `fetchSkaters`/`fetchGoalies` n'a
+apparemment pas mis en cache la réponse en erreur, ou celle-ci n'a simplement pas eu le temps de
+se propager avant le rechargement).
+
+**[Feature] — bandeau d'avertissement + rechargement quand une source externe ne répond rien**
+(`app/components/DataLoadWarning.tsx` nouveau, `app/app/statistiques/StatsTable.tsx`,
+`app/app/statistiques/ahl/AhlStatsTable.tsx`) : David voulait un message pour inviter le
+pooler à recharger si ça se reproduit, partout où c'est pertinent. Scope volontairement limité
+aux deux pages où le motif est identique et facilement détectable sans faux positif :
+Statistiques LNH et AHL, où `skaters`/`goalies` (tableaux bruts, avant filtrage utilisateur)
+étant tous les deux vides pour l'onglet actif est un signal fiable d'échec de la source externe
+plutôt qu'un « aucun résultat » légitime dû aux filtres — distinction déjà faite par
+`hasFilters` existant, réutilisée implicitement en vérifiant les tableaux non filtrés plutôt
+que `filteredSkaters`/`filteredGoalies`. Bandeau rouge avec bouton « Recharger la page »
+(`window.location.reload()`).
+- **Pages exclues du scope** (raisons notées pour éviter de refaire l'analyse) : `/calendrier`
+  a un cache de 5 min seulement (`revalidate: 300`, bien plus court que les 24h des stats) et
+  une semaine réellement sans match (pause All-Star, entre-saison) est un vrai cas légitime
+  difficile à distinguer d'un échec — trop de faux positifs pour la valeur. `/repechage` a un
+  fetch par année de repêchage (`revalidate: 3600`), donc une seule année en échec ne casse pas
+  toute la page — moins clairement détectable sans re-architecturer. `/statistiques/projections`
+  lit Supabase, pas une API externe avec ce même risque de cache.
+- **Couverture plus large en documentation plutôt qu'en code** pour ces cas plus ambigus :
+  nouvelle entrée Guide dans `/aide` (`guide-donnees-vides`, `AideTabs.tsx`) — explique que les
+  pages de données LNH/AHL/calendrier/repêchage sont mises en cache, qu'un accroc passager peut
+  occasionnellement vider une page, et que recharger règle généralement le problème (sinon,
+  Signaler un problème).
+- Vérifié : `tsc --noEmit` et `next build` passent.
+
 ### 2026-09-23 — merge staging→main + nouvelle page /a-propos + guide plus convivial
 
 **[Chore] — merge groupé `staging` → `main`** : 25 commits accumulés depuis le 2026-09-21
