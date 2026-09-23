@@ -209,7 +209,7 @@ const SECTIONS: Section[] = [
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Le pooler visé doit <strong>accepter ou refuser</strong> votre proposition.</li>
           <li>• Si accepté, l&apos;<strong>admin doit approuver</strong> l&apos;échange avant que quoi que ce soit ne bouge.</li>
-          <li>• Une fois approuvé, vous avez un délai pour <strong>confirmer</strong> que le résultat entre dans votre masse salariale et votre composition (12/6/2 + réservistes) — ajustez au besoin dans Mouvements avant de confirmer.</li>
+          <li>• Une fois approuvé, vous avez un délai pour <strong>confirmer</strong> que le résultat entre dans votre masse salariale et votre composition (12/6/2 + réservistes) — si ça ne rentre pas encore, une section dédiée directement dans cet onglet vous permet d&apos;ajuster au passage (libérer, changer actif/réserviste, activer ou remettre en banque une recrue), pas besoin d&apos;aller dans Mouvements séparément.</li>
           <li>• L&apos;échange s&apos;exécute seulement une fois que <strong>les deux poolers</strong> ont confirmé. Si l&apos;un des deux ne confirme pas à temps, l&apos;échange est annulé pour les deux — personne ne perd rien, à refaire au besoin.</li>
         </ul>
       </div>
@@ -581,7 +581,7 @@ const SECTIONS: Section[] = [
       <ul className="text-sm text-gray-700 space-y-1.5">
         <li>• <strong>12 attaquants</strong>, <strong>6 défenseurs</strong> et <strong>2 gardiens</strong> actifs au maximum.</li>
         <li>• Minimum <strong>2 réservistes</strong> (toutes positions confondues).</li>
-        <li>• Une fois la saison officiellement démarrée par l&apos;administrateur, votre alignement doit respecter exactement ces nombres (12/6/2 actifs) — en cours de saison, un sous-effectif temporaire est toléré tant que le maximum n&apos;est pas dépassé.</li>
+        <li>• Une fois la saison officiellement démarrée par l&apos;administrateur, tout mouvement soumis dans Gestion d&apos;effectifs doit laisser votre alignement à exactement ces nombres — un sous-effectif est tout aussi bloquant qu&apos;un dépassement (c&apos;est pour ça que les mouvements groupés existent : libérer et activer en un seul geste, sans jamais passer par un état invalide).</li>
       </ul>
     ),
   },
@@ -596,6 +596,7 @@ const SECTIONS: Section[] = [
         <li>• Le facteur et le plafond NHL peuvent être ajustés par l&apos;administrateur avant ou pendant une saison.</li>
         <li>• Seuls les joueurs <strong>actifs</strong> et <strong>réservistes</strong> comptent dans la masse salariale.</li>
         <li>• Les joueurs en <strong>LTIR</strong> et dans la <strong>banque de recrues</strong> ne comptent <em>pas</em> dans la masse.</li>
+        <li>• Un joueur sans contrat réel compte une masse <strong>simulée</strong> (dernier contrat connu × un facteur, généralement 1.20) pour éviter qu&apos;il compte 0$ — si ce joueur signe ensuite un vrai contrat qui vous fait dépasser le cap, vous avez un délai (par défaut 7 jours) pour vous ajuster vous-même avant que l&apos;administrateur ne doive intervenir.</li>
       </ul>
     ),
   },
@@ -637,7 +638,7 @@ const SECTIONS: Section[] = [
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
         <li>• S&apos;applique uniquement aux libérations en <strong>cours de saison</strong> (pas aux libérations de la phase pré-saison).</li>
-        <li>• La priorité de réclamation est l&apos;<strong>ordre inverse du classement</strong> au moment précis de la libération — elle ne change pas même si le classement bouge ensuite.</li>
+        <li>• La priorité de réclamation est l&apos;<strong>ordre inverse du classement</strong> au moment précis de la libération — elle ne change pas même si le classement bouge ensuite. <strong>Avant le 1ᵉʳ novembre</strong> (le classement n&apos;a pas encore de sens en tout début de saison), c&apos;est plutôt l&apos;ordre du repêchage des agents libres pré-saison qui sert de priorité.</li>
         <li>• Réclamable jusqu&apos;à <strong>23h59 (heure de l&apos;Est) du 2e jour suivant</strong> la libération (délai configurable par l&apos;administrateur) — attribué le lendemain de cette date limite.</li>
         <li>• En cas de réclamations multiples sur le même joueur, seule la priorité tranche.</li>
         <li>• Une fois gagné, vous avez <strong>48h</strong> pour l&apos;ajouter vous-même à votre alignement, sinon l&apos;administrateur doit intervenir manuellement.</li>

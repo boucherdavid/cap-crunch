@@ -21,6 +21,31 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-23 (suite — Règlements de /aide passés en revue, 3 périmés corrigés)
+
+**[Fix docs] — David a demandé une vérification : les règlements affichés dans `/aide` étaient-ils
+à jour ?** (`app/app/aide/AideTabs.tsx`) — comparé section par section au détail des règles dans
+`CLAUDE.md` (sections 1 et 6, la référence maintenue). Trois inexactitudes trouvées et corrigées :
+- **`regl-alignement`** — affirmait qu&apos;« un sous-effectif temporaire est toléré tant que le
+  maximum n&apos;est pas dépassé » en cours de saison. Périmé depuis le fix du 2026-09-20
+  (`validateRosterLimits`) : un sous-effectif est maintenant tout aussi bloquant qu&apos;un
+  dépassement à chaque mouvement soumis dans Gestion d&apos;effectifs — corrigé.
+- **`regl-ballotage`** — ne mentionnait pas que la priorité utilise l&apos;ordre du repêchage
+  pré-saison avant le 1ᵉʳ novembre (le classement n&apos;a pas encore de sens en tout début de
+  saison, ajouté le 2026-09-21) plutôt que le classement réel — pertinent tout de suite
+  (aujourd&apos;hui 23 septembre) — ajouté.
+- **`guide-echanges`** (Guide, pas Règlements, mais trouvé dans la même relecture) — disait
+  d&apos;« ajuster au besoin dans Mouvements » avant de confirmer un échange, alors que Mouvements
+  exige toujours exactement 12/6/2 et bloquerait justement ce genre d&apos;ajustement préparatoire.
+  La vraie fonctionnalité (2026-09-22) est une section dédiée directement dans l&apos;onglet
+  Échanges — corrigé pour refléter ça.
+- **Ajout** dans `regl-cap` : le délai de grâce (7 jours par défaut) avant qu&apos;un dépassement
+  causé par la signature réelle d&apos;un joueur jusque-là simulé n&apos;oblige une intervention
+  admin (`cap_signing_watch`) — jamais documenté nulle part côté pooler jusqu&apos;ici.
+- Reste du contenu (recrues, cap de base, agents libres, transactions) vérifié conforme à
+  CLAUDE.md, rien d&apos;autre à corriger.
+- Vérifié : `tsc --noEmit` et `next build` passent.
+
 ### 2026-09-23 (suite — accueil : activité du pool + actualité LNH, captures d'écran du guide)
 
 **[Recherche] — sources pour un futur suivi de blessures** : David a demandé de creuser avant
