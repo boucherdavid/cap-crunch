@@ -7,10 +7,13 @@ on:
   # Déclenchement manuel depuis l'onglet Actions sur GitHub
   workflow_dispatch:
 
-  # Schedule automatique : tous les jours à 11h00 UTC (~7h ET) — les blessures changent vite,
-  # contrairement au pipeline hebdomadaire salaires/contrats/repêchage.
+  # Schedule automatique : tous les jours à 16h00 UTC (midi heure de l'Est, actuellement en
+  # heure d'été) — les blessures changent vite, contrairement au pipeline hebdomadaire
+  # salaires/contrats/repêchage. GitHub Actions ne suit pas les changements d'heure
+  # (contrairement à dateRanges.ts côté app) : ce sera 11h ET plutôt que midi une fois l'heure
+  # d'hiver commencée (début novembre) — écart mineur, sans conséquence pour ce cron.
   schedule:
-    - cron: '0 11 * * *'
+    - cron: '0 16 * * *'
 
 jobs:
   scrape:

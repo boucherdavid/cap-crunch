@@ -37,7 +37,7 @@ en bout dans cette session :
 - Remplacement complet à chaque run (delete + reinsert) — pas de confirmation interactive
   contrairement aux autres scripts `--apply` (celui-ci tourne aussi sans supervision via cron,
   et l'enjeu est faible : table purement informative, jamais lue par une autre table).
-- Cron quotidien dédié (`.github/workflows/injuries.yml`, 11h UTC) — séparé du pipeline
+- Cron quotidien dédié (`.github/workflows/injuries.yml`, 16h UTC (midi ET)) — séparé du pipeline
   hebdomadaire, les blessures changent trop vite pour attendre une semaine.
 
 **[Feature] — affichage dans l'app**, limité aux joueurs `actif`/`reserviste` (ceux pour qui le

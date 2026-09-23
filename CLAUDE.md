@@ -138,7 +138,7 @@ python generate_backup_tool.py   # écrit backup/pool_backup.html
 # main dans un Excel), cette page est directement scrapable (HTML rendu côté serveur). Cible
 # toujours prod comme les autres scripts — utiliser `.env.staging` pour tester sans toucher
 # prod. Remplacement complet à chaque run (delete + reinsert), jamais incrémental. Régénéré
-# aussi automatiquement chaque jour (.github/workflows/injuries.yml, 11h UTC — les blessures
+# aussi automatiquement chaque jour (.github/workflows/injuries.yml, 16h UTC (midi ET) — les blessures
 # changent vite, contrairement au pipeline hebdomadaire).
 cd python_script
 python scrape_cbs_injuries.py            # dry-run — aucune écriture, affiche le jumelage
@@ -166,7 +166,7 @@ Hockey_Pool_App/
 │       ├── import.yml             ← Pipeline auto (lundi 6h UTC + manuel)
 │       ├── keepalive_staging.yml  ← Ping staging (jeudi 6h UTC) pour éviter pause Supabase
 │       ├── backup_tool.yml        ← Régénère backup/pool_backup.html (dimanche 12h UTC + manuel)
-│       └── injuries.yml           ← Scrape blessures CBS Sports (quotidien 11h UTC + manuel)
+│       └── injuries.yml           ← Scrape blessures CBS Sports (quotidien 16h UTC (midi ET) + manuel)
 ├── app/                       ← Application Next.js
 │   ├── CLAUDE.md              ← Règles spécifiques Next.js/TypeScript
 │   ├── AGENTS.md
@@ -1072,7 +1072,7 @@ corrigée le 2026-09-20 :**
   projections CBS) — 59/59 blessures jumelées au premier essai.
 - Remplacement complet à chaque run (delete + reinsert), jamais incrémental — la page CBS
   représente l'état "actuellement blessé", pas un historique. Cron quotidien dédié
-  (`.github/workflows/injuries.yml`, 11h UTC), séparé du pipeline hebdomadaire salaires/
+  (`.github/workflows/injuries.yml`, 16h UTC (midi ET)), séparé du pipeline hebdomadaire salaires/
   contrats/repêchage — les blessures changent trop vite pour attendre une semaine. Cible
   toujours prod, comme les autres scripts.
 - Affichage dans l'app, limité aux joueurs `actif`/`reserviste` (ceux pour qui le LTIR est une
