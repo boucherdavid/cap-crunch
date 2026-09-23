@@ -34,9 +34,14 @@ function SectionCard({ s, badge }: { s: Section; badge?: string }) {
       )}
       {s.content}
       {s.screenshot && (
-        <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={s.screenshot} alt={s.title} className="w-full block" />
+        <div className="mt-4">
+          <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={s.screenshot} alt={s.title} className="w-full block" />
+          </div>
+          <p className="text-xs text-gray-400 italic mt-1.5">
+            Capture d&apos;écran à titre indicatif — les joueurs, alignements et données affichés peuvent ne plus être d&apos;actualité.
+          </p>
         </div>
       )}
     </div>
