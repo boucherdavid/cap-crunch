@@ -19,6 +19,15 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-09-23 (suite — 3 derniers ajustements de la sidebar)
+
+**[Chore] — trois retouches demandées par David** (`app/components/Navbar.tsx`) :
+- "Classement" renommé **"Classement du pool"**.
+- "Calendrier" sorti du groupe Statistiques, devient un lien autonome **"Calendrier LNH"**
+  (même nom que le `<h1>`/titre de page), positionné entre Classement du pool et Statistiques.
+- Vérifié : `tsc --noEmit` et `next build` passent.
+- CLAUDE.md section 5 mise à jour.
+
 ### 2026-09-23 (suite — onglet "Prochains matchs" sur la page d'alignement)
 
 **[Feature] — l'onglet Analyse de `/calendrier` déménage sur `/poolers/[id]`, renommé
