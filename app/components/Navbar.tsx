@@ -239,6 +239,7 @@ export default function Navbar({
                     <Link href="/statistiques" className={dropdownLinkClass('/statistiques')}>LNH</Link>
                     <Link href="/statistiques/projections" className={dropdownLinkClass('/statistiques/projections')}>LNH - Projections Pts</Link>
                     <Link href="/statistiques/ahl" className={dropdownLinkClass('/statistiques/ahl')}>AHL</Link>
+                    <Link href="/statistiques/blessures" className={dropdownLinkClass('/statistiques/blessures')}>Blessures</Link>
                     <div className="border-t my-1" />
                     <div className="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Calendrier</div>
                     <Link href="/calendrier" className={dropdownLinkClass('/calendrier')}>Calendrier</Link>
@@ -415,6 +416,7 @@ export default function Navbar({
             <Link href="/statistiques" className={mobileLinkClass('/statistiques')}>Statistiques LNH</Link>
             <Link href="/statistiques/projections" className={mobileLinkClass('/statistiques/projections')}>LNH - Projections Pts</Link>
             <Link href="/statistiques/ahl" className={mobileLinkClass('/statistiques/ahl')}>Statistiques AHL</Link>
+            <Link href="/statistiques/blessures" className={mobileLinkClass('/statistiques/blessures')}>Blessures</Link>
             <Link href="/calendrier" className={mobileLinkClass('/calendrier')}>Calendrier</Link>
             <Link href="/joueurs"    className={mobileLinkClass('/joueurs')}>Contrats LNH</Link>
 

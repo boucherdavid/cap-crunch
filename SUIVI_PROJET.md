@@ -21,6 +21,28 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-23 (suite — page dédiée /statistiques/blessures + cron déplacé à midi ET)
+
+**[Chore] — cron des blessures déplacé de 11h à 16h UTC** (`.github/workflows/injuries.yml`) :
+David voulait midi heure de l'Est plutôt que 7h ET. GitHub Actions ne suit pas les changements
+d'heure (contrairement à `dateRanges.ts` côté app) — 16h UTC = midi EDT (heure d'été,
+actuellement en vigueur) mais deviendra 11h ET une fois l'heure d'hiver commencée (~1er
+novembre) ; écart mineur assumé, sans conséquence pour ce cron. Précisé aussi : les workflows
+planifiés (`schedule:`) ne se déclenchent que depuis la branche par défaut (`main`) — tant que
+ce fichier reste sur `staging`, rien ne tourne automatiquement, peu importe l'heure configurée.
+
+**[Feature] — nouvelle page `/statistiques/blessures`** (`app/app/statistiques/blessures/
+{page.tsx,BlessuresTable.tsx}` nouveaux) — David voulait une vraie page listant les blessures,
+pas seulement les badges ponctuels déjà en place. Portée volontairement plus large que ces
+badges : **toute la LNH**, pas seulement les actifs/réservistes du pool (contrairement au widget
+d'accueil). Colonnes : joueur (lien vers le panneau détail via `PlayerLink`), équipe, position,
+type de blessure, statut CBS, et une colonne <strong>Dans le pool</strong> qui indique le
+pooler propriétaire et son type de roster (actif/réserviste/recrue/LTIR) peu importe si le
+joueur compte dans la masse salariale, ou "Disponible" sinon. Recherche par nom/équipe + filtre
+"Disponibles seulement", même patron que les autres tableaux de stats. Ajoutée au menu
+LNH → Statistiques (desktop + mobile) et au Guide `/aide`.
+- Vérifié : `tsc --noEmit` et `next build` passent, route générée.
+
 ### 2026-09-23 (suite — chantier blessures construit de bout en bout : scraper, table, affichage, cron)
 
 David a confirmé : CBS Sports en priorité, Yahoo mis de côté pour l'instant. Construit de bout

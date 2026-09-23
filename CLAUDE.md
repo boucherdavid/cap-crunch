@@ -239,7 +239,10 @@ Vérifié par lecture du code le 2026-07-17 (build `next build` + grep des liens
 mettre à jour cette section dès qu'une route ou un onglet admin change (voir section 11).
 
 **Utilisateur :**
-`/` `/login` `/joueurs` `/statistiques` `/statistiques/ahl` `/repechage` `/repechage-recrues` `/calendrier`
+`/` `/login` `/joueurs` `/statistiques` `/statistiques/ahl` `/statistiques/blessures`
+(David, 2026-09-23 — table des blessures LNH en cours, source `player_injuries`/CBS Sports,
+voir section 6 ; colonne "Dans le pool" indique qui possède chaque joueur blessé, peu importe
+son type de roster, ou "Disponible" si personne) `/repechage` `/repechage-recrues` `/calendrier`
 `/poolers` `/poolers/[id]` `/journal-transactions` (historique en lecture seule — pas de
 saisie pooler ; distinct de `/admin/transactions`, l'outil admin) `/classement`
 `/classement/hebdomadaire` `/classement/mensuel` (David, 2026-09-17 — mêmes données que
@@ -1084,6 +1087,11 @@ corrigée le 2026-09-20 :**
     `GestionEffectifsManager.tsx`) — visible directement en choisissant qui mettre au LTIR.
   - Widget "Blessures dans le pool" sur l'accueil (`app/app/page.tsx`,
     `fetchPoolInjuries()`/`PoolInjuriesWidget`), tous poolers confondus.
+  - Page dédiée `/statistiques/blessures` (`LNH → Statistiques → Blessures`) — table de
+    **toute** la LNH (pas seulement le pool), avec recherche par nom/équipe, filtre
+    "Disponibles seulement", et une colonne "Dans le pool" qui indique le pooler propriétaire
+    et le type de roster (actif/réserviste/recrue/LTIR), peu importe si le joueur compte dans
+    la masse salariale — ou "Disponible" si personne ne le possède.
 
 ---
 
@@ -1108,7 +1116,8 @@ Règle : quand on touche une page de consultation, on la rend responsive en mêm
 - Masquer les colonnes secondaires sur mobile : `hidden sm:table-cell`
 - Pas de layout en colonnes côte à côte sur mobile (`flex-wrap` ou `grid-cols-1`)
 
-Pages de consultation : `/`, `/joueurs`, `/statistiques`, `/statistiques/ahl`, `/repechage`,
+Pages de consultation : `/`, `/joueurs`, `/statistiques`, `/statistiques/ahl`,
+`/statistiques/blessures`, `/repechage`,
 `/poolers`, `/poolers/[id]`, `/journal-transactions`, `/gestion-series`, `/classement-series`,
 `/classement`, `/classement/hebdomadaire`, `/classement/mensuel`, `/aide`, `/a-propos`
 

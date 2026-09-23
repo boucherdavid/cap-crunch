@@ -456,6 +456,26 @@ const SECTIONS: Section[] = [
     ),
   },
   {
+    id: 'guide-blessures',
+    tab: 'guide',
+    title: 'Blessures LNH',
+    keywords: 'blessures injuries ir ltir cbs sports disponible dans le pool proprietaire',
+    href: '/statistiques/blessures',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Accédez-y via <strong>LNH → Statistiques → Blessures</strong> — la liste des joueurs
+          actuellement blessés dans la LNH, mise à jour quotidiennement (source CBS Sports).
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• Type de blessure et statut (ex. « Expected to be out until at least Oct 2 »), en anglais tel que fourni par la source.</li>
+          <li>• La colonne <strong>Dans le pool</strong> indique quel pooler possède le joueur et son type de roster (actif/réserviste/recrue/LTIR), ou <strong>Disponible</strong> si personne.</li>
+          <li>• Un badge <strong>Blessé</strong> apparaît aussi directement sur Mon équipe/Équipes et dans les menus de Gestion d&apos;effectifs, pour vous aider à repérer quand mettre un joueur au LTIR.</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
     id: 'guide-projections',
     tab: 'guide',
     title: 'Projections',
