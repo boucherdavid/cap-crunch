@@ -53,6 +53,7 @@ export default async function RepechageAdminPage({
     { data: rookiesData },
     { data: bankData },
     { data: orderData },
+    { data: pickHistoryData },
   ] = await Promise.all([
     supabase
       .from('pool_draft_picks')
@@ -85,6 +86,15 @@ export default async function RepechageAdminPage({
       .select('original_owner_id, draft_order, original_owner:poolers!original_owner_id(id, name)')
       .eq('pool_season_id', saison.id)
       .eq('round', 1),
+    // Historique pick -> joueur pour l'affichage du tableau, indépendant du statut courant
+    // du joueur (David, 2026-09-23 — un joueur promu actif depuis son repêchage sort du
+    // filtre player_type='recrue' ci-dessous et affichait "Soumis" sans nom malgré un pick
+    // bien complété). Ne sert qu'à l'affichage, jamais à `availableRookies`.
+    supabase
+      .from('pooler_rosters')
+      .select('draft_pick_id, players(id, first_name, last_name, position, teams(code), draft_round, draft_overall)')
+      .eq('pool_season_id', saison.id)
+      .not('draft_pick_id', 'is', null),
   ])
 
   const poolerOrderMap = new Map<string, { id: string; name: string; draft_order: number | null }>()
@@ -100,7 +110,7 @@ export default async function RepechageAdminPage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const playerByPickId = new Map<number, any>()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const entry of (bankData ?? []) as any[]) {
+  for (const entry of (pickHistoryData ?? []) as any[]) {
     if (entry.draft_pick_id != null) {
       playerByPickId.set(entry.draft_pick_id, entry.players)
     }

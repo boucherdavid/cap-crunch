@@ -21,6 +21,33 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-23 (suite — pick de repêchage affichant "Soumis" au lieu du nom de la recrue)
+
+**[Fix] — `/repechage-recrues` et `/admin/repechage` perdaient le nom d'une recrue déjà
+promue actif** (`app/app/repechage-recrues/page.tsx`, `app/app/admin/repechage/page.tsx`) :
+David a repéré ça en prenant des captures d'écran — le pick #1 de Nicolas (ronde 1, repêchage
+2025) affichait juste "✓ Soumis" au lieu du nom du joueur choisi, alors que les 7 autres picks
+de la ronde s'affichaient normalement.
+- Cause : `playerByPickId` (utilisé par `DraftBoard.tsx` pour afficher qui a été choisi à
+  chaque pick) était construit à partir de la même requête `pooler_rosters` que `inBankIds`
+  (sert à exclure les recrues déjà en banque de la liste des joueurs disponibles) — filtrée sur
+  `player_type='recrue' AND pool_draft_year=poolDraftYear AND is_active=true`. Dès qu'une
+  recrue est promue au statut actif (`applyTransactionItems`, `action_type='promote'` — une
+  simple UPDATE en place sur la ligne existante, qui préserve `draft_pick_id` mais change
+  `player_type`), elle sort de ce filtre et disparaît silencieusement de `playerByPickId`,
+  même si le pick lui-même reste bien "complété" (`is_used=true` sur `pool_draft_picks`).
+  Repêchage 2025 datant de plus d'un an, plusieurs recrues de premier tour ont déjà eu le temps
+  d'être activées par leur pooler — d'où l'apparition du bug seulement maintenant.
+- Corrigé en séparant les deux besoins : nouvelle requête `pickHistoryData` (même table,
+  seulement `draft_pick_id IS NOT NULL`, sans filtre sur `player_type`/`pool_draft_year`/
+  `is_active`) dédiée à `playerByPickId` — l'affichage du tableau de repêchage redevient
+  purement historique (qui a été choisi à ce pick, peu importe son statut actuel), tandis que
+  la requête `bankData` d'origine reste inchangée pour `inBankIds`/`availableRookies` (doit
+  rester strictement "encore en banque" pour ce calcul-là). Même correctif appliqué aux deux
+  pages qui partagent `DraftBoard.tsx`.
+- Vérifié : `tsc --noEmit` et `next build` passent. Pas de test visuel en navigateur connecté —
+  à valider par David en rechargeant `/repechage-recrues` (saison 2025-26) en staging.
+
 ### 2026-09-23 (suite — bandeau « données non chargées » + tip aide)
 
 **[Fix investigation] — `/statistiques` affichait 0 joueur pour la saison 2025-26** : David
