@@ -1,0 +1,38 @@
+name: Blessures LNH (CBS Sports)
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  # Déclenchement manuel depuis l'onglet Actions sur GitHub
+  workflow_dispatch:
+
+  # Schedule automatique : tous les jours à 11h00 UTC (~7h ET) — les blessures changent vite,
+  # contrairement au pipeline hebdomadaire salaires/contrats/repêchage.
+  schedule:
+    - cron: '0 11 * * *'
+
+jobs:
+  scrape:
+    name: Scrape cbssports.com/nhl/injuries et importe dans player_injuries
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: python_script/requirements.txt
+
+      - name: Installer les dépendances
+        run: pip install -r python_script/requirements.txt
+
+      - name: Scraper et importer les blessures
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python python_script/scrape_cbs_injuries.py --apply

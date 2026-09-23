@@ -37,6 +37,7 @@ export type RosterEntry = {
   isEstimatedCap: boolean
   lastDeactivatedAt: string | null  // ISO timestamp de la dernière désactivation (actif→res ou ltir)
   recrueEligible: boolean  // is_rookie, draft_year dans la fenêtre de 5 saisons, ou statut ELC — peut retourner à la banque de recrues
+  injury: { injuryType: string; status: string } | null  // source CBS Sports, voir player_injuries
 }
 
 export type RosterForPooler = {
@@ -128,7 +129,7 @@ export async function getPoolerRosterAction(
   // retourner à la banque de recrues.
   const draftYearCutoff = parseInt(season.split('-')[0], 10) + 1 - 5
 
-  const [{ data: rosterData }, { data: deactRows }, { data: settings }] = await Promise.all([
+  const [{ data: rosterData }, { data: deactRows }, { data: settings }, { data: injuriesData }] = await Promise.all([
     supabase
       .from('pooler_rosters')
       .select(`
@@ -151,8 +152,12 @@ export async function getPoolerRosterAction(
       .in('change_type', ['deactivation', 'ltir'])
       .order('changed_at', { ascending: false }),
     supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
+    supabase.from('player_injuries').select('player_id, injury_type, status'),
   ])
   const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
+  const injuriesByPlayerId = new Map(
+    (injuriesData ?? []).map(row => [row.player_id, { injuryType: row.injury_type as string, status: row.status as string }])
+  )
 
   // most recent deactivation date per player
   const deactMap = new Map<number, string>()
@@ -175,6 +180,7 @@ export async function getPoolerRosterAction(
       isEstimatedCap: isEstimated,
       lastDeactivatedAt: deactMap.get(r.player_id) ?? null,
       recrueEligible: !!(r.players?.is_rookie || (r.players?.draft_year != null && r.players.draft_year >= draftYearCutoff) || r.players?.status === 'ELC'),
+      injury: injuriesByPlayerId.get(r.player_id) ?? null,
     }
   })
 

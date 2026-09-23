@@ -132,6 +132,19 @@ cd python_script
 python generate_backup_tool.py   # écrit backup/pool_backup.html
 ```
 
+```bash
+# Scrape les blessures LNH depuis cbssports.com/nhl/injuries et remplace player_injuries
+# (David, 2026-09-23) — aide au suivi du LTIR. Contrairement aux projections CBS (collées à la
+# main dans un Excel), cette page est directement scrapable (HTML rendu côté serveur). Cible
+# toujours prod comme les autres scripts — utiliser `.env.staging` pour tester sans toucher
+# prod. Remplacement complet à chaque run (delete + reinsert), jamais incrémental. Régénéré
+# aussi automatiquement chaque jour (.github/workflows/injuries.yml, 11h UTC — les blessures
+# changent vite, contrairement au pipeline hebdomadaire).
+cd python_script
+python scrape_cbs_injuries.py            # dry-run — aucune écriture, affiche le jumelage
+python scrape_cbs_injuries.py --apply    # exécution réelle, sans confirmation (voir section 4)
+```
+
 ---
 
 ## 3. Structure du projet
@@ -152,7 +165,8 @@ Hockey_Pool_App/
 │   └── workflows/
 │       ├── import.yml             ← Pipeline auto (lundi 6h UTC + manuel)
 │       ├── keepalive_staging.yml  ← Ping staging (jeudi 6h UTC) pour éviter pause Supabase
-│       └── backup_tool.yml        ← Régénère backup/pool_backup.html (dimanche 12h UTC + manuel)
+│       ├── backup_tool.yml        ← Régénère backup/pool_backup.html (dimanche 12h UTC + manuel)
+│       └── injuries.yml           ← Scrape blessures CBS Sports (quotidien 11h UTC + manuel)
 ├── app/                       ← Application Next.js
 │   ├── CLAUDE.md              ← Règles spécifiques Next.js/TypeScript
 │   ├── AGENTS.md
@@ -168,6 +182,7 @@ Hockey_Pool_App/
 │   ├── import_supabase.py
 │   ├── import_drafts.py
 │   ├── generate_backup_tool.py ← Génère backup/pool_backup.html (voir section 2)
+│   ├── scrape_cbs_injuries.py  ← Scrape les blessures LNH (voir section 2)
 │   ├── source/                ← CSV générés par le scraping
 │   ├── teams_offline/
 │   ├── diagnostics/
@@ -193,6 +208,8 @@ Hockey_Pool_App/
   `playoff_pool_standings_cache` (pool des séries — PAS `series_round_rosters`, qui
   n'existe pas malgré une ancienne mention ici)
 - `cap_signing_watch` (conformité cap continue, voir section 6)
+- `player_injuries` (suivi des blessures LNH, source CBS Sports — voir section 6, une ligne par
+  joueur blessé, remplacée en entier chaque jour par `python_script/scrape_cbs_injuries.py`)
 - `meeting_polls`, `meeting_poll_dates`, `meeting_poll_responses`, `meeting_poll_comments`
   (sondage de planification, `/planification` — le babillard `meeting_poll_comments` est
   propre à ce sondage, distinct de `bulletin_posts`/`bulletin_comments` ci-dessous)
@@ -1045,6 +1062,28 @@ corrigée le 2026-09-20 :**
 - RLS `trade_offers`/`trade_offer_items` : lecture publique + admin seulement en écriture,
   même patron que `waiver_claims` — toutes les écritures passent par `createAdminClient()`
   depuis des Server Actions qui font leur propre vérification d'autorisation.
+
+**Suivi des blessures LNH (`player_injuries`) — David, 2026-09-23 :**
+- Source unique : CBS Sports (`cbssports.com/nhl/injuries`), scrapée par
+  `python_script/scrape_cbs_injuries.py` (HTML rendu côté serveur, pas de JS à contourner —
+  contrairement à TSN, écarté après vérification). Yahoo validé comme source utilisable en
+  second choix mais pas branché (David a choisi de rester sur CBS seul pour l'instant).
+  Jumelage des noms réutilise `projections_common.py` (même logique que les imports de
+  projections CBS) — 59/59 blessures jumelées au premier essai.
+- Remplacement complet à chaque run (delete + reinsert), jamais incrémental — la page CBS
+  représente l'état "actuellement blessé", pas un historique. Cron quotidien dédié
+  (`.github/workflows/injuries.yml`, 11h UTC), séparé du pipeline hebdomadaire salaires/
+  contrats/repêchage — les blessures changent trop vite pour attendre une semaine. Cible
+  toujours prod, comme les autres scripts.
+- Affichage dans l'app, limité aux joueurs `actif`/`reserviste` (ceux pour qui le LTIR est une
+  vraie décision à prendre — un joueur déjà en LTIR ou en banque de recrues n'a pas besoin du
+  signal) :
+  - Badge rouge "Blessé" (tooltip = type + statut CBS) sur `/poolers/[id]` (Mon équipe et
+    Équipes, même page), dans `RosterTable`.
+  - Étiquette texte dans les `<select>` de `/gestion-effectifs` (`entryLabel()`,
+    `GestionEffectifsManager.tsx`) — visible directement en choisissant qui mettre au LTIR.
+  - Widget "Blessures dans le pool" sur l'accueil (`app/app/page.tsx`,
+    `fetchPoolInjuries()`/`PoolInjuriesWidget`), tous poolers confondus.
 
 ---
 

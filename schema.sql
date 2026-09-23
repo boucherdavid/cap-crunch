@@ -1150,3 +1150,27 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 --
 -- ALTER TABLE trade_offers ADD COLUMN IF NOT EXISTS proposer_extra_actions JSONB;
 -- ALTER TABLE trade_offers ADD COLUMN IF NOT EXISTS target_extra_actions JSONB;
+
+-- Migration 2026-09-23 : table player_injuries (suivi des blessures LNH, David) — source CBS
+-- Sports (cbssports.com/nhl/injuries, scrapée par python_script/scrape_cbs_injuries.py), pour
+-- aider à repérer quand mettre un joueur au LTIR. Remplacement complet à chaque scrape (delete +
+-- reinsert, jamais incrémental) — la page CBS représente l'état "actuellement blessé", pas un
+-- historique ; un joueur guéri doit disparaître de la table, pas juste rester périmé. Une seule
+-- ligne par joueur (UNIQUE sur player_id). À exécuter une seule fois dans le SQL Editor Supabase
+-- (staging d'abord, puis prod) :
+--
+-- CREATE TABLE player_injuries (
+--   id SERIAL PRIMARY KEY,
+--   player_id INTEGER REFERENCES players(id) ON DELETE CASCADE UNIQUE,
+--   position VARCHAR(10),
+--   injury_type VARCHAR(100),
+--   status TEXT,               -- texte brut CBS, ex: "Expected to be out until at least Oct 2"
+--   updated_label VARCHAR(20),  -- texte brut CBS, ex: "Sep 22" (pas de vraie date, CBS n'en
+--                               -- fournit pas avec l'année)
+--   scraped_at TIMESTAMPTZ DEFAULT NOW()
+-- );
+--
+-- ALTER TABLE player_injuries ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Lecture publique player_injuries" ON player_injuries FOR SELECT USING (true);
+-- CREATE POLICY "Admin gère player_injuries" ON player_injuries FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));

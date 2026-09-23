@@ -54,7 +54,8 @@ function todayLocal() {
 
 function entryLabel(e: RosterEntry) {
   const meta = [e.position, e.teamCode].filter(Boolean).join(', ')
-  return `${e.lastName}, ${e.firstName}${meta ? ` (${meta})` : ''}`
+  const injuryTag = e.injury ? ' 🩹 blessé' : ''
+  return `${e.lastName}, ${e.firstName}${meta ? ` (${meta})` : ''}${injuryTag}`
 }
 
 function capFmt(n: number | null) {
@@ -492,6 +493,7 @@ export default function GestionEffectifsManager({
       isEstimatedCap: false,
       lastDeactivatedAt: null,
       recrueEligible: false,
+      injury: null,
     })
 
     switch (addType) {
@@ -575,6 +577,7 @@ export default function GestionEffectifsManager({
       isEstimatedCap: false,
       lastDeactivatedAt: null,
       recrueEligible: false,
+      injury: null,
     }
     setCart(c => [...c, {
       localId: crypto.randomUUID(), type: 'ballotage',

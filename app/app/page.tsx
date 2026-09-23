@@ -387,6 +387,75 @@ function NhlNewsWidget({ items }: { items: NewsItem[] }) {
   )
 }
 
+// ---------- blessures du pool ----------
+
+type PoolInjuryItem = { poolerName: string; playerName: string; injuryType: string; status: string }
+
+// Limité aux joueurs actif/réserviste (ceux qui comptent dans la masse salariale et pour qui
+// le LTIR est une vraie décision à prendre) — un joueur déjà en LTIR ou en banque de recrues
+// n'a pas besoin de ce signal (David, 2026-09-23 : source CBS Sports, voir
+// python_script/scrape_cbs_injuries.py et player_injuries).
+async function fetchPoolInjuries(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  poolSeasonId: number,
+  limit = 8,
+): Promise<PoolInjuryItem[]> {
+  try {
+    const [{ data: rosterRows }, { data: injuriesData }] = await Promise.all([
+      supabase
+        .from('pooler_rosters')
+        .select('poolers (name), players (id, first_name, last_name)')
+        .eq('pool_season_id', poolSeasonId)
+        .eq('is_active', true)
+        .in('player_type', ['actif', 'reserviste']),
+      supabase.from('player_injuries').select('player_id, injury_type, status'),
+    ])
+    const injuriesByPlayerId = new Map((injuriesData ?? []).map(r => [r.player_id, r]))
+
+    const out: PoolInjuryItem[] = []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const row of (rosterRows ?? []) as any[]) {
+      const player = row.players
+      if (!player) continue
+      const inj = injuriesByPlayerId.get(player.id)
+      if (!inj) continue
+      out.push({
+        poolerName: row.poolers?.name ?? '?',
+        playerName: `${player.first_name} ${player.last_name}`,
+        injuryType: inj.injury_type,
+        status: inj.status,
+      })
+      if (out.length >= limit) break
+    }
+    return out
+  } catch {
+    return []
+  }
+}
+
+function PoolInjuriesWidget({ items }: { items: PoolInjuryItem[] }) {
+  if (items.length === 0) return null
+  return (
+    <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-slate-700 px-5 py-3 flex items-center justify-between">
+        <h2 className="text-white font-bold text-sm uppercase tracking-wide">Blessures dans le pool</h2>
+        <span className="text-xs text-slate-300">Source : CBS Sports</span>
+      </div>
+      <ul className="divide-y divide-gray-100">
+        {items.map((it, i) => (
+          <li key={i} className="px-4 py-2.5 flex items-center justify-between gap-3">
+            <span className="text-sm text-gray-700">
+              <span className="font-medium">{it.playerName}</span>
+              <span className="text-gray-400"> ({it.poolerName})</span>
+            </span>
+            <span className="text-xs text-red-600 text-right shrink-0" title={it.status}>{it.injuryType}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 // ---------- header ----------
 
 function Header({
@@ -483,9 +552,10 @@ export default async function Home() {
   const playingTeams = new Set(todayGames.flatMap(g => [g.awayAbbrev, g.homeAbbrev]))
   const hasGames = todayGames.length > 0
 
-  const [standings, poolActivity, nhlNews] = await Promise.all([
+  const [standings, poolActivity, poolInjuries, nhlNews] = await Promise.all([
     saison ? buildStandings(supabase, saison.id) : Promise.resolve([]),
     saison ? fetchPoolActivity(supabase, saison.id) : Promise.resolve([]),
+    saison ? fetchPoolInjuries(supabase, saison.id) : Promise.resolve([]),
     fetchNhlNews(),
   ])
 
@@ -605,6 +675,7 @@ export default async function Home() {
           )}
 
           <PoolActivityWidget items={poolActivity} />
+          <PoolInjuriesWidget items={poolInjuries} />
         </div>
 
         <div className="space-y-4">

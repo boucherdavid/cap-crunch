@@ -21,6 +21,44 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-23 (suite — chantier blessures construit de bout en bout : scraper, table, affichage, cron)
+
+David a confirmé : CBS Sports en priorité, Yahoo mis de côté pour l'instant. Construit de bout
+en bout dans cette session :
+
+**[Feature] — `player_injuries` + `scrape_cbs_injuries.py`** (`schema.sql`,
+`python_script/scrape_cbs_injuries.py` nouveau) :
+- Migration exécutée par David dans le SQL Editor Supabase staging (table + RLS, lecture
+  publique/écriture admin, même patron que `cap_signing_watch`/`waiver_claims`).
+- Scraper testé en dry-run avant même la migration (lecture seule, pas besoin de la table) :
+  59/59 blessures jumelées à la base `players` via `projections_common.py`, 1 seul jumelage
+  approximatif (Artem Zub, nom de famille+équipe seulement — probablement juste une variante de
+  prénom en base). Puis import réel (`--apply`) confirmé en staging.
+- Remplacement complet à chaque run (delete + reinsert) — pas de confirmation interactive
+  contrairement aux autres scripts `--apply` (celui-ci tourne aussi sans supervision via cron,
+  et l'enjeu est faible : table purement informative, jamais lue par une autre table).
+- Cron quotidien dédié (`.github/workflows/injuries.yml`, 11h UTC) — séparé du pipeline
+  hebdomadaire, les blessures changent trop vite pour attendre une semaine.
+
+**[Feature] — affichage dans l'app**, limité aux joueurs `actif`/`reserviste` (ceux pour qui le
+LTIR est une vraie décision à prendre) :
+- Badge rouge "Blessé" (tooltip = type de blessure + statut CBS) sur `/poolers/[id]`
+  (`RosterTable`, couvre à la fois Mon équipe et Équipes) — nouveau prop `injuriesByPlayerId`.
+- Étiquette "🩹 blessé" directement dans les `<select>` de `/gestion-effectifs`
+  (`entryLabel()`) — visible en choisissant qui mettre au LTIR, l'endroit exact où la décision
+  se prend. Nouveau champ `injury` sur `RosterEntry` (`actions.ts`), peuplé dans
+  `getPoolerRosterAction`.
+- Widget "Blessures dans le pool" sur l'accueil (`fetchPoolInjuries()`/`PoolInjuriesWidget`,
+  `app/app/page.tsx`) — tous poolers confondus, complète les deux vues ci-dessus qui sont
+  par-pooler.
+- Vérifié : `tsc --noEmit` et `next build` passent.
+
+**Reste à faire** : exécuter la même migration SQL en **prod** avant que le cron GitHub Actions
+(déjà actif, cible toujours prod) ne tente d'écrire dans une table qui n'existe pas encore là-bas
+— sinon le premier run quotidien échouera silencieusement (erreur Supabase, pas de crash
+bloquant pour le reste du site, mais aucune donnée ne sera importée en prod tant que ce n'est pas
+fait).
+
 ### 2026-09-23 (suite — Daily Faceoff ajouté aux manchettes + validation TSN/Yahoo pour les blessures)
 
 **[Recherche] — TSN et Yahoo comme sources de blessures (proposés par David, qui les utilisait
