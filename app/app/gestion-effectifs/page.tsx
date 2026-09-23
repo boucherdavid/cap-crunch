@@ -74,7 +74,7 @@ export default async function GestionEffectifsPage({
       </p>
       <GestionEffectifsManager
         isAdmin={isAdmin}
-        initialTab={tab === 'ballotage' ? 'ballotage' : 'mouvements'}
+        initialTab={tab === 'ballotage' ? 'ballotage' : tab === 'echanges' ? 'echanges' : 'mouvements'}
         selfPoolerId={pooler.id}
         selfPoolerName={pooler.name}
         saisonId={saison.id}

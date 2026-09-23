@@ -246,17 +246,19 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-x-auto mb-6">
+      {/* max-h + overflow-auto (pas juste overflow-x-auto) : n\u00e9cessaire pour que le sticky des
+          <th> ait un effet visible \u2014 voir ProjectionsTable.tsx (David, 2026-09-22). */}
+      <div className="bg-white rounded-lg shadow overflow-auto max-h-[75vh] mb-6">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-gray-50 border-b">
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Joueur</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">{'\u00c9quipe'}</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Pos</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">{'\u00c2ge'}</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">{'Exp\u00e9rience'}</th>
+            <tr className="border-b">
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Joueur</th>
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">{'\u00c9quipe'}</th>
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Pos</th>
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">{'\u00c2ge'}</th>
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">{'Exp\u00e9rience'}</th>
               {SEASONS.map((season) => (
-                <th key={season} className={`text-right px-4 py-3 font-medium text-gray-600${season !== currentSeason ? ' hidden lg:table-cell' : ''}`}>{season}</th>
+                <th key={season} className={`sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600${season !== currentSeason ? ' hidden lg:table-cell' : ''}`}>{season}</th>
               ))}
             </tr>
           </thead>
@@ -387,16 +389,16 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
           </button>
 
           {showProspects && (
-            <div className="border-t overflow-x-auto">
+            <div className="border-t overflow-auto max-h-[75vh]">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50 border-b">
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Joueur</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">{'\u00c9quipe'}</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Pos</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Rep\u00each\u00e9</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Ronde</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Rang</th>
+                  <tr className="border-b">
+                    <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Joueur</th>
+                    <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">{'\u00c9quipe'}</th>
+                    <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Pos</th>
+                    <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Rep\u00each\u00e9</th>
+                    <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Ronde</th>
+                    <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Rang</th>
                   </tr>
                 </thead>
                 <tbody>

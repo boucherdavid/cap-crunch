@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-21
+Derniere mise a jour: 2026-09-22
 
 ## Role du fichier
 
@@ -20,6 +20,521 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-09-22 (suite — jumelage cassé pour les noms à trait d'union/apostrophe/point)
+
+**[Fix] — normalisation de nom divergente entre le script d'extraction et la page**
+(`python_script/extract_draft_prospects_2026_stats.py`, `app/app/repechage/page.tsx`) — David
+a repéré "Louis-Félix Bourque" sans stats malgré une entrée valide dans le fichier source.
+Cause : `normalize()` (Python, construit la clé du JSON) ne remplaçait que les accents, alors
+que `normName()` (TSX, cherche dans le JSON à l'affichage) remplaçait *aussi* les traits
+d'union par des espaces — "louis-felix bourque" d'un côté, "louis felix bourque" de l'autre,
+jumelage silencieusement raté. Les deux normalisent maintenant identiquement : tout caractère
+non alphanumérique (trait d'union, apostrophe, point d'initiale...) devient un espace, pas
+seulement les accents. JSON régénéré ; 7 noms affectés dans ce fichier confirmés corrigés
+("J.P. Hurlbert", "Louis-Antoine Denault", etc.).
+- Vérifié : `tsc --noEmit` passe.
+
+### 2026-09-22 (suite — stats junior de /repechage : fichier Excel dédié plutôt que draft_prospects)
+
+**[Fix] — source des colonnes équipe/PJ/PTS de `/repechage` changée pour un fichier Excel
+dédié** (`python_script/extract_draft_prospects_2026_stats.py`,
+`app/lib/data/draftProspects2026Stats.json`, `app/app/repechage/page.tsx`) — David a fourni
+`excel/nhl_draft_prospects_2026_stats_for_2025.xlsx` (mock draft LNH 2026 avec statistiques
+2025-26, non commité — `excel/` est gitignored) et demandé de ne plus utiliser `draft_prospects`
+(qui reste la source de `/draft-center`, inchangée) pour ces 3 colonnes.
+- `extract_draft_prospects_2026_stats.py` (usage ponctuel) parse le fichier — 224 prospects sur
+  7 rondes, colonnes Rang/Équipe repêcheuse/Joueur (nom+position+suffixe "Verified by..." à
+  nettoyer)/Équipe junior/Ligue/PJ/B/A/PTS — vers `app/lib/data/draftProspects2026Stats.json`
+  (nom normalisé comme clé de jumelage, pas besoin de séparer prénom/nom de cette feuille).
+  **Gardiens** (32 sur 224) : les colonnes B/A/PTS de la feuille sont réutilisées pour
+  moyenne/%arrêt sur ces lignes — `points` mis à `null` explicitement pour eux (seul PJ reste
+  valide), pour ne pas afficher une fausse valeur de points.
+- `page.tsx` importe ce JSON directement (bundlé au build, pas de requête réseau/DB) et jumelle
+  par nom normalisé, seulement pour `draft_year === 2026` (portée du fichier) — years
+  antérieures gardent `—`, comportement inchangé.
+- Vérifié : `tsc --noEmit` passe, lint stable (8 `any` dans `page.tsx`, comme avant ce
+  changement).
+
+### 2026-09-22 (suite — en-têtes fixes pour repêchage/prospects + stats junior dans Repêchage LNH)
+
+**[Feature] — en-tête de tableau fixe pour Classement des prospects (`/draft-center`)**
+(`app/app/draft-center/DraftCenterTable.tsx`) — même correctif que les autres tableaux
+aujourd'hui (`overflow-auto max-h-[75vh]` + `sticky top-0` sur chaque `<th>`), avec une
+nuance : les 2 premières colonnes (Moy./Joueur) étaient déjà figées horizontalement
+(`sticky left-*`) pour rester visibles au défilement latéral — elles reçoivent maintenant
+aussi `top-0` pour un coin figé dans les deux sens, d'où un z-index plus élevé (z-20 contre
+z-10 pour les autres en-têtes) afin de passer par-dessus au croisement.
+
+**[Feature] — bandeaux année/ronde fixes + stats de la dernière saison junior dans
+`/repechage` (Repêchage LNH)** (`app/app/repechage/page.tsx`,
+`app/app/repechage/RepechageTable.tsx`) :
+- Ce tableau n'a pas de `<thead>` classique (chaque ronde est son propre mini-tableau, sans
+  colonnes bornées en hauteur) — le correctif overflow-auto/max-h des autres tableaux ne
+  s'applique pas ici. À la place : les bandeaux "Repêchage {année}" et "Ronde {round}"
+  deviennent `sticky` (empilés — année en haut `top-0 z-20`, ronde juste dessous
+  `top-[52px] z-10`, valeur approximative de la hauteur du bandeau année) pour toujours savoir
+  où on se trouve dans une liste de 1000+ choix. Pas de conteneur borné nécessaire ici : ces
+  bandeaux ne sont pas dans un `overflow-x-auto`, sticky s'accroche donc directement à la page.
+- **3 nouvelles colonnes** : équipe junior/université, PJ et PTS de la dernière saison avant
+  repêchage — mêmes données que `/draft-center` (table `draft_prospects`), jumelées par
+  (année de repêchage, nom normalisé). `draft_prospects` ne couvre que le repêchage à venir
+  (2026 actuellement, pas d'historique pour 2021-2025) — ces 3 colonnes affichent `—` pour les
+  années plus anciennes, ce qui est normal (ces joueurs sont déjà dans la LNH, leurs stats
+  junior pré-repêchage n'ont jamais été conservées).
+- Ajout d'une première vraie ligne d'en-tête (`<thead>`, non sticky — les mini-tableaux par
+  ronde sont courts, pas nécessaire) pour clarifier ces nouvelles colonnes, le tableau n'en
+  avait jamais eu (colonnes reconnaissables par position/contenu seulement jusqu'ici).
+- Vérifié : `tsc --noEmit` passe ; lint comparé par `git stash` (baseline 8 `any` dans
+  `page.tsx`, retombé à 8 après avoir retiré une annotation `any` redondante que j'avais
+  ajoutée par réflexe — le tableau `.map()` infère déjà le type sans elle, même patron que la
+  correction du journal des transactions plus tôt cette session).
+
+### 2026-09-22 (suite — colonne CBS vide sur /statistiques/projections : requête tronquée à 1000 lignes)
+
+**[Fix] — `page.tsx` de /statistiques/projections ne paginait pas sa requête `player_projections`**
+(`app/app/statistiques/projections/page.tsx`) — David a repéré la colonne CBS vide (`—`) pour
+la plupart des joueurs malgré un import réussi. Cause : avec 4 sources maintenant (406+966+
+400+422 = 2194 lignes), la requête sans `.range()` se faisait tronquer en silence par la limite
+PostgREST par défaut (1000 lignes/requête) — les lignes des joueurs déjà couverts par
+l'ancienne source CBS (ids bas, ex: McDavid/Kucherov) passaient, celles des nouveaux joueurs
+couverts seulement depuis le ré-import d'aujourd'hui (ids plus élevés, la majorité) étaient
+coupées. Même piège que celui déjà corrigé dans `generate_backup_tool.py` plus tôt cette
+session (fetch `players` sans pagination) — confirmé par requête directe que les données
+étaient bien en base (ex: Nathan MacKinnon avait bien `cbs=139`) avant de conclure à un bug de
+requête plutôt qu'un problème d'import.
+- Corrigé en paginant par tranches de 1000 (boucle `while` + `.range()`), même patron que
+  `import_projections_pool_pro.py`/`import_supabase.py`.
+- Vérifié qu'aucune autre requête `player_projections` n'est à risque —
+  `PlayerSlideOver.tsx` filtre déjà par `nhl_id` (quelques lignes max par appel).
+- Vérifié : `tsc --noEmit` passe.
+
+### 2026-09-22 (suite — projections Hockey Le Magazine : 4ᵉ source)
+
+**[Feature] — import des prévisions du "Guide des Poolers 2026-2027" de Hockey Le Magazine**
+(`python_script/source/hockey_magazine_2026_27.csv`, `python_script/
+import_projections_hockey_magazine.py`, `app/app/statistiques/projections/page.tsx`,
+`app/app/statistiques/projections/ProjectionsTable.tsx`) :
+- 6 nouvelles photos (`photos/Hockey_Magazine_*.jpg`, non commitées) — mise en page différente
+  de Pool Pro : un seul classement combiné **TOP 360 meilleurs marqueurs** (attaquants et
+  défenseurs mélangés, triés par points) sur 4 pages, puis un **TOP 100 Défenseurs** et un
+  **TOP 40 Gardiens** séparés. Le TOP 100 Défenseurs chevauche volontairement le TOP 360 (mêmes
+  joueurs/points pour les ~78 premiers), sauf pour les défenseurs les moins productifs (rangs
+  79-100, sous la coupure à 31 pts du TOP 360) — ces ~22 joueurs ajoutés à la suite dans le même
+  CSV plutôt que dans un fichier séparé, pour ne rien dupliquer côté import.
+- Script `import_projections_hockey_magazine.py` cloné de `import_projections_pool_pro.py`
+  (même patron : dry-run par défaut, `--apply` + confirmation), avec en plus le garde-fou
+  `dedup_by_player()` ajouté plus tôt aujourd'hui dans l'import CBS (2 sources qui se
+  chevauchent = même risque de collision qu'un fichier avec 2 feuilles).
+- Jumelage : **382/382 patineurs et 40/40 gardiens trouvés du premier coup** — 0 non trouvé, 0
+  ambigu, 0 collision, aucun écart >40 pts avec NHL.com. Nouvelle source
+  `player_projections.source='hockey_magazine'` : 422 lignes importées en staging.
+- Balayage anti-doublons complet (même méthode que pour CBS/Pool Pro, 246 noms de famille en
+  double vérifiés) : **0 cas suspect** après cet import — confirme qu'aucune nouvelle fiche
+  orpheline n'a capté une projection par erreur.
+- `/statistiques/projections` : 4ᵉ colonne triable "Hockey Mag." à côté de NHL.com/CBS/Pool Pro.
+- Vérifié : `tsc --noEmit` passe.
+- Toujours en attente de la validation finale de David avant de répliquer en prod (avec les 6
+  corrections de doublons + le ré-import CBS de la session, voir entrée précédente).
+
+### 2026-09-22 (suite — 6 doublons de fiches joueurs trouvés et corrigés, ré-import CBS complet)
+
+**[Fix] — jumelages de projections corrompus par des fiches `players` en double** — David a
+repéré via `/statistiques/projections` que Mitchell Marner (et d'autres) n'avaient pas de
+valeur Pool Pro/CBS malgré une source qui en a une. Investigation : plusieurs joueurs ont
+**deux lignes dans `players`** — une réelle (contrats, `nhl_id`, rostered, game logs) et une
+orpheline (souvent une variante de prénom — nickname vs nom complet — sans aucune donnée),
+créée on ne sait quand par un import antérieur. Le script de jumelage (`projections_common.py`,
+`match_player`) fait légitimement son travail mais tombe parfois sur l'orpheline plutôt que la
+vraie fiche. Trouvés et corrigés **en staging** (projection réassignée à la vraie fiche, doublon
+supprimé après vérification qu'il n'est référencé nulle part — `pooler_rosters`,
+`transaction_items`, `roster_change_log`, `player_contracts`, `player_projections`, etc.) :
+
+| Vraie fiche | Doublon supprimé | Source touchée |
+|---|---|---|
+| Janis Jérôme Moser (TBL) | "J.J. Moser" | NHL.com, Pool Pro |
+| Mitchell Marner (VGK) | "Mitch Marner" | Pool Pro |
+| Matthew Beniers (SEA) | "Matty Beniers" | Pool Pro |
+| Matthew Savoie (EDM) | "Matt Savoie" | NHL.com, Pool Pro |
+| Dmitri Simashev (UTA) | "Dmitriy Simashev" | CBS |
+
+Cas distinct : **Aliaksei Protas** (WSH, vétéran) n'est pas un doublon — son jeune frère **Ilya
+Protas** (WSH, recrue ELC 2024) est une fiche bien réelle et différente ; la projection CBS
+d'Aliaksei était collée par erreur sur la fiche d'Ilya (import du 13 septembre) — corrigée sans
+rien supprimer.
+- **Balayage exhaustif** (`players` groupés par nom de famille normalisé, avec et sans
+  contrainte d'équipe — 247 groupes en double au total) fait deux fois (avant et après le
+  ré-import CBS ci-dessous) pour confirmer qu'aucun autre cas ne traîne — 0 restant après ces 6
+  corrections.
+- **Pas encore appliqué en prod** — les mêmes doublons existent en prod (mêmes noms, IDs
+  différents), confirmé en lecture seule. En attente de la validation finale de David avant d'y
+  répliquer les mêmes corrections.
+
+**[Feature] — ré-import CBS avec fichier Excel mis à jour, couverture 366 → 966 lignes**
+(`python_script/import_projections_cbs.py`) — David a fourni un `CBS_Proj_2026-2027.xlsx` à
+jour (`excel/`, non commité) avec beaucoup plus de joueurs (618 attaquants + 330 défenseurs + 69
+gardiens, vs. l'import du 13 septembre). Deux corrections apportées au script :
+- **En-tête de colonne changé** : CBS utilise maintenant `PTS` au lieu de `P` pour les
+  patineurs — script rendu tolérant aux deux (`'pts' in header` sinon repli sur `'p'`), pour ne
+  pas se recasser au prochain renommage. `W` (gardiens) inchangé.
+- **Collisions de jumelage entre feuilles** (trouvé en creusant les 2 alertes de cohérement
+  `>40 pts` du dry-run) : deux **vrais joueurs distincts** portent exactement le même nom dans
+  ce fichier CBS — Sebastian Aho (attaquant CAR **et** défenseur PIT) et Elias Pettersson
+  (attaquant VAN **et** défenseur VAN). Notre base ne connaît qu'un des deux dans chaque cas ;
+  les deux lignes source jumelaient donc sur la même fiche, et comme la feuille Défenseurs est
+  traitée après Attaquants, sa valeur (non pertinente pour notre joueur) écrasait
+  silencieusement la bonne. Nouvelle fonction `dedup_by_player()` : quand plusieurs lignes
+  source jumellent sur le même `player_id`, ne garde que le jumelage exact (nom+équipe) ou le
+  premier trouvé, et journalise les autres comme des "collisions" explicites plutôt que de les
+  laisser s'écraser en silence — comportement générique, pas un cas spécial Aho/Pettersson.
+- Importé en staging : `cbs` passe de 366 à **966** lignes (`nhl_com`=406, `pool_pro`=400).
+- Vérifié : `PTS`/`W` toujours arrondis à l'entier (`round(float(raw_val))`, déjà en place,
+  confirmé toujours actif après le changement de colonne).
+- Prochaine étape : appliquer les 6 corrections de doublons + ce ré-import CBS en prod une fois
+  David satisfait du rendu en staging.
+
+### 2026-09-22 (suite — projections Pool Pro : 3ᵉ source dans /statistiques/projections)
+
+**[Feature] — import des prévisions 2026-2027 du magazine "Pool Pro" (David, photos transcrites
+manuellement)** (`python_script/source/pool_pro_2026_27.csv`, `python_script/
+import_projections_pool_pro.py`, `app/app/statistiques/projections/page.tsx`,
+`app/app/statistiques/projections/ProjectionsTable.tsx`, `schema.sql`) :
+- David a fourni 4 photos (`photos/Pool_Pro-*.jpg`, non commitées) du magazine papier — 250
+  attaquants, 100 défenseurs, 50 gardiens (rang/nom/équipe/PTS ou V). Transcrites à la main dans
+  `source/pool_pro_2026_27.csv` (rang, nom, équipe, is_goalie, valeur), équipes déjà normalisées
+  aux codes LNH standards utilisés en base (le magazine utilise `FLO`, la base `FLA`).
+- `import_projections_pool_pro.py` suit exactement le patron de `import_projections_cbs.py` —
+  réutilise `projections_common.py` (jumelage nom+équipe → nom seul → nom de famille+équipe),
+  dry-run par défaut, `--apply` + confirmation `oui` pour écrire. Nouvelle source
+  `player_projections.source='pool_pro'`.
+- Jumelage vérifié manuellement : 400/400 joueurs trouvés (350 patineurs + 50 gardiens), dont 19
+  jumelages approximatifs (équipe du magazine différente de celle en base, ou surnom — ex: "JJ
+  Peterka" → "John-Jason Peterka") — chacun confirmé correct par requête directe avant l'import.
+  Un seul vrai accroc : "Axel Sandin-Pellikka" (trait d'union) vs "Axel Sandin Pellikka" (espace)
+  en base — corrigé dans le CSV plutôt que dans le matcher (cas isolé).
+- **Importé en staging seulement** (`--apply` confirmé) — pas encore en prod, à faire une fois
+  David satisfait du rendu.
+- `/statistiques/projections` (page + table) : 3ᵉ colonne triable "Pool Pro" à côté de NHL.com/
+  CBS, même traitement (nombre affiché tel quel, `—` si absent). `schema.sql` : commentaire de
+  colonne `source` mis à jour (`'nhl_com', 'cbs', 'pool_pro'`).
+- Vérifié : `tsc --noEmit` passe. Pas de nouveau composant/logique de tri — même patron que les
+  2 sources existantes, juste une colonne de plus.
+- Prochaine étape : David valide visuellement en local (contre staging), puis import en prod
+  (`python import_projections_pool_pro.py --apply` avec `python_script/.env`, sans le
+  `.env.staging`).
+
+### 2026-09-22 (suite — Backup manuel : gestion complète, pas juste consultation)
+
+**[Feature] — extension majeure de l'outil de backup HTML** (`python_script/
+generate_backup_tool.py`) — après l'avoir livré comme outil de lecture seule + édition basique
+des alignements, David a demandé plusieurs ajouts pour vraiment pouvoir gérer le pool à la main
+en cas de pépin :
+- **Alignements triés comme le site** : actifs groupés par position (Attaquants/Défenseurs/
+  Gardiens), puis réservistes, puis recrues, LTIR en dernier — avec en-têtes de groupe.
+- **Ajout de joueur étendu à tous les joueurs LNH** (pas seulement ceux déjà repêchés) — menu
+  déplacé en haut de chaque carte (comme le formulaire du journal), groupé par équipe puis trié
+  position → salaire décroissant, avec le salaire affiché dans chaque option.
+- **Garde-fou anti-doublon** : un joueur déjà dans un alignement ne peut plus être ajouté
+  silencieusement ailleurs — confirmation proposée pour le déplacer (retrait + ajout, les deux
+  journalisés) ; refusé net si déjà dans le même alignement.
+- **Onglet "Choix de repêchage"** : une carte par pooler, ses choix par saison/ronde, origine
+  affichée si obtenu par échange (lecture seule, source `pool_draft_picks`).
+- **Onglet "Paramètres"** : sélecteur de **saison active pour les salaires** (recalcule en
+  direct la masse de tous les alignements, le menu d'ajout et la colonne surlignée dans
+  Contrats — sans régénérer le fichier), cap du pool éditable localement, rappel des règles de
+  composition (12/6/2 + min. 2 réservistes), et un tableau de conformité par pooler.
+- **Journal** : chaque mouvement d'alignement (ajout/retrait/changement de type) y génère
+  automatiquement une entrée (même vocabulaire `change_type` que l'app). Formulaire séparé pour
+  ajouter n'importe quelle entrée à la main, avec un champ **Date effective propre à chaque
+  saisie** (pas un réglage global — une saisie manuelle ne correspond pas forcément au moment où
+  le mouvement a eu lieu chez le pooler). Entrées manuelles supprimables individuellement.
+- Tout reste local (localStorage) — rien n'est jamais réécrit dans Supabase/l'app. Vérifié à
+  chaque étape par prévisualisation Artifact contre les données staging (pas de `next build`,
+  script Python autonome) + `node --check` sur le bloc `<script>` extrait avant publication.
+- Pas encore régénéré contre prod — David valide en staging le temps de finaliser ses
+  alignements prod.
+
+### 2026-09-22 (suite — pastille de notification admin figée)
+
+**[Fix] — la pastille rouge de notifications ne se réinitialisait jamais après lecture**
+(`app/components/Navbar.tsx`) :
+- David a rapporté que la pastille rouge (dropdown Admin + sous-menu Communauté) restait
+  affichée même après avoir marqué les notifications comme lues depuis
+  `/admin/communaute?tab=communication`.
+- Cause : `unreadCount`/`unreadNotifCount` étaient initialisés via `useState(initial...)` sans
+  setter ni effet de synchronisation — contrairement à `userName`/`isAdmin`, qui ont déjà un
+  `useEffect` dédié pour se resynchroniser à chaque nouveau rendu du layout racine. `Navbar`
+  reste monté entre les navigations (layout partagé App Router), donc la valeur restait figée
+  à celle du tout premier chargement de la session, peu importe ce que `markAllReadAction`
+  faisait réellement en base (`notification_log.read_at`).
+- Corrigé en ajoutant `setUnreadCount`/`setUnreadNotifCount` + un `useEffect` qui les
+  resynchronise sur `[initialUnreadCount, initialUnreadNotifCount]`, même patron que pour
+  `userName`/`isAdmin`.
+- Vérifié : `tsc --noEmit` passe. Pas encore testé visuellement par David (à confirmer après
+  déploiement staging).
+- Commit : (à suivre)
+
+### 2026-09-22 (suite — Journal des transactions : tableau compact + recherche par pooler)
+
+**[Feature] — tableau compact pour tous les mouvements sauf les échanges + filtre par pooler**
+(`app/app/journal-transactions/TransactionsClient.tsx`) :
+- David a confirmé la direction proposée : garder les cartes deux colonnes pour Échanges, mais
+  passer tout le reste (Ballotage/Signatures/LTIR/Gestion, et le mélange des deux dans "Tous")
+  en tableau compact — plus dense que l'ancien affichage en cartes avec une liste à plat par
+  transaction. Ajout d'un champ de recherche qui filtre par nom de pooler (donneur OU
+  receveur), toutes catégories confondues.
+- Au passage, confirmé par lecture de code (question de David) : `app/app/admin/rosters/
+  actions.ts` (Mode Init/Rosters initiaux, Banque de recrues) n'écrit **jamais** dans
+  `transactions`/`transaction_items` — recherche exhaustive dans tout le fichier, zéro
+  occurrence. Le Journal des transactions ne peut donc jamais afficher la reconstruction
+  manuelle des alignements en prod, confirmé avant que David s'y attaque.
+- `rowInfo()` (nouveau) dérive Pooler/Joueur/Mouvement en colonnes structurées à partir de la
+  même logique que `itemDescription()` (conservée pour le repli de `TradeCard` si jamais aucun
+  item 'transfer' n'est trouvable). `visible` se scinde en `tradeTxs` (cartes) et `tableRows`
+  (une ligne par item, éclatée au besoin sur plusieurs transactions) selon la classification
+  existante (`classifyTx`).
+- Vérifié : `tsc --noEmit`, `eslint` (10 erreurs `any` restantes contre 11 avant ce changement
+  — légère amélioration, pas de régression) et `next build` passent.
+
+### 2026-09-22 (suite — affichage deux colonnes des échanges dans le Journal des transactions)
+
+**[Feature+Fix] — Journal des transactions : échanges affichés en deux colonnes + bug "undefined promeut"**
+(`app/app/journal-transactions/TransactionsClient.tsx`, `app/lib/tradeOffers.ts`) :
+- David a testé un échange complet de bout en bout avec succès (accepté, approuvé, confirmé
+  des deux côtés, y compris un retour en banque et une activation de recrue) — mais a repéré
+  un vrai bug dans le journal : "undefined promeut Connelly, Trevor... → Actif". Cause :
+  `executeTradeOffer()` écrivait l'item `transaction_items` d'une activation de recrue
+  (`action_type='promote'`) avec `from_pooler_id` au lieu de `to_pooler_id` — le journal
+  (`TransactionsClient.tsx`, `itemDescription()`) lit `to_pooler` pour ce type d'action.
+  Corrigé.
+- David a aussi demandé un meilleur affichage pour les échanges dans le Journal — la liste à
+  plat d'origine ("X donne Y à Z" ligne par ligne) n'était pas claire. Nouveau `TradeCard`
+  (même patron que l'onglet Échanges de Gestion d'effectifs) : deux colonnes "Pooler A donne"/
+  "Pooler B donne" pour les vrais items échangés (`action_type='transfer'`), avec les
+  ajustements supplémentaires de la même transaction (retour en banque, activation, libération)
+  affichés à part en dessous, pour ne pas les confondre avec l'échange lui-même. Repli sur la
+  liste à plat si jamais aucun item 'transfer' n'est trouvable (cas limite).
+- Vérifié : `tsc --noEmit`, `eslint` (11 erreurs `any` restantes — confirmé via un test avant/
+  après identique, toutes préexistantes dans ce fichier, mon nouveau code n'en ajoute aucune)
+  et `next build` passent.
+
+### 2026-09-22 (suite — mauvaise règle d'éligibilité au retour en banque de recrue)
+
+**[Fix] — un joueur sur son ELC signé directement comme actif n'était pas reconnu éligible à la banque**
+(`app/lib/tradeOffers.ts`, `app/app/gestion-effectifs/trade-actions.ts`) :
+- David a testé : Lardis, Nick est sur son ELC mais n'avait que "→ Réserviste"/"Libérer" dans
+  les ajustements supplémentaires, pas "Retourner en banque". Cause : l'éligibilité codée hier
+  utilisait `rookie_type IS NOT NULL` sur la ligne `pooler_rosters` — la règle du **libre-service
+  pré-saison** (`repechage-agents-libres/actions.ts`), qui suppose que le joueur est déjà passé
+  par le repêchage du pool ou la banque. Un joueur signé directement comme actif alors qu'il
+  était encore sur son ELC n'a jamais `rookie_type` posé, même s'il reste réellement éligible.
+- Corrigé en reprenant la formule "fraîche" déjà utilisée par `deactivate()`/
+  `getPoolerRosterAction` (`gestion-effectifs/actions.ts`, le vrai équivalent Mouvements pour
+  la remise en banque en cours de saison) : `is_rookie`, `draft_year` dans la fenêtre de 5
+  saisons, ou statut ELC — appliquée à la fois côté validation serveur
+  (`confirmTradeReady`) et côté affichage (`listTradeableAssetsAction`). Ajout au passage du
+  classement rétroactif en `rookie_type='agent_libre'` au retour en banque s'il n'était jamais
+  classé, même comportement que `deactivate()`, sans quoi l'écriture aurait continué à
+  silencieusement ne rien faire pour ce même cas.
+- Vérifié : `tsc --noEmit`, `eslint` et `next build` passent. Pas encore retesté par David avec
+  Lardis après le correctif.
+
+### 2026-09-22 (suite — tri de la liste "Ajustements supplémentaires")
+
+**[Fix] — liste "Ajustements supplémentaires" triée : actifs par position, puis réservistes, puis recrues**
+(`app/app/gestion-effectifs/TradeOffersTab.tsx`) : liste jusqu'ici dans l'ordre brut de la
+requête. `sortForAdjust()` groupe maintenant Attaquants → Défenseurs → Gardiens (actifs) →
+Réservistes → Recrues, alphabétique par nom dans chaque groupe. Vérifié : `tsc --noEmit`,
+`eslint` (2 erreurs restantes, préexistantes) et `next build` passent.
+
+### 2026-09-22 (suite — aperçu live de l'impact avant de confirmer un échange)
+
+**[Feature] — sommaire projeté (composition + cap) recalculé à chaque interaction, avant de confirmer**
+(`app/app/gestion-effectifs/{trade-actions.ts,TradeOffersTab.tsx}`) :
+- David a remarqué que rien n'indiquait l'impact réel pendant qu'il ajustait les choix de type
+  et les ajustements supplémentaires, et a demandé un sommaire — en notant justement que
+  l'alignement réel actuel ne reflète pas encore l'échange (rien n'est transféré avant que les
+  deux poolers confirment), donc un sommaire correct doit déjà simuler le résultat plutôt que
+  d'afficher juste la masse courante.
+- `computeProjection()` (nouveau, `TradeOffersTab.tsx`) : reprend l'alignement réel
+  (`myFullRoster`), retire ce que ce pooler donne dans l'échange, ajoute ce qu'il reçoit avec
+  le type choisi, applique les ajustements supplémentaires en cours de saisie — recalcule en
+  JS pur (aucun aller-retour serveur) à chaque changement de sélection. Affiche
+  attaquants/défenseurs/gardiens/réservistes et le cap projeté (avec ce qui reste), en rouge si
+  hors limites, vert une fois conforme.
+- `TradeOfferItemView` gagne un champ `position` (jusqu'ici seulement encodé dans le libellé
+  texte) — nécessaire pour compter par groupe de position dans la projection.
+- Même logique que `simulatePostTradeRoster` côté serveur (source de vérité réelle à la
+  soumission) — dupliquée volontairement en JS pour un retour instantané sans latence réseau à
+  chaque clic.
+- Vérifié : `tsc --noEmit`, `eslint` (2 erreurs restantes, préexistantes — confirmées) et
+  `next build` passent.
+
+### 2026-09-22 (suite — retour en banque/activation de recrue + salaires visibles partout dans les échanges)
+
+**[Feature] — demote_to_recrue/promote_recrue en ajustement supplémentaire + salaires à chaque étape**
+(`app/lib/tradeOffers.ts`, `app/app/gestion-effectifs/{trade-actions.ts,TradeOffersTab.tsx,
+GestionEffectifsManager.tsx}`, `app/app/admin/effectifs/{cap-watch-actions.ts,
+TradeApprovalManager.tsx}`) :
+- David : en testant, a demandé deux choses. (1) Pouvoir retourner une recrue encore protégée
+  en banque ou en activer une comme ajustement supplémentaire à la confirmation — pas seulement
+  libérer/changer actif↔réserviste — utile quand libérer un joueur ferait perdre un actif alors
+  que le mettre en banque (s'il est encore éligible) ou activer une recrue existante réglerait
+  la composition sans rien perdre. (2) Voir les salaires à toutes les étapes de l'échange
+  (proposition, liste des offres, confirmation, approbation admin) et l'impact sur la masse —
+  pour les poolers ET pour l'admin (total échangé de chaque côté).
+- `TradeExtraAction` étendu avec `demote_to_recrue`/`promote_recrue` — éligibilité au retour en
+  banque = `rookie_type` non-null sur la ligne actuelle (même règle exacte que le libre-service
+  `submitSelfServiceAction`, confirmée via une recherche dédiée dans le code existant avant
+  d'implémenter, pour éviter de dupliquer une règle recrue incorrecte). L'activation
+  n'efface `rookie_type`/`pool_draft_year` que si `isRookieProtectionExpired()` est vraie à ce
+  moment précis (sinon préservés, pour permettre une remise en banque ultérieure) — même
+  logique que la promotion admin/self-service existante.
+- Bug corrigé au passage en implémentant : le `log()` interne d'`executeTradeOffer` dérivait le
+  `change_type` du journal avec sa propre logique ad hoc, divergente de `pickChangeType`
+  (utilisée partout ailleurs) — un changement de statut actif→réserviste via un ajustement
+  supplémentaire aurait été mal étiqueté ("changement_type" au lieu de "deactivation").
+  Remplacé par une copie exacte de `pickChangeType` (dupliquée pour éviter un cycle d'import,
+  même raison que le reste du fichier).
+- Salaires ajoutés : `TradeOfferItemView.capNumber` (liste des offres, total par côté),
+  `AdminTradeOfferItemView.capNumber` + `AdminTradeOfferView.proposerCapGiven`/
+  `targetCapGiven` (approbation admin), et un bandeau permanent "Ta masse actuelle : X / Y
+  (reste Z)" dans l'onglet Échanges basé sur `listTradeableAssetsAction`.
+- Migration `schema.sql` : aucune nouvelle colonne requise (réutilise `proposer_extra_actions`/
+  `target_extra_actions` déjà en place) — rien à rouler pour cette partie.
+- Vérifié : `tsc --noEmit`, `eslint` (4 erreurs restantes, toutes préexistantes — confirmées)
+  et `next build` passent. Pas testé de bout en bout (aucune recrue de test disponible dans la
+  fenêtre de session) — à valider par David.
+
+### 2026-09-22 (suite — ajustements supplémentaires à la confirmation d'un échange)
+
+**[Fix] — impossible de libérer un joueur "pour faire de la place" avant l'exécution de l'échange**
+(`app/lib/tradeOffers.ts`, `app/app/gestion-effectifs/{trade-actions.ts,TradeOffersTab.tsx}`,
+`schema.sql`) :
+- David a repéré un vrai trou en testant : si un pooler doit libérer un joueur pour que
+  l'échange rentre dans sa composition (ex: 11 attaquants après le don, qui redeviendraient 12
+  avec le joueur reçu), il ne peut pas le faire dans Mouvements séparément — cet outil exige
+  TOUJOURS exactement 12/6/2 à la soumission, donc une libération seule y serait refusée (11
+  attaquants, en attendant l'arrivée du joueur de l'échange qui n'a pas encore eu lieu).
+- Corrigé en étendant la confirmation elle-même : le pooler peut maintenant, dans le même
+  geste que "Confirmer ma part", libérer ou changer le statut (actif↔réserviste) d'un joueur
+  NON impliqué dans l'échange — validé comme un seul état final avec les items de l'échange,
+  stocké (`trade_offers.proposer_extra_actions`/`target_extra_actions`, JSONB) et appliqué
+  seulement une fois les deux poolers prêts, exactement comme le reste de l'échange (rien avant
+  ça). Nouvelle section "Si ça ne rentre pas encore, ajuste au besoin" sous le choix de type
+  des joueurs reçus.
+- Migration `schema.sql` fournie (`trade_offers.proposer_extra_actions`/
+  `target_extra_actions`) — **pas encore exécutée en base**, à rouler en staging puis prod.
+- Vérifié : `tsc --noEmit`, `eslint` (2 erreurs restantes, préexistantes — confirmées via
+  `git diff`) et `next build` passent.
+
+### 2026-09-21 (suite — l'approbation des échanges obtient son propre onglet admin)
+
+**[Fix] — "Conformité cap" ne parlait pas pour l'approbation des échanges**
+(`app/app/admin/effectifs/page.tsx`, `app/lib/tradeOffers.ts`) :
+- David a testé le flux complet (proposer comme Jérôme, accepter comme Paule dans un vrai
+  navigateur séparé — Firefox, après avoir découvert que deux fenêtres privées du même
+  navigateur partagent leurs cookies, donc pas vraiment deux sessions isolées) — bloqué en
+  cherchant où approuver : le bloc était noyé au bas de l'onglet "Conformité cap", qui ne
+  correspond pas du tout à ce qu'on y cherche.
+- Nouvel onglet dédié **Approbation** dans `/admin/effectifs`, juste à côté de Transactions —
+  `TradeApprovalManager.tsx` déplacé de l'onglet Conformité cap vers ce nouvel onglet, avec sa
+  propre saison chargée séparément. Lien de notification admin (`respondToTradeOffer`,
+  `app/lib/tradeOffers.ts`) mis à jour vers `/admin/effectifs?tab=approbation`.
+- Vérifié : `tsc --noEmit`, `eslint` et `next build` passent.
+
+### 2026-09-21 (suite — transactions proposées entre poolers, avec approbation admin)
+
+**[Feature] — outil de transactions entre poolers (proposer/accepter/approuver/confirmer)**
+(nouveaux : `app/lib/tradeOffers.ts`, `app/app/gestion-effectifs/{trade-actions.ts,
+TradeOffersTab.tsx}`, `app/app/admin/effectifs/TradeApprovalManager.tsx` ; modifiés :
+`app/app/gestion-effectifs/{GestionEffectifsManager.tsx,page.tsx}`,
+`app/app/admin/effectifs/{cap-watch-actions.ts,page.tsx}`, `schema.sql`) :
+- David : besoin d'un outil pour que les poolers se proposent eux-mêmes des échanges (joueurs
+  actif/réserviste/recrue et choix de repêchage) plutôt que de tout faire passer par l'admin —
+  mais l'admin doit garder un droit de veto. Conçu ensemble sur plusieurs échanges : proposer →
+  le pooler visé accepte/refuse (pas de contre-offre en v1, décision explicite de David) →
+  l'admin approuve/rejette → une fois approuvé, les deux poolers ont un délai pour confirmer
+  que le résultat entre dans leur masse/composition, ajustant au besoin via Mouvements avant de
+  confirmer — le menu montre déjà les joueurs concernés (pas de recherche manuelle).
+- **Règle clé de David** : si l'un des deux ne confirme pas dans le délai (`app_settings.
+  trade_completion_days`, défaut 3 jours), l'échange s'annule **pour les deux** — chacun
+  conserve ses joueurs, à refaire au besoin. Implémenté en ne transférant RIEN (ni joueurs, ni
+  recrues, ni choix) tant que les deux n'ont pas confirmé — l'exécution est un seul geste
+  atomique une fois les deux prêts, donc l'annulation par expiration n'a jamais besoin de
+  rollback (rien n'a été écrit).
+- Nouvelles tables `trade_offers`/`trade_offer_items` (voir `schema.sql`) — même patron RLS
+  que `waiver_claims` (lecture publique, écritures via `createAdminClient()` depuis des Server
+  Actions qui vérifient elles-mêmes l'autorisation).
+- Nouvel onglet **Échanges** dans `/gestion-effectifs` (à côté de Mouvements/Ballotage) —
+  visible seulement sur la vraie page pooler (`selfPoolerId` requis), pas dans le hub admin
+  `/admin/effectifs?tab=mouvements` qui réutilise le même composant sans identité pooler
+  fiable (aurait proposé "au nom" du pooler sélectionné dans le picker mais créé la transaction
+  au nom réel de l'admin — trompeur, explicitement mis de côté). Compose une proposition en
+  parcourant les actifs échangeables des deux côtés (réutilise `listOtherPoolersAction` de
+  `/simulation`).
+- Approbation admin ajoutée dans `/admin/effectifs?tab=conformite` (à côté de la Conformité cap
+  existante, choix confirmé avec David) — `TradeApprovalManager.tsx`.
+- Une recrue échangée reste une recrue chez le receveur (transfert direct de `rookie_type`/
+  `pool_draft_year`, aucun choix actif/réserviste, aucun impact cap) ; un choix de repêchage
+  transfère juste `current_owner_id`. Seuls les joueurs actif/réserviste ont un type à choisir
+  et comptent dans `validateRosterLimits` à la confirmation.
+- Exécution finale dupliquée depuis la logique `'transfer'` d'`admin/transactions/actions.ts`
+  (même raison de cycle d'import déjà documentée pour `waiverClaims.ts` — pas de réutilisation
+  directe), avec le même vocabulaire `roster_change_log` et un seul en-tête `transactions` +
+  un `transaction_items` par item pour un affichage cohérent dans `/journal-transactions`.
+- Bugs trouvés et corrigés en écrivant le code (avant tout test, faute de migration exécutée) :
+  `await` utilisé dans un callback non-`async` passé à `after()` (`confirmTradeReady`) ; le
+  premier jet ne distinguait pas une recrue reçue d'un joueur actif/réserviste à la
+  confirmation (le sélecteur Actif/Réserviste s'affichait même pour une recrue, sans effet
+  réel) — corrigé en exposant `currentPlayerType` sur chaque item pour filtrer l'affichage.
+- Scopé à la saison démarrée — un échange pré-saison reste gérable via `/admin/transactions`
+  (`action_type='transfer'`, déjà fonctionnel, pas de contrainte de conformité avant le début
+  de saison de toute façon).
+- Migration `schema.sql` fournie (`trade_offers`, `trade_offer_items`, `app_settings.
+  trade_completion_days`, policies RLS) — **pas encore exécutée en base**, à rouler par David
+  (staging d'abord, puis prod) avant que l'outil fonctionne.
+- Vérifié : `tsc --noEmit`, `eslint` (erreurs restantes toutes préexistantes, confirmées) et
+  `next build` passent. **Pas testé de bout en bout** (migration pas encore appliquée, feature
+  volumineuse construite en une seule passe) — à valider attentivement par David une fois la
+  migration roulée, en particulier le cas d'annulation par expiration et le mélange joueur/
+  recrue/choix dans un même échange.
+
+### 2026-09-21 (suite — outil de backup manuel hors-ligne)
+
+**[Feature] — outil HTML autonome de backup des alignements**
+(nouveaux : `python_script/generate_backup_tool.py`, `.github/workflows/backup_tool.yml`) :
+- David a demandé un outil "à la Excel" pour suivre les alignements manuellement en cas de
+  pépin avec l'app/Vercel/Supabase — dans l'esprit du fichier qu'il utilisait avant de migrer
+  vers marqueur.com puis Cap Crunch. Contrainte explicite : pas deux outils à maintenir en
+  parallèle (pas de double saisie qui dérive de la réalité).
+- Décision : un fichier **HTML statique autonome** (`backup/pool_backup.html`) plutôt qu'un
+  artefact hébergé sur claude.ai — zéro dépendance, même à internet, pour être vraiment
+  indépendant d'une panne de l'app elle-même. Généré par un script Python
+  (`generate_backup_tool.py`, cible toujours prod comme les autres scripts) qui embarque en
+  JSON : les alignements de la saison active, une table de référence des contrats (seulement
+  les joueurs déjà rostered — pas tout le bassin LNH, même logique que l'ancien Excel), et les
+  500 derniers mouvements (`roster_change_log`). Les modifications faites dans le navigateur
+  (changer un type, retirer/ajouter un joueur) sont sauvegardées en `localStorage`, jamais
+  renvoyées à Supabase — un bouton "Réinitialiser depuis l'export" permet de revenir à
+  l'instantané d'origine.
+- Régénération : à la demande (`python generate_backup_tool.py`) ou automatiquement chaque
+  dimanche 12h UTC (`.github/workflows/backup_tool.yml`, même patron que `import.yml` —
+  secrets `SUPABASE_URL`/`SUPABASE_SERVICE_KEY` déjà configurés, pointent vers prod) ; le
+  workflow committe le fichier régénéré s'il a changé. Une régénération automatique écrase
+  volontairement les ajustements manuels faits dans le navigateur du dimanche précédent — c'est
+  voulu (le fichier du dépôt est un point de repère synchronisé, pas le journal de travail ;
+  les ajustements ponctuels pendant une vraie panne sont censés être de courte durée).
+- Bug corrigé en testant : `roster_change_log` a deux clés étrangères vers `poolers`
+  (`pooler_id` et `changed_by`), la jointure PostgREST `poolers (name)` était ambiguë — précisé
+  en `poolers!roster_change_log_pooler_id_fkey (name)`.
+- Vérifié : script exécuté avec succès contre staging (326 joueurs, 326 contrats, 7
+  mouvements), JSON embarqué validé (`JSON.parse` réussi) et JS du fichier généré validé
+  syntaxiquement (`node --check` via `vm.Script`) — pas de test visuel dans un navigateur réel
+  (aucun accès dans cet environnement), à valider par David en ouvrant le fichier localement.
+  Fichier de test (généré depuis staging) supprimé avant commit — rien n'est encore généré
+  contre prod (actuellement vide suite au vidage du 2026-09-20, voir plus loin dans ce journal
+  — un premier vrai backup n'aura de sens qu'une fois les alignements reconstruits).
 
 ### 2026-09-21 (suite — notification "modifié par l'admin" envoyée à tort quand l'admin gère son propre alignement)
 

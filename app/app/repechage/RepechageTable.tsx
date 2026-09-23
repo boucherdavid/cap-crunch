@@ -16,6 +16,9 @@ type DraftPick = {
   draft_round: number | null
   draft_overall: number | null
   team_code: string | null
+  prospect_team: string | null
+  prospect_games_played: number | null
+  prospect_points: number | null
   pooler_name: string | null
 }
 
@@ -108,6 +111,9 @@ export default function RepechageTable({ picks }: { picks: DraftPick[] }) {
         {pick.last_name}, {pick.first_name}
       </td>
       <td className="px-4 py-2 text-gray-500 text-sm w-10">{pick.position ?? DASH}</td>
+      <td className="px-4 py-2 text-gray-500 text-xs">{pick.prospect_team ?? DASH}</td>
+      <td className="px-4 py-2 text-gray-500 text-xs text-right tabular-nums w-10">{pick.prospect_games_played ?? DASH}</td>
+      <td className="px-4 py-2 text-gray-500 text-xs text-right tabular-nums w-10">{pick.prospect_points ?? DASH}</td>
       <td className="px-4 py-2 w-14 text-xs text-gray-400">{pick.status ?? ''}</td>
       <td className="px-4 py-2 w-36">
         {pick.pooler_name ? (
@@ -172,16 +178,35 @@ export default function RepechageTable({ picks }: { picks: DraftPick[] }) {
 
         {grouped.map(({ year, rounds: roundGroups }) => (
           <div key={year} className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="bg-slate-800 px-5 py-3">
+            {/* Bandeaux année/ronde fixes au défilement (David, 2026-09-22) — repère toujours
+                dans quelle année/ronde on se trouve sur une liste de 1000+ choix. Empilés :
+                l'année en haut (z-20), la ronde juste dessous (top-[52px] ≈ hauteur du bandeau
+                année, z-10). Pas de conteneur borné en hauteur ici (contrairement aux tableaux
+                de stats) : ces bandeaux ne sont pas dans un overflow-x-auto, sticky s'accroche
+                donc directement à la page. */}
+            <div className="sticky top-0 z-20 bg-slate-800 px-5 py-3">
               <h2 className="text-white font-bold text-lg">Repêchage {year}</h2>
             </div>
             {roundGroups.map(({ round, picks: roundPicks }) => (
               <div key={round}>
-                <div className="bg-slate-100 px-5 py-2 border-b">
+                <div className="sticky top-[52px] z-10 bg-slate-100 px-5 py-2 border-b">
                   <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Ronde {round}</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b text-[11px] uppercase tracking-wide text-gray-400">
+                        <th className="px-4 py-1.5 text-right font-medium w-12">#</th>
+                        <th className="px-4 py-1.5 text-left font-medium w-14">Équ.</th>
+                        <th className="px-4 py-1.5 text-left font-medium">Joueur</th>
+                        <th className="px-4 py-1.5 text-left font-medium w-10">Pos</th>
+                        <th className="px-4 py-1.5 text-left font-medium">Équipe (avant repêchage)</th>
+                        <th className="px-4 py-1.5 text-right font-medium w-10">PJ</th>
+                        <th className="px-4 py-1.5 text-right font-medium w-10">PTS</th>
+                        <th className="px-4 py-1.5 text-left font-medium w-14" />
+                        <th className="px-4 py-1.5 text-left font-medium w-36">Pooler</th>
+                      </tr>
+                    </thead>
                     <tbody>
                       {roundPicks.map((pick) => <PickRow key={`${pick.draft_year}-${pick.draft_overall}-${pick.player_id}`} pick={pick} />)}
                     </tbody>
@@ -202,6 +227,19 @@ export default function RepechageTable({ picks }: { picks: DraftPick[] }) {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b text-[11px] uppercase tracking-wide text-gray-400">
+                    <th className="px-4 py-1.5 text-right font-medium w-12">#</th>
+                    <th className="px-4 py-1.5 text-left font-medium w-14">Équ.</th>
+                    <th className="px-4 py-1.5 text-left font-medium">Joueur</th>
+                    <th className="px-4 py-1.5 text-left font-medium w-10">Pos</th>
+                    <th className="px-4 py-1.5 text-left font-medium">Équipe (avant repêchage)</th>
+                    <th className="px-4 py-1.5 text-right font-medium w-10">PJ</th>
+                    <th className="px-4 py-1.5 text-right font-medium w-10">PTS</th>
+                    <th className="px-4 py-1.5 text-left font-medium w-14" />
+                    <th className="px-4 py-1.5 text-left font-medium w-36">Pooler</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {filteredWithoutDraft
                     .sort((a, b) => a.last_name.localeCompare(b.last_name, 'fr-CA'))

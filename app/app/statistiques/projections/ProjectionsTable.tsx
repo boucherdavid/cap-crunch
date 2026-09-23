@@ -7,7 +7,7 @@ import PlayerLink from '@/components/PlayerLink'
 import { normalizeSearch } from '@/lib/normalizeSearch'
 
 type Tab = 'forwards' | 'defense' | 'goalies'
-type SortKey = 'nhlCom' | 'cbs' | 'lastSeasonValue' | 'trendPerGame' | 'trend'
+type SortKey = 'nhlCom' | 'cbs' | 'poolPro' | 'hockeyMagazine' | 'lastSeasonValue' | 'trendPerGame' | 'trend'
 
 // position peut être multi-poste ("LD,RD", "C,LW"...) — jamais juste "D" seul dans nos données —
 // et nullable (`players.position`). Les codes attaquants (C/LW/RW) ne contiennent jamais la
@@ -92,6 +92,10 @@ export default function ProjectionsTable({
   const sortHeaderClass = (key: SortKey) =>
     `text-right px-4 py-3 font-medium cursor-pointer select-none ${sortKey === key ? 'text-blue-700' : 'text-gray-600 hover:text-gray-800'}`
 
+  // Fond pâle par source de projection (David, 2026-09-22) — aide à repérer d'un coup d'œil
+  // quelle colonne vient d'où (NHL.com/CBS/Pool Pro/Hockey Mag.) sans dépendre de l'en-tête.
+  const SOURCE_BG = { nhlCom: '', cbs: 'bg-blue-50', poolPro: 'bg-red-50', hockeyMagazine: 'bg-yellow-50' } as const
+
   const unit = tab === 'goalies' ? 'vict.' : 'pts'
   const rows = tab === 'goalies' ? filteredGoalies : tab === 'defense' ? filteredDefense : filteredForwards
 
@@ -103,11 +107,11 @@ export default function ProjectionsTable({
       </div>
 
       <p className="text-sm text-gray-500 mb-4">
-        NHL.com et CBS Sports (projections externes collées manuellement), la saison dernière
-        réelle, et une tendance pondérée sur les saisons réelles récentes (rythme par match projeté
-        sur 82 matchs — repère rapide, pas une vraie projection ; ignore les saisons à moins de 10
-        matchs) avec sa progression (↑/↓/→) — mêmes chiffres que le panneau détail joueur,
-        regroupés ici pour comparer plus facilement.
+        NHL.com, CBS Sports, Pool Pro et Hockey Le Magazine (projections externes collées/
+        transcrites manuellement), la saison dernière réelle, et une tendance pondérée sur les
+        saisons réelles récentes (rythme par match projeté sur 82 matchs — repère rapide, pas une
+        vraie projection ; ignore les saisons à moins de 10 matchs) avec sa progression (↑/↓/→) —
+        mêmes chiffres que le panneau détail joueur, regroupés ici pour comparer plus facilement.
       </p>
 
       <div className="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-3 items-center">
@@ -154,33 +158,41 @@ export default function ProjectionsTable({
         )}
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-x-auto">
+      {/* max-h + overflow-auto (pas juste overflow-x-auto) : nécessaire pour que le sticky des
+          <th> ait un effet visible — un conteneur non borné en hauteur ne défile jamais
+          lui-même, donc rien à quoi le sticky puisse s'accrocher (David, 2026-09-22). */}
+      <div className="bg-white rounded-lg shadow overflow-auto max-h-[75vh]">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-gray-50 border-b">
-              <th className="text-left px-4 py-3 font-medium text-gray-600 w-8">#</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600 w-5" title="Disponibilité" />
-              <th className="text-left px-4 py-3 font-medium text-gray-600">{tab === 'goalies' ? 'Gardien' : 'Joueur'}</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Équipe</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Pos</th>
-              <th className={sortHeaderClass('nhlCom')} onClick={() => setSortKey('nhlCom')}>NHL.com</th>
-              <th className={sortHeaderClass('cbs')} onClick={() => setSortKey('cbs')}>CBS</th>
-              <th className={`${sortHeaderClass('lastSeasonValue')} hidden sm:table-cell`} onClick={() => setSortKey('lastSeasonValue')}>Saison dernière</th>
+            {/* En-tête fixe au défilement (David, 2026-09-22) — sticky posé sur chaque <th>
+                plutôt que sur <thead> pour un support navigateur plus fiable ; chaque cellule a
+                son propre fond opaque (sinon le contenu défilé serait visible en transparence). */}
+            <tr className="border-b">
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-8">#</th>
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-5" title="Disponibilité" />
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">{tab === 'goalies' ? 'Gardien' : 'Joueur'}</th>
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Équipe</th>
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Pos</th>
+              <th className={`sticky top-0 z-10 ${sortHeaderClass('nhlCom')} ${SOURCE_BG.nhlCom || 'bg-gray-50'}`} onClick={() => setSortKey('nhlCom')}>NHL.com</th>
+              <th className={`sticky top-0 z-10 ${sortHeaderClass('cbs')} ${SOURCE_BG.cbs}`} onClick={() => setSortKey('cbs')}>CBS</th>
+              <th className={`sticky top-0 z-10 ${sortHeaderClass('poolPro')} ${SOURCE_BG.poolPro}`} onClick={() => setSortKey('poolPro')}>Pool Pro</th>
+              <th className={`sticky top-0 z-10 ${sortHeaderClass('hockeyMagazine')} ${SOURCE_BG.hockeyMagazine}`} onClick={() => setSortKey('hockeyMagazine')}>Hockey Mag.</th>
+              <th className={`sticky top-0 z-10 bg-gray-50 ${sortHeaderClass('lastSeasonValue')} hidden sm:table-cell`} onClick={() => setSortKey('lastSeasonValue')}>Saison dernière</th>
               <th
-                className={`${sortHeaderClass('trendPerGame')} hidden sm:table-cell`}
+                className={`sticky top-0 z-10 bg-gray-50 ${sortHeaderClass('trendPerGame')} hidden sm:table-cell`}
                 onClick={() => setSortKey('trendPerGame')}
                 title="Rythme par match de la tendance 3 saisons (colonne suivante) — pas celui de la saison dernière seule."
               >
                 Pts/Match (tend.)
               </th>
-              <th className={sortHeaderClass('trend')} onClick={() => setSortKey('trend')}>Tendance 3 saisons</th>
-              <th className="text-center px-4 py-3 font-medium text-gray-600" title="Progression saison après saison">Prog.</th>
+              <th className={`sticky top-0 z-10 bg-gray-50 ${sortHeaderClass('trend')}`} onClick={() => setSortKey('trend')}>Tendance 3 saisons</th>
+              <th className="sticky top-0 z-10 bg-gray-50 text-center px-4 py-3 font-medium text-gray-600" title="Progression saison après saison">Prog.</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={11} className="text-center py-12 text-gray-400">Aucun joueur ne correspond aux filtres.</td>
+                <td colSpan={13} className="text-center py-12 text-gray-400">Aucun joueur ne correspond aux filtres.</td>
               </tr>
             ) : (
               rows.map((p, i) => (
@@ -192,11 +204,17 @@ export default function ProjectionsTable({
                   </td>
                   <td className="px-4 py-2.5"><TeamBadge code={p.team} /></td>
                   <td className="px-4 py-2.5 text-gray-500 hidden sm:table-cell">{p.position ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900">
+                  <td className={`px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900 ${SOURCE_BG.nhlCom}`}>
                     {p.nhlCom ?? '—'}
                   </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900">
+                  <td className={`px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900 ${SOURCE_BG.cbs}`}>
                     {p.cbs ?? '—'}
+                  </td>
+                  <td className={`px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900 ${SOURCE_BG.poolPro}`}>
+                    {p.poolPro ?? '—'}
+                  </td>
+                  <td className={`px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900 ${SOURCE_BG.hockeyMagazine}`}>
+                    {p.hockeyMagazine ?? '—'}
                   </td>
                   <td className="px-4 py-2.5 text-right tabular-nums text-gray-600 hidden sm:table-cell">
                     {p.lastSeasonValue ?? '—'}

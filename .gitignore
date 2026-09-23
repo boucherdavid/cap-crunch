@@ -5,6 +5,7 @@ app/.env*
 
 excel
 marqueur
+photos/
 
 python_script/venv/
 python_script/__pycache__/

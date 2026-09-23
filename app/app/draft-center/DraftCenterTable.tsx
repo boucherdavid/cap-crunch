@@ -55,21 +55,26 @@ export default function DraftCenterTable({ prospects, draftYear }: { prospects: 
         {prospects.length} prospects · rang moyen calculé sur {DRAFT_SOURCES_RANKED.length} sources · cliquer sur un joueur pour voir les points amassés au cours de la dernière saison
       </p>
 
-      <div className="bg-white rounded-lg shadow overflow-x-auto">
+      {/* max-h + overflow-auto (pas juste overflow-x-auto) : nécessaire pour que le sticky des
+          <th> ait un effet visible — voir ProjectionsTable.tsx (David, 2026-09-22). Les 2
+          premières colonnes étaient déjà figées horizontalement (sticky left-*) ; elles
+          reçoivent maintenant aussi top-0 pour rester figées dans les deux sens (coin gelé),
+          d'où le z-index plus élevé (z-20) pour passer par-dessus les autres en-têtes (z-10). */}
+      <div className="bg-white rounded-lg shadow overflow-auto max-h-[75vh]">
         <table className="text-sm border-collapse" style={{ minWidth: '1100px' }}>
           <thead>
-            <tr className="bg-gray-50 border-b">
-              <th className="text-center px-3 py-3 font-medium text-gray-600 sticky left-0 bg-gray-50 z-10 min-w-[72px]">Moy.</th>
-              <th className="text-left px-3 py-3 font-medium text-gray-600 sticky left-[72px] bg-gray-50 z-10 min-w-[160px]">Joueur</th>
-              <th className="text-left px-3 py-3 font-medium text-gray-600 w-12">Pos</th>
+            <tr className="border-b">
+              <th className="text-center px-3 py-3 font-medium text-gray-600 sticky left-0 top-0 bg-gray-50 z-20 min-w-[72px]">Moy.</th>
+              <th className="text-left px-3 py-3 font-medium text-gray-600 sticky left-[72px] top-0 bg-gray-50 z-20 min-w-[160px]">Joueur</th>
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-3 py-3 font-medium text-gray-600 w-12">Pos</th>
               {DRAFT_SOURCES_RANKED.map(s => (
-                <th key={s.key} className="text-center px-2 py-3 font-medium text-gray-600 w-12 text-xs">{s.abbr}</th>
+                <th key={s.key} className="sticky top-0 z-10 bg-gray-50 text-center px-2 py-3 font-medium text-gray-600 w-12 text-xs">{s.abbr}</th>
               ))}
               {DRAFT_SOURCES_INFOONLY.map(s => (
-                <th key={s.key} className="text-center px-2 py-3 font-medium text-amber-600 w-12 text-xs bg-amber-50">{s.abbr}</th>
+                <th key={s.key} className="sticky top-0 z-10 text-center px-2 py-3 font-medium text-amber-600 w-12 text-xs bg-amber-50">{s.abbr}</th>
               ))}
-              <th className="text-right px-3 py-3 font-medium text-gray-600 w-14">PTS</th>
-              <th className="w-6 px-2" />
+              <th className="sticky top-0 z-10 bg-gray-50 text-right px-3 py-3 font-medium text-gray-600 w-14">PTS</th>
+              <th className="sticky top-0 z-10 bg-gray-50 w-6 px-2" />
             </tr>
           </thead>
           <tbody>

@@ -939,7 +939,7 @@ CREATE TABLE player_projections (
   id SERIAL PRIMARY KEY,
   player_id INTEGER REFERENCES players(id) ON DELETE CASCADE,
   season VARCHAR(10) NOT NULL,      -- '2026-27'
-  source VARCHAR(20) NOT NULL,      -- 'nhl_com', 'espn'
+  source VARCHAR(20) NOT NULL,      -- 'nhl_com', 'cbs', 'pool_pro'
   projected_points INTEGER,         -- attaquants/défenseurs
   projected_wins INTEGER,           -- gardiens
   imported_at TIMESTAMPTZ DEFAULT NOW(),
@@ -1078,3 +1078,75 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 --
 -- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS waiver_claim_days INTEGER NOT NULL DEFAULT 2;
 -- ALTER TABLE waiver_claims ADD COLUMN IF NOT EXISTS window_days INTEGER;
+
+-- Migration 2026-09-21 (suite) : transactions proposées entre poolers, avec approbation admin
+-- (David) — un pooler propose un échange de joueurs actif/réserviste/recrue et/ou de choix de
+-- repêchage à un autre pooler ; celui-ci accepte ou refuse (pas de contre-offre en v1) ;
+-- l'admin approuve ou rejette ; une fois approuvé, RIEN n'est transféré tout de suite — les
+-- deux poolers ont `trade_completion_days` jours pour confirmer que le résultat entre dans
+-- leur masse/composition (12/6/2 + cap, comme un mouvement normal), chacun ajustant au besoin
+-- via l'outil habituel (Mouvements) avant de confirmer. L'échange ne s'exécute (joueurs,
+-- recrues ET choix, tout en même temps) qu'une fois les DEUX poolers confirmés ; si le délai
+-- passe avant que les deux aient confirmé, l'échange est annulé pour les deux — rien n'a
+-- jamais été écrit, aucun des deux ne perd quoi que ce soit, à refaire au besoin. Voir
+-- app/lib/tradeOffers.ts. RLS "lecture publique + admin gère" même patron que
+-- waiver_claims/presaison_draft_state — toutes les écritures passent par createAdminClient()
+-- depuis des Server Actions qui font leur propre vérification d'autorisation. À exécuter une
+-- seule fois dans le SQL Editor Supabase (staging d'abord, puis prod) :
+--
+-- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS trade_completion_days INTEGER NOT NULL DEFAULT 3;
+--
+-- CREATE TABLE trade_offers (
+--   id SERIAL PRIMARY KEY,
+--   pool_season_id INTEGER REFERENCES pool_seasons(id) ON DELETE CASCADE,
+--   proposer_pooler_id UUID REFERENCES poolers(id),
+--   target_pooler_id UUID REFERENCES poolers(id),
+--   status VARCHAR(20) NOT NULL DEFAULT 'pending_target',
+--   -- pending_target | declined | pending_admin | rejected_admin | pending_completion
+--   -- | completed | cancelled_expired
+--   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+--   decided_at TIMESTAMPTZ,          -- accepté/refusé par le pooler visé
+--   admin_decided_at TIMESTAMPTZ,    -- approuvé/rejeté par l'admin
+--   completion_deadline TIMESTAMPTZ, -- fixé à l'approbation admin (now() + trade_completion_days)
+--   proposer_ready_at TIMESTAMPTZ,   -- confirmation du proposeur (résultat conforme chez lui)
+--   target_ready_at TIMESTAMPTZ,     -- confirmation du pooler visé
+--   resolved_at TIMESTAMPTZ,         -- completed ou cancelled_expired
+--   cancelled_reason TEXT
+-- );
+--
+-- CREATE TABLE trade_offer_items (
+--   id SERIAL PRIMARY KEY,
+--   trade_offer_id INTEGER REFERENCES trade_offers(id) ON DELETE CASCADE,
+--   from_pooler_id UUID REFERENCES poolers(id),  -- qui donne cet item
+--   to_pooler_id UUID REFERENCES poolers(id),    -- qui le reçoit
+--   item_type VARCHAR(10) NOT NULL,              -- 'player' | 'pick'
+--   player_id INTEGER REFERENCES players(id),
+--   pick_id INTEGER REFERENCES pool_draft_picks(id),
+--   chosen_type VARCHAR(20)  -- 'actif'/'reserviste' choisi par le receveur à la confirmation
+--                            -- (joueurs actif/réserviste seulement — une recrue reste recrue,
+--                            -- un choix n'a pas de type)
+-- );
+--
+-- ALTER TABLE trade_offers ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Lecture publique trade_offers" ON trade_offers FOR SELECT USING (true);
+-- CREATE POLICY "Admin gère trade_offers" ON trade_offers FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+--
+-- ALTER TABLE trade_offer_items ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Lecture publique trade_offer_items" ON trade_offer_items FOR SELECT USING (true);
+-- CREATE POLICY "Admin gère trade_offer_items" ON trade_offer_items FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- Migration 2026-09-22 : ajustements supplémentaires à la confirmation d'un échange (David) —
+-- Mouvements exige TOUJOURS exactement 12/6/2 à la soumission (validateRosterLimits), donc un
+-- pooler ne peut pas y libérer un joueur "pour faire de la place" avant que l'échange ne
+-- s'exécute (il tomberait à 11 attaquants, refusé) : il faut que la libération/le changement de
+-- statut fasse partie du même geste que la confirmation, validé comme un seul état final —
+-- même principe que le panier de Mouvements. Stocke les actions choisies par chaque pooler côté
+-- `trade_offers` (JSONB, tableau de { playerId, action: 'release'|'change_status', newType? }),
+-- appliquées avec les items de l'échange seulement une fois les deux poolers prêts (voir
+-- confirmTradeReady/executeTradeOffer, app/lib/tradeOffers.ts). À exécuter une seule fois dans
+-- le SQL Editor Supabase (staging d'abord, puis prod) :
+--
+-- ALTER TABLE trade_offers ADD COLUMN IF NOT EXISTS proposer_extra_actions JSONB;
+-- ALTER TABLE trade_offers ADD COLUMN IF NOT EXISTS target_extra_actions JSONB;

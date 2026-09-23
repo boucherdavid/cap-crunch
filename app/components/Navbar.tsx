@@ -63,8 +63,8 @@ export default function Navbar({
   const [userName, setUserName] = useState<string | null>(initialUserName)
   const [isAdmin, setIsAdmin] = useState(initialIsAdmin)
   const [isPoolerView, setIsPoolerView] = useState(false)
-  const [unreadCount] = useState(initialUnreadCount)
-  const [unreadNotifCount] = useState(initialUnreadNotifCount)
+  const [unreadCount, setUnreadCount] = useState(initialUnreadCount)
+  const [unreadNotifCount, setUnreadNotifCount] = useState(initialUnreadNotifCount)
   // Pastille Admin/Gestion du pool : deux compteurs distincts (feedback des poolers,
   // notifications push) combinés en un seul chiffre — infobulle pour clarifier ce que ça
   // représente sans dédoubler la pastille dans un espace de nav déjà serré (David, 2026-08-31).
@@ -116,6 +116,11 @@ export default function Navbar({
     setUserName(initialUserName)
     setIsAdmin(initialIsAdmin)
   }, [initialUserName, initialIsAdmin])
+
+  useEffect(() => {
+    setUnreadCount(initialUnreadCount)
+    setUnreadNotifCount(initialUnreadNotifCount)
+  }, [initialUnreadCount, initialUnreadNotifCount])
 
   useEffect(() => {
     setIsPoolerView(localStorage.getItem('poolerView') === '1')

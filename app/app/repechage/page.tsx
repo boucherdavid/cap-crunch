@@ -1,10 +1,21 @@
 import { createClient } from '@/lib/supabase/server'
 import RepechageTable from './RepechageTable'
+import prospectStats2026 from '@/lib/data/draftProspects2026Stats.json'
 
 export const dynamic = 'force-dynamic'
 
 const PROTECTION_SEASONS = 5
 const NHL_RECORDS_URL = 'https://records.nhl.com/site/api/draft'
+
+// Équipe/PJ/PTS de la dernière saison avant repêchage (David, 2026-09-22) — extraites une fois
+// du fichier Excel fourni par David (voir python_script/extract_draft_prospects_2026_stats.py)
+// plutôt que de la table draft_prospects (qui reste la source de /draft-center, inchangée).
+// Ne couvre que le repêchage 2026 — jumelé par nom normalisé, '—' pour les autres années.
+const PROSPECT_STATS_DRAFT_YEAR = 2026
+const prospectStatsByName = new Map(
+  (prospectStats2026 as { fullNameNorm: string; team: string | null; gamesPlayed: number | null; points: number | null }[])
+    .map(p => [p.fullNameNorm, { team: p.team, games_played: p.gamesPlayed, points: p.points }]),
+)
 
 function getSaisonFinCourante() {
   const now = new Date()
@@ -74,8 +85,12 @@ export default async function RepechagePage() {
     ]),
   )
 
+  // Doit rester identique \u00e0 normalize() dans extract_draft_prospects_2026_stats.py \u2014 tout
+  // caract\u00e8re non alphanum\u00e9rique (trait d'union, apostrophe, point...) trait\u00e9 comme un espace,
+  // pas seulement les accents (David, 2026-09-22 : "Louis-F\u00e9lix" ne jumelait pas car seul un
+  // des deux c\u00f4t\u00e9s rempla\u00e7ait le trait d'union).
   const normName = (s: string) =>
-    (s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/-/g, ' ').trim()
+    (s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
 
   // Récupérer les noms des joueurs en roster via requête directe (plus fiable que le join)
   const rosterPlayerIds = [...new Set(
@@ -123,6 +138,10 @@ export default async function RepechagePage() {
 
       if (dbPlayerId) matchedPlayerIds.add(dbPlayerId)
 
+      const prospectStat = p.draftYear === PROSPECT_STATS_DRAFT_YEAR
+        ? prospectStatsByName.get(normName(`${p.firstName} ${p.lastName}`))
+        : undefined
+
       return {
         player_id: dbPlayerId ?? p.playerId,
         first_name: p.firstName,
@@ -133,6 +152,9 @@ export default async function RepechagePage() {
         draft_overall: p.overallPickNumber,
         team_code: p.triCode ?? null,
         status: null,
+        prospect_team: prospectStat?.team ?? null,
+        prospect_games_played: prospectStat?.games_played ?? null,
+        prospect_points: prospectStat?.points ?? null,
         pooler_name: dbPlayerId ? (poolerByPlayerId.get(dbPlayerId) ?? null) : null,
       }
     })
@@ -154,6 +176,9 @@ export default async function RepechagePage() {
           draft_overall: null,
           team_code: null,
           status: null,
+          prospect_team: null,
+          prospect_games_played: null,
+          prospect_points: null,
           pooler_name: poolerName,
         })
       }

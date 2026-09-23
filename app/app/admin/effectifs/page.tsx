@@ -7,13 +7,15 @@ import TransactionBuilder from '../transactions/TransactionBuilder'
 import HistoriqueManager from '../historique/HistoriqueManager'
 import { getHistLogAction } from '../historique/historique-actions'
 import CapWatchManager from './CapWatchManager'
-import { loadCapWatchDataAction } from './cap-watch-actions'
+import TradeApprovalManager from './TradeApprovalManager'
+import { loadCapWatchDataAction, getPendingTradeOffersForAdminAction } from './cap-watch-actions'
 
 export const dynamic = 'force-dynamic'
 
 const TABS = [
   { id: 'mouvements',   label: 'Mouvements' },
   { id: 'transactions', label: 'Transactions' },
+  { id: 'approbation',  label: 'Approbation' },
   { id: 'historique',   label: 'Historique' },
   { id: 'conformite',   label: 'Conformité cap' },
 ]
@@ -43,6 +45,20 @@ export default async function AdminEffectifsPage({
     saisonConformite = sr
     if (saisonConformite) {
       capWatchData = await loadCapWatchDataAction(saisonConformite.id)
+    }
+  }
+
+  // ── Approbation (transactions entre poolers) — David, 2026-09-21 ────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let saisonApprobation: any = null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let pendingTradeOffers: any[] = []
+  if (activeTab === 'approbation') {
+    const { data: sr } = await supabase.from('pool_seasons').select('id, season').eq('is_active', true).eq('is_playoff', false).single()
+    saisonApprobation = sr
+    if (saisonApprobation) {
+      const to = await getPendingTradeOffersForAdminAction(saisonApprobation.id)
+      pendingTradeOffers = to.offers ?? []
     }
   }
 
@@ -175,6 +191,21 @@ export default async function AdminEffectifsPage({
                 initialDeadlineDays={capWatchData.capDeadlineDays ?? 7}
                 initialWaiverClaimDays={capWatchData.waiverClaimDays ?? 2}
               />
+          }
+        </div>
+      )}
+
+      {/* ── Approbation (transactions entre poolers) ── */}
+      {activeTab === 'approbation' && (
+        <div className="max-w-4xl">
+          <h1 className="text-2xl font-bold text-gray-800 mb-1">Approbation</h1>
+          <p className="text-sm text-gray-500 mb-6">
+            Transactions entre poolers acceptées par les deux parties, en attente de ton
+            approbation avant que quoi que ce soit ne bouge.
+          </p>
+          {!saisonApprobation
+            ? <p className="text-gray-500">Aucune saison active.</p>
+            : <TradeApprovalManager initialOffers={pendingTradeOffers} />
           }
         </div>
       )}

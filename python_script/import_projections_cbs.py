@@ -72,7 +72,12 @@ def parse_sheet(ws, is_goalie: bool):
     """Retourne (records, erreurs). record = {name, team, points|None, wins|None, row}."""
     rows = list(ws.iter_rows(values_only=True))
     header = [str(h).strip().lower() if h else '' for h in rows[0]]
-    stat_col = header.index('w') if is_goalie else header.index('p')
+    # CBS a renommé la colonne 'P' -> 'PTS' à un moment (David, 2026-09-22) — les deux
+    # variantes sont acceptées pour rester robuste à un futur renommage.
+    if is_goalie:
+        stat_col = header.index('w')
+    else:
+        stat_col = header.index('pts') if 'pts' in header else header.index('p')
 
     records, errors = [], []
     for i, row in enumerate(rows[1:], start=2):
@@ -146,7 +151,29 @@ def main():
                 unmatched.append((rec, note))
         return matched, unmatched, ambiguous
 
-    def report(label, matched, unmatched, ambiguous):
+    # Deux joueurs réels différents peuvent porter le même nom (ex: deux "Sebastian Aho", un
+    # attaquant CAR et un défenseur PIT) — si notre base n'en connaît qu'un, les deux lignes
+    # source jumellent sur la même fiche et la dernière écraserait silencieusement la première
+    # à l'écriture (même player_id/season/source). Détecté par David le 2026-09-22 (Elias
+    # Pettersson/Sebastian Aho). Ne garde qu'un jumelage par joueur — le jumelage exact
+    # (nom+équipe, note=None) prime sur un jumelage approximatif ; sinon le premier trouvé — et
+    # journalise les autres comme des collisions plutôt que de les écrire en silence.
+    def dedup_by_player(matched):
+        by_pid = {}
+        for rec, pid, note in matched:
+            by_pid.setdefault(pid, []).append((rec, pid, note))
+        kept, collisions = [], []
+        for pid, group in by_pid.items():
+            if len(group) == 1:
+                kept.append(group[0])
+                continue
+            exact = [g for g in group if g[2] is None]
+            chosen = exact[0] if exact else group[0]
+            kept.append(chosen)
+            collisions.append((chosen, [g for g in group if g is not chosen]))
+        return kept, collisions
+
+    def report(label, matched, unmatched, ambiguous, collisions=None):
         print(f'\n[{label}] {len(matched)} jumelé(s), {len(unmatched)} non trouvé(s), {len(ambiguous)} ambigu(s).')
         for rec, note in unmatched:
             print(f'  [NON TROUVÉ] {rec["name"]} ({rec["team"]}) — {note}')
@@ -157,11 +184,20 @@ def main():
             print(f'  {len(approx)} jumelage(s) approximatif(s) (à vérifier) :')
             for rec, note in approx:
                 print(f'    [~] {rec["name"]} ({rec["team"]}) — {note}')
+        if collisions:
+            print(f'  {len(collisions)} collision(s) — même joueur en base pour 2 lignes source différentes (conservé un seul, écarté les autres) :')
+            for chosen, dropped in collisions:
+                chosen_rec = chosen[0]
+                print(f'    [!] {chosen_rec["name"]} ({chosen_rec["team"]}) = {chosen_rec["points"] if chosen_rec["points"] is not None else chosen_rec["wins"]} — conservé')
+                for rec, _, _ in dropped:
+                    print(f'        écarté : {rec["name"]} ({rec["team"]}) = {rec["points"] if rec["points"] is not None else rec["wins"]}')
 
-    skater_matched, skater_unmatched, skater_ambiguous = resolve(skaters)
-    goalie_matched, goalie_unmatched, goalie_ambiguous = resolve(goalies)
-    report('PATINEURS', skater_matched, skater_unmatched, skater_ambiguous)
-    report('GARDIENS', goalie_matched, goalie_unmatched, goalie_ambiguous)
+    skater_matched_raw, skater_unmatched, skater_ambiguous = resolve(skaters)
+    goalie_matched_raw, goalie_unmatched, goalie_ambiguous = resolve(goalies)
+    skater_matched, skater_collisions = dedup_by_player(skater_matched_raw)
+    goalie_matched, goalie_collisions = dedup_by_player(goalie_matched_raw)
+    report('PATINEURS', skater_matched, skater_unmatched, skater_ambiguous, skater_collisions)
+    report('GARDIENS', goalie_matched, goalie_unmatched, goalie_ambiguous, goalie_collisions)
 
     # Contrôle de cohérence : compare aux projections NHL.com déjà en base.
     player_ids = [pid for _, pid, _ in skater_matched]
