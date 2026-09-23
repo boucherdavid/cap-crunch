@@ -267,7 +267,7 @@ export default function Navbar({
               {/* Ressources */}
               <div className="relative">
                 <button onClick={() => toggle('ressources')}
-                  className={navBtnClass(isActive('/babillard', '/planification', '/aide'))}>
+                  className={navBtnClass(isActive('/babillard', '/planification', '/aide', '/a-propos'))}>
                   Ressources <Chevron open={openDropdown === 'ressources'} />
                 </button>
                 {openDropdown === 'ressources' && (
@@ -275,6 +275,7 @@ export default function Navbar({
                     <Link href="/babillard" className={dropdownLinkClass('/babillard')}>Babillard</Link>
                     <Link href="/planification" className={dropdownLinkClass('/planification')}>Planification</Link>
                     <Link href="/aide" className={dropdownLinkClass('/aide')}>{'Aide & Règlements'}</Link>
+                    <Link href="/a-propos" className={dropdownLinkClass('/a-propos')}>{'À propos'}</Link>
                   </div>
                 )}
               </div>
@@ -426,6 +427,7 @@ export default function Navbar({
             <Link href="/babillard" className={mobileLinkClass('/babillard')}>Babillard</Link>
             <Link href="/planification" className={mobileLinkClass('/planification')}>Planification</Link>
             <Link href="/aide" className={mobileLinkClass('/aide')}>{'Aide & Règlements'}</Link>
+            <Link href="/a-propos" className={mobileLinkClass('/a-propos')}>{'À propos'}</Link>
 
             {userName && (
               <div className="mt-1 pt-1 border-t border-pool-navy-light flex flex-col gap-0.5">

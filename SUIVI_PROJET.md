@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-22
+Derniere mise a jour: 2026-09-23
 
 ## Role du fichier
 
@@ -20,6 +20,55 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ## Journal des sessions
+
+### 2026-09-23 — merge staging→main + nouvelle page /a-propos + guide plus convivial
+
+**[Chore] — merge groupé `staging` → `main`** : 25 commits accumulés depuis le 2026-09-21
+(échanges entre poolers, outil de backup, projections Pool Pro/Hockey Le Magazine, en-têtes
+fixes, stats junior repêchage, etc.) validés par David en staging, poussés vers `main`
+(`e4f4c87..9fc4d51`) — déploiement prod déclenché automatiquement.
+
+**[Feature] — nouvelle page `/a-propos`** (`app/app/a-propos/page.tsx`,
+`app/components/Navbar.tsx`) : David voulait un résumé de toutes les fonctionnalités de l'app
+à partager avec quelques poolers pour recueillir leurs retours (manque-t-il quelque chose?).
+Produit d'abord comme un Artifact Claude autonome pour ce premier tour de feedback
+ponctuel, puis — David a préféré cette option plutôt qu'une copie statique dans le repo —
+transformé en vraie page dans l'app pour rester à jour automatiquement plutôt que de devenir
+périmée dès le prochain ajout de fonctionnalité. Contenu organisé par section de menu
+(Alignements, Classement, LNH, Recrues, Ressources, Mon compte), chaque entrée avec un lien
+direct vers sa page réelle. Ajoutée au menu Ressources (desktop + mobile). Renvoie vers `/aide`
+pour les instructions détaillées, et vers `/signaler` pour rapporter ce qui manque — la
+boucle de feedback reste dans l'app plutôt que hors-bande.
+
+**[Feature] — guide `/aide` plus convivial : liens directs + pages manquantes comblées**
+(`app/app/aide/AideTabs.tsx`) — deux demandes de David après le résumé ci-dessus : rendre le
+guide plus visuel avec des liens vers les sections concernées, et des captures d'écran.
+- **Liens directs** : chaque section du Guide (et une partie des Règlements) affiche
+  maintenant un lien « Ouvrir cette page → » vers la route réelle (nouveau champ `href` sur
+  `Section`, rendu par un composant `SectionCard` partagé entre le mode onglets et le mode
+  recherche — remplace la duplication de balisage qui existait avant). Inclut des liens
+  profonds vers les onglets de Gestion d'effectifs (`?tab=ballotage`, `?tab=echanges`, déjà
+  supportés par `gestion-effectifs/page.tsx`).
+- **Pages manquantes comblées** : Équipes, Statistiques AHL, Contrats LNH, Classement
+  pré-repêchage, Repêchage LNH, Repêchage interne n'avaient jamais eu d'entrée dans le Guide
+  malgré leur présence dans la nav depuis un moment — ajoutées avec le même patron que les
+  sections existantes.
+- **Note périmée corrigée** : la section Classement affirmait encore « hebdomadaire et
+  mensuel à venir » alors qu'ils existent depuis le 2026-09-17 — remplacé par de vrais liens.
+- **Captures d'écran** : champ `screenshot` ajouté à `Section` (affiche une image sous le
+  contenu si présent, via `<img>` — pas `next/image`, pour rester flexible sur des captures de
+  tailles/ratios très variables). Aucune capture encore fournie — je n'ai pas d'outil pour
+  piloter un navigateur et capturer l'app dans cet environnement. David va déposer des
+  captures dans `guide_app/screenshot/` (nouveau dossier à la racine, hors de l'app) ; il
+  faudra copier celles retenues vers `app/public/guide/` pour qu'elles soient servies par
+  Next.js, `guide_app/` restant le dépôt source/archive.
+- Bandeau ambre « Section en construction » retiré du Guide (n'est plus vrai, le guide couvre
+  maintenant l'ensemble de la nav pooler).
+- Vérifié : `tsc --noEmit` et `next build` passent, route `/a-propos` générée.
+
+**Prochaine étape suggérée** : intégrer les captures d'écran une fois fournies par David
+(`guide_app/screenshot/` → `app/public/guide/`, puis remplir le champ `screenshot` des
+sections concernées dans `AideTabs.tsx`).
 
 ### 2026-09-22 (suite — jumelage cassé pour les noms à trait d'union/apostrophe/point)
 

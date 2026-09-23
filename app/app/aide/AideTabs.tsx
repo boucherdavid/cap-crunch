@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 
 type TabId = 'installation' | 'guide' | 'reglements'
 
@@ -9,7 +10,37 @@ interface Section {
   tab: TabId
   title: string
   keywords: string
+  /** Lien direct vers la page correspondante, affiché juste sous le titre. */
+  href?: string
+  /** Chemin d'une capture d'écran (`/guide/xxx.png`, servie depuis `app/public/guide/`). */
+  screenshot?: string
   content: React.ReactNode
+}
+
+function SectionCard({ s, badge }: { s: Section; badge?: string }) {
+  return (
+    <div className="bg-white rounded-lg shadow p-5">
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        {badge && <span className="text-xs bg-gray-100 text-gray-500 rounded px-2 py-0.5 font-medium">{badge}</span>}
+        <h3 className="font-semibold text-gray-800">{s.title}</h3>
+      </div>
+      {s.href && (
+        <Link
+          href={s.href}
+          className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium mb-3"
+        >
+          Ouvrir cette page <span aria-hidden>→</span>
+        </Link>
+      )}
+      {s.content}
+      {s.screenshot && (
+        <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={s.screenshot} alt={s.title} className="w-full block" />
+        </div>
+      )}
+    </div>
+  )
 }
 
 const SECTIONS: Section[] = [
@@ -80,6 +111,7 @@ const SECTIONS: Section[] = [
     tab: 'guide',
     title: 'Mon équipe',
     keywords: 'equipe alignement roster organisation actif reserviste recrue ltir picks repechage cap masse salariale pooler switcher',
+    href: '/dashboard',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -96,10 +128,29 @@ const SECTIONS: Section[] = [
     ),
   },
   {
+    id: 'guide-equipes',
+    tab: 'guide',
+    title: 'Équipes',
+    keywords: 'equipes poolers liste rang classement masse salariale alignement des autres',
+    href: '/poolers',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Accédez via <strong>Alignements → Équipes</strong> — la liste des 8 poolers du pool.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• Chaque ligne affiche le <strong>rang</strong> au classement et la <strong>masse salariale</strong> utilisée.</li>
+          <li>• Cliquez sur un pooler pour ouvrir son alignement complet (même vue que <strong>Mon équipe</strong>, mais pour lui).</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
     id: 'guide-effectifs',
     tab: 'guide',
     title: 'Gestion d\'effectifs',
     keywords: 'gestion effectifs self service actif reserviste liberer recrue banque promouvoir cap limite saison demarree',
+    href: '/gestion-effectifs',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -122,6 +173,7 @@ const SECTIONS: Section[] = [
     tab: 'guide',
     title: 'Ballotage',
     keywords: 'ballotage reclamer liberer joueur delai priorite classement onglet gestion effectifs',
+    href: '/gestion-effectifs?tab=ballotage',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -143,6 +195,7 @@ const SECTIONS: Section[] = [
     tab: 'guide',
     title: 'Échanges entre poolers',
     keywords: 'echange transaction proposer accepter refuser approbation admin delai confirmer',
+    href: '/gestion-effectifs?tab=echanges',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -163,6 +216,7 @@ const SECTIONS: Section[] = [
     tab: 'guide',
     title: 'Signatures des agents libres (pré-saison)',
     keywords: 'repechage signatures agents libres presaison file attente tour signature admin bac a sable simulation liberer recrue pret alignement',
+    href: '/repechage-agents-libres',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -193,6 +247,7 @@ const SECTIONS: Section[] = [
     tab: 'guide',
     title: 'Simulation',
     keywords: 'simulation bac a sable transaction echange test scenario sauvegarder ir ltir actif reserviste agent libre recrue toute la saison',
+    href: '/simulation',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -218,7 +273,8 @@ const SECTIONS: Section[] = [
     id: 'guide-classement',
     tab: 'guide',
     title: 'Classement',
-    keywords: 'classement rang points buts passes victoires gardien joueurs action ce soir widget',
+    keywords: 'classement rang points buts passes victoires gardien joueurs action ce soir widget hebdomadaire mensuel semaine mois',
+    href: '/classement',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -229,7 +285,13 @@ const SECTIONS: Section[] = [
           <li>• Cliquez sur le nom d&apos;un pooler pour consulter son alignement complet.</li>
           <li>• La page d&apos;accueil affiche un widget <strong>Joueurs en action ce soir</strong> : combien de joueurs de chaque pooler jouent le soir même.</li>
         </ul>
-        <p className="text-xs text-gray-400 mt-3 italic">Classements hebdomadaire et mensuel à venir.</p>
+        <p className="text-sm text-gray-600 mt-3">
+          Deux autres fenêtres sont disponibles, mêmes colonnes mais bornées dans le temps : le{' '}
+          <Link href="/classement/hebdomadaire" className="text-blue-600 hover:underline font-medium">classement hebdomadaire</Link>{' '}
+          (lundi à dimanche) et le{' '}
+          <Link href="/classement/mensuel" className="text-blue-600 hover:underline font-medium">classement mensuel</Link>{' '}
+          — chacun avec une navigation précédent/suivant pour parcourir les semaines ou mois passés.
+        </p>
       </div>
     ),
   },
@@ -238,6 +300,7 @@ const SECTIONS: Section[] = [
     tab: 'guide',
     title: 'Journal des transactions',
     keywords: 'transactions echanges ajustements joueurs picks historique mouvements journal admin lecture seule',
+    href: '/journal-transactions',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -255,6 +318,7 @@ const SECTIONS: Section[] = [
     tab: 'guide',
     title: 'Notifications',
     keywords: 'notifications push courriel email alerte avertissement alignement equipe eliminee admin compte appareil activer tester babillard',
+    href: '/compte',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -279,6 +343,7 @@ const SECTIONS: Section[] = [
     tab: 'guide',
     title: 'Babillard',
     keywords: 'babillard communication annonce admin commentaire notification ressources',
+    href: '/babillard',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -298,6 +363,7 @@ const SECTIONS: Section[] = [
     tab: 'guide',
     title: 'Planification',
     keywords: 'planification sondage doodle rencontre disponibilites dates reunion vote babillard',
+    href: '/planification',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -316,6 +382,7 @@ const SECTIONS: Section[] = [
     tab: 'guide',
     title: 'Calendrier LNH',
     keywords: 'calendrier matchs semaine equipe vue mensuel analyse joueurs prochains jours schedule filtre',
+    href: '/calendrier',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -339,6 +406,7 @@ const SECTIONS: Section[] = [
     tab: 'guide',
     title: 'Statistiques LNH',
     keywords: 'statistiques stats lnh patineurs gardiens points victoires toggle saison series disponible recrue filtre',
+    href: '/statistiques',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -354,10 +422,30 @@ const SECTIONS: Section[] = [
     ),
   },
   {
+    id: 'guide-ahl',
+    tab: 'guide',
+    title: 'Statistiques AHL',
+    keywords: 'ahl statistiques ligue developpement prospects recrue banque disponible filtre',
+    href: '/statistiques/ahl',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Accédez-y via <strong>LNH → Statistiques → AHL</strong> — les mêmes informations que pour la LNH, mais pour la ligue de développement.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• Stats des patineurs et des gardiens AHL, avec la même pastille de disponibilité (vert = déjà pris) que Statistiques LNH.</li>
+          <li>• Utile pour suivre vos prospects en banque de recrues avant leur arrivée dans la LNH.</li>
+          <li>• Le badge <strong>R</strong> indique le statut recrue au sens de la ligue AHL — distinct de la protection recrue du pool (voir Règlements).</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
     id: 'guide-projections',
     tab: 'guide',
     title: 'Projections',
     keywords: 'projections nhl.com cbs tendance points par match saison derniere progression disponible filtre',
+    href: '/statistiques/projections',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
@@ -365,11 +453,83 @@ const SECTIONS: Section[] = [
           visible joueur par joueur dans le panneau détail (cliquable depuis n&apos;importe quelle page via le nom d&apos;un joueur).
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
-          <li>• Colonnes <strong>NHL.com</strong> et <strong>CBS</strong> : projections externes collées manuellement, mises à jour ponctuellement.</li>
+          <li>• Colonnes <strong>NHL.com</strong>, <strong>CBS</strong>, <strong>Pool Pro</strong> et <strong>Hockey Le Magazine</strong> : projections externes, mises à jour ponctuellement.</li>
           <li>• <strong>Saison dernière</strong> : total réel de la saison précédente.</li>
           <li>• <strong>Pts/Match (tend.)</strong> et <strong>Tendance 3 saisons</strong> : rythme pondéré sur les dernières saisons réelles (repère rapide, pas une vraie projection) — ignore les saisons à moins de 10 matchs pour éviter un chiffre faussé par un tout petit échantillon.</li>
           <li>• <strong>Progression</strong> (↑ / ↓ / →) : compare le rythme des 2 dernières saisons qualifiées.</li>
           <li>• Séparé en onglets Attaquants / Défenseurs / Gardiens, avec le même point vert de disponibilité que Statistiques LNH.</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
+    id: 'guide-joueurs',
+    tab: 'guide',
+    title: 'Contrats LNH',
+    keywords: 'contrats lnh joueurs salaire cap statut elc rfa ufa disponibilite table',
+    href: '/joueurs',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Accédez-y via <strong>LNH → Contrats</strong> — la table complète des joueurs de la LNH.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• Contrat et salaire (<strong>cap number</strong>) par saison pour chaque joueur.</li>
+          <li>• Statut de contrat : <strong>ELC</strong> (entrée), <strong>RFA</strong> ou <strong>UFA</strong>.</li>
+          <li>• Même pastille de disponibilité que les pages de statistiques.</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
+    id: 'guide-draft-center',
+    tab: 'guide',
+    title: 'Classement pré-repêchage',
+    keywords: 'classement pre repechage prospects draft center rang sources annee',
+    href: '/draft-center',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Accédez-y via <strong>Recrues → Classement pré-repêchage</strong>.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• Classement des prospects du <strong>prochain repêchage LNH</strong>, en combinant plusieurs sources externes en un rang moyen.</li>
+          <li>• Filtrable par <strong>année de repêchage</strong> pour revoir les cuvées précédentes.</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
+    id: 'guide-repechage',
+    tab: 'guide',
+    title: 'Repêchage LNH',
+    keywords: 'repechage lnh resultats reel rondes equipe stats junior 2026',
+    href: '/repechage',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Accédez-y via <strong>Recrues → Repêchage LNH</strong> — les résultats réels du repêchage de la LNH.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• Couvre les <strong>5 dernières années</strong> (la fenêtre de protection recrue du pool), ronde par ronde, avec l&apos;équipe LNH qui a sélectionné chaque joueur.</li>
+          <li>• Pour le repêchage <strong>2026</strong> : équipe junior/université, matchs joués et points de la dernière saison amateur.</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
+    id: 'guide-repechage-recrues',
+    tab: 'guide',
+    title: 'Repêchage interne',
+    keywords: 'repechage interne recrues pool saison qui a repeche qui',
+    href: '/repechage-recrues',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Accédez-y via <strong>Recrues → Repêchage interne</strong> — le tableau du repêchage des recrues propre au pool lui-même.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• Qui a repêché qui, par saison, avec un sélecteur pour revoir les éditions précédentes.</li>
         </ul>
       </div>
     ),
@@ -423,6 +583,7 @@ const SECTIONS: Section[] = [
     tab: 'reglements',
     title: 'Transactions & échanges',
     keywords: 'transactions echanges admin nombre delai desactivation agent libre regles gestion effectifs self service',
+    href: '/gestion-effectifs',
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
         <li>• Les <strong>échanges entre poolers</strong> (joueurs, choix de repêchage) se proposent vous-même via l&apos;onglet <strong>Échanges</strong> de Gestion d&apos;effectifs — voir les règles détaillées plus bas. L&apos;admin garde un droit d&apos;approbation sur chacun.</li>
@@ -436,6 +597,7 @@ const SECTIONS: Section[] = [
     tab: 'reglements',
     title: 'Ballotage',
     keywords: 'ballotage reclamer liberer priorite classement delai',
+    href: '/gestion-effectifs?tab=ballotage',
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
         <li>• S&apos;applique uniquement aux libérations en <strong>cours de saison</strong> (pas aux libérations de la phase pré-saison).</li>
@@ -451,6 +613,7 @@ const SECTIONS: Section[] = [
     tab: 'reglements',
     title: 'Échanges entre poolers',
     keywords: 'echange transaction proposer accepter refuser approbation admin delai confirmer annulation',
+    href: '/gestion-effectifs?tab=echanges',
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
         <li>• Peuvent inclure des joueurs actif/réserviste/recrue et des choix de repêchage, dans n&apos;importe quelle combinaison.</li>
@@ -467,6 +630,7 @@ const SECTIONS: Section[] = [
     tab: 'reglements',
     title: 'Signatures des agents libres (pré-saison)',
     keywords: 'repechage signatures agents libres presaison ordre tour phase liberation passer signature admin',
+    href: '/repechage-agents-libres',
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
         <li>• Se déroule avant le début de chaque nouvelle saison, une fois le repêchage des recrues terminé.</li>
@@ -510,9 +674,17 @@ export default function AideTabs() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Aide &amp; Règlements</h1>
-        <p className="text-sm text-gray-500 mt-1">Guide d&apos;utilisation et règlements du pool.</p>
+      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Aide &amp; Règlements</h1>
+          <p className="text-sm text-gray-500 mt-1">Guide d&apos;utilisation et règlements du pool.</p>
+        </div>
+        <Link
+          href="/a-propos"
+          className="text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium whitespace-nowrap"
+        >
+          Voir le tour d&apos;horizon des fonctionnalités →
+        </Link>
       </div>
 
       {/* Barre de recherche */}
@@ -539,13 +711,7 @@ export default function AideTabs() {
             <>
               <p className="text-xs text-gray-500 mb-2">{results.length} résultat{results.length > 1 ? 's' : ''} pour « {trimmed} »</p>
               {results.map(s => (
-                <div key={s.id} className="bg-white rounded-lg shadow p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xs bg-gray-100 text-gray-500 rounded px-2 py-0.5 font-medium">{TAB_LABELS[s.tab]}</span>
-                    <h3 className="font-semibold text-gray-800">{s.title}</h3>
-                  </div>
-                  {s.content}
-                </div>
+                <SectionCard key={s.id} s={s} badge={TAB_LABELS[s.tab]} />
               ))}
             </>
           ) : (
@@ -581,24 +747,15 @@ export default function AideTabs() {
                 Cap Crunch est une application web progressive (PWA). Vous pouvez l&apos;installer sur votre appareil pour y accéder comme une application normale, sans passer par un navigateur.
               </p>
               {tabSections.map(s => (
-                <div key={s.id} className="bg-white rounded-lg shadow p-5">
-                  <h3 className="font-semibold text-gray-800 mb-3">{s.title}</h3>
-                  {s.content}
-                </div>
+                <SectionCard key={s.id} s={s} />
               ))}
             </div>
           )}
 
           {activeTab === 'guide' && (
             <div className="space-y-4">
-              <div className="bg-amber-50 border border-amber-200 rounded-lg px-5 py-4 text-sm text-amber-800">
-                <strong>Section en construction.</strong> Les instructions seront complétées au fur et à mesure que les fonctionnalités sont déployées.
-              </div>
               {tabSections.map(s => (
-                <div key={s.id} className="bg-white rounded-lg shadow p-5">
-                  <h3 className="font-semibold text-gray-800 mb-3">{s.title}</h3>
-                  {s.content}
-                </div>
+                <SectionCard key={s.id} s={s} />
               ))}
             </div>
           )}
@@ -609,10 +766,7 @@ export default function AideTabs() {
                 Ces règlements sont évolutifs et seront mis à jour au fur et à mesure que les règles sont clarifiées ou que de nouvelles fonctionnalités sont implémentées.
               </div>
               {tabSections.map(s => (
-                <div key={s.id} className="bg-white rounded-lg shadow p-5">
-                  <h3 className="font-semibold text-gray-800 mb-3">{s.title}</h3>
-                  {s.content}
-                </div>
+                <SectionCard key={s.id} s={s} />
               ))}
             </div>
           )}

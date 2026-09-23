@@ -234,7 +234,12 @@ heure de l'Est ; navigation précédent/suivant, voir section 6) `/resultats`
 **Mouvements**, l'outil existant ; **Ballotage**, réclamer un joueur libéré en cours de
 saison ; **Échanges**, proposer/répondre à des transactions entre poolers — voir section 6
 pour les trois) `/draft-center` (classement des prospects, vue publique)
-`/dashboard` (redirige vers son propre alignement) `/compte` `/signaler` `/aide` `/offline`
+`/dashboard` (redirige vers son propre alignement) `/compte` `/signaler` `/aide` `/a-propos`
+(David, 2026-09-23 — « tour d'horizon » statique des fonctionnalités consultables/en
+libre-service, regroupé par section de menu avec lien direct vers chaque page ; distinct
+d'`/aide` (guide pas-à-pas + règlements) — les deux se renvoient l'un vers l'autre. Généré à
+partir d'un résumé produit pour recueillir les retours de quelques poolers ; ajouté au menu
+Ressources) `/offline`
 `/planification` (sondage type Doodle pour une rencontre — vue pooler : ses disponibilités,
 le résumé, le babillard propre au sondage ; notifie les admins par push à chaque
 soumission/commentaire). Gestion (créer le sondage, ajouter/retirer des dates) sur
@@ -1066,7 +1071,7 @@ Règle : quand on touche une page de consultation, on la rend responsive en mêm
 
 Pages de consultation : `/`, `/joueurs`, `/statistiques`, `/statistiques/ahl`, `/repechage`,
 `/poolers`, `/poolers/[id]`, `/journal-transactions`, `/gestion-series`, `/classement-series`,
-`/classement`, `/classement/hebdomadaire`, `/classement/mensuel`, `/aide`
+`/classement`, `/classement/hebdomadaire`, `/classement/mensuel`, `/aide`, `/a-propos`
 
 ---
 
