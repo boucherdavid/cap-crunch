@@ -308,7 +308,7 @@ function PoolActivityWidget({ items }: { items: PoolActivityItem[] }) {
 
 // ---------- actualité LNH (RSS) ----------
 
-type NewsItem = { title: string; link: string }
+type NewsItem = { title: string; link: string; pubDate: string; source: string }
 
 function decodeXmlEntities(s: string): string {
   return s
@@ -325,17 +325,28 @@ function extractXmlTag(block: string, tag: string): string {
   return decodeXmlEntities(cdata ? cdata[1] : raw)
 }
 
-// Flux RSS officiel d'ESPN (espn.com/espn/rss/nhl/news) — pas de flux officiel côté nhl.com
-// (vérifié, David 2026-09-23). Parsé à la main (regex) plutôt que d'ajouter une dépendance XML
-// pour un besoin aussi simple — même esprit que les autres fetch externes de cette page.
-async function fetchNhlNews(limit = 6): Promise<NewsItem[]> {
+// Flux RSS officiels — pas de flux côté nhl.com (vérifié, David 2026-09-23) ni PuckPedia
+// (vérifié le 2026-09-23 — site protégé contre les requêtes automatisées de toute façon).
+// Parsé à la main (regex) plutôt que d'ajouter une dépendance XML pour un besoin aussi simple —
+// même esprit que les autres fetch externes de cette page.
+const NEWS_FEEDS = [
+  { url: 'https://www.espn.com/espn/rss/nhl/news', source: 'ESPN' },
+  { url: 'https://www.dailyfaceoff.com/feed', source: 'Daily Faceoff' },
+]
+
+async function fetchRssFeed(url: string, source: string, limit = 10): Promise<NewsItem[]> {
   try {
-    const res = await fetch('https://www.espn.com/espn/rss/nhl/news', { next: { revalidate: 1800 } })
+    const res = await fetch(url, { next: { revalidate: 1800 } })
     if (!res.ok) return []
     const xml = await res.text()
     const blocks = xml.match(/<item>[\s\S]*?<\/item>/g) ?? []
     return blocks
-      .map(block => ({ title: extractXmlTag(block, 'title'), link: extractXmlTag(block, 'link') }))
+      .map(block => ({
+        title: extractXmlTag(block, 'title'),
+        link: extractXmlTag(block, 'link'),
+        pubDate: extractXmlTag(block, 'pubDate'),
+        source,
+      }))
       .filter(n => n.title && n.link)
       .slice(0, limit)
   } catch {
@@ -343,13 +354,19 @@ async function fetchNhlNews(limit = 6): Promise<NewsItem[]> {
   }
 }
 
+async function fetchNhlNews(limit = 6): Promise<NewsItem[]> {
+  const feeds = await Promise.all(NEWS_FEEDS.map(f => fetchRssFeed(f.url, f.source)))
+  return feeds.flat()
+    .sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime())
+    .slice(0, limit)
+}
+
 function NhlNewsWidget({ items }: { items: NewsItem[] }) {
   if (items.length === 0) return null
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="bg-slate-700 px-5 py-3 flex items-center justify-between">
+      <div className="bg-slate-700 px-5 py-3">
         <h2 className="text-white font-bold text-sm uppercase tracking-wide">Actualité LNH</h2>
-        <span className="text-xs text-slate-300">Source : ESPN</span>
       </div>
       <ul className="divide-y divide-gray-100">
         {items.map((n, i) => (
@@ -362,6 +379,7 @@ function NhlNewsWidget({ items }: { items: NewsItem[] }) {
             >
               {n.title}
             </a>
+            <span className="ml-2 text-xs text-gray-400">{n.source}</span>
           </li>
         ))}
       </ul>

@@ -21,6 +21,34 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ## Journal des sessions
 
+### 2026-09-23 (suite — Daily Faceoff ajouté aux manchettes + validation TSN/Yahoo pour les blessures)
+
+**[Recherche] — TSN et Yahoo comme sources de blessures (proposés par David, qui les utilisait
+manuellement)** :
+- **Yahoo** (`hockey.fantasysports.yahoo.com/hockey/injuries`) — ✅ utilisable : HTML rendu
+  côté serveur, aucune authentification requise malgré le domaine fantasy. Colonnes joueur/
+  équipe/position/type de blessure/statut (O, IR-NR, IR-LT, IR, DTD) — pas de date de retour
+  prévue, contrairement à CBS.
+- **TSN** (`tsn.ca/nhl/injuries`) — ❌ écarté : vérifié en `curl` brut (pas juste WebFetch) que
+  le HTML initial ne contient aucune donnée (page React qui charge le tableau en JS après coup,
+  aucun point d'entrée API exposé trouvé). Scrapable seulement avec un navigateur headless
+  (Playwright/Selenium), absent du pipeline Python actuel — mis de côté à moins que CBS+Yahoo
+  s'avèrent insuffisants.
+- Conclusion inchangée : CBS reste la source principale pour le futur chantier blessures, Yahoo
+  en second choix/validation croisée possible, TSN non retenu pour l'instant.
+- Vérifié au passage : ni nhl.com ni PuckPedia n'ont de flux RSS (PuckPedia bloque d'ailleurs les
+  requêtes automatisées génériques, 403 sur plusieurs chemins testés).
+
+**[Feature] — Daily Faceoff ajouté au widget Actualité LNH de l'accueil** (`app/app/page.tsx`) :
+flux RSS officiel confirmé valide (`dailyfaceoff.com/feed`, RSS 2.0). `fetchNhlNews()`
+récupère maintenant ESPN + Daily Faceoff en parallèle (`fetchRssFeed()`, généralisé pour
+accepter n'importe quelle URL/source plutôt que codé en dur pour ESPN seul), fusionne et trie
+par date de publication décroissante. Le bandeau fixe "Source : ESPN" du widget est remplacé
+par une étiquette de source par manchette (ESPN / Daily Faceoff), plus juste maintenant que
+deux sources se mélangent — et prêt à accueillir une 3ᵉ source plus tard sans autre changement
+de structure.
+- Vérifié : `tsc --noEmit` et `next build` passent.
+
 ### 2026-09-23 (suite — Règlements de /aide passés en revue, 3 périmés corrigés)
 
 **[Fix docs] — David a demandé une vérification : les règlements affichés dans `/aide` étaient-ils
