@@ -164,13 +164,19 @@ function PeriodPopup({ playerName, isGoalie, periods, totalPoints, onClose }: {
   )
 }
 
-function PlayerStatsRow({ p, streaks, onPeriodClick }: { p: PlayerContrib; streaks: Record<number, StreakInfo>; onPeriodClick?: (p: PlayerContrib) => void }) {
+function PlayerStatsRow({ p, streaks, onPeriodClick, injuriesByNhlId }: {
+  p: PlayerContrib
+  streaks: Record<number, StreakInfo>
+  onPeriodClick?: (p: PlayerContrib) => void
+  injuriesByNhlId?: Map<number, { injuryType: string; status: string }>
+}) {
   const isGoalie = p.position === 'G'
   const isActif = p.playerType === 'actif' && p.stillRostered
   // Un joueur qui a quitté le pooler (échangé/libéré) garde son dernier playerType
   // ('actif' la plupart du temps) — sans ce cas à part il s'affichait identique à un
   // vrai actif malgré ses points déjà gagnés et son départ (repéré par David le 2026-08-13).
   const badge = !p.stillRostered ? 'PARTI' : TYPE_BADGE[p.playerType]
+  const injury = p.nhlId ? injuriesByNhlId?.get(p.nhlId) : undefined
   return (
     <tr className={isActif ? 'hover:bg-gray-50' : 'hover:bg-gray-50 opacity-60'}>
       <td className="px-4 py-2">
@@ -182,6 +188,14 @@ function PlayerStatsRow({ p, streaks, onPeriodClick }: { p: PlayerContrib; strea
         <StreakBadge info={p.nhlId ? streaks[p.nhlId] : undefined} />
         <GoalieBadge info={p.nhlId ? streaks[p.nhlId] : undefined} />
         {badge && <span className="ml-2 text-xs bg-gray-100 text-gray-400 rounded px-1">{badge}</span>}
+        {injury && (
+          <span
+            className="ml-1.5 inline-block text-[10px] font-bold bg-red-100 text-red-600 rounded px-1 py-0.5 align-middle cursor-help"
+            title={`${injury.injuryType} — ${injury.status} (source : CBS Sports)`}
+          >
+            Blessé
+          </span>
+        )}
         <button
           type="button"
           onClick={() => onPeriodClick?.(p)}
@@ -226,6 +240,7 @@ export default function PoolerPageTabs({
   allOrgPlayers,
   schedule7,
   today,
+  injuriesByNhlId,
 }: {
   masseSalarialeContent: React.ReactNode
   recruesContent: React.ReactNode
@@ -235,6 +250,7 @@ export default function PoolerPageTabs({
   allOrgPlayers: OrgPlayer[]
   schedule7: DaySchedule[]
   today: string
+  injuriesByNhlId?: Map<number, { injuryType: string; status: string }>
 }) {
   const [tab, setTab] = useState<Tab>('alignement')
   const [periodPopup, setPeriodPopup] = useState<PlayerContrib | null>(null)
@@ -330,7 +346,7 @@ export default function PoolerPageTabs({
                             </td>
                           </tr>
                         )}
-                        <PlayerStatsRow p={p} streaks={streaks} onPeriodClick={setPeriodPopup} />
+                        <PlayerStatsRow p={p} streaks={streaks} onPeriodClick={setPeriodPopup} injuriesByNhlId={injuriesByNhlId} />
                       </Fragment>
                     )
                   })}

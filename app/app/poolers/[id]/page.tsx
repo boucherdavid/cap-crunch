@@ -342,7 +342,7 @@ export default async function PoolerPage({ params }: { params: Promise<{ id: str
     supabase.from('poolers').select('id, name').eq('id', id).single(),
     supabase.from('poolers').select('id, name').order('name'),
     supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
-    supabase.from('player_injuries').select('player_id, injury_type, status'),
+    supabase.from('player_injuries').select('player_id, injury_type, status, players (nhl_id)'),
   ])
   const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
 
@@ -357,6 +357,16 @@ export default async function PoolerPage({ params }: { params: Promise<{ id: str
 
   const injuriesByPlayerId = new Map(
     (injuriesData ?? []).map(row => [row.player_id, { injuryType: row.injury_type as string, status: row.status as string }])
+  )
+  // L'onglet Alignement (PlayerStatsRow, PoolerPageTabs.tsx) travaille avec des PlayerContrib
+  // indexés par nhl_id (pas le player_id interne comme RosterTable ci-dessus) — David a repéré
+  // que le badge blessé n'apparaissait que sur l'onglet Masse Salariale, pas sur Alignement
+  // (l'onglet par défaut), 2026-09-24.
+  const injuriesByNhlId = new Map(
+    (injuriesData ?? [])
+      .map(row => ({ ...row, nhlId: (row.players as unknown as { nhl_id: number | null }[])[0]?.nhl_id }))
+      .filter(row => row.nhlId)
+      .map(row => [row.nhlId as number, { injuryType: row.injury_type as string, status: row.status as string }])
   )
 
   if (!pooler) notFound()
@@ -640,6 +650,7 @@ export default async function PoolerPage({ params }: { params: Promise<{ id: str
         allOrgPlayers={allOrgPlayers}
         schedule7={schedule7}
         today={today}
+        injuriesByNhlId={injuriesByNhlId}
       />
     </div>
   )

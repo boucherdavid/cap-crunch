@@ -19,6 +19,20 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-09-23 (suite — fix : badge blessé absent de l'onglet Alignement)
+
+**[Fix] — le badge "Blessé" n'apparaissait que sur l'onglet Masse Salariale, pas Alignement**
+(`app/app/poolers/[id]/{page.tsx,PoolerPageTabs.tsx}`) — David a testé avec une capture
+d'écran de son propre alignement (A.J. Greer, blessé selon `/statistiques/blessures`, sans
+badge sur l'onglet Alignement, ouvert par défaut). Cause : je n'avais branché le badge que
+dans `RosterTable` (onglet Masse Salariale, indexé par `player_id`) — l'onglet Alignement
+utilise un composant différent (`PlayerStatsRow`, données `PlayerContrib` de
+`buildStandings()`) qui n'a pas de `player_id` interne, seulement `nhlId`. Ajouté une seconde
+map `injuriesByNhlId` (jointure `player_injuries` → `players(nhl_id)`) et le même badge dans
+`PlayerStatsRow`.
+- Vérifié : `tsc --noEmit` et `next build` passent.
+- CLAUDE.md section 6 mise à jour.
+
 ### 2026-09-23 (suite — 3 derniers ajustements de la sidebar)
 
 **[Chore] — trois retouches demandées par David** (`app/components/Navbar.tsx`) :

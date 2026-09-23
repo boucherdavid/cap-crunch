@@ -1134,8 +1134,13 @@ corrigée le 2026-09-20 :**
 - Affichage dans l'app, limité aux joueurs `actif`/`reserviste` (ceux pour qui le LTIR est une
   vraie décision à prendre — un joueur déjà en LTIR ou en banque de recrues n'a pas besoin du
   signal) :
-  - Badge rouge "Blessé" (tooltip = type + statut CBS) sur `/poolers/[id]` (Mon équipe et
-    Équipes, même page), dans `RosterTable`.
+  - Badge rouge "Blessé" (tooltip = type + statut CBS) sur `/poolers/[id]` (Mon alignement et
+    Tous les alignements, même page) — **sur les deux onglets qui listent des joueurs**,
+    `Masse Salariale` (`RosterTable`, indexé par `player_id`) et `Alignement`
+    (`PlayerStatsRow`/`PoolerPageTabs.tsx`, indexé par `nhl_id` — `PlayerContrib` n'a pas de
+    `player_id` interne, seulement `nhlId`, d'où une deuxième map `injuriesByNhlId` en plus de
+    `injuriesByPlayerId`). David a repéré le 2026-09-23 que seul Masse Salariale avait le
+    badge — Alignement, l'onglet par défaut, en manquait.
   - Étiquette texte dans les `<select>` de `/gestion-effectifs` (`entryLabel()`,
     `GestionEffectifsManager.tsx`) — visible directement en choisissant qui mettre au LTIR.
   - Widget "Blessures dans le pool" sur l'accueil (`app/app/page.tsx`,
