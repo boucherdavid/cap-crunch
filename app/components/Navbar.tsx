@@ -59,24 +59,25 @@ type NavGroup = {
   label: string
   href?: string            // présent + pas d'items/subgroups => lien autonome (pas de chevron)
   items?: NavLeaf[]
-  actionItems?: NavLeaf[]  // rendus après un séparateur, toujours auth
   subgroups?: NavSubgroup[]
 }
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    id: 'alignements',
-    label: 'Alignements',
+    id: 'mon-equipe',
+    label: 'Mon équipe',
     items: [
       { label: 'Mon alignement', href: '/dashboard', auth: true },
-      { label: 'Tous les alignements', href: '/poolers' },
-      { label: 'Calendrier', href: '/calendrier' },
-      { label: 'Journal des transactions', href: '/journal-transactions' },
+      { label: "Gestion d'effectifs", href: '/gestion-effectifs', auth: true },
+      { label: 'Simulation', href: '/simulation', auth: true },
     ],
-    actionItems: [
-      { label: "Gestion d'effectifs", href: '/gestion-effectifs' },
-      { label: 'Simulation', href: '/simulation' },
-      { label: 'Signatures des agents libres', href: '/repechage-agents-libres' },
+  },
+  {
+    id: 'le-pool',
+    label: 'Le pool',
+    items: [
+      { label: 'Tous les alignements', href: '/poolers' },
+      { label: 'Journal des transactions', href: '/journal-transactions' },
     ],
   },
   {
@@ -95,17 +96,25 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'LNH', href: '/statistiques' },
       { label: 'Projections', href: '/statistiques/projections' },
       { label: 'AHL', href: '/statistiques/ahl' },
+      { label: 'Calendrier', href: '/calendrier' },
     ],
   },
   { id: 'blessures', label: 'Blessures', href: '/statistiques/blessures' },
   { id: 'contrats', label: 'Contrats LNH', href: '/joueurs' },
   {
-    id: 'recrues',
-    label: 'Recrues',
+    id: 'prospects-lnh',
+    label: 'Prospects LNH',
     items: [
       { label: 'Classement pré-repêchage', href: '/draft-center' },
       { label: 'Repêchage LNH', href: '/repechage' },
-      { label: 'Repêchage interne', href: '/repechage-recrues' },
+    ],
+  },
+  {
+    id: 'repechage-annuel',
+    label: 'Repêchage annuel',
+    items: [
+      { label: 'Repêchage des recrues', href: '/repechage-recrues' },
+      { label: 'Signatures des agents libres', href: '/repechage-agents-libres', auth: true },
     ],
   },
   {
@@ -158,7 +167,6 @@ function groupHrefs(group: NavGroup): string[] {
   return [
     ...(group.href ? [group.href] : []),
     ...(group.items?.map(i => i.href) ?? []),
-    ...(group.actionItems?.map(i => i.href) ?? []),
     ...(group.subgroups?.flatMap(sg => sg.items.map(i => i.href)) ?? []),
   ]
 }
@@ -237,14 +245,6 @@ function TreeGroup({ group, pathname, userName, expanded, onToggle, onNavigate, 
           {group.items?.map(leaf => (
             <TreeLeaf key={leaf.href} leaf={leaf} pathname={pathname} userName={userName} onNavigate={onNavigate} />
           ))}
-          {group.actionItems && userName && (
-            <>
-              <div className="mx-3 my-1 border-t border-pool-navy-light" />
-              {group.actionItems.map(leaf => (
-                <TreeLeaf key={leaf.href} leaf={leaf} pathname={pathname} userName={userName} onNavigate={onNavigate} />
-              ))}
-            </>
-          )}
           {group.subgroups?.map(sg => (
             <div key={sg.label} className="mt-1">
               <div className="px-8 py-1 text-xs text-pool-silver uppercase tracking-wide font-semibold">{sg.label}</div>

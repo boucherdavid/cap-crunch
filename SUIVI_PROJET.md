@@ -19,7 +19,32 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
-## Journal des sessions
+### 2026-09-23 (suite — affinage des groupes de la sidebar : regroupement par propriété)
+
+Après le premier jet de la sidebar (voir plus bas), David a proposé un principe
+d'organisation plus net : regrouper "ce qui m'appartient / que je contrôle" ensemble, "ce qui
+concerne les autres poolers" ensemble, et "notre repêchage annuel" (recrues + agents libres)
+ensemble plutôt que de suivre la logique consultation/action initiale.
+
+**[Feature] — réorganisation des groupes de `NAV_GROUPS`** (`app/components/Navbar.tsx`) :
+- **Mon équipe** (nouveau, remplace "Alignements") : Mon alignement · Gestion d'effectifs ·
+  Simulation — les 3 auth-only, retirés du bloc `actionItems` (supprimé du code, plus aucun
+  groupe ne s'en sert) et rendus comme des items normaux, chacun avec son propre `auth: true`.
+- **Le pool** (nouveau) : Tous les alignements · Journal des transactions.
+- **Statistiques** : Calendrier ajouté comme 4ᵉ item (déplacé depuis l'ancien groupe
+  Alignements) — le calendrier LNH général n'est pas propre à un alignement. Le résumé
+  personnel "mes joueurs cette semaine" reste pour l'instant sur `/calendrier` telle quelle
+  (idée d'en faire un onglet séparé sur `/poolers/[id]`, discutée mais pas construite — pas de
+  changement de contenu de page dans cette session, seulement la sidebar).
+- **Prospects LNH** (ex-"Recrues", réduit à 2 items) : Classement pré-repêchage · Repêchage
+  LNH — référence sur le vrai repêchage LNH.
+- **Repêchage annuel** (nouveau groupe) : **Repêchage des recrues** (ex-"Repêchage interne"
+  côté menu — renommé pour cohérence avec le `<h1>` de `/repechage-recrues/page.tsx`, qui
+  disait déjà "Repêchage des recrues" ; aucun changement de route/fonction) · Signatures des
+  agents libres (déplacé une seconde fois, après son passage dans Alignements le 2026-09-14).
+- Vérifié : `tsc --noEmit` et `next build` passent.
+- CLAUDE.md section 5 mise à jour (nouveau tableau de groupes + rationale du regroupement par
+  propriété).
 
 ### 2026-09-23 (suite — refonte de la navigation en sidebar, suite à un retour de pooler)
 

@@ -426,31 +426,41 @@ repliable (arborescence, pas tout déplié d'un coup) ; le groupe contenant la p
 déplie automatiquement au chargement et après chaque navigation, le reste reste replié tant
 qu'on ne clique pas dessus.
 
+**Groupes affinés le 2026-09-23 (suite) — David a proposé un principe d'organisation plus
+net après avoir vu le premier jet ci-dessus : regrouper par "à qui ça appartient / qui
+contrôle quoi" plutôt que par "consultation vs action". Effet secondaire utile : ça sépare
+enfin le Repêchage interne (mécanique propre au pool) du Classement pré-repêchage/Repêchage
+LNH (référence sur le vrai repêchage LNH), qui étaient mélangés sous "Recrues" alors que ce
+sont deux natures de contenu différentes.**
+
 | Section | Contenu |
 |---|---|
-| Alignements | Mon alignement (ex-"Mon équipe") · Tous les alignements (ex-"Équipes") · Calendrier (déplacé de LNH — les poolers le voyaient comme lié à leurs alignements, pas aux stats) · Journal des transactions — puis séparateur — Gestion d'effectifs · Simulation · Signatures des agents libres |
+| Mon équipe (nouveau nom de groupe — le lien "Mon alignement", ex-"Mon équipe", garde son nom de page inchangé depuis le renommage plus haut le même jour) | Mon alignement · Gestion d'effectifs · Simulation — "ce qui m'appartient / que je contrôle" |
+| Le pool | Tous les alignements (ex-"Équipes") · Journal des transactions — "ce qui concerne les autres poolers" |
 | Classement | Saison complète · Hebdomadaire · Mensuel |
-| Statistiques (ex-partie de "LNH") | LNH · Projections · AHL |
+| Statistiques (ex-partie de "LNH") | LNH · Projections · AHL · Calendrier (déplacé depuis Alignements — le calendrier LNH général n'est pas propre à un alignement ; le résumé personnel "mes joueurs cette semaine", lui, reste pour l'instant sur `/calendrier` avec le reste — idée en attente : en faire un onglet à part sur `/poolers/[id]`, pas encore construit) |
 | Blessures | Lien autonome (plus regroupé sous "LNH", qui cachait la page selon le retour du pooler) |
 | Contrats LNH | Lien autonome (ex-sous-item de "LNH") |
-| Recrues | Classement pré-repêchage · Repêchage LNH · Repêchage interne |
+| Prospects LNH (ex-"Recrues", réduit) | Classement pré-repêchage · Repêchage LNH — référence sur le vrai repêchage LNH, rien de propre au pool |
+| Repêchage annuel (nouveau groupe) | Repêchage des recrues (ex-"Repêchage interne", renommé le 2026-09-23 pour cohérence avec le `<h1>` de la page, qui disait déjà "Repêchage des recrues") · Signatures des agents libres — "notre repêchage annuel", regroupe les deux rituels séquentiels de pré-saison (repêcher les recrues, puis signer les agents libres) |
 | Communauté (scindé de "Ressources", trop vague) | Babillard · Planification |
 | Aide (scindé de "Ressources") | Aide & Règlements · À propos |
 | Admin (admin seulement) | Deux sous-groupes inchangés : Opérations courantes · Mise en place saisonnière |
 
 **Historique horizontal (2026-08-30 → 2026-09-14, remplacé) :** dropdowns Alignements ·
-Classement · LNH (Statistiques/Calendrier/Contrats regroupés) · Recrues · Ressources
-(Babillard/Planification/Aide regroupés) — c'est justement ce regroupement "LNH"/"Ressources"
-que le retour du pooler a identifié comme peu clair, d'où la scission ci-dessus.
+Classement · LNH (Statistiques/Calendrier/Contrats regroupés) · Recrues (incluait alors
+Repêchage interne) · Ressources (Babillard/Planification/Aide regroupés) — c'est justement ce
+regroupement "LNH"/"Ressources"/"Recrues" que le retour du pooler a identifié comme peu clair,
+d'où la scission en groupes plus fins ci-dessus.
 
 **"Repêchage agents libres" déplacé d'Recrues vers Alignements, renommé "Signatures des
-agents libres" (David, 2026-09-14)** — repositionné une fois `/repechage-agents-libres`
-devenu, avec le libre-service pré-saison, un vrai outil de gestion d'alignement plutôt qu'un
-simple repêchage ; le menu Recrues, lui, ne rassemblait plus que des pages centrées sur les
-recrues/prospects (d'où le renommage). Route (`/repechage-agents-libres`), noms de fonctions
-et de tables (`presaison_draft_state`, etc.) inchangés — seul le libellé visible (menu, titre
-de page `<h1>`) a changé, pour éviter un chantier de renommage profond à faible valeur pour un
-changement qui ne touche que l'affichage.
+agents libres" (David, 2026-09-14) — puis vers "Repêchage annuel" le 2026-09-23 (voir
+ci-dessus)** — repositionné une première fois une fois `/repechage-agents-libres` devenu, avec
+le libre-service pré-saison, un vrai outil de gestion d'alignement plutôt qu'un simple
+repêchage. Route (`/repechage-agents-libres`), noms de fonctions et de tables
+(`presaison_draft_state`, etc.) inchangés à travers tous ces déplacements — seul le
+regroupement/libellé visible (menu, titre de page `<h1>`) a changé, pour éviter un chantier de
+renommage profond à faible valeur pour des changements qui ne touchent que l'affichage.
 
 **`/transactions` renommé `/journal-transactions` le 2026-09-01** (David) : c'est un historique
 en lecture seule (aucune saisie pooler), et le nom "Transactions" était réservé pour un futur
