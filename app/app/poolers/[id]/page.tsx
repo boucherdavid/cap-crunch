@@ -361,10 +361,12 @@ export default async function PoolerPage({ params }: { params: Promise<{ id: str
   // L'onglet Alignement (PlayerStatsRow, PoolerPageTabs.tsx) travaille avec des PlayerContrib
   // indexés par nhl_id (pas le player_id interne comme RosterTable ci-dessus) — David a repéré
   // que le badge blessé n'apparaissait que sur l'onglet Masse Salariale, pas sur Alignement
-  // (l'onglet par défaut), 2026-09-24.
+  // (l'onglet par défaut), 2026-09-23. Premier essai bogué : `players` supposé être un tableau
+  // (`[0]?.nhl_id`) alors que PostgREST le retourne en objet simple pour cette relation
+  // many-to-one (FK sur player_injuries) — vérifié directement contre Supabase staging.
   const injuriesByNhlId = new Map(
     (injuriesData ?? [])
-      .map(row => ({ ...row, nhlId: (row.players as unknown as { nhl_id: number | null }[])[0]?.nhl_id }))
+      .map(row => ({ ...row, nhlId: (row.players as unknown as { nhl_id: number | null } | null)?.nhl_id }))
       .filter(row => row.nhlId)
       .map(row => [row.nhlId as number, { injuryType: row.injury_type as string, status: row.status as string }])
   )

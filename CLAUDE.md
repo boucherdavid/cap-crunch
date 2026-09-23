@@ -1140,7 +1140,10 @@ corrigée le 2026-09-20 :**
     (`PlayerStatsRow`/`PoolerPageTabs.tsx`, indexé par `nhl_id` — `PlayerContrib` n'a pas de
     `player_id` interne, seulement `nhlId`, d'où une deuxième map `injuriesByNhlId` en plus de
     `injuriesByPlayerId`). David a repéré le 2026-09-23 que seul Masse Salariale avait le
-    badge — Alignement, l'onglet par défaut, en manquait.
+    badge — Alignement, l'onglet par défaut, en manquait. Premier correctif bogué : `players`
+    (relation embarquée PostgREST sur `player_injuries`) supposé être un tableau (`[0]?.nhl_id`)
+    alors qu'il s'agit d'un objet simple pour une relation many-to-one — vérifié directement
+    contre Supabase staging avant de corriger pour de vrai.
   - Étiquette texte dans les `<select>` de `/gestion-effectifs` (`entryLabel()`,
     `GestionEffectifsManager.tsx`) — visible directement en choisissant qui mettre au LTIR.
   - Widget "Blessures dans le pool" sur l'accueil (`app/app/page.tsx`,

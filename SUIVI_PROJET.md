@@ -19,6 +19,24 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-09-23 (suite — le badge était toujours absent : vrai bug dans le 1er correctif)
+
+David a rechargé après le fix précédent — badge toujours absent. Vérifié directement contre
+Supabase staging (script Python ponctuel) la forme réelle du JSON retourné par
+`player_injuries.select('..., players (nhl_id)')` :
+```json
+{"player_id": 15, "injury_type": "Lower Body", "players": {"nhl_id": 8481563}}
+```
+`players` est un **objet simple**, pas un tableau — mon premier correctif faisait
+`(row.players as unknown as {...}[])[0]?.nhl_id`, qui retourne toujours `undefined` sur un
+objet (pas d'index `[0]`), donc `injuriesByNhlId` se construisait vide silencieusement (aucune
+erreur TypeScript ni runtime, juste une map toujours vide). Corrigé en traitant `row.players`
+comme l'objet qu'il est vraiment (`app/app/poolers/[id]/page.tsx`).
+- Vérifié : `tsc --noEmit` et `next build` passent. **Cette fois vérifié aussi contre les
+  données réelles avant de repousser**, pas seulement la compilation — leçon retenue : un
+  cast TypeScript (`as unknown as X`) masque ce genre d'erreur de forme de données, seule une
+  vraie requête peut la confirmer.
+
 ### 2026-09-23 (suite — fix : badge blessé absent de l'onglet Alignement)
 
 **[Fix] — le badge "Blessé" n'apparaissait que sur l'onglet Masse Salariale, pas Alignement**
