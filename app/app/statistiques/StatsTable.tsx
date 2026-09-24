@@ -8,6 +8,7 @@ import PlayerLink from '@/components/PlayerLink'
 import type { StreakInfo, GoalieBadgeType } from '@/lib/streaks'
 import StreakLegend from '@/components/StreakLegend'
 import { normalizeSearch } from '@/lib/normalizeSearch'
+import DataLoadWarning from '@/components/DataLoadWarning'
 
 const BADGE_META: Record<NonNullable<StreakInfo['badge']>, { emoji: string; label: string }> = {
   en_feu:    { emoji: '🔥', label: 'En feu'    },
@@ -233,6 +234,10 @@ export default function StatsTable({
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
           Saison passée — statut recrue et séquences de forme reflètent seulement la saison active, pas celle-ci. La disponibilité, elle, reste à jour.
         </p>
+      )}
+
+      {((tab === 'skaters' && skaters.length === 0) || (tab === 'goalies' && goalies.length === 0)) && (
+        <DataLoadWarning label={tab === 'skaters' ? 'les patineurs' : 'les gardiens'} />
       )}
 
       {/* Filtres */}

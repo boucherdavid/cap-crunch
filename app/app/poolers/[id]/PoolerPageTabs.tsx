@@ -6,8 +6,12 @@ import PlayerLink from '@/components/PlayerLink'
 import type { PlayerContrib, PeriodContrib } from '@/lib/standings'
 import type { StreakInfo, GoalieBadgeType } from '@/lib/streaks'
 import StreakLegend from '@/components/StreakLegend'
+import UpcomingGamesAnalysis from '@/components/UpcomingGamesAnalysis'
+import type { DaySchedule, OrgPlayer } from '@/lib/nhlWeeklySchedule'
+import type { InjuryInfo } from '@/lib/injuries'
+import InjuryBadge from '@/components/InjuryBadge'
 
-type Tab = 'masse-salariale' | 'alignement' | 'historique' | 'recrues'
+type Tab = 'masse-salariale' | 'alignement' | 'historique' | 'recrues' | 'prochains-matchs'
 
 type ChangeLogEntry = {
   id: number
@@ -162,13 +166,19 @@ function PeriodPopup({ playerName, isGoalie, periods, totalPoints, onClose }: {
   )
 }
 
-function PlayerStatsRow({ p, streaks, onPeriodClick }: { p: PlayerContrib; streaks: Record<number, StreakInfo>; onPeriodClick?: (p: PlayerContrib) => void }) {
+function PlayerStatsRow({ p, streaks, onPeriodClick, injuriesByNhlId }: {
+  p: PlayerContrib
+  streaks: Record<number, StreakInfo>
+  onPeriodClick?: (p: PlayerContrib) => void
+  injuriesByNhlId?: Map<number, InjuryInfo>
+}) {
   const isGoalie = p.position === 'G'
   const isActif = p.playerType === 'actif' && p.stillRostered
   // Un joueur qui a quitté le pooler (échangé/libéré) garde son dernier playerType
   // ('actif' la plupart du temps) — sans ce cas à part il s'affichait identique à un
   // vrai actif malgré ses points déjà gagnés et son départ (repéré par David le 2026-08-13).
   const badge = !p.stillRostered ? 'PARTI' : TYPE_BADGE[p.playerType]
+  const injury = p.nhlId ? injuriesByNhlId?.get(p.nhlId) : undefined
   return (
     <tr className={isActif ? 'hover:bg-gray-50' : 'hover:bg-gray-50 opacity-60'}>
       <td className="px-4 py-2">
@@ -180,6 +190,7 @@ function PlayerStatsRow({ p, streaks, onPeriodClick }: { p: PlayerContrib; strea
         <StreakBadge info={p.nhlId ? streaks[p.nhlId] : undefined} />
         <GoalieBadge info={p.nhlId ? streaks[p.nhlId] : undefined} />
         {badge && <span className="ml-2 text-xs bg-gray-100 text-gray-400 rounded px-1">{badge}</span>}
+        {injury && <InjuryBadge injury={injury} />}
         <button
           type="button"
           onClick={() => onPeriodClick?.(p)}
@@ -221,12 +232,20 @@ export default function PoolerPageTabs({
   alignementPlayers,
   streaks,
   changeLog,
+  allOrgPlayers,
+  schedule7,
+  today,
+  injuriesByNhlId,
 }: {
   masseSalarialeContent: React.ReactNode
   recruesContent: React.ReactNode
   alignementPlayers: PlayerContrib[]
   streaks: Record<number, StreakInfo>
   changeLog: ChangeLogEntry[]
+  allOrgPlayers: OrgPlayer[]
+  schedule7: DaySchedule[]
+  today: string
+  injuriesByNhlId?: Map<number, InjuryInfo>
 }) {
   const [tab, setTab] = useState<Tab>('alignement')
   const [periodPopup, setPeriodPopup] = useState<PlayerContrib | null>(null)
@@ -267,6 +286,9 @@ export default function PoolerPageTabs({
         <button className={btnClass('recrues')} onClick={() => setTab('recrues')}>
           Recrues
         </button>
+        <button className={btnClass('prochains-matchs')} onClick={() => setTab('prochains-matchs')}>
+          Prochains matchs
+        </button>
         <button className={btnClass('historique')} onClick={() => setTab('historique')}>
           Historique
           {changeLog.length > 0 && (
@@ -278,6 +300,10 @@ export default function PoolerPageTabs({
       {tab === 'masse-salariale' && masseSalarialeContent}
 
       {tab === 'recrues' && recruesContent}
+
+      {tab === 'prochains-matchs' && (
+        <UpcomingGamesAnalysis allOrgPlayers={allOrgPlayers} schedule7={schedule7} today={today} />
+      )}
 
       {tab === 'alignement' && (
         <div className="space-y-4">
@@ -315,7 +341,7 @@ export default function PoolerPageTabs({
                             </td>
                           </tr>
                         )}
-                        <PlayerStatsRow p={p} streaks={streaks} onPeriodClick={setPeriodPopup} />
+                        <PlayerStatsRow p={p} streaks={streaks} onPeriodClick={setPeriodPopup} injuriesByNhlId={injuriesByNhlId} />
                       </Fragment>
                     )
                   })}

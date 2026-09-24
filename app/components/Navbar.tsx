@@ -24,7 +24,7 @@ function CloseIcon() {
 
 function Chevron({ open }: { open: boolean }) {
   return (
-    <svg className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className={`w-3.5 h-3.5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
     </svg>
   )
@@ -44,7 +44,263 @@ function Avatar({ name }: { name: string }) {
   )
 }
 
-type DropdownKey = 'alignements' | 'classement' | 'lnh' | 'repechage' | 'ressources' | 'admin' | 'profile' | null
+// ─── Arborescence de navigation ─────────────────────────────────────────────
+// Source unique pour la sidebar desktop ET le tiroir mobile (contrairement à
+// l'ancien menu horizontal, qui dupliquait deux listes de liens séparées) —
+// David, 2026-09-23, suite à un retour de pooler : regroupement "LNH" pas
+// clair (Statistiques/Contrats/Blessures séparés), "Ressources" trop vague
+// (scindé en Communauté/Aide), Calendrier déplacé sous Alignements, "Mon
+// équipe"/"Équipes" renommés pour être plus explicites.
+
+type NavLeaf = { label: string; href: string; auth?: boolean }
+type NavSubgroup = { label: string; items: NavLeaf[] }
+type NavGroup = {
+  id: string
+  label: string
+  href?: string            // présent + pas d'items/subgroups => lien autonome (pas de chevron)
+  items?: NavLeaf[]
+  subgroups?: NavSubgroup[]
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    id: 'mon-equipe',
+    label: 'Mon équipe',
+    items: [
+      { label: 'Mon alignement', href: '/dashboard', auth: true },
+      { label: "Gestion d'effectifs", href: '/gestion-effectifs', auth: true },
+      { label: 'Simulation', href: '/simulation', auth: true },
+    ],
+  },
+  {
+    id: 'le-pool',
+    label: 'Le pool',
+    items: [
+      { label: 'Tous les alignements', href: '/poolers' },
+      { label: 'Journal des transactions', href: '/journal-transactions' },
+    ],
+  },
+  {
+    id: 'classement',
+    label: 'Classement du pool',
+    items: [
+      { label: 'Saison complète', href: '/classement' },
+      { label: 'Hebdomadaire', href: '/classement/hebdomadaire' },
+      { label: 'Mensuel', href: '/classement/mensuel' },
+    ],
+  },
+  { id: 'calendrier', label: 'Calendrier LNH', href: '/calendrier' },
+  {
+    id: 'statistiques',
+    label: 'Statistiques',
+    items: [
+      { label: 'LNH', href: '/statistiques' },
+      { label: 'Projections', href: '/statistiques/projections' },
+      { label: 'AHL', href: '/statistiques/ahl' },
+    ],
+  },
+  { id: 'blessures', label: 'Blessures', href: '/statistiques/blessures' },
+  { id: 'contrats', label: 'Contrats LNH', href: '/joueurs' },
+  {
+    id: 'prospects-lnh',
+    label: 'Prospects LNH',
+    items: [
+      { label: 'Classement pré-repêchage', href: '/draft-center' },
+      { label: 'Repêchage LNH', href: '/repechage' },
+    ],
+  },
+  {
+    id: 'repechage-annuel',
+    label: 'Repêchage annuel',
+    items: [
+      { label: 'Repêchage des recrues', href: '/repechage-recrues' },
+      { label: 'Signatures des agents libres', href: '/repechage-agents-libres', auth: true },
+    ],
+  },
+  {
+    id: 'communaute',
+    label: 'Communauté',
+    items: [
+      { label: 'Babillard', href: '/babillard' },
+      { label: 'Planification', href: '/planification' },
+    ],
+  },
+  {
+    id: 'aide',
+    label: 'Aide',
+    items: [
+      { label: 'Aide & Règlements', href: '/aide' },
+      { label: 'À propos', href: '/a-propos' },
+    ],
+  },
+]
+
+const ADMIN_GROUP: NavGroup = {
+  id: 'admin',
+  label: 'Admin',
+  subgroups: [
+    {
+      label: 'Opérations courantes',
+      items: [
+        { label: 'Gestion des effectifs', href: '/admin/effectifs' },
+        { label: 'Communauté', href: '/admin/communaute' },
+        { label: 'Gestion du pool', href: '/admin/pool' },
+        { label: 'Mise à jour de données', href: '/admin/donnees' },
+      ],
+    },
+    {
+      label: 'Mise en place saisonnière',
+      items: [
+        { label: 'Nouvelle saison', href: '/admin/nouvelle-saison' },
+        { label: 'Initialisation', href: '/admin/init' },
+        { label: 'Repêchage recrues', href: '/admin/repechage' },
+      ],
+    },
+  ],
+}
+
+function isActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(href + '/')
+}
+
+function groupHrefs(group: NavGroup): string[] {
+  return [
+    ...(group.href ? [group.href] : []),
+    ...(group.items?.map(i => i.href) ?? []),
+    ...(group.subgroups?.flatMap(sg => sg.items.map(i => i.href)) ?? []),
+  ]
+}
+
+function groupIsActive(pathname: string, group: NavGroup): boolean {
+  return groupHrefs(group).some(h => isActive(pathname, h))
+}
+
+// ─── Sous-composants de l'arbre ─────────────────────────────────────────────
+
+function TreeLeaf({ leaf, pathname, userName, onNavigate }: {
+  leaf: NavLeaf; pathname: string; userName: string | null; onNavigate: () => void
+}) {
+  if (leaf.auth && !userName) return null
+  const active = isActive(pathname, leaf.href)
+  return (
+    <Link
+      href={leaf.href}
+      onClick={onNavigate}
+      className={`block pl-8 pr-3 py-1.5 rounded text-sm transition-colors ${
+        active ? 'bg-pool-navy-light text-white font-medium' : 'text-pool-light hover:bg-pool-navy-light hover:text-white'
+      }`}
+    >
+      {leaf.label}
+    </Link>
+  )
+}
+
+function TreeGroup({ group, pathname, userName, expanded, onToggle, onNavigate, badge, badgeTitle }: {
+  group: NavGroup
+  pathname: string
+  userName: string | null
+  expanded: boolean
+  onToggle: () => void
+  onNavigate: () => void
+  badge?: number
+  badgeTitle?: string
+}) {
+  // Lien autonome (Blessures, Contrats) — pas de chevron ni d'enfants.
+  if (group.href) {
+    const active = isActive(pathname, group.href)
+    return (
+      <Link
+        href={group.href}
+        onClick={onNavigate}
+        className={`flex items-center px-3 py-2 rounded text-sm font-medium transition-colors ${
+          active ? 'bg-pool-navy-light text-white' : 'text-pool-light hover:bg-pool-navy-light hover:text-white'
+        }`}
+      >
+        {group.label}
+      </Link>
+    )
+  }
+
+  const active = groupIsActive(pathname, group)
+  return (
+    <div>
+      <button
+        onClick={onToggle}
+        className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm font-medium transition-colors ${
+          active ? 'text-white' : 'text-pool-light hover:bg-pool-navy-light hover:text-white'
+        }`}
+      >
+        <span className="flex items-center gap-1.5">
+          {group.label}
+          {!!badge && badge > 0 && (
+            <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full" title={badgeTitle}>
+              {badge}
+            </span>
+          )}
+        </span>
+        <Chevron open={expanded} />
+      </button>
+      {expanded && (
+        <div className="flex flex-col gap-0.5 mt-0.5 mb-1">
+          {group.items?.map(leaf => (
+            <TreeLeaf key={leaf.href} leaf={leaf} pathname={pathname} userName={userName} onNavigate={onNavigate} />
+          ))}
+          {group.subgroups?.map(sg => (
+            <div key={sg.label} className="mt-1">
+              <div className="px-8 py-1 text-xs text-pool-silver uppercase tracking-wide font-semibold">{sg.label}</div>
+              {sg.items.map(leaf => (
+                <TreeLeaf key={leaf.href} leaf={leaf} pathname={pathname} userName={userName} onNavigate={onNavigate} />
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function NavTree({
+  pathname, userName, effectiveIsAdmin, expanded, onToggle, onNavigate, adminBadge, adminBadgeTitle,
+}: {
+  pathname: string
+  userName: string | null
+  effectiveIsAdmin: boolean
+  expanded: Set<string>
+  onToggle: (id: string) => void
+  onNavigate: () => void
+  adminBadge: number
+  adminBadgeTitle: string
+}) {
+  const groups = effectiveIsAdmin ? [...NAV_GROUPS, ADMIN_GROUP] : NAV_GROUPS
+  return (
+    <nav className="flex flex-col gap-0.5 p-2">
+      <Link
+        href="/"
+        onClick={onNavigate}
+        className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+          pathname === '/' ? 'bg-pool-navy-light text-white' : 'text-pool-light hover:bg-pool-navy-light hover:text-white'
+        }`}
+      >
+        Accueil
+      </Link>
+      {groups.map(group => (
+        <TreeGroup
+          key={group.id}
+          group={group}
+          pathname={pathname}
+          userName={userName}
+          expanded={expanded.has(group.id)}
+          onToggle={() => onToggle(group.id)}
+          onNavigate={onNavigate}
+          badge={group.id === 'admin' ? adminBadge : undefined}
+          badgeTitle={group.id === 'admin' ? adminBadgeTitle : undefined}
+        />
+      ))}
+    </nav>
+  )
+}
+
+// ─── Composant principal ────────────────────────────────────────────────────
 
 export default function Navbar({
   initialUserName,
@@ -65,17 +321,29 @@ export default function Navbar({
   const [isPoolerView, setIsPoolerView] = useState(false)
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount)
   const [unreadNotifCount, setUnreadNotifCount] = useState(initialUnreadNotifCount)
-  // Pastille Admin/Gestion du pool : deux compteurs distincts (feedback des poolers,
-  // notifications push) combinés en un seul chiffre — infobulle pour clarifier ce que ça
-  // représente sans dédoubler la pastille dans un espace de nav déjà serré (David, 2026-08-31).
   const adminBadgeTitle = [
     unreadCount > 0 ? `${unreadCount} message${unreadCount > 1 ? 's' : ''} non lu${unreadCount > 1 ? 's' : ''} (Communication)` : null,
     unreadNotifCount > 0 ? `${unreadNotifCount} notification${unreadNotifCount > 1 ? 's' : ''} non lue${unreadNotifCount > 1 ? 's' : ''}` : null,
   ].filter(Boolean).join(' · ')
+
   const [menuOpen, setMenuOpen] = useState(false)
-  const [openDropdown, setOpenDropdown] = useState<DropdownKey>(null)
+  const [profileOpen, setProfileOpen] = useState(false)
   const [installPrompt, setInstallPrompt] = useState<Event | null>(null)
-  const navRef = useRef<HTMLDivElement>(null)
+  const profileRef = useRef<HTMLDivElement>(null)
+
+  const effectiveIsAdmin = isAdmin && !isPoolerView
+  const allGroups = effectiveIsAdmin ? [...NAV_GROUPS, ADMIN_GROUP] : NAV_GROUPS
+  // Groupe(s) contenant la page courante déplié(s) par défaut — le reste de l'arbre reste
+  // replié tant qu'on ne clique pas dessus (David voulait une vraie arborescence, pas tout
+  // ouvert d'un coup).
+  const [expanded, setExpanded] = useState<Set<string>>(
+    () => new Set(allGroups.filter(g => !g.href && groupIsActive(pathname, g)).map(g => g.id))
+  )
+  const toggleGroup = (id: string) => setExpanded(prev => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
+  })
 
   useEffect(() => {
     if (
@@ -99,8 +367,8 @@ export default function Navbar({
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
-      if (navRef.current && !navRef.current.contains(e.target as Node)) {
-        setOpenDropdown(null)
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false)
       }
     }
     document.addEventListener('mousedown', onClickOutside)
@@ -109,7 +377,19 @@ export default function Navbar({
 
   useEffect(() => {
     setMenuOpen(false)
-    setOpenDropdown(null)
+    setProfileOpen(false)
+  }, [pathname])
+
+  // Déplie automatiquement le groupe de la nouvelle page courante après une navigation
+  // (ex: clic sur un lien autonome comme Blessures ne doit pas replier Alignements si on y
+  // retourne ensuite) — s'ajoute à l'état existant plutôt que de l'écraser.
+  useEffect(() => {
+    setExpanded(prev => {
+      const active = allGroups.filter(g => !g.href && groupIsActive(pathname, g)).map(g => g.id)
+      if (active.every(id => prev.has(id))) return prev
+      return new Set([...prev, ...active])
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname])
 
   useEffect(() => {
@@ -126,7 +406,11 @@ export default function Navbar({
     setIsPoolerView(localStorage.getItem('poolerView') === '1')
   }, [])
 
-  const effectiveIsAdmin = isAdmin && !isPoolerView
+  // Verrouille le scroll de la page derrière le tiroir mobile ouvert.
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [menuOpen])
 
   const togglePoolerView = () => {
     const next = !isPoolerView
@@ -149,323 +433,163 @@ export default function Navbar({
     window.location.href = '/login'
   }
 
-  const toggle = (key: DropdownKey) => setOpenDropdown(prev => prev === key ? null : key)
-
-  const isActive = (...paths: string[]) =>
-    paths.some(p => pathname === p || pathname.startsWith(p + '/'))
-
-  const navBtnClass = (active: boolean) =>
-    `flex items-center gap-1 px-3 py-2 rounded text-sm font-medium transition-colors ${
-      active ? 'bg-pool-navy-light text-white' : 'text-pool-light hover:bg-pool-navy-light hover:text-white'
-    }`
-
-  const dropdownLinkClass = (href: string) =>
+  const profileLinkClass = (href: string) =>
     `block px-4 py-2 text-sm transition-colors ${
-      isActive(href) ? 'text-blue-600 font-medium bg-blue-50' : 'text-gray-700 hover:bg-gray-50'
+      isActive(pathname, href) ? 'text-blue-600 font-medium bg-blue-50' : 'text-gray-700 hover:bg-gray-50'
     }`
 
-  const mobileLinkClass = (href: string) =>
-    `block px-3 py-2 rounded text-sm font-medium transition-colors ${
-      isActive(href) ? 'bg-pool-navy-light text-white' : 'text-pool-light hover:bg-pool-navy-light hover:text-white'
-    }`
-
-  const MobileSection = ({ label }: { label: string }) => (
-    <div className="px-3 pt-3 pb-0.5 text-xs text-pool-silver uppercase tracking-wide font-semibold">{label}</div>
-  )
+  const adminBadgeCount = unreadCount + unreadNotifCount
 
   return (
-    <nav className="bg-pool-navy shadow" ref={navRef}>
-      {isPoolerView && (
-        <div className="bg-amber-400 text-amber-900 text-xs font-semibold text-center py-1 px-4 flex items-center justify-center gap-3">
-          <span>Mode vue pooler actif — menu admin masqué</span>
-          <button onClick={togglePoolerView} className="underline hover:no-underline">Revenir en mode admin</button>
-        </div>
-      )}
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between h-14">
+    <>
+      {/* Barre du haut — toujours visible, pleine largeur */}
+      <div className="bg-pool-navy shadow sticky top-0 z-40">
+        {isPoolerView && (
+          <div className="bg-amber-400 text-amber-900 text-xs font-semibold text-center py-1 px-4 flex items-center justify-center gap-3">
+            <span>Mode vue pooler actif — menu admin masqué</span>
+            <button onClick={togglePoolerView} className="underline hover:no-underline">Revenir en mode admin</button>
+          </div>
+        )}
+        <div className="px-4">
+          <div className="flex items-center justify-between h-14">
+            <div className="flex items-center gap-2">
+              <button
+                className="md:hidden text-white p-1 -ml-1 rounded hover:bg-pool-navy-light transition-colors"
+                onClick={() => setMenuOpen(v => !v)}
+                aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+              >
+                {menuOpen ? <CloseIcon /> : <HamburgerIcon />}
+              </button>
+              <Link href="/" className="flex items-center gap-2 text-white font-bold text-sm hover:opacity-80 transition-opacity">
+                <Image src="/icons/icon-192x192.png" alt="Logo" width={32} height={32} className="rounded" />
+                <span className="hidden sm:inline">Cap Crunch</span>
+              </Link>
+            </div>
 
-          {/* Gauche : logo + liens */}
-          <div className="flex items-center gap-1 min-w-0">
-            <Link href="/" className="flex items-center gap-2 text-white font-bold text-sm mr-3 shrink-0 hover:opacity-80 transition-opacity">
-              <Image src="/icons/icon-192x192.png" alt="Logo" width={32} height={32} className="rounded" />
-              <span className="hidden lg:inline">Accueil</span>
-            </Link>
-
-            <div className="hidden md:flex items-center gap-1">
-
-              {/* Alignements */}
-              <div className="relative">
-                <button onClick={() => toggle('alignements')}
-                  className={navBtnClass(isActive('/dashboard', '/journal-transactions', '/poolers', '/gestion-effectifs', '/simulation', '/repechage-agents-libres'))}>
-                  Alignements <Chevron open={openDropdown === 'alignements'} />
+            <div className="flex items-center gap-2 shrink-0">
+              {installPrompt && (
+                <button onClick={handleInstall}
+                  className="text-pool-silver hover:text-white text-sm border border-pool-silver rounded px-2 py-1 transition-colors">
+                  Installer
                 </button>
-                {openDropdown === 'alignements' && (
-                  <div className="absolute left-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
-                    {userName && <Link href="/dashboard"            className={dropdownLinkClass('/dashboard')}>Mon équipe</Link>}
-                    <Link href="/poolers"                          className={dropdownLinkClass('/poolers')}>Équipes</Link>
-                    <Link href="/journal-transactions"             className={dropdownLinkClass('/journal-transactions')}>{'Journal des transactions'}</Link>
-                    {userName && <div className="border-t my-1" />}
-                    {userName && <Link href="/gestion-effectifs"  className={dropdownLinkClass('/gestion-effectifs')}>Gestion d&apos;effectifs</Link>}
-                    {userName && <Link href="/simulation"          className={dropdownLinkClass('/simulation')}>Simulation</Link>}
-                    {userName && <Link href="/repechage-agents-libres" className={dropdownLinkClass('/repechage-agents-libres')}>{'Signatures des agents libres'}</Link>}
-                  </div>
-                )}
-              </div>
+              )}
 
-              {/* Classement */}
-              <div className="relative">
-                <button onClick={() => toggle('classement')}
-                  className={navBtnClass(isActive('/classement'))}>
-                  Classement <Chevron open={openDropdown === 'classement'} />
-                </button>
-                {openDropdown === 'classement' && (
-                  <div className="absolute left-0 top-full mt-1 w-44 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
-                    <Link href="/classement" className={dropdownLinkClass('/classement')}>Saison complète</Link>
-                    <Link href="/classement/hebdomadaire" className={dropdownLinkClass('/classement/hebdomadaire')}>Hebdomadaire</Link>
-                    <Link href="/classement/mensuel" className={dropdownLinkClass('/classement/mensuel')}>Mensuel</Link>
-                  </div>
-                )}
-              </div>
-
-              {/* LNH */}
-              <div className="relative">
-                <button onClick={() => toggle('lnh')}
-                  className={navBtnClass(isActive('/statistiques', '/calendrier', '/joueurs'))}>
-                  LNH <Chevron open={openDropdown === 'lnh'} />
-                </button>
-                {openDropdown === 'lnh' && (
-                  <div className="absolute left-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
-                    <div className="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Statistiques</div>
-                    <Link href="/statistiques" className={dropdownLinkClass('/statistiques')}>LNH</Link>
-                    <Link href="/statistiques/projections" className={dropdownLinkClass('/statistiques/projections')}>LNH - Projections Pts</Link>
-                    <Link href="/statistiques/ahl" className={dropdownLinkClass('/statistiques/ahl')}>AHL</Link>
-                    <div className="border-t my-1" />
-                    <div className="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Calendrier</div>
-                    <Link href="/calendrier" className={dropdownLinkClass('/calendrier')}>Calendrier</Link>
-                    <div className="border-t my-1" />
-                    <div className="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Contrats</div>
-                    <Link href="/joueurs" className={dropdownLinkClass('/joueurs')}>Contrats LNH</Link>
-                  </div>
-                )}
-              </div>
-
-              {/* Recrues */}
-              <div className="relative">
-                <button onClick={() => toggle('repechage')}
-                  className={navBtnClass(isActive('/repechage', '/repechage-recrues', '/draft-center'))}>
-                  {'Recrues'} <Chevron open={openDropdown === 'repechage'} />
-                </button>
-                {openDropdown === 'repechage' && (
-                  <div className="absolute left-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
-                    <Link href="/draft-center" className={dropdownLinkClass('/draft-center')}>{'Classement pré-repêchage'}</Link>
-                    <Link href="/repechage" className={dropdownLinkClass('/repechage')}>{'Repêchage LNH'}</Link>
-                    <Link href="/repechage-recrues" className={dropdownLinkClass('/repechage-recrues')}>{'Repêchage interne'}</Link>
-                  </div>
-                )}
-              </div>
-
-              {/* Ressources */}
-              <div className="relative">
-                <button onClick={() => toggle('ressources')}
-                  className={navBtnClass(isActive('/babillard', '/planification', '/aide'))}>
-                  Ressources <Chevron open={openDropdown === 'ressources'} />
-                </button>
-                {openDropdown === 'ressources' && (
-                  <div className="absolute left-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
-                    <Link href="/babillard" className={dropdownLinkClass('/babillard')}>Babillard</Link>
-                    <Link href="/planification" className={dropdownLinkClass('/planification')}>Planification</Link>
-                    <Link href="/aide" className={dropdownLinkClass('/aide')}>{'Aide & Règlements'}</Link>
-                  </div>
-                )}
-              </div>
-
-              {/* Admin */}
-              {effectiveIsAdmin &&(
-                <div className="relative">
-                  <button onClick={() => toggle('admin')}
-                    className={navBtnClass(isActive('/admin'))}>
-                    <span className="text-xs bg-blue-500 text-white rounded px-1 py-0.5 mr-1">A</span>
-                    Admin
-                    {(unreadCount > 0 || unreadNotifCount > 0) && (
-                      <span
-                        className="ml-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full"
-                        title={adminBadgeTitle}
-                      >
-                        {unreadCount + unreadNotifCount}
-                      </span>
-                    )}
-                    <Chevron open={openDropdown === 'admin'} />
+              {userName ? (
+                <div className="relative" ref={profileRef}>
+                  <button
+                    onClick={() => setProfileOpen(v => !v)}
+                    className="flex items-center gap-2 rounded-full p-0.5 hover:ring-2 hover:ring-white/30 transition-all"
+                    aria-label="Menu du compte"
+                    aria-expanded={profileOpen}
+                  >
+                    <Avatar name={userName} />
                   </button>
-                  {openDropdown === 'admin' && (
-                    <div className="absolute left-0 top-full mt-1 w-60 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
-                      <div className="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Opérations courantes</div>
-                      <Link href="/admin/effectifs" className={dropdownLinkClass('/admin/effectifs')}>{'Gestion des effectifs'}</Link>
-                      <Link href="/admin/communaute" className={dropdownLinkClass('/admin/communaute')}>
-                        <span className="flex items-center justify-between">
-                          Communauté
-                          {(unreadCount > 0 || unreadNotifCount > 0) && (
-                            <span
-                              className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full"
-                              title={adminBadgeTitle}
-                            >
-                              {unreadCount + unreadNotifCount}
-                            </span>
-                          )}
-                        </span>
-                      </Link>
-                      <Link href="/admin/pool"      className={dropdownLinkClass('/admin/pool')}>Gestion du pool</Link>
-                      <Link href="/admin/donnees"    className={dropdownLinkClass('/admin/donnees')}>{'Mise à jour de données'}</Link>
-                      <div className="border-t my-1" />
-                      <div className="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">Mise en place saisonnière</div>
-                      <Link href="/admin/nouvelle-saison" className={dropdownLinkClass('/admin/nouvelle-saison')}>Nouvelle saison</Link>
-                      <Link href="/admin/init"      className={dropdownLinkClass('/admin/init')}>Initialisation</Link>
-                      <Link href="/admin/repechage" className={dropdownLinkClass('/admin/repechage')}>{'Repêchage recrues'}</Link>
+                  {profileOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 z-50 overflow-hidden">
+                      <div className="px-4 py-2.5 border-b bg-gray-50">
+                        <p className="text-xs text-gray-500">Connecté en tant que</p>
+                        <p className="text-sm font-semibold text-gray-800 truncate">{userName}</p>
+                      </div>
+                      <div className="py-1">
+                        <Link href="/compte" className={profileLinkClass('/compte')}>Mon compte</Link>
+                        <Link href="/signaler" className={profileLinkClass('/signaler')}>Signaler un problème</Link>
+                      </div>
+                      {isAdmin && (
+                        <div className="py-1 border-t">
+                          <button
+                            onClick={togglePoolerView}
+                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors flex items-center gap-2"
+                          >
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${isPoolerView ? 'bg-amber-400' : 'bg-gray-300'}`} />
+                            {isPoolerView ? 'Revenir en mode admin' : 'Vue pooler'}
+                          </button>
+                        </div>
+                      )}
+                      <div className="py-1 border-t">
+                        <button onClick={handleLogout}
+                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                          Déconnexion
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
+              ) : (
+                <Link href="/login" className="text-pool-silver hover:text-white text-sm transition-colors">
+                  Connexion
+                </Link>
               )}
-
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* Droite : installer + avatar */}
-          <div className="flex items-center gap-2 shrink-0">
-            {installPrompt && (
-              <button onClick={handleInstall}
-                className="text-pool-silver hover:text-white text-sm border border-pool-silver rounded px-2 py-1 transition-colors">
-                Installer
+      {/* Sidebar desktop — persistante, sous la barre du haut */}
+      <aside className="hidden md:block fixed top-14 left-0 bottom-0 w-64 bg-pool-navy overflow-y-auto z-30">
+        <NavTree
+          pathname={pathname}
+          userName={userName}
+          effectiveIsAdmin={effectiveIsAdmin}
+          expanded={expanded}
+          onToggle={toggleGroup}
+          onNavigate={() => {}}
+          adminBadge={adminBadgeCount}
+          adminBadgeTitle={adminBadgeTitle}
+        />
+      </aside>
+
+      {/* Tiroir mobile */}
+      <div
+        className={`md:hidden fixed inset-0 bg-black/40 z-40 transition-opacity ${menuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={() => setMenuOpen(false)}
+        aria-hidden="true"
+      />
+      <aside
+        className={`md:hidden fixed top-0 left-0 bottom-0 w-72 max-w-[85vw] bg-pool-navy z-50 overflow-y-auto shadow-xl transition-transform duration-200 ease-out ${
+          menuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex items-center justify-between h-14 px-4 border-b border-pool-navy-light">
+          <Link href="/" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 text-white font-bold text-sm">
+            <Image src="/icons/icon-192x192.png" alt="Logo" width={28} height={28} className="rounded" />
+            Cap Crunch
+          </Link>
+          <button
+            className="text-white p-1 rounded hover:bg-pool-navy-light transition-colors"
+            onClick={() => setMenuOpen(false)}
+            aria-label="Fermer le menu"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        <NavTree
+          pathname={pathname}
+          userName={userName}
+          effectiveIsAdmin={effectiveIsAdmin}
+          expanded={expanded}
+          onToggle={toggleGroup}
+          onNavigate={() => setMenuOpen(false)}
+          adminBadge={adminBadgeCount}
+          adminBadgeTitle={adminBadgeTitle}
+        />
+        {userName && (
+          <div className="border-t border-pool-navy-light p-2 mt-1">
+            <div className="px-3 py-1 text-pool-silver text-xs">{userName}</div>
+            <Link href="/compte" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded text-sm font-medium text-pool-light hover:bg-pool-navy-light hover:text-white transition-colors">Mon compte</Link>
+            <Link href="/signaler" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded text-sm font-medium text-pool-light hover:bg-pool-navy-light hover:text-white transition-colors">Signaler un problème</Link>
+            {isAdmin && (
+              <button onClick={togglePoolerView}
+                className="block w-full text-left px-3 py-2 rounded text-sm font-medium text-amber-300 hover:bg-pool-navy-light transition-colors">
+                {isPoolerView ? 'Revenir en mode admin' : 'Vue pooler'}
               </button>
             )}
-
-            {userName ? (
-              <div className="relative">
-                <button
-                  onClick={() => toggle('profile')}
-                  className="flex items-center gap-2 rounded-full p-0.5 hover:ring-2 hover:ring-white/30 transition-all"
-                  aria-label="Menu du compte"
-                  aria-expanded={openDropdown === 'profile'}
-                >
-                  <Avatar name={userName} />
-                </button>
-                {openDropdown === 'profile' && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 z-50 overflow-hidden">
-                    <div className="px-4 py-2.5 border-b bg-gray-50">
-                      <p className="text-xs text-gray-500">Connecté en tant que</p>
-                      <p className="text-sm font-semibold text-gray-800 truncate">{userName}</p>
-                    </div>
-                    <div className="py-1">
-                      <Link href="/compte"   className={dropdownLinkClass('/compte')}>Mon compte</Link>
-                      <Link href="/signaler" className={dropdownLinkClass('/signaler')}>Signaler un problème</Link>
-                    </div>
-                    {isAdmin && (
-                      <div className="py-1 border-t">
-                        <button
-                          onClick={togglePoolerView}
-                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors flex items-center gap-2"
-                        >
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${isPoolerView ? 'bg-amber-400' : 'bg-gray-300'}`} />
-                          {isPoolerView ? 'Revenir en mode admin' : 'Vue pooler'}
-                        </button>
-                      </div>
-                    )}
-                    <div className="py-1 border-t">
-                      <button onClick={handleLogout}
-                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                        {'Déconnexion'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <Link href="/login" className="text-pool-silver hover:text-white text-sm transition-colors">
-                Connexion
-              </Link>
-            )}
-
-            {/* Hamburger mobile */}
-            <button
-              className="md:hidden text-white p-1 rounded hover:bg-pool-navy-light transition-colors"
-              onClick={() => setMenuOpen(v => !v)}
-              aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
-            >
-              {menuOpen ? <CloseIcon /> : <HamburgerIcon />}
+            <button onClick={handleLogout}
+              className="block w-full text-left px-3 py-2 rounded text-sm font-medium text-red-400 hover:bg-pool-navy-light hover:text-red-300 transition-colors">
+              Déconnexion
             </button>
           </div>
-        </div>
-
-        {/* Menu mobile */}
-        {menuOpen && (
-          <div className="md:hidden border-t border-pool-navy-light py-2 flex flex-col gap-0.5">
-            <MobileSection label="Alignements" />
-            {userName && <Link href="/dashboard"           className={mobileLinkClass('/dashboard')}>Mon équipe</Link>}
-            <Link href="/poolers"                          className={mobileLinkClass('/poolers')}>Équipes</Link>
-            <Link href="/journal-transactions"             className={mobileLinkClass('/journal-transactions')}>{'Journal des transactions'}</Link>
-            {userName && <Link href="/gestion-effectifs"  className={mobileLinkClass('/gestion-effectifs')}>Gestion d&apos;effectifs</Link>}
-            {userName && <Link href="/simulation"          className={mobileLinkClass('/simulation')}>Simulation</Link>}
-            {userName && <Link href="/repechage-agents-libres" className={mobileLinkClass('/repechage-agents-libres')}>{'Signatures des agents libres'}</Link>}
-
-            <MobileSection label="Classement" />
-            <Link href="/classement" className={mobileLinkClass('/classement')}>Saison complète</Link>
-            <Link href="/classement/hebdomadaire" className={mobileLinkClass('/classement/hebdomadaire')}>Hebdomadaire</Link>
-            <Link href="/classement/mensuel" className={mobileLinkClass('/classement/mensuel')}>Mensuel</Link>
-
-            <MobileSection label="LNH" />
-            <Link href="/statistiques" className={mobileLinkClass('/statistiques')}>Statistiques LNH</Link>
-            <Link href="/statistiques/projections" className={mobileLinkClass('/statistiques/projections')}>LNH - Projections Pts</Link>
-            <Link href="/statistiques/ahl" className={mobileLinkClass('/statistiques/ahl')}>Statistiques AHL</Link>
-            <Link href="/calendrier" className={mobileLinkClass('/calendrier')}>Calendrier</Link>
-            <Link href="/joueurs"    className={mobileLinkClass('/joueurs')}>Contrats LNH</Link>
-
-            <MobileSection label={'Recrues'} />
-            <Link href="/draft-center" className={mobileLinkClass('/draft-center')}>{'Classement pré-repêchage'}</Link>
-            <Link href="/repechage"  className={mobileLinkClass('/repechage')}>{'Repêchage LNH'}</Link>
-            <Link href="/repechage-recrues" className={mobileLinkClass('/repechage-recrues')}>{'Repêchage interne'}</Link>
-
-            <MobileSection label="Ressources" />
-            <Link href="/babillard" className={mobileLinkClass('/babillard')}>Babillard</Link>
-            <Link href="/planification" className={mobileLinkClass('/planification')}>Planification</Link>
-            <Link href="/aide" className={mobileLinkClass('/aide')}>{'Aide & Règlements'}</Link>
-
-            {userName && (
-              <div className="mt-1 pt-1 border-t border-pool-navy-light flex flex-col gap-0.5">
-                <MobileSection label="Compte" />
-                <Link href="/compte"   className={mobileLinkClass('/compte')}>Mon compte</Link>
-                <Link href="/signaler" className={mobileLinkClass('/signaler')}>Signaler un problème</Link>
-                {effectiveIsAdmin &&<MobileSection label="Admin — opérations courantes" />}
-                {effectiveIsAdmin &&<Link href="/admin/effectifs" className={mobileLinkClass('/admin/effectifs')}>{'Gestion des effectifs'}</Link>}
-                {effectiveIsAdmin &&(
-                  <Link href="/admin/communaute" className={mobileLinkClass('/admin/communaute')}>
-                    <span className="flex items-center justify-between">
-                      Communauté
-                      {(unreadCount > 0 || unreadNotifCount > 0) && (
-                        <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{unreadCount + unreadNotifCount}</span>
-                      )}
-                    </span>
-                  </Link>
-                )}
-                {effectiveIsAdmin &&<Link href="/admin/pool" className={mobileLinkClass('/admin/pool')}>Gestion du pool</Link>}
-                {effectiveIsAdmin &&<Link href="/admin/donnees"   className={mobileLinkClass('/admin/donnees')}>{'Mise à jour de données'}</Link>}
-                {effectiveIsAdmin &&<MobileSection label="Admin — mise en place saisonnière" />}
-                {effectiveIsAdmin &&<Link href="/admin/nouvelle-saison" className={mobileLinkClass('/admin/nouvelle-saison')}>Nouvelle saison</Link>}
-                {effectiveIsAdmin &&<Link href="/admin/init"      className={mobileLinkClass('/admin/init')}>Initialisation</Link>}
-                {effectiveIsAdmin &&<Link href="/admin/repechage" className={mobileLinkClass('/admin/repechage')}>{'Repêchage recrues'}</Link>}
-                {isAdmin && (
-                  <button onClick={togglePoolerView}
-                    className="block text-left px-3 py-2 rounded text-sm font-medium text-amber-300 hover:bg-pool-navy-light transition-colors">
-                    {isPoolerView ? 'Revenir en mode admin' : 'Vue pooler'}
-                  </button>
-                )}
-                <button onClick={handleLogout}
-                  className="block text-left px-3 py-2 rounded text-sm font-medium text-red-400 hover:bg-pool-navy-light hover:text-red-300 transition-colors">
-                  {'Déconnexion'}
-                </button>
-                <div className="px-3 py-1 text-pool-silver text-xs">{userName}</div>
-              </div>
-            )}
-          </div>
         )}
-      </div>
-    </nav>
+      </aside>
+    </>
   )
 }

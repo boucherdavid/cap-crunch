@@ -132,6 +132,21 @@ cd python_script
 python generate_backup_tool.py   # écrit backup/pool_backup.html
 ```
 
+```bash
+# Scrape les blessures LNH (CBS Sports en principal, ESPN en recoupement) et met à jour
+# player_injuries (David, 2026-09-23) — aide au suivi du LTIR, voir section 6. Contrairement aux
+# projections CBS (collées à la main dans un Excel), ces pages sont directement scrapables (HTML
+# rendu côté serveur, y compris le JSON structuré d'ESPN). Cible toujours prod comme les autres
+# scripts — utiliser `.env.staging` pour tester sans toucher prod. Vrai upsert (pas un
+# remplacement complet) : `first_seen_at` est préservé tant qu'un joueur reste dans la liste CBS,
+# pour calculer l'admissibilité LTIR. Régénéré aussi automatiquement chaque jour
+# (.github/workflows/injuries.yml, 16h UTC/midi ET — les blessures changent vite, contrairement
+# au pipeline hebdomadaire).
+cd python_script
+python scrape_injuries.py            # dry-run — aucune écriture, affiche le jumelage
+python scrape_injuries.py --apply    # exécution réelle, sans confirmation (voir section 4)
+```
+
 ---
 
 ## 3. Structure du projet
@@ -152,7 +167,8 @@ Hockey_Pool_App/
 │   └── workflows/
 │       ├── import.yml             ← Pipeline auto (lundi 6h UTC + manuel)
 │       ├── keepalive_staging.yml  ← Ping staging (jeudi 6h UTC) pour éviter pause Supabase
-│       └── backup_tool.yml        ← Régénère backup/pool_backup.html (dimanche 12h UTC + manuel)
+│       ├── backup_tool.yml        ← Régénère backup/pool_backup.html (dimanche 12h UTC + manuel)
+│       └── injuries.yml           ← Scrape blessures CBS Sports (quotidien 16h UTC (midi ET) + manuel)
 ├── app/                       ← Application Next.js
 │   ├── CLAUDE.md              ← Règles spécifiques Next.js/TypeScript
 │   ├── AGENTS.md
@@ -168,6 +184,7 @@ Hockey_Pool_App/
 │   ├── import_supabase.py
 │   ├── import_drafts.py
 │   ├── generate_backup_tool.py ← Génère backup/pool_backup.html (voir section 2)
+│   ├── scrape_injuries.py      ← Scrape les blessures LNH, CBS + ESPN (voir section 2)
 │   ├── source/                ← CSV générés par le scraping
 │   ├── teams_offline/
 │   ├── diagnostics/
@@ -193,6 +210,9 @@ Hockey_Pool_App/
   `playoff_pool_standings_cache` (pool des séries — PAS `series_round_rosters`, qui
   n'existe pas malgré une ancienne mention ici)
 - `cap_signing_watch` (conformité cap continue, voir section 6)
+- `player_injuries` (suivi des blessures LNH, CBS Sports + ESPN en recoupement — voir section 6,
+  une ligne par joueur blessé, upsert quotidien par `python_script/scrape_injuries.py`)
+- `ltir_requests` (demandes de mise sur LTIR en attente d'approbation admin — voir section 6)
 - `meeting_polls`, `meeting_poll_dates`, `meeting_poll_responses`, `meeting_poll_comments`
   (sondage de planification, `/planification` — le babillard `meeting_poll_comments` est
   propre à ce sondage, distinct de `bulletin_posts`/`bulletin_comments` ci-dessous)
@@ -222,7 +242,10 @@ Vérifié par lecture du code le 2026-07-17 (build `next build` + grep des liens
 mettre à jour cette section dès qu'une route ou un onglet admin change (voir section 11).
 
 **Utilisateur :**
-`/` `/login` `/joueurs` `/statistiques` `/statistiques/ahl` `/repechage` `/repechage-recrues` `/calendrier`
+`/` `/login` `/joueurs` `/statistiques` `/statistiques/ahl` `/statistiques/blessures`
+(David, 2026-09-23 — table des blessures LNH en cours, source `player_injuries`/CBS Sports,
+voir section 6 ; colonne "Dans le pool" indique qui possède chaque joueur blessé, peu importe
+son type de roster, ou "Disponible" si personne) `/repechage` `/repechage-recrues` `/calendrier`
 `/poolers` `/poolers/[id]` `/journal-transactions` (historique en lecture seule — pas de
 saisie pooler ; distinct de `/admin/transactions`, l'outil admin) `/classement`
 `/classement/hebdomadaire` `/classement/mensuel` (David, 2026-09-17 — mêmes données que
@@ -234,7 +257,12 @@ heure de l'Est ; navigation précédent/suivant, voir section 6) `/resultats`
 **Mouvements**, l'outil existant ; **Ballotage**, réclamer un joueur libéré en cours de
 saison ; **Échanges**, proposer/répondre à des transactions entre poolers — voir section 6
 pour les trois) `/draft-center` (classement des prospects, vue publique)
-`/dashboard` (redirige vers son propre alignement) `/compte` `/signaler` `/aide` `/offline`
+`/dashboard` (redirige vers son propre alignement) `/compte` `/signaler` `/aide` `/a-propos`
+(David, 2026-09-23 — « tour d'horizon » statique des fonctionnalités consultables/en
+libre-service, regroupé par section de menu avec lien direct vers chaque page ; distinct
+d'`/aide` (guide pas-à-pas + règlements) — les deux se renvoient l'un vers l'autre. Généré à
+partir d'un résumé produit pour recueillir les retours de quelques poolers ; ajouté au menu
+Ressources) `/offline`
 `/planification` (sondage type Doodle pour une rencontre — vue pooler : ses disponibilités,
 le résumé, le babillard propre au sondage ; notifie les admins par push à chaque
 soumission/commentaire). Gestion (créer le sondage, ajouter/retirer des dates) sur
@@ -385,25 +413,78 @@ redondant dont l'erreur ne s'affichait nulle part — fusionné en un seul bouto
 "Démarrer/Relancer le repêchage", toujours visible avec l'éditeur d'ordre tant que le
 repêchage n'est pas activement en cours.
 
-**Menu pooler (`Navbar.tsx`) — réorganisé le 2026-08-30, ordre/regroupement affinés le
-2026-09-01, "Repêchage" scindé en Alignements/Recrues le 2026-09-14 :**
+**Menu pooler (`Navbar.tsx`) — refonte en sidebar le 2026-09-23 (David, suite à un retour de
+pooler : regroupements/libellés horizontaux pas clairs). Historique des menus horizontaux
+(2026-08-30 → 2026-09-14) ci-dessous pour mémoire, remplacé par l'arborescence latérale
+décrite juste après.**
 
-| Dropdown | Contenu |
+**Architecture sidebar (David, 2026-09-23)** — barre du haut minimale et fixe (`sticky top-0`,
+logo + installer PWA + avatar compte), sidebar de navigation séparée : persistante à gauche en
+desktop (`<aside className="hidden md:block fixed top-14 left-0 bottom-0 w-64">`,
+`layout.tsx` compense avec `md:pl-64` sur le contenu), tiroir superposé en mobile (glisse
+depuis la gauche, backdrop, ouvert par le hamburger de la barre du haut). Les deux réutilisent
+le même composant `NavTree`/tableau `NAV_GROUPS` (source unique — l'ancien menu dupliquait une
+liste desktop et une liste mobile séparées, source d'oublis). Chaque section est un groupe
+repliable (arborescence, pas tout déplié d'un coup) ; le groupe contenant la page courante se
+déplie automatiquement au chargement et après chaque navigation, le reste reste replié tant
+qu'on ne clique pas dessus.
+
+**Groupes affinés le 2026-09-23 (suite) — David a proposé un principe d'organisation plus
+net après avoir vu le premier jet ci-dessus : regrouper par "à qui ça appartient / qui
+contrôle quoi" plutôt que par "consultation vs action". Effet secondaire utile : ça sépare
+enfin le Repêchage interne (mécanique propre au pool) du Classement pré-repêchage/Repêchage
+LNH (référence sur le vrai repêchage LNH), qui étaient mélangés sous "Recrues" alors que ce
+sont deux natures de contenu différentes.**
+
+| Section | Contenu |
 |---|---|
-| Alignements (ex-Pool Saison) | Mon équipe · Équipes · Journal des transactions — puis séparateur — Gestion d'effectifs · Simulation · Signatures des agents libres (les 3 premiers = consultation, les 3 derniers = action) |
-| Classement | Saison complète · Hebdomadaire · Mensuel — sorti d'Alignements pour son propre menu |
-| LNH | 3 sections : Statistiques (LNH, AHL ; sous-item Projections) · Calendrier · Contrats (ex-"Contrats LNH", ex-item à plat) |
-| Recrues (ex-"Repêchage") | Classement pré-repêchage (ex-"Classement des prospects") · Repêchage LNH · Repêchage interne (ex-"Repêchage recrues") — réordonné et renommé le 2026-09-14 (David) |
-| Ressources | Babillard (global, ajouté le 2026-09-02) · Planification · Aide & Règlements (déplacé du menu Compte/avatar) |
+| Mon équipe (nouveau nom de groupe — le lien "Mon alignement", ex-"Mon équipe", garde son nom de page inchangé depuis le renommage plus haut le même jour) | Mon alignement · Gestion d'effectifs · Simulation — "ce qui m'appartient / que je contrôle" |
+| Le pool | Tous les alignements (ex-"Équipes") · Journal des transactions — "ce qui concerne les autres poolers" |
+| Classement du pool (ex-"Classement", renommé le 2026-09-23 (suite)) | Saison complète · Hebdomadaire · Mensuel |
+| Calendrier LNH (lien autonome, ex-sous-item de "Statistiques", sorti le 2026-09-23 (suite) — entre Classement du pool et Statistiques) | Le résumé personnel "mes joueurs cette semaine" a été extrait dans un onglet séparé sur `/poolers/[id]`, voir ci-dessous — cette page ne garde que la navigation jour par jour |
+| Statistiques (ex-partie de "LNH") | LNH · Projections · AHL |
+| Blessures | Lien autonome (plus regroupé sous "LNH", qui cachait la page selon le retour du pooler) |
+| Contrats LNH | Lien autonome (ex-sous-item de "LNH") |
+| Prospects LNH (ex-"Recrues", réduit) | Classement pré-repêchage · Repêchage LNH — référence sur le vrai repêchage LNH, rien de propre au pool |
+| Repêchage annuel (nouveau groupe) | Repêchage des recrues (ex-"Repêchage interne", renommé le 2026-09-23 pour cohérence avec le `<h1>` de la page, qui disait déjà "Repêchage des recrues") · Signatures des agents libres — "notre repêchage annuel", regroupe les deux rituels séquentiels de pré-saison (repêcher les recrues, puis signer les agents libres) |
+| Communauté (scindé de "Ressources", trop vague) | Babillard · Planification |
+| Aide (scindé de "Ressources") | Aide & Règlements · À propos |
+| Admin (admin seulement) | Deux sous-groupes inchangés : Opérations courantes · Mise en place saisonnière |
+
+**Historique horizontal (2026-08-30 → 2026-09-14, remplacé) :** dropdowns Alignements ·
+Classement · LNH (Statistiques/Calendrier/Contrats regroupés) · Recrues (incluait alors
+Repêchage interne) · Ressources (Babillard/Planification/Aide regroupés) — c'est justement ce
+regroupement "LNH"/"Ressources"/"Recrues" que le retour du pooler a identifié comme peu clair,
+d'où la scission en groupes plus fins ci-dessus.
 
 **"Repêchage agents libres" déplacé d'Recrues vers Alignements, renommé "Signatures des
-agents libres" (David, 2026-09-14)** — repositionné une fois `/repechage-agents-libres`
-devenu, avec le libre-service pré-saison, un vrai outil de gestion d'alignement plutôt qu'un
-simple repêchage ; le menu Recrues, lui, ne rassemblait plus que des pages centrées sur les
-recrues/prospects (d'où le renommage). Route (`/repechage-agents-libres`), noms de fonctions
-et de tables (`presaison_draft_state`, etc.) inchangés — seul le libellé visible (menu, titre
-de page `<h1>`) a changé, pour éviter un chantier de renommage profond à faible valeur pour un
-changement qui ne touche que l'affichage.
+agents libres" (David, 2026-09-14) — puis vers "Repêchage annuel" le 2026-09-23 (voir
+ci-dessus)** — repositionné une première fois une fois `/repechage-agents-libres` devenu, avec
+le libre-service pré-saison, un vrai outil de gestion d'alignement plutôt qu'un simple
+repêchage. Route (`/repechage-agents-libres`), noms de fonctions et de tables
+(`presaison_draft_state`, etc.) inchangés à travers tous ces déplacements — seul le
+regroupement/libellé visible (menu, titre de page `<h1>`) a changé, pour éviter un chantier de
+renommage profond à faible valeur pour des changements qui ne touchent que l'affichage.
+
+**Onglet "Prochains matchs" sur `/poolers/[id]` (David, 2026-09-23)** — 5ᵉ onglet ajouté
+(Alignement/Masse Salariale/Recrues/Historique existants + celui-ci), ex-onglet "Analyse" de
+`/calendrier` : combien de matchs jouent les joueurs actif/réserviste/recrue d'un alignement
+dans les prochains jours (horizon 2-7J réglable, filtre par type de joueur, code couleur
+vert/bleu/gris). Fonctionne pour **n'importe quel pooler affiché**, pas seulement l'utilisateur
+connecté — utile pour évaluer l'horaire de quelqu'un avant un échange. Logique extraite dans
+deux fichiers partagés pour éviter la duplication :
+- `app/lib/nhlWeeklySchedule.ts` — fetch de l'API NHL publique (`fetchWeek`/`fetchSchedule7`,
+  fenêtre glissante des 7 prochains jours), `todayET()`/`addDays()`, et
+  `fetchOrgPlayersForPooler()` (actif/réserviste/recrue d'un pooler pour une saison, pas les
+  LTIR qui ne jouent pas).
+- `app/components/UpcomingGamesAnalysis.tsx` — le composant d'affichage (grille de joueurs +
+  compteur de matchs), extrait tel quel de l'ex-`AnalyseTab` de `/calendrier`.
+
+`/calendrier` (`CalendrierClient.tsx`) n'a donc plus qu'un seul onglet (Matchs) — la barre
+d'onglets y a été retirée en même temps que l'onglet Analyse, devenue inutile pour un seul
+onglet. `page.tsx` de `/calendrier` ne calcule plus `schedule7`/`allOrgPlayers` (utilise le
+`fetchWeek()` partagé pour sa propre navigation jour par jour, indépendante de la fenêtre
+glissante de 7 jours).
 
 **`/transactions` renommé `/journal-transactions` le 2026-09-01** (David) : c'est un historique
 en lecture seule (aucune saisie pooler), et le nom "Transactions" était réservé pour un futur
@@ -1041,6 +1122,90 @@ corrigée le 2026-09-20 :**
   même patron que `waiver_claims` — toutes les écritures passent par `createAdminClient()`
   depuis des Server Actions qui font leur propre vérification d'autorisation.
 
+**Suivi des blessures LNH + demandes de LTIR (`player_injuries`, `ltir_requests`) — David,
+2026-09-23 :**
+- **Sources** : CBS Sports (`cbssports.com/nhl/injuries`, principale — détermine qui apparaît
+  dans `player_injuries`) recoupée avec ESPN (`espn.com/nhl/injuries`, secondaire — enrichit
+  seulement les joueurs déjà trouvés via CBS, ne détermine jamais seule qui est "blessé").
+  TSN écarté (React, aucune donnée dans le HTML initial) ; Yahoo validé utilisable mais pas
+  branché (David a choisi CBS+ESPN). ESPN embarque un JSON structuré directement dans la page
+  (`window['__espnfitt__']`, clé `injuries` trouvée par recherche récursive plutôt qu'un chemin
+  fixe codé en dur — la structure n'est pas garantie stable) : statut canonique
+  (`type.description`/`statusDesc`), date de retour estimée (`date`), note datée
+  (`description`) — plus fiable à parser qu'un texte libre. `python_script/scrape_injuries.py`
+  (ex-`scrape_cbs_injuries.py`), jumelage via `projections_common.py` (même logique que les
+  imports de projections CBS).
+- **Upsert avec suivi de durée** (remplace l'ancien delete+reinsert complet) :
+  `player_injuries.first_seen_at` est préservé d'un run à l'autre tant qu'un joueur reste dans
+  la liste CBS — nécessaire pour calculer "day-to-day depuis plus de 14 jours". `est_return_date`
+  (DATE, parsée par le scraper depuis le texte CBS ou la date ESPN — motif `Mon D` du type
+  "Oct 2", année inférée : si la date semble déjà passée de 200+ jours, c'est l'an prochain, la
+  saison LNH étant à cheval sur deux années civiles) est aussi stockée. Un joueur qui sort de la
+  liste CBS (guéri) est supprimé, pas juste laissé périmé. Cron quotidien
+  (`.github/workflows/injuries.yml`, 16h UTC/midi ET), séparé du pipeline hebdomadaire. Cible
+  toujours prod comme les autres scripts.
+- **Admissibilité LTIR** (`app/lib/ltirEligibility.ts`, `computeLtirEligible()`) — règle de
+  David : blessure dont `est_return_date` est à 14+ jours (couvre semaine-à-semaine/mois-à-mois),
+  **ou sinon** blessé depuis 14+ jours (`first_seen_at`) sans date de retour claire (couvre le
+  "day-to-day" qui traîne). Calculé à la volée à chaque affichage (jamais stocké) pour rester
+  exact entre deux scrapes quotidiens — `app/lib/injuries.ts` centralise le fetch +
+  calcul (`fetchInjuriesByPlayerId`/`fetchInjuriesByNhlId`, une seule requête réutilisée
+  partout plutôt que dupliquée dans les 5 endroits qui affichent le badge).
+- **Affichage**, limité aux joueurs `actif`/`reserviste` : badge rouge "Blessé" ou vert
+  "Admissible LTIR" selon le calcul (`app/components/InjuryBadge.tsx`, composant partagé) sur
+  `/poolers/[id]` (**les deux onglets** qui listent des joueurs — `Masse Salariale`
+  (`RosterTable`, indexé par `player_id`) et `Alignement` (`PlayerStatsRow`, indexé par
+  `nhl_id` — `PlayerContrib` n'a pas de `player_id` interne). Piège trouvé en corrigeant
+  l'absence du badge sur Alignement : la relation embarquée PostgREST `players` sur
+  `player_injuries` est un **objet simple**, pas un tableau, pour cette relation many-to-one —
+  un premier correctif faisait `[0]?.nhl_id` dessus (toujours `undefined`, aucune erreur), pas
+  détecté avant une vérification directe contre Supabase staging (script Python ponctuel) —
+  leçon : un cast TypeScript (`as unknown as X`) masque ce genre d'erreur de forme de données,
+  seule une vraie requête peut la confirmer. Aussi : étiquette texte dans les `<select>` de
+  `/gestion-effectifs`, widget "Blessures dans le pool" sur l'accueil, et page dédiée
+  `/statistiques/blessures` (toute la LNH, colonne "LTIR" + filtre "Admissibles seulement").
+
+**Demandes de mise sur LTIR (`ltir_requests`) — David, 2026-09-23 (suite) :**
+- Jusqu'ici, `ltir`/`ltir_sign` (mettre un actif sur LTIR, avec ou sans signer un remplaçant)
+  étaient marqués `adminOnly` dans `ACTION_DEFS` (`GestionEffectifsManager.tsx`) — un pooler ne
+  voyait même pas le bouton, seul l'admin pouvait le faire (en pratique, sur demande hors-app
+  du pooler). Rien côté serveur ne vérifiait la blessure de toute façon. David voulait que le
+  pooler puisse l'initier lui-même, mais avec l'admin gardant un droit de regard "selon son
+  jugement" avant que ça devienne effectif — d'où ce système plutôt qu'une simple ouverture du
+  self-service.
+- **Flux** : le pooler choisit `ltir`/`ltir_sign` dans Gestion d'effectifs (désormais visibles à
+  tous, pas juste l'admin) — au lieu de s'appliquer immédiatement comme les autres actions du
+  panier, ces items-là passent par `submitLtirRequestAction` (`gestion-effectifs/ltir-actions.ts`)
+  qui crée une ligne `ltir_requests` (`status='pending'`) sans toucher `pooler_rosters`, et
+  notifie tous les admins (push/courriel, `sendPushToAdmins`, lien vers
+  `/admin/effectifs?tab=approbation`). Le reste du panier (actions non-LTIR) continue de
+  s'appliquer immédiatement comme avant. L'admin, lui, garde l'effet immédiat habituel — la
+  demande d'approbation ne s'applique qu'aux poolers (`isAdmin` scindé dans `handleSubmit`,
+  `GestionEffectifsManager.tsx`).
+- **Bandeau "En attente d'approbation"** sur `/gestion-effectifs` (même patron que le bandeau de
+  ballotage gagné) avec bouton "Annuler la demande" (`cancelLtirRequestAction`) — le pooler
+  reste libre de changer d'avis tant que l'admin n'a pas décidé.
+- **Approbation** (`/admin/effectifs?tab=approbation`, nouvelle section sous les transactions
+  entre poolers, `LtirApprovalManager.tsx`) : affiche le badge d'admissibilité calculé comme
+  aide à la décision. `adminDecideLtirRequestAction` → `decideLtirRequest()`
+  (`app/lib/ltirRequests.ts`) réutilise **`submitBatchAction`** (gestion-effectifs/actions.ts)
+  plutôt que de dupliquer la logique LTIR/LTIR+signature — tourne avec les droits de l'admin
+  connecté (celui qui clique "Approuver"), donc `validateRosterLimits` est sautée comme pour
+  toute action admin (l'admin n'est jamais bloqué, même comportement que partout ailleurs).
+- **Date effective = la date de SOUMISSION par le pooler, pas celle de l'approbation** (David,
+  2026-09-23) — `submitted_at` (tronqué en `YYYY-MM-DD`) passé à `submitBatchAction` via
+  `forcedDate`, même mécanisme que les autres dates historiques de l'app (voir plus haut,
+  "Convention — date historique d'un mouvement de roster").
+- Si le joueur n'est plus dans l'alignement du pooler au moment d'approuver (libéré/échangé
+  entretemps), l'approbation échoue avec un message clair plutôt que d'écrire n'importe quoi —
+  l'admin n'a qu'à rejeter cette demande-là.
+- Écriture directe via `createAdminClient()`, même patron que `waiverClaims.ts`/`tradeOffers.ts`
+  — fichier `gestion-effectifs/ltir-actions.ts` séparé de `actions.ts` (comme
+  `waiver-actions.ts`/`trade-actions.ts`) pour éviter un cycle d'import : `lib/ltirRequests.ts`
+  appelle `submitBatchAction` (`actions.ts`) à l'approbation, donc `actions.ts` ne peut pas
+  importer dans l'autre sens. RLS `ltir_requests` : lecture publique + admin seulement en
+  écriture, même patron que les autres tables de ce genre.
+
 ---
 
 ## 7. Standards de code
@@ -1064,9 +1229,10 @@ Règle : quand on touche une page de consultation, on la rend responsive en mêm
 - Masquer les colonnes secondaires sur mobile : `hidden sm:table-cell`
 - Pas de layout en colonnes côte à côte sur mobile (`flex-wrap` ou `grid-cols-1`)
 
-Pages de consultation : `/`, `/joueurs`, `/statistiques`, `/statistiques/ahl`, `/repechage`,
+Pages de consultation : `/`, `/joueurs`, `/statistiques`, `/statistiques/ahl`,
+`/statistiques/blessures`, `/repechage`,
 `/poolers`, `/poolers/[id]`, `/journal-transactions`, `/gestion-series`, `/classement-series`,
-`/classement`, `/classement/hebdomadaire`, `/classement/mensuel`, `/aide`
+`/classement`, `/classement/hebdomadaire`, `/classement/mensuel`, `/aide`, `/a-propos`
 
 ---
 

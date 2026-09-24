@@ -10,6 +10,7 @@ import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { validateRosterLimits } from '@/lib/rosterLimits'
 import { createWaiverClaimForRelease, isPlayerUnderActiveWaiverClaim } from '@/lib/waiverClaims'
+import { fetchInjuriesByPlayerId, type InjuryInfo } from '@/lib/injuries'
 
 export type PlayerType = 'actif' | 'reserviste' | 'ltir' | 'recrue'
 
@@ -37,6 +38,7 @@ export type RosterEntry = {
   isEstimatedCap: boolean
   lastDeactivatedAt: string | null  // ISO timestamp de la dernière désactivation (actif→res ou ltir)
   recrueEligible: boolean  // is_rookie, draft_year dans la fenêtre de 5 saisons, ou statut ELC — peut retourner à la banque de recrues
+  injury: InjuryInfo | null  // source CBS Sports/ESPN, voir player_injuries et app/lib/injuries.ts
 }
 
 export type RosterForPooler = {
@@ -128,7 +130,7 @@ export async function getPoolerRosterAction(
   // retourner à la banque de recrues.
   const draftYearCutoff = parseInt(season.split('-')[0], 10) + 1 - 5
 
-  const [{ data: rosterData }, { data: deactRows }, { data: settings }] = await Promise.all([
+  const [{ data: rosterData }, { data: deactRows }, { data: settings }, injuriesByPlayerId] = await Promise.all([
     supabase
       .from('pooler_rosters')
       .select(`
@@ -151,6 +153,7 @@ export async function getPoolerRosterAction(
       .in('change_type', ['deactivation', 'ltir'])
       .order('changed_at', { ascending: false }),
     supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
+    fetchInjuriesByPlayerId(supabase),
   ])
   const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
 
@@ -175,6 +178,7 @@ export async function getPoolerRosterAction(
       isEstimatedCap: isEstimated,
       lastDeactivatedAt: deactMap.get(r.player_id) ?? null,
       recrueEligible: !!(r.players?.is_rookie || (r.players?.draft_year != null && r.players.draft_year >= draftYearCutoff) || r.players?.status === 'ELC'),
+      injury: injuriesByPlayerId.get(r.player_id) ?? null,
     }
   })
 

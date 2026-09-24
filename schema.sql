@@ -1150,3 +1150,61 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 --
 -- ALTER TABLE trade_offers ADD COLUMN IF NOT EXISTS proposer_extra_actions JSONB;
 -- ALTER TABLE trade_offers ADD COLUMN IF NOT EXISTS target_extra_actions JSONB;
+
+-- Migration 2026-09-23 : table player_injuries (suivi des blessures LNH, David) — source CBS
+-- Sports (cbssports.com/nhl/injuries, scrapée par python_script/scrape_cbs_injuries.py), pour
+-- aider à repérer quand mettre un joueur au LTIR. Remplacement complet à chaque scrape (delete +
+-- reinsert, jamais incrémental) — la page CBS représente l'état "actuellement blessé", pas un
+-- historique ; un joueur guéri doit disparaître de la table, pas juste rester périmé. Une seule
+-- ligne par joueur (UNIQUE sur player_id). À exécuter une seule fois dans le SQL Editor Supabase
+-- (staging d'abord, puis prod) :
+--
+-- CREATE TABLE player_injuries (
+--   id SERIAL PRIMARY KEY,
+--   player_id INTEGER REFERENCES players(id) ON DELETE CASCADE UNIQUE,
+--   position VARCHAR(10),
+--   injury_type VARCHAR(100),
+--   status TEXT,               -- texte brut CBS, ex: "Expected to be out until at least Oct 2"
+--   updated_label VARCHAR(20),  -- texte brut CBS, ex: "Sep 22" (pas de vraie date, CBS n'en
+--                               -- fournit pas avec l'année)
+--   scraped_at TIMESTAMPTZ DEFAULT NOW()
+-- );
+--
+-- ALTER TABLE player_injuries ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Lecture publique player_injuries" ON player_injuries FOR SELECT USING (true);
+-- CREATE POLICY "Admin gère player_injuries" ON player_injuries FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- Migration 2026-09-23 (suite) : recoupement ESPN + suivi de durée + demandes de LTIR (David) —
+-- python_script/scrape_cbs_injuries.py devient scrape_injuries.py, ajoute ESPN en recoupement
+-- (statut canonique + date de retour estimée plus fiable qu'un texte libre) et passe du
+-- remplacement complet à un vrai upsert : `first_seen_at` est préservé tant qu'un joueur reste
+-- dans la liste CBS, pour calculer "day-to-day depuis plus de 14 jours" (règle LTIR de David —
+-- voir app/lib/ltirEligibility.ts, calculé à la volée, jamais stocké). `ltir_requests` : un
+-- pooler peut initier la mise sur LTIR d'un actif (+ signature optionnelle d'un remplaçant),
+-- mais rien ne bouge dans pooler_rosters avant l'approbation admin — voir
+-- app/lib/ltirRequests.ts. À exécuter une seule fois dans le SQL Editor Supabase (staging
+-- d'abord, puis prod) :
+--
+-- ALTER TABLE player_injuries ADD COLUMN IF NOT EXISTS first_seen_at TIMESTAMPTZ DEFAULT NOW();
+-- ALTER TABLE player_injuries ADD COLUMN IF NOT EXISTS est_return_date DATE;
+-- ALTER TABLE player_injuries ADD COLUMN IF NOT EXISTS espn_status_desc VARCHAR(30);
+-- ALTER TABLE player_injuries ADD COLUMN IF NOT EXISTS espn_note TEXT;
+--
+-- CREATE TABLE ltir_requests (
+--   id SERIAL PRIMARY KEY,
+--   pool_season_id INTEGER REFERENCES pool_seasons(id) ON DELETE CASCADE,
+--   pooler_id UUID REFERENCES poolers(id) ON DELETE CASCADE,
+--   ltir_player_id INTEGER REFERENCES players(id),
+--   new_player_id INTEGER REFERENCES players(id),
+--   status VARCHAR(20) NOT NULL DEFAULT 'pending',  -- 'pending' | 'approved' | 'rejected' | 'cancelled'
+--   submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),  -- date effective à l'approbation, pas decided_at
+--   decided_at TIMESTAMPTZ,
+--   decided_by UUID REFERENCES poolers(id),
+--   created_at TIMESTAMPTZ DEFAULT NOW()
+-- );
+--
+-- ALTER TABLE ltir_requests ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Lecture publique ltir_requests" ON ltir_requests FOR SELECT USING (true);
+-- CREATE POLICY "Admin gère ltir_requests" ON ltir_requests FOR ALL
+--   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));

@@ -9,6 +9,9 @@ import { fetchStreaks, DEFAULT_INDICATOR_CONFIG } from '@/lib/streaks'
 import type { StreakInfo } from '@/lib/streaks'
 import { fetchActiveNhlSeasonId } from '@/lib/nhl-active-season'
 import { getEffectiveCap } from '@/lib/capUtils'
+import { todayET, fetchSchedule7, fetchOrgPlayersForPooler } from '@/lib/nhlWeeklySchedule'
+import { fetchInjuriesByPlayerId, fetchInjuriesByNhlId, type InjuryInfo } from '@/lib/injuries'
+import InjuryBadge from '@/components/InjuryBadge'
 
 const DASH = '\u2014'
 const STAR = '\u2605'
@@ -151,7 +154,7 @@ const sortByDraftYearAsc = (a: RosterRow, b: RosterRow) => {
     || (a.players?.first_name ?? '').localeCompare(b.players?.first_name ?? '', 'fr-CA')
 }
 
-function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft, saisonFin, splitByPosition, unsignedMultiplier }: {
+function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft, saisonFin, splitByPosition, unsignedMultiplier, injuriesByPlayerId }: {
   rows: RosterRow[]
   title: string
   season?: string
@@ -161,6 +164,7 @@ function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft,
   saisonFin?: number
   splitByPosition?: boolean
   unsignedMultiplier?: number
+  injuriesByPlayerId?: Map<number, InjuryInfo>
 }) {
   const renderRows = (rowsToRender: RosterRow[]) => rowsToRender.map((row) => {
     const player = row.players
@@ -173,6 +177,7 @@ function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft,
     const currentRaw = getCurrentCap(player, season)
     const trend = getTrend(currentRaw, nextCap)
     const years = getYearsRemaining(player, season)
+    const injury = player ? injuriesByPlayerId?.get(player.id) : undefined
 
     return (
       <tr key={row.id} className="border-b hover:bg-gray-50">
@@ -181,6 +186,7 @@ function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft,
           <PlayerLink nhlId={player?.nhl_id}>
             {player?.last_name}, {player?.first_name}
           </PlayerLink>
+          {injury && <InjuryBadge injury={injury} />}
         </td>
         <td className="px-3 py-2 w-14"><TeamBadge code={player?.teams?.code} size="sm" /></td>
         <td className="px-3 py-2 w-10 text-gray-500">{player?.position ?? DASH}</td>
@@ -327,12 +333,27 @@ export default async function PoolerPage({ params }: { params: Promise<{ id: str
     .eq('is_playoff', false)
     .single()
 
-  const [{ data: pooler }, { data: allPoolers }, { data: settings }] = await Promise.all([
+  const [{ data: pooler }, { data: allPoolers }, { data: settings }, injuriesByPlayerId, injuriesByNhlId] = await Promise.all([
     supabase.from('poolers').select('id, name').eq('id', id).single(),
     supabase.from('poolers').select('id, name').order('name'),
     supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
+    // L'onglet Alignement (PlayerStatsRow, PoolerPageTabs.tsx) travaille avec des PlayerContrib
+    // indexés par nhl_id (pas le player_id interne comme RosterTable ci-dessous) — David a
+    // repéré que le badge blessé n'apparaissait que sur l'onglet Masse Salariale, d'où les deux
+    // maps distinctes (voir app/lib/injuries.ts).
+    fetchInjuriesByPlayerId(supabase),
+    fetchInjuriesByNhlId(supabase),
   ])
   const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
+
+  // Onglet "Prochains matchs" (David, 2026-09-23) — ex-onglet "Analyse" de /calendrier,
+  // déplacé ici : combien de matchs pour les joueurs de CET alignement (pas juste le sien),
+  // dans les prochains jours.
+  const today = todayET()
+  const [schedule7, allOrgPlayers] = await Promise.all([
+    fetchSchedule7(today),
+    saison ? fetchOrgPlayersForPooler(supabase, id, saison.id) : Promise.resolve([]),
+  ])
 
   if (!pooler) notFound()
 
@@ -540,10 +561,10 @@ export default async function PoolerPage({ params }: { params: Promise<{ id: str
     <>
       {capAndPicksContent}
       <div className="bg-white rounded-lg shadow p-5">
-        <RosterTable rows={actifs.filter(r => getPlayerBucket(r.players?.position ?? null) === 'forward').sort(byCapDesc)} title={`Attaquants (${activeCounts.forward} / 12)`} season={saison?.season} nextSeason={nextSeason} salaryCounts={true} unsignedMultiplier={unsignedMultiplier} />
-        <RosterTable rows={actifs.filter(r => getPlayerBucket(r.players?.position ?? null) === 'defense').sort(byCapDesc)} title={`Défenseurs (${activeCounts.defense} / 6)`} season={saison?.season} nextSeason={nextSeason} salaryCounts={true} unsignedMultiplier={unsignedMultiplier} />
-        <RosterTable rows={actifs.filter(r => getPlayerBucket(r.players?.position ?? null) === 'goalie').sort(byCapDesc)} title={`Gardiens (${activeCounts.goalie} / 2)`} season={saison?.season} nextSeason={nextSeason} salaryCounts={true} unsignedMultiplier={unsignedMultiplier} />
-        <RosterTable rows={reservistes} title="Réservistes" season={saison?.season} nextSeason={nextSeason} salaryCounts={true} unsignedMultiplier={unsignedMultiplier} />
+        <RosterTable rows={actifs.filter(r => getPlayerBucket(r.players?.position ?? null) === 'forward').sort(byCapDesc)} title={`Attaquants (${activeCounts.forward} / 12)`} season={saison?.season} nextSeason={nextSeason} salaryCounts={true} unsignedMultiplier={unsignedMultiplier} injuriesByPlayerId={injuriesByPlayerId} />
+        <RosterTable rows={actifs.filter(r => getPlayerBucket(r.players?.position ?? null) === 'defense').sort(byCapDesc)} title={`Défenseurs (${activeCounts.defense} / 6)`} season={saison?.season} nextSeason={nextSeason} salaryCounts={true} unsignedMultiplier={unsignedMultiplier} injuriesByPlayerId={injuriesByPlayerId} />
+        <RosterTable rows={actifs.filter(r => getPlayerBucket(r.players?.position ?? null) === 'goalie').sort(byCapDesc)} title={`Gardiens (${activeCounts.goalie} / 2)`} season={saison?.season} nextSeason={nextSeason} salaryCounts={true} unsignedMultiplier={unsignedMultiplier} injuriesByPlayerId={injuriesByPlayerId} />
+        <RosterTable rows={reservistes} title="Réservistes" season={saison?.season} nextSeason={nextSeason} salaryCounts={true} unsignedMultiplier={unsignedMultiplier} injuriesByPlayerId={injuriesByPlayerId} />
         {ltir.length > 0 && (
           <RosterTable rows={ltir} title={`Liste de blessés long terme — LTIR (${ltir.length})`} season={saison?.season} nextSeason={nextSeason} salaryCounts={true} />
         )}
@@ -612,6 +633,10 @@ export default async function PoolerPage({ params }: { params: Promise<{ id: str
         alignementPlayers={alignementPlayers}
         streaks={streaks}
         changeLog={changeLog}
+        allOrgPlayers={allOrgPlayers}
+        schedule7={schedule7}
+        today={today}
+        injuriesByNhlId={injuriesByNhlId}
       />
     </div>
   )

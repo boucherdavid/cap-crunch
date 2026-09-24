@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-22
+Derniere mise a jour: 2026-09-23
 
 ## Role du fichier
 
@@ -19,7 +19,508 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
-## Journal des sessions
+### 2026-09-23 (suite — migration exécutée, scraper validé en staging, fusion vers main)
+
+Migration SQL du 2026-09-23 précédent (extension `player_injuries` + table `ltir_requests`)
+confirmée exécutée par David en staging. `python scrape_injuries.py --apply` roulé contre
+staging pour valider : 64 blessures upsertées, 3 joueurs rétablis retirés, 51/64 recoupées avec
+ESPN. Vérifié directement contre Supabase (pas seulement la compilation) que
+`est_return_date`/`first_seen_at`/`espn_status_desc` se peuplent correctement, ex. :
+```json
+{"player_id": 22, "injury_type": "Lower Body", "status": "Expected to be out until at least Oct 16",
+ "est_return_date": "2026-10-16", "first_seen_at": "2026-09-24T00:52:42...", "espn_status_desc": "Out"}
+```
+
+**Question de David — que fait-on quand CBS et ESPN donnent des dates de retour différentes ?**
+Réponse donnée : `est_return_date` essaie toujours CBS en premier
+(`parse_est_return(rec['status'], today)`) ; ESPN ne sert de repli que si CBS n'a **aucune**
+date parseable dans son texte. Si les deux ont une date et qu'elles diffèrent, **CBS gagne
+silencieusement** — la date d'ESPN n'est jamais comparée ni affichée comme telle (seuls
+`espn_note`/`espn_status_desc`, du texte libre, sont conservés séparément et visibles en
+info-bulle/vue d'approbation admin). Trois options proposées à David, **en attente de sa
+décision à la prochaine session** :
+1. Garder tel quel (CBS = source de référence, ESPN = filet).
+2. Prendre la date la plus tardive des deux quand les deux existent (plus permissif).
+3. Signaler visuellement un désaccord (ex: écart de 5+ jours) sans changer le calcul.
+
+David a demandé de fusionner vers `main` maintenant (fonctionnalités déjà testées/validées en
+staging dans cette session et les précédentes — sidebar, "Prochains matchs", blessures,
+LTIR) et de documenter ; il terminera la discussion sur CBS/ESPN à la prochaine session.
+`staging` → `main` fusionné et poussé (voir commit de fusion).
+
+### 2026-09-23 (suite — ESPN en recoupement + admissibilité LTIR + demandes d'approbation)
+
+David a demandé de regarder ESPN et Yahoo comme sources additionnelles de blessures, puis a
+décrit comment le pool gère le LTIR dans les faits (2+ semaines annoncées, ou day-to-day qui
+traîne depuis 2+ semaines, en recoupant plusieurs sources dont CBS et TSN à la main) et a
+proposé : badge informatif seulement pour commencer, mais le geste "mettre sur LTIR" en
+libre-service doit passer par une approbation admin avant d'être effectif — avec, précision
+importante, la date effective au moment de la **soumission** par le pooler, pas de
+l'approbation. "Les 2 ensemble" (badge + approbation) construits dans la même session.
+
+**[Recherche] — ESPN et Yahoo** :
+- **ESPN** (`espn.com/nhl/injuries`) — excellent : la page embarque un vrai JSON structuré
+  (`window['__espnfitt__']`, clé `injuries` trouvée par recherche récursive dans l'objet plutôt
+  qu'un chemin fixe) avec statut canonique (`type.description`/`statusDesc` : Out/Day-To-Day/
+  Injured Reserve), date de retour estimée (`date`) et note datée — beaucoup plus fiable à
+  parser qu'un texte libre CBS. Vérifié en HTML brut (31 tables, 81 joueurs) avant de faire
+  confiance au JSON.
+- **Yahoo** (`sports.yahoo.com/nhl/injuries`) — aussi utilisable (HTML serveur), mais pas
+  branché — ESPN suffisait pour ce qui était demandé.
+
+**[Feature] — scraper multi-source avec suivi de durée** (`python_script/scrape_injuries.py`,
+remplace `scrape_cbs_injuries.py` supprimé) :
+- CBS reste la liste de référence (qui est "blessé"), ESPN enrichit seulement les joueurs déjà
+  trouvés via CBS (jamais l'inverse — évite un vrai merge de deux listes indépendantes, hors
+  scope pour la valeur demandée).
+- Passage d'un remplacement complet (delete + reinsert) à un vrai **upsert** :
+  `first_seen_at` préservé d'un run à l'autre tant que le joueur reste dans la liste CBS —
+  nécessaire pour "day-to-day depuis plus de 14 jours". `est_return_date` (DATE) parsée depuis
+  le texte CBS ou la date ESPN, année inférée (motif "Mon D", saison LNH à cheval sur deux
+  années civiles).
+- Testé en dry-run avant tout changement de schéma : 64 blessures CBS jumelées (0 non trouvé),
+  49/64 recoupées avec ESPN.
+
+**[Feature] — admissibilité LTIR calculée** (`app/lib/ltirEligibility.ts`,
+`app/lib/injuries.ts` nouveau, `app/components/InjuryBadge.tsx` nouveau) : règle de David —
+retour estimé à 14+ jours, ou blessé depuis 14+ jours sans date claire. Calculé à la volée
+(jamais stocké, reste exact entre deux scrapes). Centralisé dans `app/lib/injuries.ts`
+(`fetchInjuriesByPlayerId`/`fetchInjuriesByNhlId`) pour éviter de dupliquer la requête+calcul
+dans les 5 endroits qui affichent le badge — remplacés pour utiliser cette source unique :
+`/poolers/[id]` (2 onglets), `/gestion-effectifs`, l'accueil, `/statistiques/blessures`
+(nouvelle colonne "LTIR" + filtre "Admissibles seulement"). Badge vert "Admissible LTIR"
+remplace le rouge "Blessé" dès que le seuil est atteint.
+
+**[Feature] — demandes de LTIR avec approbation admin** (`ltir_requests` nouveau,
+`app/lib/ltirRequests.ts` nouveau, `app/app/gestion-effectifs/ltir-actions.ts` nouveau,
+`app/app/admin/effectifs/LtirApprovalManager.tsx` nouveau) :
+- Découverte en cours de route : `ltir`/`ltir_sign` étaient déjà marqués `adminOnly` dans
+  `ACTION_DEFS` (`GestionEffectifsManager.tsx`) — les poolers ne voyaient même pas le bouton.
+  Ouverts aux poolers maintenant que la demande passe par l'admin.
+- Flux : le pooler soumet (`submitLtirRequestAction`) → ligne `ltir_requests` `pending`, rien ne
+  bouge dans `pooler_rosters`, admins notifiés (push/courriel) → bandeau "En attente
+  d'approbation" chez le pooler (annulable) → admin approuve/rejette sur
+  `/admin/effectifs?tab=approbation` (nouvelle section, badge d'admissibilité affiché comme
+  aide à la décision) → à l'approbation, réutilise **`submitBatchAction`** existant (pas de
+  duplication de la logique LTIR/LTIR+signature) avec `forcedDate` = date de **soumission**
+  (pas d'approbation, comme demandé) — tourne avec les droits de l'admin qui approuve, donc
+  `validateRosterLimits` est sautée comme pour toute action admin (l'admin n'est jamais bloqué).
+- `gestion-effectifs/ltir-actions.ts` séparé de `actions.ts` (comme `waiver-actions.ts`/
+  `trade-actions.ts`) pour éviter un cycle d'import (`ltirRequests.ts` appelle
+  `submitBatchAction` de `actions.ts` à l'approbation).
+- Vérifié : `tsc --noEmit` et `next build` passent.
+- CLAUDE.md sections 2/3/4/6 mises à jour.
+
+**Reste à faire** : David doit exécuter la migration SQL (extension `player_injuries` +
+nouvelle table `ltir_requests`) en staging avant de tester — voir le message de fin de session
+pour le bloc SQL exact. Pas de test d'interactivité en navigateur connecté (soumission d'une
+demande, approbation admin) — à valider par David une fois la migration faite.
+
+### 2026-09-23 (suite — le badge était toujours absent : vrai bug dans le 1er correctif)
+
+David a rechargé après le fix précédent — badge toujours absent. Vérifié directement contre
+Supabase staging (script Python ponctuel) la forme réelle du JSON retourné par
+`player_injuries.select('..., players (nhl_id)')` :
+```json
+{"player_id": 15, "injury_type": "Lower Body", "players": {"nhl_id": 8481563}}
+```
+`players` est un **objet simple**, pas un tableau — mon premier correctif faisait
+`(row.players as unknown as {...}[])[0]?.nhl_id`, qui retourne toujours `undefined` sur un
+objet (pas d'index `[0]`), donc `injuriesByNhlId` se construisait vide silencieusement (aucune
+erreur TypeScript ni runtime, juste une map toujours vide). Corrigé en traitant `row.players`
+comme l'objet qu'il est vraiment (`app/app/poolers/[id]/page.tsx`).
+- Vérifié : `tsc --noEmit` et `next build` passent. **Cette fois vérifié aussi contre les
+  données réelles avant de repousser**, pas seulement la compilation — leçon retenue : un
+  cast TypeScript (`as unknown as X`) masque ce genre d'erreur de forme de données, seule une
+  vraie requête peut la confirmer.
+
+### 2026-09-23 (suite — fix : badge blessé absent de l'onglet Alignement)
+
+**[Fix] — le badge "Blessé" n'apparaissait que sur l'onglet Masse Salariale, pas Alignement**
+(`app/app/poolers/[id]/{page.tsx,PoolerPageTabs.tsx}`) — David a testé avec une capture
+d'écran de son propre alignement (A.J. Greer, blessé selon `/statistiques/blessures`, sans
+badge sur l'onglet Alignement, ouvert par défaut). Cause : je n'avais branché le badge que
+dans `RosterTable` (onglet Masse Salariale, indexé par `player_id`) — l'onglet Alignement
+utilise un composant différent (`PlayerStatsRow`, données `PlayerContrib` de
+`buildStandings()`) qui n'a pas de `player_id` interne, seulement `nhlId`. Ajouté une seconde
+map `injuriesByNhlId` (jointure `player_injuries` → `players(nhl_id)`) et le même badge dans
+`PlayerStatsRow`.
+- Vérifié : `tsc --noEmit` et `next build` passent.
+- CLAUDE.md section 6 mise à jour.
+
+### 2026-09-23 (suite — 3 derniers ajustements de la sidebar)
+
+**[Chore] — trois retouches demandées par David** (`app/components/Navbar.tsx`) :
+- "Classement" renommé **"Classement du pool"**.
+- "Calendrier" sorti du groupe Statistiques, devient un lien autonome **"Calendrier LNH"**
+  (même nom que le `<h1>`/titre de page), positionné entre Classement du pool et Statistiques.
+- Vérifié : `tsc --noEmit` et `next build` passent.
+- CLAUDE.md section 5 mise à jour.
+
+### 2026-09-23 (suite — onglet "Prochains matchs" sur la page d'alignement)
+
+**[Feature] — l'onglet Analyse de `/calendrier` déménage sur `/poolers/[id]`, renommé
+"Prochains matchs"** (`app/lib/nhlWeeklySchedule.ts` nouveau, `app/components/
+UpcomingGamesAnalysis.tsx` nouveau, `app/app/poolers/[id]/{page.tsx,PoolerPageTabs.tsx}`,
+`app/app/calendrier/{page.tsx,CalendrierClient.tsx}`) — suite logique de la discussion sur la
+sidebar : David trouvait que le résumé "mes joueurs cette semaine" avait plus sa place avec
+l'alignement qu'avec le calendrier LNH général.
+- Logique extraite dans `app/lib/nhlWeeklySchedule.ts` (fetch NHL, fenêtre glissante 7 jours,
+  `fetchOrgPlayersForPooler()`) et `app/components/UpcomingGamesAnalysis.tsx` (l'affichage,
+  repris tel quel de l'ex-`AnalyseTab`) — partagés entre les deux pages plutôt que dupliqués.
+- Sur `/poolers/[id]`, 5ᵉ onglet "Prochains matchs" — fonctionne pour **n'importe quel
+  pooler affiché** (pas juste soi-même), cohérent avec le reste de la page.
+- `/calendrier` perd son onglet Analyse (et sa barre d'onglets, devenue inutile à un seul
+  onglet) — garde seulement Matchs (navigation jour par jour, filtre équipe/mode séries).
+- Vérifié : `tsc --noEmit` et `next build` passent. `curl` sur `/calendrier` et `/poolers`
+  confirme un rendu sans erreur serveur (pas de session authentifiée disponible ici pour
+  tester `/poolers/[id]` directement ni l'interactivité des onglets — à valider par David).
+- CLAUDE.md section 5-6 mises à jour.
+
+### 2026-09-23 (suite — affinage des groupes de la sidebar : regroupement par propriété)
+
+Après le premier jet de la sidebar (voir plus bas), David a proposé un principe
+d'organisation plus net : regrouper "ce qui m'appartient / que je contrôle" ensemble, "ce qui
+concerne les autres poolers" ensemble, et "notre repêchage annuel" (recrues + agents libres)
+ensemble plutôt que de suivre la logique consultation/action initiale.
+
+**[Feature] — réorganisation des groupes de `NAV_GROUPS`** (`app/components/Navbar.tsx`) :
+- **Mon équipe** (nouveau, remplace "Alignements") : Mon alignement · Gestion d'effectifs ·
+  Simulation — les 3 auth-only, retirés du bloc `actionItems` (supprimé du code, plus aucun
+  groupe ne s'en sert) et rendus comme des items normaux, chacun avec son propre `auth: true`.
+- **Le pool** (nouveau) : Tous les alignements · Journal des transactions.
+- **Statistiques** : Calendrier ajouté comme 4ᵉ item (déplacé depuis l'ancien groupe
+  Alignements) — le calendrier LNH général n'est pas propre à un alignement. Le résumé
+  personnel "mes joueurs cette semaine" reste pour l'instant sur `/calendrier` telle quelle
+  (idée d'en faire un onglet séparé sur `/poolers/[id]`, discutée mais pas construite — pas de
+  changement de contenu de page dans cette session, seulement la sidebar).
+- **Prospects LNH** (ex-"Recrues", réduit à 2 items) : Classement pré-repêchage · Repêchage
+  LNH — référence sur le vrai repêchage LNH.
+- **Repêchage annuel** (nouveau groupe) : **Repêchage des recrues** (ex-"Repêchage interne"
+  côté menu — renommé pour cohérence avec le `<h1>` de `/repechage-recrues/page.tsx`, qui
+  disait déjà "Repêchage des recrues" ; aucun changement de route/fonction) · Signatures des
+  agents libres (déplacé une seconde fois, après son passage dans Alignements le 2026-09-14).
+- Vérifié : `tsc --noEmit` et `next build` passent.
+- CLAUDE.md section 5 mise à jour (nouveau tableau de groupes + rationale du regroupement par
+  propriété).
+
+### 2026-09-23 (suite — refonte de la navigation en sidebar, suite à un retour de pooler)
+
+David a discuté avec un autre pooler : l'organisation des menus et la nomenclature n'étaient
+pas toujours claires — "Ressources" trop vague, "LNH" regroupait Statistiques/Contrats/
+Blessures sans que ce soit évident, le Calendrier semblait mal placé (lié aux alignements pour
+un pooler, pas aux stats LNH), "Mon équipe"/"Équipes" ne parlaient pas clairement. Discuté
+d'abord une option de renommages/déplacements mineurs en gardant la barre horizontale, mais le
+constat qu'aplatir "LNH"/"Ressources" ferait passer le menu horizontal à ~9 items au premier
+niveau (trop serré) a mené David à choisir une refonte plus profonde : passer à un panneau
+latéral avec arborescence.
+
+**[Feature] — refonte complète de `Navbar.tsx` en sidebar + tiroir mobile**
+(`app/components/Navbar.tsx`, `app/app/layout.tsx`) :
+- Barre du haut minimale et fixe (`sticky top-0`) : logo/Accueil, bouton Installer PWA, avatar
+  compte. Sidebar séparée : persistante à gauche en desktop (`fixed top-14 left-0 bottom-0
+  w-64`), tiroir superposé glissant depuis la gauche en mobile (backdrop, ouvert par le
+  hamburger de la barre du haut, ferme au clic sur un lien ou en dehors). `layout.tsx` ajoute
+  `md:pl-64` sur le contenu pour compenser la sidebar fixe desktop (pas nécessaire en mobile,
+  où le tiroir est superposé plutôt qu'en colonne).
+- Les deux (desktop et mobile) partagent maintenant la **même** source de données
+  (`NAV_GROUPS`/`NavTree`) — l'ancien menu horizontal dupliquait deux listes de liens
+  distinctes (une par dropdown desktop, une par section mobile), un vrai risque d'oubli à
+  chaque futur changement de menu. Chaque section est un groupe repliable (vraie
+  arborescence) ; le groupe contenant la page courante se déplie automatiquement au chargement
+  et après chaque navigation (`useEffect` sur `pathname`), le reste reste replié tant qu'on ne
+  clique pas dessus — évite d'avoir à tout dérouler pour trouver où on est, sans pour autant
+  tout afficher en permanence.
+- **Réorganisation du contenu**, en réponse directe au retour du pooler :
+  - **Alignements** : "Mon équipe" → **Mon alignement**, "Équipes" → **Tous les alignements**
+    (vocabulaire "alignement" déjà utilisé partout ailleurs dans l'app — règlements, onglets —
+    plutôt que "équipe", ambigu avec équipe LNH). **Calendrier déplacé ici** depuis LNH (David :
+    ça sert surtout à voir qui de nos joueurs joue, donc plus proche des alignements que des
+    stats LNH).
+  - **LNH scindé** : "Statistiques" (LNH/Projections/AHL) reste groupé — trois vues du même
+    type de données — mais **Blessures** et **Contrats LNH** deviennent des liens autonomes au
+    premier niveau (ex-sous-items cachés dans "LNH").
+  - **Ressources scindé** en **Communauté** (Babillard, Planification — fait aussi écho au hub
+    admin `/admin/communaute`) et **Aide** (Aide & Règlements, À propos).
+- Vérifié : `tsc --noEmit` et `next build` passent. Serveur de dev déjà en cours (`localhost:3000`)
+  relancé à chaud (hot reload) sans erreur — `curl` confirme un rendu sans crash serveur
+  (`/login`, qui partage le même layout) et la présence des nouvelles classes/textes attendus.
+  **Pas de vérification visuelle en navigateur connecté** (interactions : ouverture du tiroir,
+  clic pour replier/déplier un groupe, glissement de l'animation) — à valider par David,
+  justement avec l'aperçu mobile qu'il vient de mettre en place.
+- CLAUDE.md section 5 mise à jour (nouvelle architecture documentée, ancien tableau de menus
+  horizontaux conservé comme historique).
+
+**Prochaine étape suggérée** : valider visuellement en local/staging (desktop + l'aperçu
+mobile de David), en particulier avec le pooler qui avait signalé la confusion au départ —
+demander si la nouvelle organisation lui parle mieux.
+
+### 2026-09-23 (suite — page dédiée /statistiques/blessures + cron déplacé à midi ET)
+
+**[Chore] — cron des blessures déplacé de 11h à 16h UTC** (`.github/workflows/injuries.yml`) :
+David voulait midi heure de l'Est plutôt que 7h ET. GitHub Actions ne suit pas les changements
+d'heure (contrairement à `dateRanges.ts` côté app) — 16h UTC = midi EDT (heure d'été,
+actuellement en vigueur) mais deviendra 11h ET une fois l'heure d'hiver commencée (~1er
+novembre) ; écart mineur assumé, sans conséquence pour ce cron. Précisé aussi : les workflows
+planifiés (`schedule:`) ne se déclenchent que depuis la branche par défaut (`main`) — tant que
+ce fichier reste sur `staging`, rien ne tourne automatiquement, peu importe l'heure configurée.
+
+**[Feature] — nouvelle page `/statistiques/blessures`** (`app/app/statistiques/blessures/
+{page.tsx,BlessuresTable.tsx}` nouveaux) — David voulait une vraie page listant les blessures,
+pas seulement les badges ponctuels déjà en place. Portée volontairement plus large que ces
+badges : **toute la LNH**, pas seulement les actifs/réservistes du pool (contrairement au widget
+d'accueil). Colonnes : joueur (lien vers le panneau détail via `PlayerLink`), équipe, position,
+type de blessure, statut CBS, et une colonne <strong>Dans le pool</strong> qui indique le
+pooler propriétaire et son type de roster (actif/réserviste/recrue/LTIR) peu importe si le
+joueur compte dans la masse salariale, ou "Disponible" sinon. Recherche par nom/équipe + filtre
+"Disponibles seulement", même patron que les autres tableaux de stats. Ajoutée au menu
+LNH → Statistiques (desktop + mobile) et au Guide `/aide`.
+- Vérifié : `tsc --noEmit` et `next build` passent, route générée.
+
+### 2026-09-23 (suite — chantier blessures construit de bout en bout : scraper, table, affichage, cron)
+
+David a confirmé : CBS Sports en priorité, Yahoo mis de côté pour l'instant. Construit de bout
+en bout dans cette session :
+
+**[Feature] — `player_injuries` + `scrape_cbs_injuries.py`** (`schema.sql`,
+`python_script/scrape_cbs_injuries.py` nouveau) :
+- Migration exécutée par David dans le SQL Editor Supabase staging (table + RLS, lecture
+  publique/écriture admin, même patron que `cap_signing_watch`/`waiver_claims`).
+- Scraper testé en dry-run avant même la migration (lecture seule, pas besoin de la table) :
+  59/59 blessures jumelées à la base `players` via `projections_common.py`, 1 seul jumelage
+  approximatif (Artem Zub, nom de famille+équipe seulement — probablement juste une variante de
+  prénom en base). Puis import réel (`--apply`) confirmé en staging.
+- Remplacement complet à chaque run (delete + reinsert) — pas de confirmation interactive
+  contrairement aux autres scripts `--apply` (celui-ci tourne aussi sans supervision via cron,
+  et l'enjeu est faible : table purement informative, jamais lue par une autre table).
+- Cron quotidien dédié (`.github/workflows/injuries.yml`, 16h UTC (midi ET)) — séparé du pipeline
+  hebdomadaire, les blessures changent trop vite pour attendre une semaine.
+
+**[Feature] — affichage dans l'app**, limité aux joueurs `actif`/`reserviste` (ceux pour qui le
+LTIR est une vraie décision à prendre) :
+- Badge rouge "Blessé" (tooltip = type de blessure + statut CBS) sur `/poolers/[id]`
+  (`RosterTable`, couvre à la fois Mon équipe et Équipes) — nouveau prop `injuriesByPlayerId`.
+- Étiquette "🩹 blessé" directement dans les `<select>` de `/gestion-effectifs`
+  (`entryLabel()`) — visible en choisissant qui mettre au LTIR, l'endroit exact où la décision
+  se prend. Nouveau champ `injury` sur `RosterEntry` (`actions.ts`), peuplé dans
+  `getPoolerRosterAction`.
+- Widget "Blessures dans le pool" sur l'accueil (`fetchPoolInjuries()`/`PoolInjuriesWidget`,
+  `app/app/page.tsx`) — tous poolers confondus, complète les deux vues ci-dessus qui sont
+  par-pooler.
+- Vérifié : `tsc --noEmit` et `next build` passent.
+
+**Reste à faire** : exécuter la même migration SQL en **prod** avant que le cron GitHub Actions
+(déjà actif, cible toujours prod) ne tente d'écrire dans une table qui n'existe pas encore là-bas
+— sinon le premier run quotidien échouera silencieusement (erreur Supabase, pas de crash
+bloquant pour le reste du site, mais aucune donnée ne sera importée en prod tant que ce n'est pas
+fait).
+
+### 2026-09-23 (suite — Daily Faceoff ajouté aux manchettes + validation TSN/Yahoo pour les blessures)
+
+**[Recherche] — TSN et Yahoo comme sources de blessures (proposés par David, qui les utilisait
+manuellement)** :
+- **Yahoo** (`hockey.fantasysports.yahoo.com/hockey/injuries`) — ✅ utilisable : HTML rendu
+  côté serveur, aucune authentification requise malgré le domaine fantasy. Colonnes joueur/
+  équipe/position/type de blessure/statut (O, IR-NR, IR-LT, IR, DTD) — pas de date de retour
+  prévue, contrairement à CBS.
+- **TSN** (`tsn.ca/nhl/injuries`) — ❌ écarté : vérifié en `curl` brut (pas juste WebFetch) que
+  le HTML initial ne contient aucune donnée (page React qui charge le tableau en JS après coup,
+  aucun point d'entrée API exposé trouvé). Scrapable seulement avec un navigateur headless
+  (Playwright/Selenium), absent du pipeline Python actuel — mis de côté à moins que CBS+Yahoo
+  s'avèrent insuffisants.
+- Conclusion inchangée : CBS reste la source principale pour le futur chantier blessures, Yahoo
+  en second choix/validation croisée possible, TSN non retenu pour l'instant.
+- Vérifié au passage : ni nhl.com ni PuckPedia n'ont de flux RSS (PuckPedia bloque d'ailleurs les
+  requêtes automatisées génériques, 403 sur plusieurs chemins testés).
+
+**[Feature] — Daily Faceoff ajouté au widget Actualité LNH de l'accueil** (`app/app/page.tsx`) :
+flux RSS officiel confirmé valide (`dailyfaceoff.com/feed`, RSS 2.0). `fetchNhlNews()`
+récupère maintenant ESPN + Daily Faceoff en parallèle (`fetchRssFeed()`, généralisé pour
+accepter n'importe quelle URL/source plutôt que codé en dur pour ESPN seul), fusionne et trie
+par date de publication décroissante. Le bandeau fixe "Source : ESPN" du widget est remplacé
+par une étiquette de source par manchette (ESPN / Daily Faceoff), plus juste maintenant que
+deux sources se mélangent — et prêt à accueillir une 3ᵉ source plus tard sans autre changement
+de structure.
+- Vérifié : `tsc --noEmit` et `next build` passent.
+
+### 2026-09-23 (suite — Règlements de /aide passés en revue, 3 périmés corrigés)
+
+**[Fix docs] — David a demandé une vérification : les règlements affichés dans `/aide` étaient-ils
+à jour ?** (`app/app/aide/AideTabs.tsx`) — comparé section par section au détail des règles dans
+`CLAUDE.md` (sections 1 et 6, la référence maintenue). Trois inexactitudes trouvées et corrigées :
+- **`regl-alignement`** — affirmait qu&apos;« un sous-effectif temporaire est toléré tant que le
+  maximum n&apos;est pas dépassé » en cours de saison. Périmé depuis le fix du 2026-09-20
+  (`validateRosterLimits`) : un sous-effectif est maintenant tout aussi bloquant qu&apos;un
+  dépassement à chaque mouvement soumis dans Gestion d&apos;effectifs — corrigé.
+- **`regl-ballotage`** — ne mentionnait pas que la priorité utilise l&apos;ordre du repêchage
+  pré-saison avant le 1ᵉʳ novembre (le classement n&apos;a pas encore de sens en tout début de
+  saison, ajouté le 2026-09-21) plutôt que le classement réel — pertinent tout de suite
+  (aujourd&apos;hui 23 septembre) — ajouté.
+- **`guide-echanges`** (Guide, pas Règlements, mais trouvé dans la même relecture) — disait
+  d&apos;« ajuster au besoin dans Mouvements » avant de confirmer un échange, alors que Mouvements
+  exige toujours exactement 12/6/2 et bloquerait justement ce genre d&apos;ajustement préparatoire.
+  La vraie fonctionnalité (2026-09-22) est une section dédiée directement dans l&apos;onglet
+  Échanges — corrigé pour refléter ça.
+- **Ajout** dans `regl-cap` : le délai de grâce (7 jours par défaut) avant qu&apos;un dépassement
+  causé par la signature réelle d&apos;un joueur jusque-là simulé n&apos;oblige une intervention
+  admin (`cap_signing_watch`) — jamais documenté nulle part côté pooler jusqu&apos;ici.
+- Reste du contenu (recrues, cap de base, agents libres, transactions) vérifié conforme à
+  CLAUDE.md, rien d&apos;autre à corriger.
+- Vérifié : `tsc --noEmit` et `next build` passent.
+
+### 2026-09-23 (suite — accueil : activité du pool + actualité LNH, captures d'écran du guide)
+
+**[Recherche] — sources pour un futur suivi de blessures** : David a demandé de creuser avant
+de coder quoi que ce soit. Vérifié en direct (WebFetch) :
+- **CBS Sports** (`cbssports.com/nhl/injuries`) — meilleur candidat pour un suivi structuré :
+  page rendue côté serveur (pas de JS à contourner), organisée par équipe, colonnes
+  joueur/position/date de mise à jour/type de blessure/statut-retour prévu. Déjà une source de
+  confiance du pipeline (projections CBS) — même logique de jumelage de noms réutilisable.
+  Hockey-Reference et PoolExpert ont des tables similaires mais Sports-Reference a des
+  conditions d'utilisation plus strictes sur le scraping — écarté au profit de CBS.
+- **RSS général** — nhl.com n'a **aucun** flux RSS officiel (vérifié). ESPN, par contre, en a
+  un : `espn.com/espn/rss/nhl/news`, RSS 2.0 standard et valide, mis à jour en continu — zéro
+  scraping, contrairement à CBS.
+- Conclusion : suivi de blessures structuré = chantier séparé (nouveau script Python, nouvelle
+  table `player_injuries`, cron plus fréquent que le pipeline hebdo actuel — pas fait
+  aujourd'hui, à reprendre plus tard). Actualité LNH générale = bien plus petit, fait
+  aujourd'hui (voir ci-dessous).
+
+**[Feature] — deux nouveaux widgets sur la page d'accueil** (`app/app/page.tsx`) :
+- **Activité du pool** — les 6 derniers échanges/signatures/libérations-ballotage,
+  résumés en une phrase par transaction (`summarizeTransaction()`, même classification que
+  `TransactionsClient.tsx`/`/journal-transactions` mais condensée), avec lien "Tout voir" vers
+  le journal complet. Volontairement limité à ces 3 catégories (les plus "nouvelles" selon
+  David) — promotions/LTIR/changements de type restent dans le journal complet seulement.
+- **Actualité LNH** — les 6 dernières manchettes du flux RSS ESPN trouvé ci-dessus
+  (`fetchNhlNews()`), parsé à la main par regex (`extractXmlTag()`) plutôt que d'ajouter une
+  dépendance XML pour un besoin aussi simple — même esprit que les autres fetch externes déjà
+  dans ce fichier (`fetchTodayGames()`). Cache 30 min (`revalidate: 1800`). Chaque manchette
+  ouvre l'article ESPN dans un nouvel onglet.
+- Objectif de David : un accueil plus "tout-en-un" pour des poolers avec peu de temps — suivre
+  l'actualité et l'activité du pool sans naviguer ailleurs.
+- Vérifié : `tsc --noEmit` et `next build` passent, aucun warning.
+
+**[Feature] — captures d'écran intégrées au guide `/aide`** (`app/public/guide/*.png` nouveau,
+`app/app/aide/AideTabs.tsx`) : les 15 captures déposées par David dans `guide_app/screenshot/`
+(convenu en début de session) copiées vers `app/public/guide/` (noms nettoyés, ex.
+`Repêchage_LNH.png` → `repechage-lnh.png`) et branchées via le champ `screenshot` sur les 15
+sections concernées du Guide — y compris Statistiques LNH, dont la capture (940 joueurs)
+confirme que le bug d'affichage vide plus tôt dans la journée était bien résolu au moment de la
+prise. `guide_app/` reste le dépôt source, pas suivi par l'app elle-même.
+
+### 2026-09-23 (suite — pick de repêchage affichant "Soumis" au lieu du nom de la recrue)
+
+**[Fix] — `/repechage-recrues` et `/admin/repechage` perdaient le nom d'une recrue déjà
+promue actif** (`app/app/repechage-recrues/page.tsx`, `app/app/admin/repechage/page.tsx`) :
+David a repéré ça en prenant des captures d'écran — le pick #1 de Nicolas (ronde 1, repêchage
+2025) affichait juste "✓ Soumis" au lieu du nom du joueur choisi, alors que les 7 autres picks
+de la ronde s'affichaient normalement.
+- Cause : `playerByPickId` (utilisé par `DraftBoard.tsx` pour afficher qui a été choisi à
+  chaque pick) était construit à partir de la même requête `pooler_rosters` que `inBankIds`
+  (sert à exclure les recrues déjà en banque de la liste des joueurs disponibles) — filtrée sur
+  `player_type='recrue' AND pool_draft_year=poolDraftYear AND is_active=true`. Dès qu'une
+  recrue est promue au statut actif (`applyTransactionItems`, `action_type='promote'` — une
+  simple UPDATE en place sur la ligne existante, qui préserve `draft_pick_id` mais change
+  `player_type`), elle sort de ce filtre et disparaît silencieusement de `playerByPickId`,
+  même si le pick lui-même reste bien "complété" (`is_used=true` sur `pool_draft_picks`).
+  Repêchage 2025 datant de plus d'un an, plusieurs recrues de premier tour ont déjà eu le temps
+  d'être activées par leur pooler — d'où l'apparition du bug seulement maintenant.
+- Corrigé en séparant les deux besoins : nouvelle requête `pickHistoryData` (même table,
+  seulement `draft_pick_id IS NOT NULL`, sans filtre sur `player_type`/`pool_draft_year`/
+  `is_active`) dédiée à `playerByPickId` — l'affichage du tableau de repêchage redevient
+  purement historique (qui a été choisi à ce pick, peu importe son statut actuel), tandis que
+  la requête `bankData` d'origine reste inchangée pour `inBankIds`/`availableRookies` (doit
+  rester strictement "encore en banque" pour ce calcul-là). Même correctif appliqué aux deux
+  pages qui partagent `DraftBoard.tsx`.
+- Vérifié : `tsc --noEmit` et `next build` passent. Pas de test visuel en navigateur connecté —
+  à valider par David en rechargeant `/repechage-recrues` (saison 2025-26) en staging.
+
+### 2026-09-23 (suite — bandeau « données non chargées » + tip aide)
+
+**[Fix investigation] — `/statistiques` affichait 0 joueur pour la saison 2025-26** : David
+a repéré ça en prenant des captures d'écran pour le guide. Vérifié directement l'API NHL
+publique avec la requête exacte que fait l'app (`seasonId=20252026`, patineurs et gardiens) —
+répond correctement (430 Ko, <1s). Conclusion : accroc passager de l'API externe au moment de
+la requête, pas un bug de logique ni une perte de données. Confirmé par David : en rechargeant
+quelques minutes plus tard, les données étaient revenues — donc pas un problème de cache serveur
+qui serait resté « collé » (le `revalidate: 86400` de `fetchSkaters`/`fetchGoalies` n'a
+apparemment pas mis en cache la réponse en erreur, ou celle-ci n'a simplement pas eu le temps de
+se propager avant le rechargement).
+
+**[Feature] — bandeau d'avertissement + rechargement quand une source externe ne répond rien**
+(`app/components/DataLoadWarning.tsx` nouveau, `app/app/statistiques/StatsTable.tsx`,
+`app/app/statistiques/ahl/AhlStatsTable.tsx`) : David voulait un message pour inviter le
+pooler à recharger si ça se reproduit, partout où c'est pertinent. Scope volontairement limité
+aux deux pages où le motif est identique et facilement détectable sans faux positif :
+Statistiques LNH et AHL, où `skaters`/`goalies` (tableaux bruts, avant filtrage utilisateur)
+étant tous les deux vides pour l'onglet actif est un signal fiable d'échec de la source externe
+plutôt qu'un « aucun résultat » légitime dû aux filtres — distinction déjà faite par
+`hasFilters` existant, réutilisée implicitement en vérifiant les tableaux non filtrés plutôt
+que `filteredSkaters`/`filteredGoalies`. Bandeau rouge avec bouton « Recharger la page »
+(`window.location.reload()`).
+- **Pages exclues du scope** (raisons notées pour éviter de refaire l'analyse) : `/calendrier`
+  a un cache de 5 min seulement (`revalidate: 300`, bien plus court que les 24h des stats) et
+  une semaine réellement sans match (pause All-Star, entre-saison) est un vrai cas légitime
+  difficile à distinguer d'un échec — trop de faux positifs pour la valeur. `/repechage` a un
+  fetch par année de repêchage (`revalidate: 3600`), donc une seule année en échec ne casse pas
+  toute la page — moins clairement détectable sans re-architecturer. `/statistiques/projections`
+  lit Supabase, pas une API externe avec ce même risque de cache.
+- **Couverture plus large en documentation plutôt qu'en code** pour ces cas plus ambigus :
+  nouvelle entrée Guide dans `/aide` (`guide-donnees-vides`, `AideTabs.tsx`) — explique que les
+  pages de données LNH/AHL/calendrier/repêchage sont mises en cache, qu'un accroc passager peut
+  occasionnellement vider une page, et que recharger règle généralement le problème (sinon,
+  Signaler un problème).
+- Vérifié : `tsc --noEmit` et `next build` passent.
+
+### 2026-09-23 — merge staging→main + nouvelle page /a-propos + guide plus convivial
+
+**[Chore] — merge groupé `staging` → `main`** : 25 commits accumulés depuis le 2026-09-21
+(échanges entre poolers, outil de backup, projections Pool Pro/Hockey Le Magazine, en-têtes
+fixes, stats junior repêchage, etc.) validés par David en staging, poussés vers `main`
+(`e4f4c87..9fc4d51`) — déploiement prod déclenché automatiquement.
+
+**[Feature] — nouvelle page `/a-propos`** (`app/app/a-propos/page.tsx`,
+`app/components/Navbar.tsx`) : David voulait un résumé de toutes les fonctionnalités de l'app
+à partager avec quelques poolers pour recueillir leurs retours (manque-t-il quelque chose?).
+Produit d'abord comme un Artifact Claude autonome pour ce premier tour de feedback
+ponctuel, puis — David a préféré cette option plutôt qu'une copie statique dans le repo —
+transformé en vraie page dans l'app pour rester à jour automatiquement plutôt que de devenir
+périmée dès le prochain ajout de fonctionnalité. Contenu organisé par section de menu
+(Alignements, Classement, LNH, Recrues, Ressources, Mon compte), chaque entrée avec un lien
+direct vers sa page réelle. Ajoutée au menu Ressources (desktop + mobile). Renvoie vers `/aide`
+pour les instructions détaillées, et vers `/signaler` pour rapporter ce qui manque — la
+boucle de feedback reste dans l'app plutôt que hors-bande.
+
+**[Feature] — guide `/aide` plus convivial : liens directs + pages manquantes comblées**
+(`app/app/aide/AideTabs.tsx`) — deux demandes de David après le résumé ci-dessus : rendre le
+guide plus visuel avec des liens vers les sections concernées, et des captures d'écran.
+- **Liens directs** : chaque section du Guide (et une partie des Règlements) affiche
+  maintenant un lien « Ouvrir cette page → » vers la route réelle (nouveau champ `href` sur
+  `Section`, rendu par un composant `SectionCard` partagé entre le mode onglets et le mode
+  recherche — remplace la duplication de balisage qui existait avant). Inclut des liens
+  profonds vers les onglets de Gestion d'effectifs (`?tab=ballotage`, `?tab=echanges`, déjà
+  supportés par `gestion-effectifs/page.tsx`).
+- **Pages manquantes comblées** : Équipes, Statistiques AHL, Contrats LNH, Classement
+  pré-repêchage, Repêchage LNH, Repêchage interne n'avaient jamais eu d'entrée dans le Guide
+  malgré leur présence dans la nav depuis un moment — ajoutées avec le même patron que les
+  sections existantes.
+- **Note périmée corrigée** : la section Classement affirmait encore « hebdomadaire et
+  mensuel à venir » alors qu'ils existent depuis le 2026-09-17 — remplacé par de vrais liens.
+- **Captures d'écran** : champ `screenshot` ajouté à `Section` (affiche une image sous le
+  contenu si présent, via `<img>` — pas `next/image`, pour rester flexible sur des captures de
+  tailles/ratios très variables). Aucune capture encore fournie — je n'ai pas d'outil pour
+  piloter un navigateur et capturer l'app dans cet environnement. David va déposer des
+  captures dans `guide_app/screenshot/` (nouveau dossier à la racine, hors de l'app) ; il
+  faudra copier celles retenues vers `app/public/guide/` pour qu'elles soient servies par
+  Next.js, `guide_app/` restant le dépôt source/archive.
+- Bandeau ambre « Section en construction » retiré du Guide (n'est plus vrai, le guide couvre
+  maintenant l'ensemble de la nav pooler).
+- Vérifié : `tsc --noEmit` et `next build` passent, route `/a-propos` générée.
+
+**Prochaine étape suggérée** : intégrer les captures d'écran une fois fournies par David
+(`guide_app/screenshot/` → `app/public/guide/`, puis remplir le champ `screenshot` des
+sections concernées dans `AideTabs.tsx`).
 
 ### 2026-09-22 (suite — jumelage cassé pour les noms à trait d'union/apostrophe/point)
 
