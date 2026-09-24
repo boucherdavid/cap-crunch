@@ -19,6 +19,35 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-09-23 (suite — migration exécutée, scraper validé en staging, fusion vers main)
+
+Migration SQL du 2026-09-23 précédent (extension `player_injuries` + table `ltir_requests`)
+confirmée exécutée par David en staging. `python scrape_injuries.py --apply` roulé contre
+staging pour valider : 64 blessures upsertées, 3 joueurs rétablis retirés, 51/64 recoupées avec
+ESPN. Vérifié directement contre Supabase (pas seulement la compilation) que
+`est_return_date`/`first_seen_at`/`espn_status_desc` se peuplent correctement, ex. :
+```json
+{"player_id": 22, "injury_type": "Lower Body", "status": "Expected to be out until at least Oct 16",
+ "est_return_date": "2026-10-16", "first_seen_at": "2026-09-24T00:52:42...", "espn_status_desc": "Out"}
+```
+
+**Question de David — que fait-on quand CBS et ESPN donnent des dates de retour différentes ?**
+Réponse donnée : `est_return_date` essaie toujours CBS en premier
+(`parse_est_return(rec['status'], today)`) ; ESPN ne sert de repli que si CBS n'a **aucune**
+date parseable dans son texte. Si les deux ont une date et qu'elles diffèrent, **CBS gagne
+silencieusement** — la date d'ESPN n'est jamais comparée ni affichée comme telle (seuls
+`espn_note`/`espn_status_desc`, du texte libre, sont conservés séparément et visibles en
+info-bulle/vue d'approbation admin). Trois options proposées à David, **en attente de sa
+décision à la prochaine session** :
+1. Garder tel quel (CBS = source de référence, ESPN = filet).
+2. Prendre la date la plus tardive des deux quand les deux existent (plus permissif).
+3. Signaler visuellement un désaccord (ex: écart de 5+ jours) sans changer le calcul.
+
+David a demandé de fusionner vers `main` maintenant (fonctionnalités déjà testées/validées en
+staging dans cette session et les précédentes — sidebar, "Prochains matchs", blessures,
+LTIR) et de documenter ; il terminera la discussion sur CBS/ESPN à la prochaine session.
+`staging` → `main` fusionné et poussé (voir commit de fusion).
+
 ### 2026-09-23 (suite — ESPN en recoupement + admissibilité LTIR + demandes d'approbation)
 
 David a demandé de regarder ESPN et Yahoo comme sources additionnelles de blessures, puis a
