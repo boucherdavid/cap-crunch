@@ -10,6 +10,7 @@ import {
 } from '@/lib/daily-recap'
 import Link from 'next/link'
 import Image from 'next/image'
+import { fetchInjuriesByPlayerId } from '@/lib/injuries'
 
 export const dynamic = 'force-dynamic'
 
@@ -389,28 +390,27 @@ function NhlNewsWidget({ items }: { items: NewsItem[] }) {
 
 // ---------- blessures du pool ----------
 
-type PoolInjuryItem = { poolerName: string; playerName: string; injuryType: string; status: string }
+type PoolInjuryItem = { poolerName: string; playerName: string; injuryType: string; status: string; eligible: boolean }
 
 // Limité aux joueurs actif/réserviste (ceux qui comptent dans la masse salariale et pour qui
 // le LTIR est une vraie décision à prendre) — un joueur déjà en LTIR ou en banque de recrues
-// n'a pas besoin de ce signal (David, 2026-09-23 : source CBS Sports, voir
-// python_script/scrape_cbs_injuries.py et player_injuries).
+// n'a pas besoin de ce signal (David, 2026-09-23 : source CBS Sports + ESPN en recoupement,
+// voir python_script/scrape_injuries.py et app/lib/injuries.ts).
 async function fetchPoolInjuries(
   supabase: Awaited<ReturnType<typeof createClient>>,
   poolSeasonId: number,
   limit = 8,
 ): Promise<PoolInjuryItem[]> {
   try {
-    const [{ data: rosterRows }, { data: injuriesData }] = await Promise.all([
+    const [{ data: rosterRows }, injuriesByPlayerId] = await Promise.all([
       supabase
         .from('pooler_rosters')
         .select('poolers (name), players (id, first_name, last_name)')
         .eq('pool_season_id', poolSeasonId)
         .eq('is_active', true)
         .in('player_type', ['actif', 'reserviste']),
-      supabase.from('player_injuries').select('player_id, injury_type, status'),
+      fetchInjuriesByPlayerId(supabase),
     ])
-    const injuriesByPlayerId = new Map((injuriesData ?? []).map(r => [r.player_id, r]))
 
     const out: PoolInjuryItem[] = []
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -422,8 +422,9 @@ async function fetchPoolInjuries(
       out.push({
         poolerName: row.poolers?.name ?? '?',
         playerName: `${player.first_name} ${player.last_name}`,
-        injuryType: inj.injury_type,
+        injuryType: inj.injuryType,
         status: inj.status,
+        eligible: inj.eligible,
       })
       if (out.length >= limit) break
     }
@@ -448,7 +449,10 @@ function PoolInjuriesWidget({ items }: { items: PoolInjuryItem[] }) {
               <span className="font-medium">{it.playerName}</span>
               <span className="text-gray-400"> ({it.poolerName})</span>
             </span>
-            <span className="text-xs text-red-600 text-right shrink-0" title={it.status}>{it.injuryType}</span>
+            {it.eligible
+              ? <span className="text-xs font-bold text-emerald-700 bg-emerald-100 rounded px-1.5 py-0.5 text-right shrink-0" title={it.status}>Admissible LTIR</span>
+              : <span className="text-xs text-red-600 text-right shrink-0" title={it.status}>{it.injuryType}</span>
+            }
           </li>
         ))}
       </ul>

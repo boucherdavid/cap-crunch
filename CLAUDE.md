@@ -133,16 +133,18 @@ python generate_backup_tool.py   # écrit backup/pool_backup.html
 ```
 
 ```bash
-# Scrape les blessures LNH depuis cbssports.com/nhl/injuries et remplace player_injuries
-# (David, 2026-09-23) — aide au suivi du LTIR. Contrairement aux projections CBS (collées à la
-# main dans un Excel), cette page est directement scrapable (HTML rendu côté serveur). Cible
-# toujours prod comme les autres scripts — utiliser `.env.staging` pour tester sans toucher
-# prod. Remplacement complet à chaque run (delete + reinsert), jamais incrémental. Régénéré
-# aussi automatiquement chaque jour (.github/workflows/injuries.yml, 16h UTC (midi ET) — les blessures
-# changent vite, contrairement au pipeline hebdomadaire).
+# Scrape les blessures LNH (CBS Sports en principal, ESPN en recoupement) et met à jour
+# player_injuries (David, 2026-09-23) — aide au suivi du LTIR, voir section 6. Contrairement aux
+# projections CBS (collées à la main dans un Excel), ces pages sont directement scrapables (HTML
+# rendu côté serveur, y compris le JSON structuré d'ESPN). Cible toujours prod comme les autres
+# scripts — utiliser `.env.staging` pour tester sans toucher prod. Vrai upsert (pas un
+# remplacement complet) : `first_seen_at` est préservé tant qu'un joueur reste dans la liste CBS,
+# pour calculer l'admissibilité LTIR. Régénéré aussi automatiquement chaque jour
+# (.github/workflows/injuries.yml, 16h UTC/midi ET — les blessures changent vite, contrairement
+# au pipeline hebdomadaire).
 cd python_script
-python scrape_cbs_injuries.py            # dry-run — aucune écriture, affiche le jumelage
-python scrape_cbs_injuries.py --apply    # exécution réelle, sans confirmation (voir section 4)
+python scrape_injuries.py            # dry-run — aucune écriture, affiche le jumelage
+python scrape_injuries.py --apply    # exécution réelle, sans confirmation (voir section 4)
 ```
 
 ---
@@ -182,7 +184,7 @@ Hockey_Pool_App/
 │   ├── import_supabase.py
 │   ├── import_drafts.py
 │   ├── generate_backup_tool.py ← Génère backup/pool_backup.html (voir section 2)
-│   ├── scrape_cbs_injuries.py  ← Scrape les blessures LNH (voir section 2)
+│   ├── scrape_injuries.py      ← Scrape les blessures LNH, CBS + ESPN (voir section 2)
 │   ├── source/                ← CSV générés par le scraping
 │   ├── teams_offline/
 │   ├── diagnostics/
@@ -208,8 +210,9 @@ Hockey_Pool_App/
   `playoff_pool_standings_cache` (pool des séries — PAS `series_round_rosters`, qui
   n'existe pas malgré une ancienne mention ici)
 - `cap_signing_watch` (conformité cap continue, voir section 6)
-- `player_injuries` (suivi des blessures LNH, source CBS Sports — voir section 6, une ligne par
-  joueur blessé, remplacée en entier chaque jour par `python_script/scrape_cbs_injuries.py`)
+- `player_injuries` (suivi des blessures LNH, CBS Sports + ESPN en recoupement — voir section 6,
+  une ligne par joueur blessé, upsert quotidien par `python_script/scrape_injuries.py`)
+- `ltir_requests` (demandes de mise sur LTIR en attente d'approbation admin — voir section 6)
 - `meeting_polls`, `meeting_poll_dates`, `meeting_poll_responses`, `meeting_poll_comments`
   (sondage de planification, `/planification` — le babillard `meeting_poll_comments` est
   propre à ce sondage, distinct de `bulletin_posts`/`bulletin_comments` ci-dessous)
@@ -1119,40 +1122,89 @@ corrigée le 2026-09-20 :**
   même patron que `waiver_claims` — toutes les écritures passent par `createAdminClient()`
   depuis des Server Actions qui font leur propre vérification d'autorisation.
 
-**Suivi des blessures LNH (`player_injuries`) — David, 2026-09-23 :**
-- Source unique : CBS Sports (`cbssports.com/nhl/injuries`), scrapée par
-  `python_script/scrape_cbs_injuries.py` (HTML rendu côté serveur, pas de JS à contourner —
-  contrairement à TSN, écarté après vérification). Yahoo validé comme source utilisable en
-  second choix mais pas branché (David a choisi de rester sur CBS seul pour l'instant).
-  Jumelage des noms réutilise `projections_common.py` (même logique que les imports de
-  projections CBS) — 59/59 blessures jumelées au premier essai.
-- Remplacement complet à chaque run (delete + reinsert), jamais incrémental — la page CBS
-  représente l'état "actuellement blessé", pas un historique. Cron quotidien dédié
-  (`.github/workflows/injuries.yml`, 16h UTC (midi ET)), séparé du pipeline hebdomadaire salaires/
-  contrats/repêchage — les blessures changent trop vite pour attendre une semaine. Cible
-  toujours prod, comme les autres scripts.
-- Affichage dans l'app, limité aux joueurs `actif`/`reserviste` (ceux pour qui le LTIR est une
-  vraie décision à prendre — un joueur déjà en LTIR ou en banque de recrues n'a pas besoin du
-  signal) :
-  - Badge rouge "Blessé" (tooltip = type + statut CBS) sur `/poolers/[id]` (Mon alignement et
-    Tous les alignements, même page) — **sur les deux onglets qui listent des joueurs**,
-    `Masse Salariale` (`RosterTable`, indexé par `player_id`) et `Alignement`
-    (`PlayerStatsRow`/`PoolerPageTabs.tsx`, indexé par `nhl_id` — `PlayerContrib` n'a pas de
-    `player_id` interne, seulement `nhlId`, d'où une deuxième map `injuriesByNhlId` en plus de
-    `injuriesByPlayerId`). David a repéré le 2026-09-23 que seul Masse Salariale avait le
-    badge — Alignement, l'onglet par défaut, en manquait. Premier correctif bogué : `players`
-    (relation embarquée PostgREST sur `player_injuries`) supposé être un tableau (`[0]?.nhl_id`)
-    alors qu'il s'agit d'un objet simple pour une relation many-to-one — vérifié directement
-    contre Supabase staging avant de corriger pour de vrai.
-  - Étiquette texte dans les `<select>` de `/gestion-effectifs` (`entryLabel()`,
-    `GestionEffectifsManager.tsx`) — visible directement en choisissant qui mettre au LTIR.
-  - Widget "Blessures dans le pool" sur l'accueil (`app/app/page.tsx`,
-    `fetchPoolInjuries()`/`PoolInjuriesWidget`), tous poolers confondus.
-  - Page dédiée `/statistiques/blessures` (`LNH → Statistiques → Blessures`) — table de
-    **toute** la LNH (pas seulement le pool), avec recherche par nom/équipe, filtre
-    "Disponibles seulement", et une colonne "Dans le pool" qui indique le pooler propriétaire
-    et le type de roster (actif/réserviste/recrue/LTIR), peu importe si le joueur compte dans
-    la masse salariale — ou "Disponible" si personne ne le possède.
+**Suivi des blessures LNH + demandes de LTIR (`player_injuries`, `ltir_requests`) — David,
+2026-09-23 :**
+- **Sources** : CBS Sports (`cbssports.com/nhl/injuries`, principale — détermine qui apparaît
+  dans `player_injuries`) recoupée avec ESPN (`espn.com/nhl/injuries`, secondaire — enrichit
+  seulement les joueurs déjà trouvés via CBS, ne détermine jamais seule qui est "blessé").
+  TSN écarté (React, aucune donnée dans le HTML initial) ; Yahoo validé utilisable mais pas
+  branché (David a choisi CBS+ESPN). ESPN embarque un JSON structuré directement dans la page
+  (`window['__espnfitt__']`, clé `injuries` trouvée par recherche récursive plutôt qu'un chemin
+  fixe codé en dur — la structure n'est pas garantie stable) : statut canonique
+  (`type.description`/`statusDesc`), date de retour estimée (`date`), note datée
+  (`description`) — plus fiable à parser qu'un texte libre. `python_script/scrape_injuries.py`
+  (ex-`scrape_cbs_injuries.py`), jumelage via `projections_common.py` (même logique que les
+  imports de projections CBS).
+- **Upsert avec suivi de durée** (remplace l'ancien delete+reinsert complet) :
+  `player_injuries.first_seen_at` est préservé d'un run à l'autre tant qu'un joueur reste dans
+  la liste CBS — nécessaire pour calculer "day-to-day depuis plus de 14 jours". `est_return_date`
+  (DATE, parsée par le scraper depuis le texte CBS ou la date ESPN — motif `Mon D` du type
+  "Oct 2", année inférée : si la date semble déjà passée de 200+ jours, c'est l'an prochain, la
+  saison LNH étant à cheval sur deux années civiles) est aussi stockée. Un joueur qui sort de la
+  liste CBS (guéri) est supprimé, pas juste laissé périmé. Cron quotidien
+  (`.github/workflows/injuries.yml`, 16h UTC/midi ET), séparé du pipeline hebdomadaire. Cible
+  toujours prod comme les autres scripts.
+- **Admissibilité LTIR** (`app/lib/ltirEligibility.ts`, `computeLtirEligible()`) — règle de
+  David : blessure dont `est_return_date` est à 14+ jours (couvre semaine-à-semaine/mois-à-mois),
+  **ou sinon** blessé depuis 14+ jours (`first_seen_at`) sans date de retour claire (couvre le
+  "day-to-day" qui traîne). Calculé à la volée à chaque affichage (jamais stocké) pour rester
+  exact entre deux scrapes quotidiens — `app/lib/injuries.ts` centralise le fetch +
+  calcul (`fetchInjuriesByPlayerId`/`fetchInjuriesByNhlId`, une seule requête réutilisée
+  partout plutôt que dupliquée dans les 5 endroits qui affichent le badge).
+- **Affichage**, limité aux joueurs `actif`/`reserviste` : badge rouge "Blessé" ou vert
+  "Admissible LTIR" selon le calcul (`app/components/InjuryBadge.tsx`, composant partagé) sur
+  `/poolers/[id]` (**les deux onglets** qui listent des joueurs — `Masse Salariale`
+  (`RosterTable`, indexé par `player_id`) et `Alignement` (`PlayerStatsRow`, indexé par
+  `nhl_id` — `PlayerContrib` n'a pas de `player_id` interne). Piège trouvé en corrigeant
+  l'absence du badge sur Alignement : la relation embarquée PostgREST `players` sur
+  `player_injuries` est un **objet simple**, pas un tableau, pour cette relation many-to-one —
+  un premier correctif faisait `[0]?.nhl_id` dessus (toujours `undefined`, aucune erreur), pas
+  détecté avant une vérification directe contre Supabase staging (script Python ponctuel) —
+  leçon : un cast TypeScript (`as unknown as X`) masque ce genre d'erreur de forme de données,
+  seule une vraie requête peut la confirmer. Aussi : étiquette texte dans les `<select>` de
+  `/gestion-effectifs`, widget "Blessures dans le pool" sur l'accueil, et page dédiée
+  `/statistiques/blessures` (toute la LNH, colonne "LTIR" + filtre "Admissibles seulement").
+
+**Demandes de mise sur LTIR (`ltir_requests`) — David, 2026-09-23 (suite) :**
+- Jusqu'ici, `ltir`/`ltir_sign` (mettre un actif sur LTIR, avec ou sans signer un remplaçant)
+  étaient marqués `adminOnly` dans `ACTION_DEFS` (`GestionEffectifsManager.tsx`) — un pooler ne
+  voyait même pas le bouton, seul l'admin pouvait le faire (en pratique, sur demande hors-app
+  du pooler). Rien côté serveur ne vérifiait la blessure de toute façon. David voulait que le
+  pooler puisse l'initier lui-même, mais avec l'admin gardant un droit de regard "selon son
+  jugement" avant que ça devienne effectif — d'où ce système plutôt qu'une simple ouverture du
+  self-service.
+- **Flux** : le pooler choisit `ltir`/`ltir_sign` dans Gestion d'effectifs (désormais visibles à
+  tous, pas juste l'admin) — au lieu de s'appliquer immédiatement comme les autres actions du
+  panier, ces items-là passent par `submitLtirRequestAction` (`gestion-effectifs/ltir-actions.ts`)
+  qui crée une ligne `ltir_requests` (`status='pending'`) sans toucher `pooler_rosters`, et
+  notifie tous les admins (push/courriel, `sendPushToAdmins`, lien vers
+  `/admin/effectifs?tab=approbation`). Le reste du panier (actions non-LTIR) continue de
+  s'appliquer immédiatement comme avant. L'admin, lui, garde l'effet immédiat habituel — la
+  demande d'approbation ne s'applique qu'aux poolers (`isAdmin` scindé dans `handleSubmit`,
+  `GestionEffectifsManager.tsx`).
+- **Bandeau "En attente d'approbation"** sur `/gestion-effectifs` (même patron que le bandeau de
+  ballotage gagné) avec bouton "Annuler la demande" (`cancelLtirRequestAction`) — le pooler
+  reste libre de changer d'avis tant que l'admin n'a pas décidé.
+- **Approbation** (`/admin/effectifs?tab=approbation`, nouvelle section sous les transactions
+  entre poolers, `LtirApprovalManager.tsx`) : affiche le badge d'admissibilité calculé comme
+  aide à la décision. `adminDecideLtirRequestAction` → `decideLtirRequest()`
+  (`app/lib/ltirRequests.ts`) réutilise **`submitBatchAction`** (gestion-effectifs/actions.ts)
+  plutôt que de dupliquer la logique LTIR/LTIR+signature — tourne avec les droits de l'admin
+  connecté (celui qui clique "Approuver"), donc `validateRosterLimits` est sautée comme pour
+  toute action admin (l'admin n'est jamais bloqué, même comportement que partout ailleurs).
+- **Date effective = la date de SOUMISSION par le pooler, pas celle de l'approbation** (David,
+  2026-09-23) — `submitted_at` (tronqué en `YYYY-MM-DD`) passé à `submitBatchAction` via
+  `forcedDate`, même mécanisme que les autres dates historiques de l'app (voir plus haut,
+  "Convention — date historique d'un mouvement de roster").
+- Si le joueur n'est plus dans l'alignement du pooler au moment d'approuver (libéré/échangé
+  entretemps), l'approbation échoue avec un message clair plutôt que d'écrire n'importe quoi —
+  l'admin n'a qu'à rejeter cette demande-là.
+- Écriture directe via `createAdminClient()`, même patron que `waiverClaims.ts`/`tradeOffers.ts`
+  — fichier `gestion-effectifs/ltir-actions.ts` séparé de `actions.ts` (comme
+  `waiver-actions.ts`/`trade-actions.ts`) pour éviter un cycle d'import : `lib/ltirRequests.ts`
+  appelle `submitBatchAction` (`actions.ts`) à l'approbation, donc `actions.ts` ne peut pas
+  importer dans l'autre sens. RLS `ltir_requests` : lecture publique + admin seulement en
+  écriture, même patron que les autres tables de ce genre.
 
 ---
 

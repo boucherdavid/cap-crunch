@@ -8,6 +8,8 @@ import type { StreakInfo, GoalieBadgeType } from '@/lib/streaks'
 import StreakLegend from '@/components/StreakLegend'
 import UpcomingGamesAnalysis from '@/components/UpcomingGamesAnalysis'
 import type { DaySchedule, OrgPlayer } from '@/lib/nhlWeeklySchedule'
+import type { InjuryInfo } from '@/lib/injuries'
+import InjuryBadge from '@/components/InjuryBadge'
 
 type Tab = 'masse-salariale' | 'alignement' | 'historique' | 'recrues' | 'prochains-matchs'
 
@@ -168,7 +170,7 @@ function PlayerStatsRow({ p, streaks, onPeriodClick, injuriesByNhlId }: {
   p: PlayerContrib
   streaks: Record<number, StreakInfo>
   onPeriodClick?: (p: PlayerContrib) => void
-  injuriesByNhlId?: Map<number, { injuryType: string; status: string }>
+  injuriesByNhlId?: Map<number, InjuryInfo>
 }) {
   const isGoalie = p.position === 'G'
   const isActif = p.playerType === 'actif' && p.stillRostered
@@ -188,14 +190,7 @@ function PlayerStatsRow({ p, streaks, onPeriodClick, injuriesByNhlId }: {
         <StreakBadge info={p.nhlId ? streaks[p.nhlId] : undefined} />
         <GoalieBadge info={p.nhlId ? streaks[p.nhlId] : undefined} />
         {badge && <span className="ml-2 text-xs bg-gray-100 text-gray-400 rounded px-1">{badge}</span>}
-        {injury && (
-          <span
-            className="ml-1.5 inline-block text-[10px] font-bold bg-red-100 text-red-600 rounded px-1 py-0.5 align-middle cursor-help"
-            title={`${injury.injuryType} — ${injury.status} (source : CBS Sports)`}
-          >
-            Blessé
-          </span>
-        )}
+        {injury && <InjuryBadge injury={injury} />}
         <button
           type="button"
           onClick={() => onPeriodClick?.(p)}
@@ -250,7 +245,7 @@ export default function PoolerPageTabs({
   allOrgPlayers: OrgPlayer[]
   schedule7: DaySchedule[]
   today: string
-  injuriesByNhlId?: Map<number, { injuryType: string; status: string }>
+  injuriesByNhlId?: Map<number, InjuryInfo>
 }) {
   const [tab, setTab] = useState<Tab>('alignement')
   const [periodPopup, setPeriodPopup] = useState<PlayerContrib | null>(null)

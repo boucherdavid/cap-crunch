@@ -19,12 +19,14 @@ const OWNER_CLS: Record<'actif' | 'reserviste' | 'recrue' | 'ltir', string> = {
 export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
   const [search, setSearch] = useState('')
   const [availOnly, setAvailOnly] = useState(false)
+  const [eligibleOnly, setEligibleOnly] = useState(false)
 
   const filtered = useMemo(() => {
     const q = normalizeSearch(search.trim())
     return rows
       .filter(r => {
         if (availOnly && r.owner) return false
+        if (eligibleOnly && !r.eligible) return false
         if (q) {
           const name = normalizeSearch(`${r.firstName} ${r.lastName}`)
           const rev = normalizeSearch(`${r.lastName} ${r.firstName}`)
@@ -33,14 +35,14 @@ export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
         return true
       })
       .sort((a, b) => (a.teamCode ?? '').localeCompare(b.teamCode ?? '') || a.lastName.localeCompare(b.lastName))
-  }, [rows, search, availOnly])
+  }, [rows, search, availOnly, eligibleOnly])
 
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Blessures LNH</h1>
-          <p className="text-xs text-gray-400 mt-1">Source : CBS Sports — mise à jour quotidienne</p>
+          <p className="text-xs text-gray-400 mt-1">Source : CBS Sports (recoupé avec ESPN) — mise à jour quotidienne</p>
         </div>
         <span className="text-sm text-gray-500">{filtered.length} joueur{filtered.length > 1 ? 's' : ''}</span>
       </div>
@@ -65,6 +67,17 @@ export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
           <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
           Disponibles seulement
         </button>
+        <button
+          type="button"
+          onClick={() => setEligibleOnly(v => !v)}
+          className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+            eligibleOnly
+              ? 'border-emerald-500 bg-emerald-50 text-emerald-700 font-medium'
+              : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          Admissibles LTIR seulement
+        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -77,6 +90,7 @@ export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
                 <th className="px-4 py-2.5 font-medium text-gray-600 w-14">Pos</th>
                 <th className="px-4 py-2.5 font-medium text-gray-600 w-32">Blessure</th>
                 <th className="px-4 py-2.5 font-medium text-gray-600">Statut</th>
+                <th className="px-4 py-2.5 font-medium text-gray-600 w-28">LTIR</th>
                 <th className="px-4 py-2.5 font-medium text-gray-600 w-32">Dans le pool</th>
               </tr>
             </thead>
@@ -90,6 +104,12 @@ export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
                   <td className="px-4 py-2.5 text-gray-500">{r.position ?? '—'}</td>
                   <td className="px-4 py-2.5 text-red-600">{r.injuryType}</td>
                   <td className="px-4 py-2.5 text-gray-600 text-xs">{r.status}</td>
+                  <td className="px-4 py-2.5">
+                    {r.eligible
+                      ? <span className="text-xs font-bold bg-emerald-100 text-emerald-700 rounded px-1.5 py-0.5">Admissible</span>
+                      : <span className="text-xs text-gray-300">—</span>
+                    }
+                  </td>
                   <td className="px-4 py-2.5">
                     {r.owner
                       ? <span className="inline-flex items-center gap-1">
@@ -108,7 +128,7 @@ export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center py-10 text-gray-400 text-sm">
+                  <td colSpan={7} className="text-center py-10 text-gray-400 text-sm">
                     Aucun joueur ne correspond aux filtres.
                   </td>
                 </tr>

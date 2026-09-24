@@ -8,7 +8,8 @@ import HistoriqueManager from '../historique/HistoriqueManager'
 import { getHistLogAction } from '../historique/historique-actions'
 import CapWatchManager from './CapWatchManager'
 import TradeApprovalManager from './TradeApprovalManager'
-import { loadCapWatchDataAction, getPendingTradeOffersForAdminAction } from './cap-watch-actions'
+import LtirApprovalManager from './LtirApprovalManager'
+import { loadCapWatchDataAction, getPendingTradeOffersForAdminAction, getPendingLtirRequestsForAdminAction } from './cap-watch-actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,12 +54,18 @@ export default async function AdminEffectifsPage({
   let saisonApprobation: any = null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let pendingTradeOffers: any[] = []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let pendingLtirRequests: any[] = []
   if (activeTab === 'approbation') {
     const { data: sr } = await supabase.from('pool_seasons').select('id, season').eq('is_active', true).eq('is_playoff', false).single()
     saisonApprobation = sr
     if (saisonApprobation) {
-      const to = await getPendingTradeOffersForAdminAction(saisonApprobation.id)
+      const [to, ltir] = await Promise.all([
+        getPendingTradeOffersForAdminAction(saisonApprobation.id),
+        getPendingLtirRequestsForAdminAction(saisonApprobation.id),
+      ])
       pendingTradeOffers = to.offers ?? []
+      pendingLtirRequests = ltir
     }
   }
 
@@ -195,18 +202,31 @@ export default async function AdminEffectifsPage({
         </div>
       )}
 
-      {/* ── Approbation (transactions entre poolers) ── */}
+      {/* ── Approbation (transactions entre poolers + demandes de LTIR) ── */}
       {activeTab === 'approbation' && (
-        <div className="max-w-4xl">
-          <h1 className="text-2xl font-bold text-gray-800 mb-1">Approbation</h1>
-          <p className="text-sm text-gray-500 mb-6">
-            Transactions entre poolers acceptées par les deux parties, en attente de ton
-            approbation avant que quoi que ce soit ne bouge.
-          </p>
-          {!saisonApprobation
-            ? <p className="text-gray-500">Aucune saison active.</p>
-            : <TradeApprovalManager initialOffers={pendingTradeOffers} />
-          }
+        <div className="max-w-4xl space-y-8">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800 mb-1">Approbation</h1>
+            <p className="text-sm text-gray-500">
+              Transactions entre poolers acceptées par les deux parties, et demandes de LTIR —
+              en attente de ton approbation avant que quoi que ce soit ne bouge.
+            </p>
+          </div>
+
+          {!saisonApprobation ? (
+            <p className="text-gray-500">Aucune saison active.</p>
+          ) : (
+            <>
+              <div>
+                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Transactions entre poolers</h2>
+                <TradeApprovalManager initialOffers={pendingTradeOffers} />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Demandes de LTIR</h2>
+                <LtirApprovalManager initialRequests={pendingLtirRequests} />
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

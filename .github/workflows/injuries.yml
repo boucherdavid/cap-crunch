@@ -1,4 +1,4 @@
-name: Blessures LNH (CBS Sports)
+name: Blessures LNH (CBS Sports + ESPN)
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -17,7 +17,7 @@ on:
 
 jobs:
   scrape:
-    name: Scrape cbssports.com/nhl/injuries et importe dans player_injuries
+    name: Scrape CBS Sports + ESPN et importe dans player_injuries
     runs-on: ubuntu-latest
 
     steps:
@@ -38,4 +38,4 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python python_script/scrape_cbs_injuries.py --apply
+        run: python python_script/scrape_injuries.py --apply

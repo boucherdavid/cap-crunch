@@ -10,6 +10,7 @@ import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { validateRosterLimits } from '@/lib/rosterLimits'
 import { createWaiverClaimForRelease, isPlayerUnderActiveWaiverClaim } from '@/lib/waiverClaims'
+import { fetchInjuriesByPlayerId, type InjuryInfo } from '@/lib/injuries'
 
 export type PlayerType = 'actif' | 'reserviste' | 'ltir' | 'recrue'
 
@@ -37,7 +38,7 @@ export type RosterEntry = {
   isEstimatedCap: boolean
   lastDeactivatedAt: string | null  // ISO timestamp de la dernière désactivation (actif→res ou ltir)
   recrueEligible: boolean  // is_rookie, draft_year dans la fenêtre de 5 saisons, ou statut ELC — peut retourner à la banque de recrues
-  injury: { injuryType: string; status: string } | null  // source CBS Sports, voir player_injuries
+  injury: InjuryInfo | null  // source CBS Sports/ESPN, voir player_injuries et app/lib/injuries.ts
 }
 
 export type RosterForPooler = {
@@ -129,7 +130,7 @@ export async function getPoolerRosterAction(
   // retourner à la banque de recrues.
   const draftYearCutoff = parseInt(season.split('-')[0], 10) + 1 - 5
 
-  const [{ data: rosterData }, { data: deactRows }, { data: settings }, { data: injuriesData }] = await Promise.all([
+  const [{ data: rosterData }, { data: deactRows }, { data: settings }, injuriesByPlayerId] = await Promise.all([
     supabase
       .from('pooler_rosters')
       .select(`
@@ -152,12 +153,9 @@ export async function getPoolerRosterAction(
       .in('change_type', ['deactivation', 'ltir'])
       .order('changed_at', { ascending: false }),
     supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
-    supabase.from('player_injuries').select('player_id, injury_type, status'),
+    fetchInjuriesByPlayerId(supabase),
   ])
   const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
-  const injuriesByPlayerId = new Map(
-    (injuriesData ?? []).map(row => [row.player_id, { injuryType: row.injury_type as string, status: row.status as string }])
-  )
 
   // most recent deactivation date per player
   const deactMap = new Map<number, string>()

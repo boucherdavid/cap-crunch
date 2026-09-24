@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import BlessuresTable from './BlessuresTable'
+import { computeLtirEligible } from '@/lib/ltirEligibility'
 
 export const metadata = { title: 'Blessures LNH' }
 export const dynamic = 'force-dynamic'
@@ -14,6 +15,7 @@ export type InjuryRow = {
   injuryType: string
   status: string
   updatedLabel: string
+  eligible: boolean
   owner: { poolerName: string; playerType: 'actif' | 'reserviste' | 'recrue' | 'ltir' } | null
 }
 
@@ -57,7 +59,7 @@ export default async function BlessuresPage() {
   const [{ data: injuriesData }, ownerByPlayerId] = await Promise.all([
     supabase
       .from('player_injuries')
-      .select('player_id, injury_type, status, updated_label, players (id, nhl_id, first_name, last_name, position, teams (code))')
+      .select('player_id, injury_type, status, updated_label, est_return_date, first_seen_at, players (id, nhl_id, first_name, last_name, position, teams (code))')
       .order('player_id'),
     fetchOwnerByPlayerId(),
   ])
@@ -77,6 +79,7 @@ export default async function BlessuresPage() {
         injuryType: row.injury_type,
         status: row.status,
         updatedLabel: row.updated_label,
+        eligible: computeLtirEligible({ estReturnDate: row.est_return_date, firstSeenAt: row.first_seen_at }),
         owner: ownerByPlayerId.get(player.id) ?? null,
       }
     })

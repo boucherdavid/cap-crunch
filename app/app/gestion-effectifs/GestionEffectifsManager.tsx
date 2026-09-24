@@ -11,6 +11,12 @@ import {
   getAwardedWaiverClaimsAction,
   submitBatchAction,
 } from './actions'
+import {
+  submitLtirRequestAction,
+  cancelLtirRequestAction,
+  getPendingLtirRequestsAction,
+} from './ltir-actions'
+import type { LtirRequestView } from '@/lib/ltirRequests'
 import type {
   ActionType,
   RosterEntry,
@@ -54,7 +60,7 @@ function todayLocal() {
 
 function entryLabel(e: RosterEntry) {
   const meta = [e.position, e.teamCode].filter(Boolean).join(', ')
-  const injuryTag = e.injury ? ' 🩹 blessé' : ''
+  const injuryTag = e.injury ? (e.injury.eligible ? ' 🩹 admissible LTIR' : ' 🩹 blessé') : ''
   return `${e.lastName}, ${e.firstName}${meta ? ` (${meta})` : ''}${injuryTag}`
 }
 
@@ -278,9 +284,14 @@ const ACTION_DEFS: { type: ActionType; label: string; description: string; admin
   { type: 'sign',            label: 'Signature',         description: 'Ajouter un agent libre' },
   { type: 'ballotage',      label: 'Ballotage',         description: 'Réclamer un joueur au ballotage', adminOnly: true },
   { type: 'release',         label: 'Libération',        description: 'Retirer un joueur' },
-  { type: 'ltir',            label: 'LTIR',              description: 'Actif → LTIR', adminOnly: true },
+  // LTIR/LTIR+Signature ouverts aux poolers le 2026-09-23 (David) — passait auparavant
+  // seulement par l'admin puisqu'il n'y avait aucune vérification possible ; maintenant que la
+  // soumission passe par une demande d'approbation (voir handleSubmit, bandeau "En attente
+  // d'approbation"), le pooler peut l'initier lui-même. Retour LTIR reste admin-only — aucun
+  // risque d'abus à revenir plus tôt que prévu, mais pas demandé, scope inchangé pour l'instant.
+  { type: 'ltir',            label: 'LTIR',              description: 'Actif → LTIR' },
   { type: 'return_ltir',     label: 'Retour LTIR',       description: 'LTIR → actif', adminOnly: true },
-  { type: 'ltir_sign',       label: 'LTIR + Signature',  description: 'LTIR et signer', adminOnly: true },
+  { type: 'ltir_sign',       label: 'LTIR + Signature',  description: 'LTIR et signer' },
 ]
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -320,6 +331,8 @@ export default function GestionEffectifsManager({
   const [dbCounts, setDbCounts]           = useState<SigningCounts>({ al: 0, ltir: 0 })
   // Claims de ballotage gagnés en attente (David, 2026-09-21) — voir bandeau plus bas.
   const [awardedClaims, setAwardedClaims] = useState<AwardedClaim[]>([])
+  // Demandes de LTIR en attente d'approbation admin (David, 2026-09-23) — voir bandeau plus bas.
+  const [pendingLtirRequests, setPendingLtirRequests] = useState<LtirRequestView[]>([])
 
   // Cart
   const [cart, setCart] = useState<CartItem[]>([])
@@ -425,6 +438,13 @@ export default function GestionEffectifsManager({
     if (!poolerId || activeTab !== 'mouvements') return
     getAwardedWaiverClaimsAction(saisonId, poolerId, season).then(setAwardedClaims)
   }, [poolerId, saisonId, season, activeTab])
+
+  // Demandes de LTIR en attente (David, 2026-09-23) — même second déclencheur que les claims
+  // de ballotage ci-dessus (l'admin peut approuver/rejeter pendant qu'on est déjà sur l'onglet).
+  useEffect(() => {
+    if (!poolerId || activeTab !== 'mouvements') return
+    getPendingLtirRequestsAction(saisonId, poolerId).then(setPendingLtirRequests)
+  }, [poolerId, saisonId, activeTab])
 
   function resetAddForm() {
     setAddType(null)
@@ -592,28 +612,51 @@ export default function GestionEffectifsManager({
     setError(null)
     setSubmitWarning(null)
     startTransition(async () => {
-      const result = await submitBatchAction({
-        poolerId, saisonId,
-        actions: cart.map(cartItemToInput),
-        forcedDate: isAdmin && forceDateEnabled ? forcedDate : undefined,
-      })
-      if (result.error) {
-        setError(result.error)
-      } else {
-        setSuccess(true)
-        setSubmitWarning(result.warning ?? null)
-        setCart([])
-        resetAddForm()
-        setHistoryRefresh(k => k + 1)
-        const [r, counts, claims] = await Promise.all([
-          getPoolerRosterAction(poolerId, saisonId, season),
-          getSigningCountsAction(poolerId, saisonId),
-          getAwardedWaiverClaimsAction(saisonId, poolerId, season),
-        ])
-        setRoster(r)
-        setDbCounts(counts)
-        setAwardedClaims(claims)
+      // Mise sur LTIR en libre-service (David, 2026-09-23) : passe maintenant par une demande
+      // d'approbation admin plutôt qu'un effet immédiat — voir bandeau "En attente d'approbation"
+      // plus bas. L'admin, lui, garde l'effet immédiat habituel (jamais bloqué, comme partout
+      // ailleurs dans l'app).
+      const ltirItems = !isAdmin ? cart.filter(c => c.type === 'ltir' || c.type === 'ltir_sign') : []
+      const otherItems = cart.filter(c => !ltirItems.includes(c))
+
+      for (const item of ltirItems) {
+        if (!item.ltirEntry) continue
+        const result = await submitLtirRequestAction(saisonId, poolerId, item.ltirEntry.playerId, item.newPlayerId)
+        if (result.error) { setError(result.error); return }
       }
+
+      if (otherItems.length > 0) {
+        const result = await submitBatchAction({
+          poolerId, saisonId,
+          actions: otherItems.map(cartItemToInput),
+          forcedDate: isAdmin && forceDateEnabled ? forcedDate : undefined,
+        })
+        if (result.error) { setError(result.error); return }
+        setSubmitWarning(result.warning ?? null)
+      }
+
+      setSuccess(true)
+      setCart([])
+      resetAddForm()
+      setHistoryRefresh(k => k + 1)
+      const [r, counts, claims, pendingLtir] = await Promise.all([
+        getPoolerRosterAction(poolerId, saisonId, season),
+        getSigningCountsAction(poolerId, saisonId),
+        getAwardedWaiverClaimsAction(saisonId, poolerId, season),
+        getPendingLtirRequestsAction(saisonId, poolerId),
+      ])
+      setRoster(r)
+      setDbCounts(counts)
+      setAwardedClaims(claims)
+      setPendingLtirRequests(pendingLtir)
+    })
+  }
+
+  function handleCancelLtirRequest(requestId: number) {
+    startTransition(async () => {
+      const result = await cancelLtirRequestAction(requestId, poolerId)
+      if (result.error) { setError(result.error); return }
+      setPendingLtirRequests(prev => prev.filter(r => r.id !== requestId))
     })
   }
 
@@ -750,7 +793,11 @@ export default function GestionEffectifsManager({
     }
   }
 
-  const visibleActions = ACTION_DEFS.filter(a => isAdmin || !a.adminOnly)
+  const visibleActions = ACTION_DEFS
+    .filter(a => isAdmin || !a.adminOnly)
+    .map(a => (!isAdmin && (a.type === 'ltir' || a.type === 'ltir_sign'))
+      ? { ...a, description: `${a.description} (approbation admin requise)` }
+      : a)
   // La liste de poolers n'est fournie que par le hub admin (/admin/effectifs) — la page
   // personnelle (/gestion-effectifs) n'agit jamais que sur son propre pooler, même pour
   // un admin, donc le sélecteur ne doit dépendre de rien d'autre que de la présence de
@@ -828,6 +875,25 @@ export default function GestionEffectifsManager({
               Ajouter (Actif)
             </button>
           </div>
+        </div>
+      ))}
+
+      {/* Demandes de LTIR en attente d'approbation admin (David, 2026-09-23) */}
+      {pendingLtirRequests.map(r => (
+        <div key={r.id} className="bg-sky-50 border border-sky-200 rounded-lg p-4 flex flex-wrap items-center gap-3">
+          <div className="flex-1 min-w-0 text-sm">
+            <p className="font-semibold text-sky-800">
+              En attente d&apos;approbation : LTIR — {r.ltirPlayerName}
+              {r.newPlayerName && <> + signature de {r.newPlayerName}</>}
+            </p>
+            <p className="text-xs text-sky-700 mt-0.5">
+              Soumis le {new Date(r.submittedAt).toLocaleDateString('fr-CA')} — rien ne bouge tant que l&apos;admin n&apos;a pas approuvé. La date effective sera celle de la soumission.
+            </p>
+          </div>
+          <button onClick={() => handleCancelLtirRequest(r.id)}
+            className="border border-sky-300 text-sky-700 px-3 py-1.5 rounded text-sm font-medium hover:bg-sky-100 shrink-0">
+            Annuler la demande
+          </button>
         </div>
       ))}
 

@@ -19,6 +19,74 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-09-23 (suite — ESPN en recoupement + admissibilité LTIR + demandes d'approbation)
+
+David a demandé de regarder ESPN et Yahoo comme sources additionnelles de blessures, puis a
+décrit comment le pool gère le LTIR dans les faits (2+ semaines annoncées, ou day-to-day qui
+traîne depuis 2+ semaines, en recoupant plusieurs sources dont CBS et TSN à la main) et a
+proposé : badge informatif seulement pour commencer, mais le geste "mettre sur LTIR" en
+libre-service doit passer par une approbation admin avant d'être effectif — avec, précision
+importante, la date effective au moment de la **soumission** par le pooler, pas de
+l'approbation. "Les 2 ensemble" (badge + approbation) construits dans la même session.
+
+**[Recherche] — ESPN et Yahoo** :
+- **ESPN** (`espn.com/nhl/injuries`) — excellent : la page embarque un vrai JSON structuré
+  (`window['__espnfitt__']`, clé `injuries` trouvée par recherche récursive dans l'objet plutôt
+  qu'un chemin fixe) avec statut canonique (`type.description`/`statusDesc` : Out/Day-To-Day/
+  Injured Reserve), date de retour estimée (`date`) et note datée — beaucoup plus fiable à
+  parser qu'un texte libre CBS. Vérifié en HTML brut (31 tables, 81 joueurs) avant de faire
+  confiance au JSON.
+- **Yahoo** (`sports.yahoo.com/nhl/injuries`) — aussi utilisable (HTML serveur), mais pas
+  branché — ESPN suffisait pour ce qui était demandé.
+
+**[Feature] — scraper multi-source avec suivi de durée** (`python_script/scrape_injuries.py`,
+remplace `scrape_cbs_injuries.py` supprimé) :
+- CBS reste la liste de référence (qui est "blessé"), ESPN enrichit seulement les joueurs déjà
+  trouvés via CBS (jamais l'inverse — évite un vrai merge de deux listes indépendantes, hors
+  scope pour la valeur demandée).
+- Passage d'un remplacement complet (delete + reinsert) à un vrai **upsert** :
+  `first_seen_at` préservé d'un run à l'autre tant que le joueur reste dans la liste CBS —
+  nécessaire pour "day-to-day depuis plus de 14 jours". `est_return_date` (DATE) parsée depuis
+  le texte CBS ou la date ESPN, année inférée (motif "Mon D", saison LNH à cheval sur deux
+  années civiles).
+- Testé en dry-run avant tout changement de schéma : 64 blessures CBS jumelées (0 non trouvé),
+  49/64 recoupées avec ESPN.
+
+**[Feature] — admissibilité LTIR calculée** (`app/lib/ltirEligibility.ts`,
+`app/lib/injuries.ts` nouveau, `app/components/InjuryBadge.tsx` nouveau) : règle de David —
+retour estimé à 14+ jours, ou blessé depuis 14+ jours sans date claire. Calculé à la volée
+(jamais stocké, reste exact entre deux scrapes). Centralisé dans `app/lib/injuries.ts`
+(`fetchInjuriesByPlayerId`/`fetchInjuriesByNhlId`) pour éviter de dupliquer la requête+calcul
+dans les 5 endroits qui affichent le badge — remplacés pour utiliser cette source unique :
+`/poolers/[id]` (2 onglets), `/gestion-effectifs`, l'accueil, `/statistiques/blessures`
+(nouvelle colonne "LTIR" + filtre "Admissibles seulement"). Badge vert "Admissible LTIR"
+remplace le rouge "Blessé" dès que le seuil est atteint.
+
+**[Feature] — demandes de LTIR avec approbation admin** (`ltir_requests` nouveau,
+`app/lib/ltirRequests.ts` nouveau, `app/app/gestion-effectifs/ltir-actions.ts` nouveau,
+`app/app/admin/effectifs/LtirApprovalManager.tsx` nouveau) :
+- Découverte en cours de route : `ltir`/`ltir_sign` étaient déjà marqués `adminOnly` dans
+  `ACTION_DEFS` (`GestionEffectifsManager.tsx`) — les poolers ne voyaient même pas le bouton.
+  Ouverts aux poolers maintenant que la demande passe par l'admin.
+- Flux : le pooler soumet (`submitLtirRequestAction`) → ligne `ltir_requests` `pending`, rien ne
+  bouge dans `pooler_rosters`, admins notifiés (push/courriel) → bandeau "En attente
+  d'approbation" chez le pooler (annulable) → admin approuve/rejette sur
+  `/admin/effectifs?tab=approbation` (nouvelle section, badge d'admissibilité affiché comme
+  aide à la décision) → à l'approbation, réutilise **`submitBatchAction`** existant (pas de
+  duplication de la logique LTIR/LTIR+signature) avec `forcedDate` = date de **soumission**
+  (pas d'approbation, comme demandé) — tourne avec les droits de l'admin qui approuve, donc
+  `validateRosterLimits` est sautée comme pour toute action admin (l'admin n'est jamais bloqué).
+- `gestion-effectifs/ltir-actions.ts` séparé de `actions.ts` (comme `waiver-actions.ts`/
+  `trade-actions.ts`) pour éviter un cycle d'import (`ltirRequests.ts` appelle
+  `submitBatchAction` de `actions.ts` à l'approbation).
+- Vérifié : `tsc --noEmit` et `next build` passent.
+- CLAUDE.md sections 2/3/4/6 mises à jour.
+
+**Reste à faire** : David doit exécuter la migration SQL (extension `player_injuries` +
+nouvelle table `ltir_requests`) en staging avant de tester — voir le message de fin de session
+pour le bloc SQL exact. Pas de test d'interactivité en navigateur connecté (soumission d'une
+demande, approbation admin) — à valider par David une fois la migration faite.
+
 ### 2026-09-23 (suite — le badge était toujours absent : vrai bug dans le 1er correctif)
 
 David a rechargé après le fix précédent — badge toujours absent. Vérifié directement contre

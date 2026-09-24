@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { adminDecideTradeOffer } from '@/lib/tradeOffers'
+import { listPendingLtirRequestsForAdmin, decideLtirRequest, type LtirRequestView } from '@/lib/ltirRequests'
 
 async function requireAdmin() {
   const supabase = await createClient()
@@ -352,5 +353,25 @@ export async function adminDecideTradeOfferAction(tradeOfferId: number, approve:
   if (result.error) return result
 
   revalidatePath('/admin/effectifs')
+  return {}
+}
+
+// ─── Demandes de mise sur LTIR (David, 2026-09-23) ─────────────────────────────
+
+export async function getPendingLtirRequestsForAdminAction(saisonId: number): Promise<LtirRequestView[]> {
+  const check = await requireAdmin()
+  if ('error' in check) return []
+  return listPendingLtirRequestsForAdmin(saisonId)
+}
+
+export async function adminDecideLtirRequestAction(requestId: number, approve: boolean): Promise<{ error?: string }> {
+  const check = await requireAdmin()
+  if ('error' in check) return check
+
+  const result = await decideLtirRequest(requestId, approve, check.user.id)
+  if (result.error) return result
+
+  revalidatePath('/admin/effectifs')
+  revalidatePath('/gestion-effectifs')
   return {}
 }

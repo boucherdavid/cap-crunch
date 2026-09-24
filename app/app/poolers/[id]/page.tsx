@@ -10,6 +10,8 @@ import type { StreakInfo } from '@/lib/streaks'
 import { fetchActiveNhlSeasonId } from '@/lib/nhl-active-season'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { todayET, fetchSchedule7, fetchOrgPlayersForPooler } from '@/lib/nhlWeeklySchedule'
+import { fetchInjuriesByPlayerId, fetchInjuriesByNhlId, type InjuryInfo } from '@/lib/injuries'
+import InjuryBadge from '@/components/InjuryBadge'
 
 const DASH = '\u2014'
 const STAR = '\u2605'
@@ -162,7 +164,7 @@ function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft,
   saisonFin?: number
   splitByPosition?: boolean
   unsignedMultiplier?: number
-  injuriesByPlayerId?: Map<number, { injuryType: string; status: string }>
+  injuriesByPlayerId?: Map<number, InjuryInfo>
 }) {
   const renderRows = (rowsToRender: RosterRow[]) => rowsToRender.map((row) => {
     const player = row.players
@@ -184,14 +186,7 @@ function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft,
           <PlayerLink nhlId={player?.nhl_id}>
             {player?.last_name}, {player?.first_name}
           </PlayerLink>
-          {injury && (
-            <span
-              className="ml-1.5 inline-block text-[10px] font-bold bg-red-100 text-red-600 rounded px-1 py-0.5 align-middle cursor-help"
-              title={`${injury.injuryType} — ${injury.status} (source : CBS Sports)`}
-            >
-              Blessé
-            </span>
-          )}
+          {injury && <InjuryBadge injury={injury} />}
         </td>
         <td className="px-3 py-2 w-14"><TeamBadge code={player?.teams?.code} size="sm" /></td>
         <td className="px-3 py-2 w-10 text-gray-500">{player?.position ?? DASH}</td>
@@ -338,11 +333,16 @@ export default async function PoolerPage({ params }: { params: Promise<{ id: str
     .eq('is_playoff', false)
     .single()
 
-  const [{ data: pooler }, { data: allPoolers }, { data: settings }, { data: injuriesData }] = await Promise.all([
+  const [{ data: pooler }, { data: allPoolers }, { data: settings }, injuriesByPlayerId, injuriesByNhlId] = await Promise.all([
     supabase.from('poolers').select('id, name').eq('id', id).single(),
     supabase.from('poolers').select('id, name').order('name'),
     supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
-    supabase.from('player_injuries').select('player_id, injury_type, status, players (nhl_id)'),
+    // L'onglet Alignement (PlayerStatsRow, PoolerPageTabs.tsx) travaille avec des PlayerContrib
+    // indexés par nhl_id (pas le player_id interne comme RosterTable ci-dessous) — David a
+    // repéré que le badge blessé n'apparaissait que sur l'onglet Masse Salariale, d'où les deux
+    // maps distinctes (voir app/lib/injuries.ts).
+    fetchInjuriesByPlayerId(supabase),
+    fetchInjuriesByNhlId(supabase),
   ])
   const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
 
@@ -354,22 +354,6 @@ export default async function PoolerPage({ params }: { params: Promise<{ id: str
     fetchSchedule7(today),
     saison ? fetchOrgPlayersForPooler(supabase, id, saison.id) : Promise.resolve([]),
   ])
-
-  const injuriesByPlayerId = new Map(
-    (injuriesData ?? []).map(row => [row.player_id, { injuryType: row.injury_type as string, status: row.status as string }])
-  )
-  // L'onglet Alignement (PlayerStatsRow, PoolerPageTabs.tsx) travaille avec des PlayerContrib
-  // indexés par nhl_id (pas le player_id interne comme RosterTable ci-dessus) — David a repéré
-  // que le badge blessé n'apparaissait que sur l'onglet Masse Salariale, pas sur Alignement
-  // (l'onglet par défaut), 2026-09-23. Premier essai bogué : `players` supposé être un tableau
-  // (`[0]?.nhl_id`) alors que PostgREST le retourne en objet simple pour cette relation
-  // many-to-one (FK sur player_injuries) — vérifié directement contre Supabase staging.
-  const injuriesByNhlId = new Map(
-    (injuriesData ?? [])
-      .map(row => ({ ...row, nhlId: (row.players as unknown as { nhl_id: number | null } | null)?.nhl_id }))
-      .filter(row => row.nhlId)
-      .map(row => [row.nhlId as number, { injuryType: row.injury_type as string, status: row.status as string }])
-  )
 
   if (!pooler) notFound()
 
