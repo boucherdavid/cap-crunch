@@ -16,6 +16,11 @@ const OWNER_CLS: Record<'actif' | 'reserviste' | 'recrue' | 'ltir', string> = {
   ltir: 'bg-red-50 text-red-600',
 }
 
+function fmtDate(iso: string | null): string {
+  if (!iso) return '—'
+  return new Date(iso + 'T12:00:00').toLocaleDateString('fr-CA', { day: 'numeric', month: 'short' })
+}
+
 export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
   const [search, setSearch] = useState('')
   const [availOnly, setAvailOnly] = useState(false)
@@ -103,7 +108,17 @@ export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
                   <td className="px-4 py-2.5"><TeamBadge code={r.teamCode} size="sm" /></td>
                   <td className="px-4 py-2.5 text-gray-500">{r.position ?? '—'}</td>
                   <td className="px-4 py-2.5 text-red-600">{r.injuryType}</td>
-                  <td className="px-4 py-2.5 text-gray-600 text-xs">{r.status}</td>
+                  <td className="px-4 py-2.5 text-gray-600 text-xs">
+                    {r.status}
+                    {r.datesDisagree && (
+                      <span
+                        className="ml-1.5 inline-block text-[10px] font-bold bg-amber-100 text-amber-700 rounded px-1 py-0.5 cursor-help"
+                        title="CBS et ESPN annoncent des dates de retour à 5 jours d'écart ou plus — l'admissibilité LTIR se base sur CBS."
+                      >
+                        ⚠ ESPN : {fmtDate(r.espnEstReturnDate)}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-2.5">
                     {r.eligible
                       ? <span className="text-xs font-bold bg-emerald-100 text-emerald-700 rounded px-1.5 py-0.5">Admissible</span>

@@ -1208,3 +1208,14 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 -- CREATE POLICY "Lecture publique ltir_requests" ON ltir_requests FOR SELECT USING (true);
 -- CREATE POLICY "Admin gère ltir_requests" ON ltir_requests FOR ALL
 --   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- Migration 2026-09-24 : date de retour ESPN stockée séparément (David, option 3) — jusqu'ici
+-- `est_return_date` prenait la date CBS et ne tombait sur ESPN qu'en repli, donc un désaccord
+-- entre les deux sources passait inaperçu. `est_return_date` garde exactement le même rôle (CBS
+-- d'abord, ESPN en repli — le calcul d'admissibilité LTIR ne change pas) ; la nouvelle colonne
+-- sert seulement à signaler visuellement un écart de 5 jours ou plus (voir
+-- app/lib/ltirEligibility.ts, `computeDatesDisagree`). À exécuter une seule fois dans le SQL
+-- Editor Supabase (staging d'abord, puis prod) — AVANT de pousser sur main : le cron quotidien
+-- du scraper écrit dans cette colonne.
+--
+-- ALTER TABLE player_injuries ADD COLUMN IF NOT EXISTS espn_est_return_date DATE;

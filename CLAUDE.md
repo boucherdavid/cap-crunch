@@ -1151,6 +1151,10 @@ corrigée le 2026-09-20 :**
   exact entre deux scrapes quotidiens — `app/lib/injuries.ts` centralise le fetch +
   calcul (`fetchInjuriesByPlayerId`/`fetchInjuriesByNhlId`, une seule requête réutilisée
   partout plutôt que dupliquée dans les 5 endroits qui affichent le badge).
+- **Désaccord CBS/ESPN** (David, 2026-09-24) : `est_return_date` = CBS d'abord, ESPN seulement
+  en repli (base du calcul LTIR, inchangé) ; la date ESPN est aussi stockée seule dans
+  `espn_est_return_date`. Écart de 5+ jours → marqueur ambre « ⚠ CBS≠ESPN » à côté du badge
+  (`computeDatesDisagree()`, `ltirEligibility.ts`) — signalé, jamais utilisé dans le calcul.
 - **Affichage**, limité aux joueurs `actif`/`reserviste` : badge rouge "Blessé" ou vert
   "Admissible LTIR" selon le calcul (`app/components/InjuryBadge.tsx`, composant partagé) sur
   `/poolers/[id]` (**les deux onglets** qui listent des joueurs — `Masse Salariale`

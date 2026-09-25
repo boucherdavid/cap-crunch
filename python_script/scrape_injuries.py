@@ -250,9 +250,10 @@ def main():
     rows = []
     for rec, pid, _ in cbs_matched:
         espn = espn_by_pid.get(pid)
-        est_return = parse_est_return(rec['status'], today)
-        if est_return is None and espn:
-            est_return = parse_est_return(espn['est_return'], today)
+        # Date ESPN conservée séparément (David, 2026-09-24) pour signaler un désaccord avec CBS
+        # côté app — est_return_date garde son rôle : CBS d'abord, ESPN seulement en repli.
+        espn_return = parse_est_return(espn['est_return'], today) if espn else None
+        est_return = parse_est_return(rec['status'], today) or espn_return
         rows.append({
             'player_id': pid,
             'position': rec['position'],
@@ -262,6 +263,7 @@ def main():
             'espn_status_desc': espn['status_desc'] if espn else None,
             'espn_note': espn['note'] if espn else None,
             'est_return_date': est_return.isoformat() if est_return else None,
+            'espn_est_return_date': espn_return.isoformat() if espn_return else None,
             'first_seen_at': first_seen_by_pid.get(pid, now_iso),
         })
 
