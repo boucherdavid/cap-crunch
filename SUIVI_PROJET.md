@@ -29,8 +29,9 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   petit chiffre en exposant indique combien y contribuent (info-bulle « Moyenne de N sources
   sur 4 »). Tri par défaut sur cette colonne (David, même jour).
 - Progression : la petite flèche ↑/↓/→ est remplacée par une pastille colorée (▲ vert /
-  ▼ rouge / ● gris) avec la variation en % du rythme par match entre les 2 dernières saisons
-  qualifiées (`trendChangePct`, même calcul que `trendDirection`, seuil ±10% inchangé).
+  ▼ rouge / ● gris), seuil ±10% inchangé. Une première version affichait aussi la variation
+  en % — retirée à la demande de David (jugée superflue pour les poolers).
+- Colonnes « Tendance 3 saisons » et « Pts/Match (tend.) » inversées (la tendance d'abord).
 - **[Chore]** backup `pool_backup.html` régénéré depuis la prod et commité (`fbe576c`) — 0
   joueur aligné, attendu depuis le vidage volontaire de la prod du 2026-09-20.
 

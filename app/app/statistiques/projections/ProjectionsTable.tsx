@@ -30,25 +30,22 @@ function AvailDot({ available }: { available: boolean }) {
 }
 
 // Pastille colorée plutôt qu'une simple flèche (David, 2026-09-25 — la flèche seule passait
-// inaperçue) : fond vert/rouge/gris + variation en % du rythme par match entre les 2 dernières
-// saisons qualifiées.
+// inaperçue). Pas de % affiché : jugé superflu pour les poolers.
 const DIRECTION_STYLE = {
   up: { cls: 'bg-green-100 text-green-700', icon: '▲', label: 'En hausse' },
   down: { cls: 'bg-red-100 text-red-700', icon: '▼', label: 'En baisse' },
   stable: { cls: 'bg-gray-100 text-gray-500', icon: '●', label: 'Stable' },
 } as const
 
-function DirectionBadge({ direction, changePct }: { direction: 'up' | 'down' | 'stable' | null; changePct: number | null }) {
+function DirectionBadge({ direction }: { direction: 'up' | 'down' | 'stable' | null }) {
   if (!direction) return <span className="text-gray-300">—</span>
   const { cls, icon, label } = DIRECTION_STYLE[direction]
-  const pct = changePct == null ? '' : `${changePct > 0 ? '+' : ''}${changePct}%`
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold tabular-nums whitespace-nowrap ${cls}`}
-      title={`${label} — rythme par match ${pct} par rapport à la saison qualifiée précédente`}
+      className={`inline-flex items-center justify-center w-7 h-6 rounded-full text-sm font-bold ${cls}`}
+      title={`${label} (dernières saisons réelles)`}
     >
-      <span className="text-sm leading-none">{icon}</span>
-      {pct}
+      {icon}
     </span>
   )
 }
@@ -127,7 +124,7 @@ export default function ProjectionsTable({
         NHL.com, CBS Sports, Pool Pro et Hockey Le Magazine (projections externes collées/
         transcrites manuellement), la saison dernière réelle, et une tendance pondérée sur les
         saisons réelles récentes (rythme par match projeté sur 82 matchs — repère rapide, pas une
-        vraie projection ; ignore les saisons à moins de 10 matchs) avec sa progression (▲/▼/● et variation en %) — la colonne Moyenne fait la moyenne des
+        vraie projection ; ignore les saisons à moins de 10 matchs) avec sa progression (▲/▼/●) — la colonne Moyenne fait la moyenne des
         sources disponibles (un petit chiffre indique combien, quand il en manque) —
         mêmes chiffres que le panneau détail joueur, regroupés ici pour comparer plus facilement.
       </p>
@@ -203,14 +200,14 @@ export default function ProjectionsTable({
                 Moyenne
               </th>
               <th className={`sticky top-0 z-10 bg-gray-50 ${sortHeaderClass('lastSeasonValue')} hidden sm:table-cell`} onClick={() => setSortKey('lastSeasonValue')}>Saison dernière</th>
+              <th className={`sticky top-0 z-10 bg-gray-50 ${sortHeaderClass('trend')}`} onClick={() => setSortKey('trend')}>Tendance 3 saisons</th>
               <th
                 className={`sticky top-0 z-10 bg-gray-50 ${sortHeaderClass('trendPerGame')} hidden sm:table-cell`}
                 onClick={() => setSortKey('trendPerGame')}
-                title="Rythme par match de la tendance 3 saisons (colonne suivante) — pas celui de la saison dernière seule."
+                title="Rythme par match de la tendance 3 saisons (colonne précédente) — pas celui de la saison dernière seule."
               >
                 Pts/Match (tend.)
               </th>
-              <th className={`sticky top-0 z-10 bg-gray-50 ${sortHeaderClass('trend')}`} onClick={() => setSortKey('trend')}>Tendance 3 saisons</th>
               <th className="sticky top-0 z-10 bg-gray-50 text-center px-4 py-3 font-medium text-gray-600" title="Progression saison après saison">Prog.</th>
             </tr>
           </thead>
@@ -253,17 +250,17 @@ export default function ProjectionsTable({
                   <td className="px-4 py-2.5 text-right tabular-nums text-gray-600 hidden sm:table-cell">
                     {p.lastSeasonValue ?? '—'}
                   </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-gray-600 hidden sm:table-cell">
-                    {p.trendPerGame != null ? p.trendPerGame.toFixed(2) : '—'}
-                  </td>
                   <td
                     className="px-4 py-2.5 text-right tabular-nums text-blue-700"
                     title={p.trend != null ? `${p.trendPerGame?.toFixed(2)} ${unit}/match — ${p.trendSeasons} saison${p.trendSeasons > 1 ? 's' : ''}, ${p.trendGames} matchs` : 'Échantillon trop petit (< 10 matchs par saison)'}
                   >
                     {p.trend ?? '—'}
                   </td>
+                  <td className="px-4 py-2.5 text-right tabular-nums text-gray-600 hidden sm:table-cell">
+                    {p.trendPerGame != null ? p.trendPerGame.toFixed(2) : '—'}
+                  </td>
                   <td className="px-4 py-2.5 text-center">
-                    <DirectionBadge direction={p.trendDirection} changePct={p.trendChangePct} />
+                    <DirectionBadge direction={p.trendDirection} />
                   </td>
                 </tr>
               ))

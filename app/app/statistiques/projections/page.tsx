@@ -29,9 +29,6 @@ export type ProjectionRow = {
   trendPerGame: number | null
   trendGames: number
   trendDirection: 'up' | 'down' | 'stable' | null
-  // Variation relative du rythme par match entre les 2 saisons qualifiées les plus récentes
-  // (même calcul que trendDirection) — affichée dans la pastille de progression.
-  trendChangePct: number | null
 }
 
 type RawProjection = {
@@ -101,13 +98,9 @@ const MIN_GAMES_FOR_TREND = 10
 // dans `qualifying`) pour indiquer si le joueur progresse, régresse ou reste stable — une seule
 // saison qualifiée ne donne rien à comparer. Bande de ±10% autour du rythme le plus ancien pour
 // éviter qu'un minuscule écart s'affiche comme une vraie tendance.
-function relativeChange(rate0: number, rate1: number): number {
-  const base = rate1 > 0 ? rate1 : 0.3
-  return (rate0 - rate1) / base
-}
-
 function computeDirection(rate0: number, rate1: number): 'up' | 'down' | 'stable' {
-  const relDiff = relativeChange(rate0, rate1)
+  const base = rate1 > 0 ? rate1 : 0.3
+  const relDiff = (rate0 - rate1) / base
   if (relDiff > 0.1) return 'up'
   if (relDiff < -0.1) return 'down'
   return 'stable'
@@ -135,8 +128,7 @@ function computeSkaterTrend(nhlId: number | null, maps: Map<number, NhlSkaterSta
   })
   const perGame = weightedSum / weightTotal
   const direction = rates.length >= 2 ? computeDirection(rates[0], rates[1]) : null
-  const changePct = rates.length >= 2 ? Math.round(relativeChange(rates[0], rates[1]) * 100) : null
-  return { projected: Math.round(perGame * 82), perGame, seasonsUsed: qualifying.length, gamesUsed, direction, changePct }
+  return { projected: Math.round(perGame * 82), perGame, seasonsUsed: qualifying.length, gamesUsed, direction }
 }
 
 function computeGoalieTrend(nhlId: number | null, maps: Map<number, NhlGoalieStat>[]) {
@@ -157,8 +149,7 @@ function computeGoalieTrend(nhlId: number | null, maps: Map<number, NhlGoalieSta
   })
   const perGame = weightedSum / weightTotal
   const direction = rates.length >= 2 ? computeDirection(rates[0], rates[1]) : null
-  const changePct = rates.length >= 2 ? Math.round(relativeChange(rates[0], rates[1]) * 100) : null
-  return { projected: Math.round(perGame * 82), perGame, seasonsUsed: qualifying.length, gamesUsed, direction, changePct }
+  return { projected: Math.round(perGame * 82), perGame, seasonsUsed: qualifying.length, gamesUsed, direction }
 }
 
 export default async function ProjectionsPage() {
@@ -194,7 +185,7 @@ export default async function ProjectionsPage() {
     }
   }
 
-  const byPlayer = new Map<number, Omit<ProjectionRow, 'trend' | 'trendSeasons' | 'trendPerGame' | 'trendGames' | 'trendDirection' | 'trendChangePct' | 'lastSeasonValue' | 'available' | 'average' | 'averageSources'>>()
+  const byPlayer = new Map<number, Omit<ProjectionRow, 'trend' | 'trendSeasons' | 'trendPerGame' | 'trendGames' | 'trendDirection' | 'lastSeasonValue' | 'available' | 'average' | 'averageSources'>>()
   for (const r of rows) {
     const p = r.players
     if (!p) continue
@@ -244,7 +235,6 @@ export default async function ProjectionsPage() {
       trendPerGame: trend?.perGame ?? null,
       trendGames: trend?.gamesUsed ?? 0,
       trendDirection: trend?.direction ?? null,
-      trendChangePct: trend?.changePct ?? null,
     }
   })
 
