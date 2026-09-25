@@ -1219,3 +1219,12 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 -- du scraper écrit dans cette colonne.
 --
 -- ALTER TABLE player_injuries ADD COLUMN IF NOT EXISTS espn_est_return_date DATE;
+
+-- Migration 2026-09-25 : last_seen_at sur player_injuries (David) — le scraper ne retire plus un
+-- joueur (compteur first_seen_at remis à zéro) dès sa première absence de la liste CBS, mais
+-- seulement après ~2 runs quotidiens consécutifs sans lui (voir ABSENCE_BEFORE_REMOVAL,
+-- python_script/scrape_injuries.py). À exécuter une seule fois dans le SQL Editor Supabase
+-- (staging d'abord, puis prod) — AVANT de pousser sur main : le cron quotidien écrit dans cette
+-- colonne.
+--
+-- ALTER TABLE player_injuries ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;

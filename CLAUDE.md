@@ -1144,10 +1144,18 @@ corrigée le 2026-09-20 :**
   liste CBS (guéri) est supprimé, pas juste laissé périmé. Cron quotidien
   (`.github/workflows/injuries.yml`, 16h UTC/midi ET), séparé du pipeline hebdomadaire. Cible
   toujours prod comme les autres scripts.
-- **Admissibilité LTIR** (`app/lib/ltirEligibility.ts`, `computeLtirEligible()`) — règle de
-  David : blessure dont `est_return_date` est à 14+ jours (couvre semaine-à-semaine/mois-à-mois),
-  **ou sinon** blessé depuis 14+ jours (`first_seen_at`) sans date de retour claire (couvre le
-  "day-to-day" qui traîne). Calculé à la volée à chaque affichage (jamais stocké) pour rester
+- **Admissibilité LTIR** (`app/lib/ltirEligibility.ts`, `computeLtirEligible()`) — règles de
+  David (resserrées le 2026-09-25), dans l'ordre : (1) mis sur IR par son équipe LNH
+  (`isOnNhlIr()` — CBS préfixe "IR." / ESPN "Injured Reserve") → toujours admissible ;
+  (2) `est_return_date` à 14+ jours → admissible ; (3) **période tampon anti-abus** : retour
+  annoncé à moins de 14 jours, ou dépassé depuis moins de 3 jours → PAS admissible, même
+  blessé depuis longtemps (il faut voir la blessure se prolonger) ; (4) sinon (pas de date, ou
+  date dépassée de 3+ jours et toujours listé) blessé depuis 14+ jours (`first_seen_at`) →
+  admissible (couvre le "day-to-day" qui traîne).
+- **Garde-fous du scraper** (2026-09-25) : aucune écriture (code de sortie 1) si CBS renvoie 0
+  blessé ou moins de la moitié de ceux en base (page CBS changée) ; un joueur absent de CBS
+  n'est retiré (compteur `first_seen_at` remis à zéro) qu'après ~36h d'absence continue
+  (`last_seen_at`, 2 runs quotidiens) — un oubli ponctuel de CBS n'efface pas la blessure. Calculé à la volée à chaque affichage (jamais stocké) pour rester
   exact entre deux scrapes quotidiens — `app/lib/injuries.ts` centralise le fetch +
   calcul (`fetchInjuriesByPlayerId`/`fetchInjuriesByNhlId`, une seule requête réutilisée
   partout plutôt que dupliquée dans les 5 endroits qui affichent le badge).
