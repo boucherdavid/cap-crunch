@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-24
+Derniere mise a jour: 2026-09-25
 
 ## Role du fichier
 
@@ -18,6 +18,21 @@ techniques : voir `CLAUDE.md` (sections 1 à 6) — c'est la référence mainten
 qu'un second inventaire dérive silencieusement de la réalité comme celui qui était ici
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
+
+### 2026-09-25
+
+**[Style] — ajustements de présentation** (`app/components/Navbar.tsx`,
+`app/app/statistiques/projections/{page.tsx,ProjectionsTable.tsx}`) :
+- Groupe de menu « Repêchage annuel » renommé « Repêchage annuel des poolers ».
+- Projections : nouvelle colonne **Moyenne** (triable, fond indigo) = moyenne arrondie des
+  sources disponibles parmi NHL.com/CBS/Pool Pro/Hockey Mag. ; quand il manque des sources, un
+  petit chiffre en exposant indique combien y contribuent (info-bulle « Moyenne de N sources
+  sur 4 »).
+- Progression : la petite flèche ↑/↓/→ est remplacée par une pastille colorée (▲ vert /
+  ▼ rouge / ● gris) avec la variation en % du rythme par match entre les 2 dernières saisons
+  qualifiées (`trendChangePct`, même calcul que `trendDirection`, seuil ±10% inchangé).
+- **[Chore]** backup `pool_backup.html` régénéré depuis la prod et commité (`fbe576c`) — 0
+  joueur aligné, attendu depuis le vidage volontaire de la prod du 2026-09-20.
 
 ### 2026-09-24
 

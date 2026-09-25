@@ -446,7 +446,7 @@ sont deux natures de contenu différentes.**
 | Blessures | Lien autonome (plus regroupé sous "LNH", qui cachait la page selon le retour du pooler) |
 | Contrats LNH | Lien autonome (ex-sous-item de "LNH") |
 | Prospects LNH (ex-"Recrues", réduit) | Classement pré-repêchage · Repêchage LNH — référence sur le vrai repêchage LNH, rien de propre au pool |
-| Repêchage annuel (nouveau groupe) | Repêchage des recrues (ex-"Repêchage interne", renommé le 2026-09-23 pour cohérence avec le `<h1>` de la page, qui disait déjà "Repêchage des recrues") · Signatures des agents libres — "notre repêchage annuel", regroupe les deux rituels séquentiels de pré-saison (repêcher les recrues, puis signer les agents libres) |
+| Repêchage annuel des poolers (nouveau groupe, « des poolers » ajouté le 2026-09-25 pour le distinguer du repêchage LNH) | Repêchage des recrues (ex-"Repêchage interne", renommé le 2026-09-23 pour cohérence avec le `<h1>` de la page, qui disait déjà "Repêchage des recrues") · Signatures des agents libres — "notre repêchage annuel", regroupe les deux rituels séquentiels de pré-saison (repêcher les recrues, puis signer les agents libres) |
 | Communauté (scindé de "Ressources", trop vague) | Babillard · Planification |
 | Aide (scindé de "Ressources") | Aide & Règlements · À propos |
 | Admin (admin seulement) | Deux sous-groupes inchangés : Opérations courantes · Mise en place saisonnière |

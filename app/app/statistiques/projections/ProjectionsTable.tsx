@@ -7,7 +7,7 @@ import PlayerLink from '@/components/PlayerLink'
 import { normalizeSearch } from '@/lib/normalizeSearch'
 
 type Tab = 'forwards' | 'defense' | 'goalies'
-type SortKey = 'nhlCom' | 'cbs' | 'poolPro' | 'hockeyMagazine' | 'lastSeasonValue' | 'trendPerGame' | 'trend'
+type SortKey = 'nhlCom' | 'cbs' | 'poolPro' | 'hockeyMagazine' | 'average' | 'lastSeasonValue' | 'trendPerGame' | 'trend'
 
 // position peut être multi-poste ("LD,RD", "C,LW"...) — jamais juste "D" seul dans nos données —
 // et nullable (`players.position`). Les codes attaquants (C/LW/RW) ne contiennent jamais la
@@ -29,11 +29,28 @@ function AvailDot({ available }: { available: boolean }) {
   )
 }
 
-function DirectionIcon({ direction }: { direction: 'up' | 'down' | 'stable' | null }) {
-  if (direction === 'up') return <span className="text-green-600 font-bold" title="En hausse (dernières saisons réelles)">↑</span>
-  if (direction === 'down') return <span className="text-red-600 font-bold" title="En baisse (dernières saisons réelles)">↓</span>
-  if (direction === 'stable') return <span className="text-gray-400 font-bold" title="Stable (dernières saisons réelles)">→</span>
-  return <span className="text-gray-300">—</span>
+// Pastille colorée plutôt qu'une simple flèche (David, 2026-09-25 — la flèche seule passait
+// inaperçue) : fond vert/rouge/gris + variation en % du rythme par match entre les 2 dernières
+// saisons qualifiées.
+const DIRECTION_STYLE = {
+  up: { cls: 'bg-green-100 text-green-700', icon: '▲', label: 'En hausse' },
+  down: { cls: 'bg-red-100 text-red-700', icon: '▼', label: 'En baisse' },
+  stable: { cls: 'bg-gray-100 text-gray-500', icon: '●', label: 'Stable' },
+} as const
+
+function DirectionBadge({ direction, changePct }: { direction: 'up' | 'down' | 'stable' | null; changePct: number | null }) {
+  if (!direction) return <span className="text-gray-300">—</span>
+  const { cls, icon, label } = DIRECTION_STYLE[direction]
+  const pct = changePct == null ? '' : `${changePct > 0 ? '+' : ''}${changePct}%`
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold tabular-nums whitespace-nowrap ${cls}`}
+      title={`${label} — rythme par match ${pct} par rapport à la saison qualifiée précédente`}
+    >
+      <span className="text-sm leading-none">{icon}</span>
+      {pct}
+    </span>
+  )
 }
 
 export default function ProjectionsTable({
@@ -110,7 +127,8 @@ export default function ProjectionsTable({
         NHL.com, CBS Sports, Pool Pro et Hockey Le Magazine (projections externes collées/
         transcrites manuellement), la saison dernière réelle, et une tendance pondérée sur les
         saisons réelles récentes (rythme par match projeté sur 82 matchs — repère rapide, pas une
-        vraie projection ; ignore les saisons à moins de 10 matchs) avec sa progression (↑/↓/→) —
+        vraie projection ; ignore les saisons à moins de 10 matchs) avec sa progression (▲/▼/● et variation en %) — la colonne Moyenne fait la moyenne des
+        sources disponibles (un petit chiffre indique combien, quand il en manque) —
         mêmes chiffres que le panneau détail joueur, regroupés ici pour comparer plus facilement.
       </p>
 
@@ -177,6 +195,13 @@ export default function ProjectionsTable({
               <th className={`sticky top-0 z-10 ${sortHeaderClass('cbs')} ${SOURCE_BG.cbs}`} onClick={() => setSortKey('cbs')}>CBS</th>
               <th className={`sticky top-0 z-10 ${sortHeaderClass('poolPro')} ${SOURCE_BG.poolPro}`} onClick={() => setSortKey('poolPro')}>Pool Pro</th>
               <th className={`sticky top-0 z-10 ${sortHeaderClass('hockeyMagazine')} ${SOURCE_BG.hockeyMagazine}`} onClick={() => setSortKey('hockeyMagazine')}>Hockey Mag.</th>
+              <th
+                className={`sticky top-0 z-10 ${sortHeaderClass('average')} bg-indigo-50 border-l border-indigo-200`}
+                onClick={() => setSortKey('average')}
+                title="Moyenne des sources disponibles parmi NHL.com, CBS, Pool Pro et Hockey Mag."
+              >
+                Moyenne
+              </th>
               <th className={`sticky top-0 z-10 bg-gray-50 ${sortHeaderClass('lastSeasonValue')} hidden sm:table-cell`} onClick={() => setSortKey('lastSeasonValue')}>Saison dernière</th>
               <th
                 className={`sticky top-0 z-10 bg-gray-50 ${sortHeaderClass('trendPerGame')} hidden sm:table-cell`}
@@ -192,7 +217,7 @@ export default function ProjectionsTable({
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={13} className="text-center py-12 text-gray-400">Aucun joueur ne correspond aux filtres.</td>
+                <td colSpan={14} className="text-center py-12 text-gray-400">Aucun joueur ne correspond aux filtres.</td>
               </tr>
             ) : (
               rows.map((p, i) => (
@@ -216,6 +241,15 @@ export default function ProjectionsTable({
                   <td className={`px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900 ${SOURCE_BG.hockeyMagazine}`}>
                     {p.hockeyMagazine ?? '—'}
                   </td>
+                  <td
+                    className="px-4 py-2.5 text-right tabular-nums font-bold text-indigo-800 bg-indigo-50 border-l border-indigo-200"
+                    title={p.average != null ? `Moyenne de ${p.averageSources} source${p.averageSources > 1 ? 's' : ''} sur 4` : undefined}
+                  >
+                    {p.average ?? '—'}
+                    {p.average != null && p.averageSources < 4 && (
+                      <sup className="ml-0.5 text-[10px] font-normal text-indigo-400">{p.averageSources}</sup>
+                    )}
+                  </td>
                   <td className="px-4 py-2.5 text-right tabular-nums text-gray-600 hidden sm:table-cell">
                     {p.lastSeasonValue ?? '—'}
                   </td>
@@ -229,7 +263,7 @@ export default function ProjectionsTable({
                     {p.trend ?? '—'}
                   </td>
                   <td className="px-4 py-2.5 text-center">
-                    <DirectionIcon direction={p.trendDirection} />
+                    <DirectionBadge direction={p.trendDirection} changePct={p.trendChangePct} />
                   </td>
                 </tr>
               ))
@@ -237,7 +271,7 @@ export default function ProjectionsTable({
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-gray-400 mt-2">{unit === 'pts' ? 'Points' : 'Victoires'} projetés. Cliquez un en-tête pour trier.</p>
+      <p className="text-xs text-gray-400 mt-2">{unit === 'pts' ? 'Points' : 'Victoires'} projetés. Cliquez un en-tête pour trier. Moyenne : le petit chiffre indique le nombre de sources quand il en manque.</p>
     </div>
   )
 }

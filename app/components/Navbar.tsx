@@ -111,7 +111,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: 'repechage-annuel',
-    label: 'Repêchage annuel',
+    label: 'Repêchage annuel des poolers',
     items: [
       { label: 'Repêchage des recrues', href: '/repechage-recrues' },
       { label: 'Signatures des agents libres', href: '/repechage-agents-libres', auth: true },
