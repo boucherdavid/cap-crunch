@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import BlessuresTable from './BlessuresTable'
-import { computeDatesDisagree, computeLtirEligible } from '@/lib/ltirEligibility'
+import { computeDatesDisagree, computeLtirEligible, isOnNhlIr } from '@/lib/ltirEligibility'
+import { fetchLtirSettings } from '@/lib/injuries'
 
 export const metadata = { title: 'Blessures LNH' }
 export const dynamic = 'force-dynamic'
@@ -59,12 +60,13 @@ async function fetchOwnerByPlayerId(): Promise<Map<number, { poolerName: string;
 export default async function BlessuresPage() {
   const supabase = await createClient()
 
-  const [{ data: injuriesData }, ownerByPlayerId] = await Promise.all([
+  const [{ data: injuriesData }, ownerByPlayerId, ltirSettings] = await Promise.all([
     supabase
       .from('player_injuries')
-      .select('player_id, injury_type, status, updated_label, est_return_date, espn_est_return_date, first_seen_at, players (id, nhl_id, first_name, last_name, position, teams (code))')
+      .select('player_id, injury_type, status, updated_label, est_return_date, espn_est_return_date, espn_status_desc, first_seen_at, players (id, nhl_id, first_name, last_name, position, teams (code))')
       .order('player_id'),
     fetchOwnerByPlayerId(),
+    fetchLtirSettings(supabase),
   ])
 
   const rows: InjuryRow[] = (injuriesData ?? [])
@@ -82,10 +84,14 @@ export default async function BlessuresPage() {
         injuryType: row.injury_type,
         status: row.status,
         updatedLabel: row.updated_label,
-        eligible: computeLtirEligible({ estReturnDate: row.est_return_date, firstSeenAt: row.first_seen_at }),
+        eligible: computeLtirEligible({
+          estReturnDate: row.est_return_date,
+          firstSeenAt: row.first_seen_at,
+          onNhlIr: isOnNhlIr(row.status, row.espn_status_desc),
+        }, ltirSettings),
         estReturnDate: row.est_return_date,
         espnEstReturnDate: row.espn_est_return_date,
-        datesDisagree: computeDatesDisagree(row.est_return_date, row.espn_est_return_date),
+        datesDisagree: computeDatesDisagree(row.est_return_date, row.espn_est_return_date, ltirSettings),
         owner: ownerByPlayerId.get(player.id) ?? null,
       }
     })

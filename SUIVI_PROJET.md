@@ -35,6 +35,52 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - **[Chore]** backup `pool_backup.html` régénéré depuis la prod et commité (`fbe576c`) — 0
   joueur aligné, attendu depuis le vidage volontaire de la prod du 2026-09-20.
 
+**[Feature] — admissibilité LTIR resserrée + garde-fous du scraper de blessures**
+(`app/lib/ltirEligibility.ts`, `app/lib/injuries.ts`, `app/app/statistiques/blessures/page.tsx`,
+`python_script/scrape_injuries.py`, `schema.sql`) :
+- Question de David : le "day-to-day depuis 2+ semaines" est-il couvert, avec un compteur qui
+  redémarre quand le joueur disparaît ? Oui (`first_seen_at`, ligne supprimée au retour), mais
+  deux trous identifiés et corrigés :
+  - aucun garde-fou si CBS renvoyait 0 blessé (page changée) — tout aurait été supprimé et
+    tous les compteurs remis à zéro. Le script échoue maintenant sans écrire (0 blessé, ou
+    moins de 50% de ceux en base) ;
+  - un oubli ponctuel de CBS une seule journée remettait le compteur à zéro. Nouvelle colonne
+    `last_seen_at` : retrait seulement après 36h d'absence continue (2 runs quotidiens).
+- Nouvelles règles demandées par David :
+  - **mis sur IR par l'équipe LNH → toujours admissible** (`isOnNhlIr()` : CBS préfixe
+    "IR." — 10 cas en staging —, ESPN `Injured Reserve`) ;
+  - **période tampon anti-abus** : retour annoncé à moins de 14 jours (ou dépassé depuis moins
+    de 3 jours, le temps que CBS mette à jour) → pas admissible, même blessé depuis 14+ jours.
+    Ex : annoncé de retour le 2 oct → pas admissible le 2 oct ; il faut que la date soit
+    dépassée de 3 jours et le joueur toujours listé. Délai de 3 jours = choix de Claude, à
+    ajuster au besoin (`PROLONGATION_GRACE_DAYS`).
+- 11 cas types testés (script ponctuel `tsx`, non commité) : tous OK.
+- ⚠ Migration `last_seen_at` exécutée par David en staging et prod.
+- `/aide` : nouvelle section Règlements « Blessures et LTIR (admissibilité) » — demande et
+  approbation, date effective, les 4 règles dans l'ordre (dont la période tampon), recoupement
+  CBS/ESPN, fonctionnement du compteur de 14 jours (remise à zéro, 2 jours d'absence, suivi
+  commencé fin sept. 2026), badge = aide à la décision, retour du LTIR par l'admin. Section
+  Guide « Blessures LNH » mise à jour (chemin de menu désuet depuis la sidebar, colonne LTIR,
+  badges, marqueur CBS≠ESPN).
+
+**[Feature] — seuils de gestion des blessures/LTIR paramétrables**
+(`app/lib/ltirEligibility.ts`, `app/lib/injuries.ts`, `app/app/admin/effectifs/{LtirSettingsForm.tsx,page.tsx,cap-watch-actions.ts}`,
+`app/app/aide/{LtirRulesContent.tsx,AideTabs.tsx,page.tsx}`, `app/app/statistiques/blessures/*`,
+`python_script/scrape_injuries.py`, `schema.sql`) :
+- Demande de David : rendre paramétrable ce qui peut l'être, les délais étant sujets à
+  changement après discussion avec les poolers.
+- 5 réglages dans `app_settings` : retour annoncé min. (14 j), blessé depuis min. (14 j),
+  période tampon (3 j), écart CBS/ESPN signalé (5 j), retrait après absence (2 j — lu par le
+  scraper, converti en N×24h−12h). Formulaire dans `/admin/effectifs?tab=approbation`, sous
+  les demandes de LTIR (là où l'admin les applique). Validation : entiers 0–90, retrait ≥ 1.
+- Non paramétrés (volontairement) : la règle « IR LNH → toujours admissible » (règle de
+  principe, pas un seuil) et le garde-fou technique de 50% du scraper.
+- `/aide` : la section Règlements LTIR est extraite dans `LtirRulesContent.tsx` et lit les
+  valeurs réelles (contexte React alimenté par `aide/page.tsx`, devenu un composant serveur
+  async) ; les autres textes qui citaient « 5 jours » en dur sont devenus génériques.
+- App et scraper retombent sur les défauts si les colonnes manquent — rien ne casse avant la
+  migration.
+
 ### 2026-09-24
 
 **[Feature] — désaccord CBS/ESPN sur la date de retour signalé visuellement (option 3)**

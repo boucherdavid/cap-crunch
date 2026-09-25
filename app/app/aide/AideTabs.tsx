@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import type { LtirSettings } from '@/lib/ltirEligibility'
+import LtirRulesContent, { LtirSettingsContext } from './LtirRulesContent'
 
 type TabId = 'installation' | 'guide' | 'reglements'
 
@@ -459,18 +461,20 @@ const SECTIONS: Section[] = [
     id: 'guide-blessures',
     tab: 'guide',
     title: 'Blessures LNH',
-    keywords: 'blessures injuries ir ltir cbs sports disponible dans le pool proprietaire',
+    keywords: 'blessures injuries ir ltir cbs sports espn disponible dans le pool proprietaire admissible badge desaccord',
     href: '/statistiques/blessures',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez-y via <strong>LNH → Statistiques → Blessures</strong> — la liste des joueurs
-          actuellement blessés dans la LNH, mise à jour quotidiennement (source CBS Sports).
+          Accédez-y via <strong>Blessures</strong> dans le menu — la liste des joueurs actuellement
+          blessés dans la LNH, mise à jour automatiquement une fois par jour (vers midi, heure de l&apos;Est).
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
-          <li>• Type de blessure et statut (ex. « Expected to be out until at least Oct 2 »), en anglais tel que fourni par la source.</li>
+          <li>• Type de blessure et statut (ex. « Expected to be out until at least Oct 2 »), en anglais tel que fourni par CBS Sports. Un statut qui commence par <strong>« IR. »</strong> signifie que l&apos;équipe LNH a placé le joueur sur sa liste des blessés.</li>
+          <li>• La colonne <strong>LTIR</strong> affiche <strong>Admissible</strong> quand le joueur respecte les critères du pool (voir Règlements → Blessures et LTIR). Le filtre <strong>Admissibles LTIR seulement</strong> ne garde que ceux-là.</li>
           <li>• La colonne <strong>Dans le pool</strong> indique quel pooler possède le joueur et son type de roster (actif/réserviste/recrue/LTIR), ou <strong>Disponible</strong> si personne.</li>
-          <li>• Un badge <strong>Blessé</strong> apparaît aussi directement sur Mon équipe/Équipes et dans les menus de Gestion d&apos;effectifs, pour vous aider à repérer quand mettre un joueur au LTIR.</li>
+          <li>• Un badge rouge <strong>Blessé</strong> ou vert <strong>Admissible LTIR</strong> apparaît aussi directement sur les joueurs actifs et réservistes (Mon alignement, Tous les alignements) et dans les menus de Gestion d&apos;effectifs. Survolez-le pour voir le détail.</li>
+          <li>• Un marqueur ambre <strong>⚠ CBS≠ESPN</strong> signale que les deux sources annoncent des dates de retour sensiblement différentes — à vérifier par vous-même avant de décider.</li>
         </ul>
       </div>
     ),
@@ -626,6 +630,14 @@ const SECTIONS: Section[] = [
     ),
   },
   {
+    id: 'regl-ltir',
+    tab: 'reglements',
+    title: 'Blessures et LTIR (admissibilité)',
+    keywords: 'ltir ir blessure blesse admissible admissibilite day to day cbs espn source date retour tampon demande approbation admin 14 jours compteur',
+    href: '/statistiques/blessures',
+    content: <LtirRulesContent />,
+  },
+  {
     id: 'regl-recrues',
     tab: 'reglements',
     title: 'Banque de recrues & protection',
@@ -715,7 +727,7 @@ function normalize(s: string) {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
 
-export default function AideTabs() {
+export default function AideTabs({ ltirSettings }: { ltirSettings: LtirSettings }) {
   const [activeTab, setActiveTab] = useState<TabId>('installation')
   const [query, setQuery] = useState('')
 
@@ -735,6 +747,7 @@ export default function AideTabs() {
   const tabs: TabId[] = ['installation', 'guide', 'reglements']
 
   return (
+    <LtirSettingsContext.Provider value={ltirSettings}>
     <div className="max-w-3xl mx-auto px-4 py-10">
       <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
@@ -837,5 +850,6 @@ export default function AideTabs() {
         </>
       )}
     </div>
+    </LtirSettingsContext.Provider>
   )
 }
