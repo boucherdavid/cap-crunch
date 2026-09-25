@@ -18,6 +18,11 @@ export type ProjectionRow = {
   cbs: number | null
   poolPro: number | null
   hockeyMagazine: number | null
+  // Moyenne des sources disponibles parmi les 4 (David, 2026-09-25) — null si aucune ;
+  // `averageSources` = combien de sources y contribuent (une moyenne d'une seule source n'est
+  // pas vraiment une moyenne, signalé visuellement dans le tableau).
+  average: number | null
+  averageSources: number
   lastSeasonValue: number | null
   trend: number | null
   trendSeasons: number
@@ -180,7 +185,7 @@ export default async function ProjectionsPage() {
     }
   }
 
-  const byPlayer = new Map<number, Omit<ProjectionRow, 'trend' | 'trendSeasons' | 'trendPerGame' | 'trendGames' | 'trendDirection' | 'lastSeasonValue' | 'available'>>()
+  const byPlayer = new Map<number, Omit<ProjectionRow, 'trend' | 'trendSeasons' | 'trendPerGame' | 'trendGames' | 'trendDirection' | 'lastSeasonValue' | 'available' | 'average' | 'averageSources'>>()
   for (const r of rows) {
     const p = r.players
     if (!p) continue
@@ -221,8 +226,10 @@ export default async function ProjectionsPage() {
     const lastSeasonValue = lastSeason == null ? null
       : p.isGoalie ? (lastSeason as NhlGoalieStat).wins
       : (lastSeason as NhlSkaterStat).goals + (lastSeason as NhlSkaterStat).assists
+    const sources = [p.nhlCom, p.cbs, p.poolPro, p.hockeyMagazine].filter((v): v is number => v != null)
+    const average = sources.length > 0 ? Math.round(sources.reduce((a, b) => a + b, 0) / sources.length) : null
     return {
-      ...p, available, lastSeasonValue,
+      ...p, available, lastSeasonValue, average, averageSources: sources.length,
       trend: trend?.projected ?? null,
       trendSeasons: trend?.seasonsUsed ?? 0,
       trendPerGame: trend?.perGame ?? null,
