@@ -27,7 +27,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Projections : nouvelle colonne **Moyenne** (triable, fond indigo) = moyenne arrondie des
   sources disponibles parmi NHL.com/CBS/Pool Pro/Hockey Mag. ; quand il manque des sources, un
   petit chiffre en exposant indique combien y contribuent (info-bulle « Moyenne de N sources
-  sur 4 »).
+  sur 4 »). Tri par défaut sur cette colonne (David, même jour).
 - Progression : la petite flèche ↑/↓/→ est remplacée par une pastille colorée (▲ vert /
   ▼ rouge / ● gris) avec la variation en % du rythme par match entre les 2 dernières saisons
   qualifiées (`trendChangePct`, même calcul que `trendDirection`, seuil ±10% inchangé).

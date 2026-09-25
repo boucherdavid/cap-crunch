@@ -64,7 +64,7 @@ export default function ProjectionsTable({
   const [search, setSearch] = useState('')
   const [selectedTeam, setSelectedTeam] = useState('')
   const [availOnly, setAvailOnly] = useState(false)
-  const [sortKey, setSortKey] = useState<SortKey>('nhlCom')
+  const [sortKey, setSortKey] = useState<SortKey>('average')
 
   const forwards = useMemo(() => players.filter(p => !p.isGoalie && !isDefensePosition(p.position)), [players])
   const defense = useMemo(() => players.filter(p => !p.isGoalie && isDefensePosition(p.position)), [players])
