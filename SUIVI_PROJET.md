@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-23
+Derniere mise a jour: 2026-09-24
 
 ## Role du fichier
 
@@ -18,6 +18,28 @@ techniques : voir `CLAUDE.md` (sections 1 à 6) — c'est la référence mainten
 qu'un second inventaire dérive silencieusement de la réalité comme celui qui était ici
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
+
+### 2026-09-24
+
+**[Feature] — désaccord CBS/ESPN sur la date de retour signalé visuellement (option 3)**
+(`python_script/scrape_injuries.py`, `schema.sql`, `app/lib/ltirEligibility.ts`,
+`app/lib/injuries.ts`, `app/components/InjuryBadge.tsx`, `app/app/statistiques/blessures/*`) :
+- Décision de David sur la question laissée ouverte le 2026-09-23 : option 3 — signaler, sans
+  changer le calcul. `est_return_date` garde son rôle (CBS d'abord, ESPN en repli), donc
+  l'admissibilité LTIR est inchangée.
+- Nouvelle colonne `player_injuries.espn_est_return_date` (date ESPN seule, toujours stockée
+  quand ESPN en a une). `computeDatesDisagree()` : vrai si les deux dates existent et diffèrent
+  de 5 jours ou plus.
+- Affichage : marqueur ambre « ⚠ CBS≠ESPN » à côté du badge `InjuryBadge` (info-bulle avec les
+  deux dates) — donc partout où le badge apparaît, y compris l'approbation LTIR admin ; sur
+  `/statistiques/blessures`, « ⚠ ESPN : <date> » dans la colonne Statut. Non ajouté au widget
+  d'accueil ni aux `<select>` de Gestion d'effectifs (type/texte distincts, jugé superflu).
+- ⚠ Migration à exécuter (staging puis prod) **avant** la fusion sur `main` : le cron
+  quotidien du scraper écrit dans la nouvelle colonne, et l'app la lit dans ses requêtes.
+
+**[Chore] — `guide_app/` supprimé** : les 15 captures source étaient toutes copiées à
+l'identique (même hash) dans `app/public/guide/`, déjà commitées et référencées par
+`AideTabs.tsx` — le dossier source n'était plus utile (jamais suivi par git).
 
 ### 2026-09-23 (suite — migration exécutée, scraper validé en staging, fusion vers main)
 

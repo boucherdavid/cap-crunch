@@ -34,3 +34,15 @@ export function computeLtirEligible(injury: InjuryEligibilityInput, today: Date 
   }
   return daysSinceFirstSeen(injury, today) >= LTIR_THRESHOLD_DAYS
 }
+
+/** Désaccord CBS/ESPN sur la date de retour (David, 2026-09-24) — purement informatif : le
+ * calcul d'admissibilité ci-dessus reste basé sur `est_return_date` (CBS d'abord), on signale
+ * seulement l'écart pour que le pooler/l'admin aille vérifier. Faux si l'une des deux manque
+ * (rien à comparer) ou si `est_return_date` vient lui-même du repli ESPN (dates identiques). */
+const DISAGREEMENT_THRESHOLD_DAYS = 5
+
+export function computeDatesDisagree(estReturnDate: string | null, espnEstReturnDate: string | null): boolean {
+  if (!estReturnDate || !espnEstReturnDate) return false
+  const diff = daysBetween(new Date(estReturnDate + 'T12:00:00'), new Date(espnEstReturnDate + 'T12:00:00'))
+  return Math.abs(diff) >= DISAGREEMENT_THRESHOLD_DAYS
+}
