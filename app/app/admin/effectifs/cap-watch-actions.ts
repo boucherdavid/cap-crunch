@@ -7,6 +7,7 @@ import { after } from 'next/server'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { adminDecideTradeOffer } from '@/lib/tradeOffers'
 import { listPendingLtirRequestsForAdmin, decideLtirRequest, type LtirRequestView } from '@/lib/ltirRequests'
+import type { LtirSettings } from '@/lib/ltirEligibility'
 
 async function requireAdmin() {
   const supabase = await createClient()
@@ -373,5 +374,40 @@ export async function adminDecideLtirRequestAction(requestId: number, approve: b
 
   revalidatePath('/admin/effectifs')
   revalidatePath('/gestion-effectifs')
+  return {}
+}
+
+/** Seuils d'admissibilité LTIR et du suivi des blessures (David, 2026-09-25) — paramétrables
+ * pour pouvoir les ajuster après discussion avec les poolers, sans redéploiement. Voir
+ * app/lib/ltirEligibility.ts pour le rôle de chacun ; `removalAbsenceDays` est lu par
+ * python_script/scrape_injuries.py. */
+export async function updateLtirSettingsAction(settings: LtirSettings): Promise<{ error?: string }> {
+  const check = await requireAdmin()
+  if ('error' in check) return check
+  const { supabase } = check
+
+  const values = Object.values(settings)
+  if (values.some(v => !Number.isInteger(v) || v < 0 || v > 90)) {
+    return { error: 'Chaque valeur doit être un nombre entier de jours entre 0 et 90.' }
+  }
+  if (settings.removalAbsenceDays < 1) {
+    return { error: "Le délai avant retrait doit être d'au moins 1 jour." }
+  }
+
+  const { error } = await supabase
+    .from('app_settings')
+    .update({
+      ltir_return_min_days: settings.returnMinDays,
+      ltir_injured_min_days: settings.injuredMinDays,
+      ltir_grace_days: settings.graceDays,
+      injury_disagreement_days: settings.disagreementDays,
+      injury_removal_absence_days: settings.removalAbsenceDays,
+    })
+    .eq('id', 1)
+  if (error) return { error: error.message }
+
+  revalidatePath('/admin/effectifs')
+  revalidatePath('/statistiques/blessures')
+  revalidatePath('/aide')
   return {}
 }

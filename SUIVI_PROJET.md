@@ -63,6 +63,24 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   Guide « Blessures LNH » mise à jour (chemin de menu désuet depuis la sidebar, colonne LTIR,
   badges, marqueur CBS≠ESPN).
 
+**[Feature] — seuils de gestion des blessures/LTIR paramétrables**
+(`app/lib/ltirEligibility.ts`, `app/lib/injuries.ts`, `app/app/admin/effectifs/{LtirSettingsForm.tsx,page.tsx,cap-watch-actions.ts}`,
+`app/app/aide/{LtirRulesContent.tsx,AideTabs.tsx,page.tsx}`, `app/app/statistiques/blessures/*`,
+`python_script/scrape_injuries.py`, `schema.sql`) :
+- Demande de David : rendre paramétrable ce qui peut l'être, les délais étant sujets à
+  changement après discussion avec les poolers.
+- 5 réglages dans `app_settings` : retour annoncé min. (14 j), blessé depuis min. (14 j),
+  période tampon (3 j), écart CBS/ESPN signalé (5 j), retrait après absence (2 j — lu par le
+  scraper, converti en N×24h−12h). Formulaire dans `/admin/effectifs?tab=approbation`, sous
+  les demandes de LTIR (là où l'admin les applique). Validation : entiers 0–90, retrait ≥ 1.
+- Non paramétrés (volontairement) : la règle « IR LNH → toujours admissible » (règle de
+  principe, pas un seuil) et le garde-fou technique de 50% du scraper.
+- `/aide` : la section Règlements LTIR est extraite dans `LtirRulesContent.tsx` et lit les
+  valeurs réelles (contexte React alimenté par `aide/page.tsx`, devenu un composant serveur
+  async) ; les autres textes qui citaient « 5 jours » en dur sont devenus génériques.
+- App et scraper retombent sur les défauts si les colonnes manquent — rien ne casse avant la
+  migration.
+
 ### 2026-09-24
 
 **[Feature] — désaccord CBS/ESPN sur la date de retour signalé visuellement (option 3)**

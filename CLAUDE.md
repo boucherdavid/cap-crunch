@@ -1152,6 +1152,14 @@ corrigée le 2026-09-20 :**
   blessé depuis longtemps (il faut voir la blessure se prolonger) ; (4) sinon (pas de date, ou
   date dépassée de 3+ jours et toujours listé) blessé depuis 14+ jours (`first_seen_at`) →
   admissible (couvre le "day-to-day" qui traîne).
+- **Seuils paramétrables** (David, 2026-09-25 — sujets à discussion avec les poolers) : 14/14/3/5/2
+  ci-dessus sont des défauts ; valeurs réelles dans `app_settings` (`ltir_return_min_days`,
+  `ltir_injured_min_days`, `ltir_grace_days`, `injury_disagreement_days`,
+  `injury_removal_absence_days`), éditées dans `/admin/effectifs?tab=approbation`
+  (`LtirSettingsForm.tsx`), lues par `fetchLtirSettings()` (`app/lib/injuries.ts`) et par le
+  scraper pour le délai de retrait. `/aide` (Règlements → Blessures et LTIR,
+  `app/app/aide/LtirRulesContent.tsx`) affiche toujours les valeurs en vigueur — ne jamais y
+  coder un nombre de jours en dur.
 - **Garde-fous du scraper** (2026-09-25) : aucune écriture (code de sortie 1) si CBS renvoie 0
   blessé ou moins de la moitié de ceux en base (page CBS changée) ; un joueur absent de CBS
   n'est retiré (compteur `first_seen_at` remis à zéro) qu'après ~36h d'absence continue

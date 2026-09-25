@@ -9,6 +9,9 @@ import { getHistLogAction } from '../historique/historique-actions'
 import CapWatchManager from './CapWatchManager'
 import TradeApprovalManager from './TradeApprovalManager'
 import LtirApprovalManager from './LtirApprovalManager'
+import LtirSettingsForm from './LtirSettingsForm'
+import { fetchLtirSettings } from '@/lib/injuries'
+import type { LtirSettings } from '@/lib/ltirEligibility'
 import { loadCapWatchDataAction, getPendingTradeOffersForAdminAction, getPendingLtirRequestsForAdminAction } from './cap-watch-actions'
 
 export const dynamic = 'force-dynamic'
@@ -56,7 +59,9 @@ export default async function AdminEffectifsPage({
   let pendingTradeOffers: any[] = []
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let pendingLtirRequests: any[] = []
+  let ltirSettings: LtirSettings | null = null
   if (activeTab === 'approbation') {
+    ltirSettings = await fetchLtirSettings(supabase)
     const { data: sr } = await supabase.from('pool_seasons').select('id, season').eq('is_active', true).eq('is_playoff', false).single()
     saisonApprobation = sr
     if (saisonApprobation) {
@@ -226,6 +231,12 @@ export default async function AdminEffectifsPage({
                 <LtirApprovalManager initialRequests={pendingLtirRequests} />
               </div>
             </>
+          )}
+          {ltirSettings && (
+            <div>
+              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Réglages d&apos;admissibilité LTIR</h2>
+              <LtirSettingsForm initialSettings={ltirSettings} />
+            </div>
           )}
         </div>
       )}

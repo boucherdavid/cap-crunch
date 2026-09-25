@@ -113,7 +113,7 @@ export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
                     {r.datesDisagree && (
                       <span
                         className="ml-1.5 inline-block text-[10px] font-bold bg-amber-100 text-amber-700 rounded px-1 py-0.5 cursor-help"
-                        title="CBS et ESPN annoncent des dates de retour à 5 jours d'écart ou plus — l'admissibilité LTIR se base sur CBS."
+                        title="CBS et ESPN annoncent des dates de retour à plusieurs jours d'écart — l'admissibilité LTIR se base sur CBS."
                       >
                         ⚠ ESPN : {fmtDate(r.espnEstReturnDate)}
                       </span>

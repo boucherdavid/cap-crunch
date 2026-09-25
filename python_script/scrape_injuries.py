@@ -49,7 +49,22 @@ ESPN_URL = 'https://www.espn.com/nhl/injuries'
 # Garde-fous (David, 2026-09-25) — voir main().
 MIN_EXISTING_FOR_RATIO_CHECK = 10
 MIN_KEPT_RATIO = 0.5
-ABSENCE_BEFORE_REMOVAL = timedelta(hours=36)  # cron quotidien : retiré au 2e run consécutif sans lui
+DEFAULT_REMOVAL_ABSENCE_DAYS = 2  # repli si app_settings.injury_removal_absence_days manque
+
+
+def absence_before_removal(db) -> timedelta:
+    """Délai d'absence de la liste CBS avant retrait, en jours de runs quotidiens consécutifs —
+    paramétrable par l'admin (app_settings.injury_removal_absence_days, /admin/effectifs onglet
+    Approbation). N jours → N*24h - 12h : marge pour un cron qui ne tourne pas à la seconde près
+    (ex: 2 → 36h, retiré au 2e run quotidien consécutif sans lui)."""
+    days = DEFAULT_REMOVAL_ABSENCE_DAYS
+    try:
+        row = db.table('app_settings').select('injury_removal_absence_days').eq('id', 1).maybe_single().execute()
+        if row and row.data and row.data.get('injury_removal_absence_days'):
+            days = int(row.data['injury_removal_absence_days'])
+    except Exception as e:
+        print(f'[ATTENTION] Lecture de app_settings impossible ({e}) — délai par défaut {days} j.')
+    return timedelta(hours=max(days * 24 - 12, 1))
 HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
 
 # Mêmes alias que import_projections_cbs.py — CBS abrège certaines équipes différemment des
@@ -287,16 +302,17 @@ def main():
         })
 
     # Un joueur absent de la liste CBS n'est retiré (compteur remis à zéro) qu'après
-    # ABSENCE_BEFORE_REMOVAL d'absence continue (David, 2026-09-25) — un oubli ponctuel de CBS
+    # `injury_removal_absence_days` d'absence continue (David, 2026-09-25) — un oubli ponctuel de CBS
     # une seule journée ne doit pas effacer une blessure qui dure depuis des semaines. Une ligne
     # sans last_seen_at (antérieure à la colonne, seulement au tout premier run après la
     # migration) garde l'ancien comportement : retirée dès la première absence.
+    removal_delay = absence_before_removal(db)
     recovered_pids = set()
     for r in existing.data:
         if r['player_id'] in cbs_pids:
             continue
         last_seen = r.get('last_seen_at')
-        if not last_seen or now - datetime.fromisoformat(last_seen.replace('Z', '+00:00')) >= ABSENCE_BEFORE_REMOVAL:
+        if not last_seen or now - datetime.fromisoformat(last_seen.replace('Z', '+00:00')) >= removal_delay:
             recovered_pids.add(r['player_id'])
     pending = len(set(first_seen_by_pid) - cbs_pids - recovered_pids)
     if pending:
