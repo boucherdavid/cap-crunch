@@ -152,8 +152,37 @@ function computeGoalieTrend(nhlId: number | null, maps: Map<number, NhlGoalieSta
   return { projected: Math.round(perGame * 82), perGame, seasonsUsed: qualifying.length, gamesUsed, direction }
 }
 
-export default async function ProjectionsPage() {
+/**
+ * Saisons du pool (hors séries) qui ont au moins une projection, la plus récente d'abord — la
+ * saison active est toujours incluse, même vide, pour rester l'option par défaut.
+ */
+async function fetchSeasonOptions(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  activeSeason: string | null,
+): Promise<string[]> {
+  const { data: seasons } = await supabase
+    .from('pool_seasons')
+    .select('season')
+    .eq('is_playoff', false)
+  const all = [...new Set((seasons ?? []).map(s => s.season as string))]
+  const withData = await Promise.all(all.map(async season => {
+    if (season === activeSeason) return season
+    const { count } = await supabase
+      .from('player_projections')
+      .select('id', { count: 'exact', head: true })
+      .eq('season', season)
+    return (count ?? 0) > 0 ? season : null
+  }))
+  return withData.filter((s): s is string => s != null).sort().reverse()
+}
+
+export default async function ProjectionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ saison?: string }>
+}) {
   const supabase = await createClient()
+  const { saison } = await searchParams
 
   const { data: activeSeason } = await supabase
     .from('pool_seasons')
@@ -162,7 +191,11 @@ export default async function ProjectionsPage() {
     .eq('is_playoff', false)
     .single()
 
-  const poolSeason = activeSeason?.season ?? null
+  const activePoolSeason = activeSeason?.season ?? null
+  const seasonOptions = await fetchSeasonOptions(supabase, activePoolSeason)
+  // Sélecteur de saison (David, 2026-09-26) — saison active par défaut, ou toute saison qui a
+  // des projections via ?saison=YYYY-YY.
+  const poolSeason = saison && seasonOptions.includes(saison) ? saison : activePoolSeason
 
   // Paginé par tranches de 1000 (limite PostgREST par requête) — avec 4 sources désormais
   // (nhl_com/cbs/pool_pro/hockey_magazine), le total dépasse largement 1000 lignes et une
@@ -203,7 +236,11 @@ export default async function ProjectionsPage() {
     byPlayer.set(r.player_id, entry)
   }
 
-  const nhlSeasonId = await fetchActiveNhlSeasonId(false)
+  // Tendance et "saison dernière" relatives à la saison affichée : pour une saison autre que
+  // l'active, on part de sa propre saison NHL ("2025-26" → "20252026") plutôt que de l'actuelle.
+  const nhlSeasonId = poolSeason && poolSeason !== activePoolSeason
+    ? `${poolSeason.slice(0, 4)}${parseInt(poolSeason.slice(0, 4), 10) + 1}`
+    : await fetchActiveNhlSeasonId(false)
   // +1 en réserve : la saison active n'a pas encore de matchs joués une bonne partie de l'année
   // (pré-saison/tout début) et ne doit pas "gaspiller" un rang parmi les 3 saisons pondérées —
   // voir computeSkaterTrend/computeGoalieTrend, qui prennent les 3 premières qualifiées.
@@ -240,7 +277,7 @@ export default async function ProjectionsPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <ProjectionsTable players={players} season={poolSeason} />
+      <ProjectionsTable players={players} season={poolSeason} seasonOptions={seasonOptions} />
     </div>
   )
 }

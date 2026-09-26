@@ -34,7 +34,8 @@ projections (colonne Moyenne), salaires PuckPedia.
 | Seuils LTIR paramétrables (`app_settings`) | ✅ migré | ✅ migré | — |
 | Marqueur désaccord CBS≠ESPN (`espn_est_return_date`) | ✅ (aucun cas actuel) | ✅ migré | Colonne prod vide jusqu'au prochain cron `injuries.yml` (dernier run avant la fusion) — vérifier qu'elle se remplit. Marqueur invisible tant qu'aucun écart ≥ 5 j |
 | Demandes de LTIR avec approbation admin | ✅ code | ✅ code | Tester de bout en bout (pooler soumet → admin approuve) avec un vrai compte pooler |
-| Projections (NHL.com / CBS / Pool Pro / Hockey Mag, colonne Moyenne) | ✅ | ? | ⚠ Import Pool Pro / Hockey Mag / correctifs de doublons : confirmer qu'ils ont été répliqués en prod |
+| Projections (NHL.com / CBS / Pool Pro / Hockey Mag, colonne Moyenne) | ✅ | ⚠ incomplet | **Prod : Pool Pro et Hockey Mag absents (0 ligne), CBS partiel (367 vs 966 en staging)** — importer en prod (+ les 6 correctifs de doublons du 2026-09-22) |
+| Sélecteur de saison sur `/statistiques/projections` | À valider | — | Saison active par défaut ; une seule option tant que seule 2026-27 a des projections |
 | Sidebar de navigation + onglet « Prochains matchs » | ✅ | ✅ validé (mobile inclus) | — |
 | Transactions entre poolers (échanges + approbation) | ✅ | ✅ | Test réel à deux poolers |
 | Ballotage (réclamer / refuser / compléter) | ✅ | ✅ | Test réel à plusieurs poolers en saison |

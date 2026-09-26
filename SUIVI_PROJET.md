@@ -41,6 +41,20 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Validé par David : rendu mobile de la sidebar (tiroir) correct, onglet « Prochains matchs »
   présent sur la page d'alignement.
 
+**[Feature] — sélecteur de saison sur `/statistiques/projections`**
+(`app/app/statistiques/projections/{page.tsx,ProjectionsTable.tsx}`) :
+- Demande de David : la page était codée en dur sur la saison active. `?saison=YYYY-YY`,
+  saison active par défaut ; options = saisons du pool (hors séries) ayant au moins une
+  projection, la saison active toujours incluse.
+- Tendance pondérée et « Saison dernière » calculées relativement à la saison affichée
+  (saison NHL dérivée de `YYYY-YY` pour une saison autre que l'active). Pastille de
+  disponibilité inchangée (toujours l'état actuel, même décision que `/statistiques`).
+- Pour l'instant seule 2026-27 a des projections (staging et prod) — une seule option.
+- Vérifié : `tsc --noEmit` et `next build` passent. ESLint : 3 erreurs React Compiler
+  (`useMemo`/`filterAndSort`) préexistantes, identiques avant la modification.
+- Constaté au passage en prod : Pool Pro et Hockey Mag à 0 ligne, CBS 367 (vs 966 en staging)
+  — imports jamais répliqués en prod, ajouté à `ETAT_PROJET.md`.
+
 ### 2026-09-25
 
 **[Chore] — salaires/contrats PuckPedia poussés en prod** (`python_script/PuckPedia_*.csv`,
