@@ -30,6 +30,8 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Premier jet construit à partir des « reste à faire » du journal ; les points marqués ⚠
   (migrations des seuils LTIR / `espn_est_return_date` en prod, imports Pool Pro / Hockey Mag
   en prod, workflow `import.yml`) sont à confirmer par David.
+- Confirmé par David : migration des 5 colonnes de seuils LTIR (`app_settings`) roulée en
+  staging et prod.
 
 ### 2026-09-25
 
