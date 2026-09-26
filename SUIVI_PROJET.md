@@ -32,6 +32,12 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   en prod, workflow `import.yml`) sont à confirmer par David.
 - Confirmé par David : migration des 5 colonnes de seuils LTIR (`app_settings`) roulée en
   staging et prod.
+- Question de David : le marqueur CBS≠ESPN n'apparaît nulle part. Ce n'est pas une colonne :
+  pastille « ⚠ CBS≠ESPN » à côté du badge et « ⚠ ESPN : <date> » dans la colonne Statut de
+  `/statistiques/blessures`, seulement si écart ≥ 5 jours. Vérifié en base : staging 59/71
+  blessés avec les deux dates, **toutes identiques** (0 cas) ; prod : colonne présente
+  (migration faite) mais vide — le dernier run du cron (2026-09-25 19:44 UTC) précède la
+  fusion sur `main` (20:18 UTC), le prochain run la remplira.
 
 ### 2026-09-25
 
