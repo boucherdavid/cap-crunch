@@ -38,6 +38,8 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   blessés avec les deux dates, **toutes identiques** (0 cas) ; prod : colonne présente
   (migration faite) mais vide — le dernier run du cron (2026-09-25 19:44 UTC) précède la
   fusion sur `main` (20:18 UTC), le prochain run la remplira.
+- Validé par David : rendu mobile de la sidebar (tiroir) correct, onglet « Prochains matchs »
+  présent sur la page d'alignement.
 
 ### 2026-09-25
 
