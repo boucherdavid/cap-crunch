@@ -96,6 +96,13 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   Mitchell (1439), 0 fiche insérée. Kuzmin perd `draft_year=2021` (hors fenêtre de 5 ans,
   sans impact). Prod : 7 fusions prévues au premier pipeline prod après fusion sur `main`.
 
+**[Chore] — projections importées en prod par David** : les 3 imports (`--season 2026-27`)
+et `fix_projections_doublons.py` (staging + prod) roulés par David. Vérifié en lecture seule :
+staging et prod identiques (nhl_com 406/407, cbs 966, pool_pro 400, hockey_magazine 422),
+aucune ligne écrite par erreur en 2025-26, Aliaksei Protas CBS = 63, orphelins J.J./Matty/
+Dmitriy supprimés. Reste : la page prod affiche la saison active (2025-26, vide) tant que le
+sélecteur n'est pas sur `main` ou que 2026-27 n'est pas activée en prod.
+
 ### 2026-09-25
 
 **[Chore] — salaires/contrats PuckPedia poussés en prod** (`python_script/PuckPedia_*.csv`,

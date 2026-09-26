@@ -35,7 +35,7 @@ projections (colonne Moyenne), salaires PuckPedia.
 | Seuils LTIR paramétrables (`app_settings`) | ✅ migré | ✅ migré | — |
 | Marqueur désaccord CBS≠ESPN (`espn_est_return_date`) | ✅ (aucun cas actuel) | ✅ migré | Colonne prod vide jusqu'au prochain cron `injuries.yml` (dernier run avant la fusion) — vérifier qu'elle se remplit. Marqueur invisible tant qu'aucun écart ≥ 5 j |
 | Demandes de LTIR avec approbation admin | ✅ code | ✅ code | Tester de bout en bout (pooler soumet → admin approuve) avec un vrai compte pooler |
-| Projections (NHL.com / CBS / Pool Pro / Hockey Mag, colonne Moyenne) | ✅ | ⚠ incomplet | Prod : Pool Pro / Hockey Mag absents, CBS partiel — **à lancer par David**, voir section 4 bis |
+| Projections (NHL.com / CBS / Pool Pro / Hockey Mag, colonne Moyenne) | ✅ | ✅ importé | Identiques staging/prod (406-407 / 966 / 400 / 422). ⚠ Page prod vide tant que 2025-26 est la saison active en prod : sélecteur de saison à fusionner sur `main`, ou activer 2026-27 |
 | Sélecteur de saison sur `/statistiques/projections` | À valider | — | Saison active par défaut ; une seule option tant que seule 2026-27 a des projections |
 | Sidebar de navigation + onglet « Prochains matchs » | ✅ | ✅ validé (mobile inclus) | — |
 | Transactions entre poolers (échanges + approbation) | ✅ | ✅ | Test réel à deux poolers |
@@ -50,23 +50,6 @@ projections (colonne Moyenne), salaires PuckPedia.
       comptes distincts.
 - [ ] Rendu mobile des pages de consultation récentes (blessures, projections, AHL).
 
-## 4 bis. À lancer par David — projections en prod
-
-Écritures prod bloquées pour Claude (mode auto) — à lancer toi-même, dans cet ordre, depuis
-`python_script/` (chaque `--apply` demande « oui ») :
-
-```powershell
-python import_projections_cbs.py ..\excel\CBS_Proj_2026-2027.xlsx --season 2026-27 --apply
-python import_projections_pool_pro.py --season 2026-27 --apply
-python import_projections_hockey_magazine.py --season 2026-27 --apply
-python fix_projections_doublons.py --env prod --apply      # APRÈS les imports
-python fix_projections_doublons.py --env staging --apply   # staging : ne reste que Protas (63)
-```
-
-⚠ `--season 2026-27` obligatoire : sans lui, les scripts ciblent 2025-26 (saison active prod).
-Simulations déjà faites (lecture seule) : Pool Pro 400/400, Hockey Mag 422/422, CBS 966 +
-~60 retraités non trouvés (normal).
-
 ## 4 ter. Bug pipeline — fiches joueurs en double (corrigé en staging)
 
 - Cause : `import_supabase.py` (PuckPedia « Mitch Marner ») et `import_drafts.py` (API
@@ -77,7 +60,7 @@ Simulations déjà faites (lecture seule) : Pool Pro 400/400, Hockey Mag 422/422
   distincts (Matt Murray SEA / Matthew Murray NSH).
 - ✅ Validé en staging (`run_pipeline_staging.ps1 --no-scrape`) : 5 fusions, 0 fiche créée.
 - Prod : se corrigera au premier pipeline prod après fusion sur `main` (simulation : 7
-  fusions). D'ici là, `fix_projections_doublons.py --env prod` suffit pour les projections.
+  fusions). Projections déjà corrigées par David (`fix_projections_doublons.py`, 2026-09-26).
 
 ## 5. Décisions en attente de David
 
