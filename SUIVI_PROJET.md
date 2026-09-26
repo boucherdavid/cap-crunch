@@ -103,6 +103,23 @@ aucune ligne écrite par erreur en 2025-26, Aliaksei Protas CBS = 63, orphelins 
 Dmitriy supprimés. Reste : la page prod affiche la saison active (2025-26, vide) tant que le
 sélecteur n'est pas sur `main` ou que 2026-27 n'est pas activée en prod.
 
+**[Chore] — script de remise à neuf d'une saison en staging** (`python_script/reset_saison_staging.py` nouveau) :
+- David a refait la transition 2025-26 → 2026-27 en staging et voyait encore ses tests.
+  Cause : `transitionSeasonAction` ne fait qu'**ajouter** les (pooler, joueur) absents de la
+  saison cible — rien n'est remplacé, et un joueur libéré en test (ligne inactive) n'est pas
+  recopié. Staging 2026-27 : 400 lignes, 70 joueurs actifs absents de 2025-26, 71 de 2025-26
+  manquants/inactifs. Prod non concernée (2026-27 vide depuis le 2026-09-20).
+- Décision de David : tout remettre à neuf, y compris les 32 choix de repêchage (6
+  réassignés) et les 32 recrues repêchées en test.
+- Script : refuse de tourner si `.env.staging` = prod ; supprime tout ce qui appartient à la
+  saison (alignements, transactions + items, historique, ballotages + réclamations, échanges +
+  items, LTIR, surveillance cap, snapshots, « prêt », état du repêchage AL), remet les choix à
+  neuf et `season_started=false`. Garde la configuration de la saison (dont
+  `presaison_draft_order`). Dry-run vérifié ; `--apply` bloqué pour Claude (mode auto) —
+  laissé à David.
+- Suggestion en attente de réponse : faire refuser/avertir la transition quand la saison
+  cible contient déjà des alignements.
+
 ### 2026-09-25
 
 **[Chore] — salaires/contrats PuckPedia poussés en prod** (`python_script/PuckPedia_*.csv`,

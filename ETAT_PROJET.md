@@ -50,6 +50,22 @@ projections (colonne Moyenne), salaires PuckPedia.
       comptes distincts.
 - [ ] Rendu mobile des pages de consultation récentes (blessures, projections, AHL).
 
+## 4 bis. À lancer par David — remise à neuf de 2026-27 en staging
+
+2026-27 en staging mélange les vrais alignements et des tests (la transition ne fait
+qu'ajouter les joueurs absents, elle ne remplace rien). Suppression bloquée pour Claude (mode
+auto) — depuis `python_script/` :
+
+```powershell
+python reset_saison_staging.py 2026-27            # simulation (déjà vérifiée)
+python reset_saison_staging.py 2026-27 --apply    # « oui » pour confirmer
+```
+
+Puis refaire la transition 2025-26 → 2026-27 (Admin > Gestion du pool > Configuration >
+Saisons), puis le repêchage des recrues. Simulation : 400 lignes d'alignement, 71
+transactions, 23 changements de statut, 3 ballotages, 1 échange, 3 surveillances cap, 8
+« prêt », 32 choix remis à neuf (dont 6 réassignés), saison remise à « non démarrée ».
+
 ## 4 ter. Bug pipeline — fiches joueurs en double (corrigé en staging)
 
 - Cause : `import_supabase.py` (PuckPedia « Mitch Marner ») et `import_drafts.py` (API
