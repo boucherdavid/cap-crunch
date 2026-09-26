@@ -1031,6 +1031,12 @@ corrigée le 2026-09-20 :**
 **Python :**
 - `csv_path` doit être relatif à `BASE_DIR` (requis pour GitHub Actions)
 - L'environnement virtuel est dans `python_script/venv/` (ne pas committer)
+- Surnoms/translittérations de prénoms (« Mitch »/« Mitchell », « Matt »/« Matthew »,
+  « Dmitriy »/« Dmitri »...) : `python_script/name_aliases.py`, partagé par `import_supabase.py`,
+  `import_drafts.py` et `projections_common.py` (repli après échec du jumelage exact).
+  `import_supabase.py` fusionne aussi les doublons d'alias déjà en base
+  (`merge_alias_duplicates`, garde la fiche avec nhl_id/contrats). Nouvel orphelin repéré →
+  ajouter la variante dans `FIRST_NAME_ALIASES` plutôt que de corriger à la main.
 
 **Courriels (`app/lib/email.ts`) :**
 - Envoi via SMTP Gmail (compte personnel de David), pas un service transactionnel — décision du

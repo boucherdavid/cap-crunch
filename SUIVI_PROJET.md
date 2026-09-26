@@ -76,6 +76,26 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Dry-runs des 3 imports contre la prod : Pool Pro 400/400, Hockey Mag 422/422, CBS ~60
   vétérans retraités non trouvés (attendu).
 
+**[Fix] — le pipeline ne recrée plus de fiches joueurs en double sous un surnom**
+(`python_script/name_aliases.py` nouveau, `import_supabase.py`, `import_drafts.py`,
+`projections_common.py`) :
+- Confirmé via l'API LNH : les orphelins viennent de l'API de repêchage (« Matty Beniers »,
+  « J.J. Moser », « Matt Savoie », « Dmitriy Simashev ») et de PuckPedia (« Marner, Mitch »).
+- `name_aliases.py` : table variante → prénom canonique (mitch/matt/matty/dmitriy/dmitry/
+  alexei/j.j.). Utilisée en **repli seulement**, après échec du jumelage exact, et seulement
+  si un seul candidat : `import_supabase.py` (garde le prénom en base, ne l'écrase pas),
+  `import_drafts.py`, `projections_common.py` (« Alexei Protas » CBS → Aliaksei).
+- `merge_alias_duplicates()` (fin de `deduplicate_players`) : fusionne les fiches d'un même
+  groupe d'alias. Garde la fiche « réelle » (nhl_id, sinon contrats), **pas** forcément celle
+  au prénom canonique — la simulation a montré Matt Maggio / Dmitri Kuzmin (vraies fiches) vs
+  Matthew Maggio / Dmitry Kuzmin (orphelins du repêchage). Plusieurs fiches réelles sur des
+  équipes différentes = homonymes, laissées telles quelles (Matt Murray SEA 32 ans / Matthew
+  Murray NSH 28 ans). Projections du doublon déplacées avant la fusion.
+- Simulé d'abord en lecture seule (écritures interceptées) sur les deux bases, puis
+  `run_pipeline_staging.ps1 --no-scrape` roulé : 5 fusions, « Mitch Marner » jumelé à
+  Mitchell (1439), 0 fiche insérée. Kuzmin perd `draft_year=2021` (hors fenêtre de 5 ans,
+  sans impact). Prod : 7 fusions prévues au premier pipeline prod après fusion sur `main`.
+
 ### 2026-09-25
 
 **[Chore] — salaires/contrats PuckPedia poussés en prod** (`python_script/PuckPedia_*.csv`,

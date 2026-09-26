@@ -60,21 +60,24 @@ python import_projections_cbs.py ..\excel\CBS_Proj_2026-2027.xlsx --season 2026-
 python import_projections_pool_pro.py --season 2026-27 --apply
 python import_projections_hockey_magazine.py --season 2026-27 --apply
 python fix_projections_doublons.py --env prod --apply      # APRÈS les imports
-python fix_projections_doublons.py --env staging --apply   # staging aussi (orphelins recréés le 25/09)
+python fix_projections_doublons.py --env staging --apply   # staging : ne reste que Protas (63)
 ```
 
 ⚠ `--season 2026-27` obligatoire : sans lui, les scripts ciblent 2025-26 (saison active prod).
 Simulations déjà faites (lecture seule) : Pool Pro 400/400, Hockey Mag 422/422, CBS 966 +
 ~60 retraités non trouvés (normal).
 
-## 4 ter. Bug pipeline — fiches joueurs en double
+## 4 ter. Bug pipeline — fiches joueurs en double (corrigé en staging)
 
-- `import_supabase.py` (PuckPedia) jumelle par nom : PuckPedia écrit maintenant « Marner,
-  Mitch » → fiche « Mitch Marner » créée **avec ses propres contrats**, en double de
-  « Mitchell Marner » (staging et prod).
-- `import_drafts.py` recrée « Matt Savoie » / « Dmitriy Simashev » à chaque exécution.
-- Correctif à décider : table d'alias de prénoms (ou jumelage par `nhl_id`) dans les deux
-  scripts, puis fusion de la fiche Mitch Marner dans la vraie.
+- Cause : `import_supabase.py` (PuckPedia « Mitch Marner ») et `import_drafts.py` (API
+  repêchage : « Matt Savoie », « Dmitriy Simashev », « Matty Beniers », « J.J. Moser »)
+  jumelaient par nom exact → fiches orphelines, dont une avec contrats en double (Marner).
+- Correctif : alias de prénoms partagés (`python_script/name_aliases.py`) + fusion
+  automatique des doublons d'alias au début de `import_supabase.py`. Homonymes réels gardés
+  distincts (Matt Murray SEA / Matthew Murray NSH).
+- ✅ Validé en staging (`run_pipeline_staging.ps1 --no-scrape`) : 5 fusions, 0 fiche créée.
+- Prod : se corrigera au premier pipeline prod après fusion sur `main` (simulation : 7
+  fusions). D'ici là, `fix_projections_doublons.py --env prod` suffit pour les projections.
 
 ## 5. Décisions en attente de David
 

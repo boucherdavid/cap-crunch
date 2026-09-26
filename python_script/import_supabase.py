@@ -9,6 +9,8 @@ from unidecode import unidecode
 from dotenv import load_dotenv
 from supabase import create_client
 
+from name_aliases import canonical_first, is_alias_variant
+
 sys.stdout.reconfigure(encoding='utf-8')
 load_dotenv()
 
@@ -472,6 +474,86 @@ def deduplicate_players(supabase, roster_ambiguous: set | None = None, roster_by
     else:
         print('[DEDUP] Aucun doublon trouvé.')
 
+    merge_alias_duplicates(supabase)
+
+
+def merge_alias_duplicates(supabase):
+    """Fusionne les fiches en double sous un surnom ("Mitch Marner" / "Mitchell Marner",
+    "Matt Savoie" / "Matthew Savoie") — voir name_aliases.py. Deux cas :
+
+    - une seule fiche "réelle" (nhl_id ou contrats) dans le groupe : les fiches vides (ni
+      contrat ni nhl_id, typiquement créées par import_drafts.py avec l'équipe qui a repêché
+      le joueur) sont fusionnées dedans, peu importe le prénom ou l'équipe ;
+    - plusieurs fiches réelles : fusionnées seulement si toutes de la même équipe (même
+      joueur listé deux fois — ex: Mitch/Mitchell Marner) ; on garde celle qui a un nhl_id,
+      sinon celle au prénom canonique. Équipes différentes = homonymes probables (ex: Matt
+      Murray SEA / Matthew Murray NSH, deux gardiens distincts) → laissées telles quelles.
+
+    Les projections du doublon sont déplacées vers la fiche gardée (supprimées si elle a déjà
+    cette source pour cette saison) ; ses contrats disparaissent avec lui (ON DELETE CASCADE)
+    — la fiche gardée reçoit les contrats à jour plus loin dans l'import."""
+    all_players, offset = [], 0
+    while True:
+        batch = supabase.table('players').select('id, first_name, last_name, team_id, nhl_id').range(offset, offset + 999).execute().data
+        all_players.extend(batch)
+        if len(batch) < 1000:
+            break
+        offset += 1000
+
+    groups: dict[str, list[dict]] = {}
+    for p in all_players:
+        groups.setdefault(f"{canonical_first(p['first_name'])}|{normaliser_nom(p['last_name'])}", []).append(p)
+
+    def label(p):
+        return f"{p['first_name']} {p['last_name']} ({p['id']})"
+
+    nb = 0
+    for players in groups.values():
+        if len(players) < 2 or not any(is_alias_variant(p['first_name']) for p in players):
+            continue
+        for p in players:
+            p['has_contracts'] = bool(supabase.table('player_contracts').select('id', count='exact', head=True)
+                                      .eq('player_id', p['id']).execute().count)
+        real = [p for p in players if p.get('nhl_id') or p['has_contracts']]
+        empty = [p for p in players if p not in real]
+
+        if len(real) <= 1:
+            if real:
+                keep = real[0]
+            else:
+                canon = [p for p in players if not is_alias_variant(p['first_name'])]
+                if len(canon) != 1:
+                    continue
+                keep = canon[0]
+            dups = [p for p in players if p['id'] != keep['id']]
+        else:
+            if len({p['team_id'] for p in real}) > 1:
+                print(f"[DEDUP-ALIAS] Homonymes probables, laissés tels quels : {', '.join(label(p) for p in real)}")
+                continue
+            with_nhl = [p for p in real if p.get('nhl_id')]
+            canon = [p for p in real if not is_alias_variant(p['first_name'])]
+            keep = with_nhl[0] if len(with_nhl) == 1 else canon[0] if len(canon) == 1 else None
+            if keep is None:
+                print(f"[DEDUP-ALIAS] Impossible de choisir la fiche à garder : {', '.join(label(p) for p in real)}")
+                continue
+            dups = [p for p in players if p['id'] != keep['id']]
+
+        for dup in dups:
+            try:
+                for proj in supabase.table('player_projections').select('id, season, source').eq('player_id', dup['id']).execute().data:
+                    exists = supabase.table('player_projections').select('id').eq('player_id', keep['id'])                         .eq('season', proj['season']).eq('source', proj['source']).execute().data
+                    if exists:
+                        supabase.table('player_projections').delete().eq('id', proj['id']).execute()
+                    else:
+                        supabase.table('player_projections').update({'player_id': keep['id']}).eq('id', proj['id']).execute()
+                print(f"[DEDUP-ALIAS] {label(dup)} fusionné dans {label(keep)}")
+                _merge(supabase, keep['id'], dup['id'])
+                nb += 1
+            except Exception as e:
+                print(f"[DEDUP-ALIAS] Échec fusion {label(dup)} → {label(keep)} : {e}")
+    if nb:
+        print(f"[DEDUP-ALIAS] {nb} doublon(s) d'alias fusionné(s).")
+
 
 def upload_vers_supabase(csv_path=None):
     if csv_path is None:
@@ -524,6 +606,7 @@ def upload_vers_supabase(csv_path=None):
     # Clé secondaire : nom seul → liste, utilisée comme fallback si non-ambigu
     existing_map = {}       # 'fn|ln|team' → {id, draft_year}
     existing_by_name = {}   # 'fn|ln'      → [{id, draft_year, team_code}, ...]
+    existing_by_alias = {}  # 'prénom canonique|ln' → [...] — repli surnoms (name_aliases.py)
 
     offset = 0
     while True:
@@ -535,6 +618,8 @@ def upload_vers_supabase(csv_path=None):
             entry = {'id': p['id'], 'draft_year': p.get('draft_year'), 'age': p.get('age')}
             existing_map[f'{fn}|{ln}|{tc}'] = entry
             existing_by_name.setdefault(f'{fn}|{ln}', []).append({'team_code': tc, **entry})
+            existing_by_alias.setdefault(f"{canonical_first(p['first_name'])}|{ln}", []).append(
+                {'team_code': tc, 'first_name': p['first_name'], 'last_name': p['last_name'], **entry})
         if len(batch) < 1000:
             break
         offset += 1000
@@ -629,7 +714,17 @@ def upload_vers_supabase(csv_path=None):
                 # Mettre à jour le cache avec la nouvelle clé équipe pour les passes suivantes (ex: contrats)
                 existing_map[key_team] = {'id': player_info['id'], 'draft_year': player_info.get('draft_year')}
         else:
-            player_info = None
+            # Repli : surnom ("Mitch" chez PuckPedia vs "Mitchell" en base) — un seul candidat
+            # requis. La fiche garde son prénom : on n'écrase pas le nom en base.
+            alias_candidates = existing_by_alias.get(f'{canonical_first(first_name)}|{ln}', [])
+            if len(alias_candidates) == 1:
+                player_info = alias_candidates[0]
+                payload['first_name'] = player_info['first_name']
+                payload['last_name'] = player_info['last_name']
+                existing_map[key_team] = {'id': player_info['id'], 'draft_year': player_info.get('draft_year')}
+                print(f"[ALIAS] {first_name} {last_name} ({team_code}) → {player_info['first_name']} {player_info['last_name']} ({player_info['id']})")
+            else:
+                player_info = None
 
         if player_info:
             players_to_update.append((player_info['id'], payload))

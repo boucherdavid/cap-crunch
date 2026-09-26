@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 from supabase import create_client
 from unidecode import unidecode
 
+from name_aliases import canonical_first
+
 sys.stdout.reconfigure(encoding='utf-8')
 load_dotenv()
 
@@ -67,6 +69,9 @@ def importer_repechages():
     # Charger les joueurs existants avec leurs infos de repêchage
     print('[INFO] Chargement des joueurs existants...')
     existing_map = {}  # (prenom_norm, nom_norm) -> {id, draft_year}
+    # (prénom canonique, nom_norm) -> [{id, draft_year}, ...] — repli pour les surnoms
+    # ("Matt" dans l'API vs "Matthew" en base), voir name_aliases.py.
+    alias_map: dict[tuple[str, str], list[dict]] = {}
     offset = 0
     while True:
         batch = (
@@ -79,6 +84,7 @@ def importer_repechages():
         for p in batch:
             key = (normaliser_nom(p['first_name']), normaliser_nom(p['last_name']))
             existing_map[key] = {'id': p['id'], 'draft_year': p.get('draft_year')}
+            alias_map.setdefault((canonical_first(p['first_name']), key[1]), []).append(existing_map[key])
         if len(batch) < 1000:
             break
         offset += 1000
@@ -126,6 +132,13 @@ def importer_repechages():
 
         # Recherche: prénom complet d'abord, puis premier prénom seulement
         existant = existing_map.get(key_full) or existing_map.get(key_short)
+        if not existant:
+            # Repli : alias de prénom, seulement si un seul joueur en base correspond.
+            for prenom in (prenom_raw, prenom_premier):
+                candidats = alias_map.get((canonical_first(prenom), normaliser_nom(nom)), [])
+                if len(candidats) == 1:
+                    existant = candidats[0]
+                    break
 
         if existant:
             # Ne mettre à jour les infos de draft que si pas encore renseignées
