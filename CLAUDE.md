@@ -558,6 +558,12 @@ Repêchage annuel en direct (tableau de sélection) : route à part `/admin/repe
 (pas un onglet — lien direct dans la Navbar), distinct de l'onglet `/admin/init?tab=choix`
 qui ne sert qu'à réassigner un pick déjà existant.
 
+**Transition des rosters (`transitionSeasonAction`, `admin/config/actions.ts`)** — copie les
+actifs de la saison source vers la saison cible ; **refusée si la saison cible contient déjà des
+lignes `pooler_rosters`** (David, 2026-09-26 — sinon mélange silencieux avec un contenu
+existant, ex: tests en staging). Staging : vider d'abord avec
+`python_script/reset_saison_staging.py <saison> --apply`.
+
 `/admin/nouvelle-saison` : route à part (lien dans le dropdown Admin), hub orchestrateur qui
 séquence dans l'ordre recommandé les étapes de préparation d'une saison à venir — transition
 des rosters (`/admin/pool?tab=config`) → **activer la saison** → choix de repêchage →

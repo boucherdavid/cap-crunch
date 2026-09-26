@@ -61,7 +61,9 @@ python reset_saison_staging.py 2026-27            # simulation (déjà vérifié
 python reset_saison_staging.py 2026-27 --apply    # « oui » pour confirmer
 ```
 
-Puis refaire la transition 2025-26 → 2026-27 (Admin > Gestion du pool > Configuration >
+Puis refaire la transition 2025-26 → 2026-27 (désormais bloquée tant que la saison cible
+n'est pas vide — à tester au passage : l'aperçu doit montrer le bloc rouge AVANT le script,
+et plus rien APRÈS) (Admin > Gestion du pool > Configuration >
 Saisons), puis le repêchage des recrues. Simulation : 400 lignes d'alignement, 71
 transactions, 23 changements de statut, 3 ballotages, 1 échange, 3 surveillances cap, 8
 « prêt », 32 choix remis à neuf (dont 6 réassignés), saison remise à « non démarrée ».

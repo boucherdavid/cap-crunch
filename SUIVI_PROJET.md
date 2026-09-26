@@ -117,8 +117,17 @@ sélecteur n'est pas sur `main` ou que 2026-27 n'est pas activée en prod.
   neuf et `season_started=false`. Garde la configuration de la saison (dont
   `presaison_draft_order`). Dry-run vérifié ; `--apply` bloqué pour Claude (mode auto) —
   laissé à David.
-- Suggestion en attente de réponse : faire refuser/avertir la transition quand la saison
-  cible contient déjà des alignements.
+
+**[Fix] — la transition de saison refuse une saison cible déjà remplie**
+(`app/app/admin/config/{actions.ts,SeasonsManager.tsx}`) :
+- Accepté par David. `previewTransitionAction` renvoie `existingCount` (lignes
+  `pooler_rosters` de la saison cible, actives ou non) ; l'aperçu affiche un bloc rouge et
+  désactive « Confirmer la transition ». `transitionSeasonAction` refuse aussi côté serveur.
+- Le filtrage « relance après un essai précédent » (ajout des seuls couples absents) est
+  retiré : l'insertion est un seul lot, un échec ne laisse jamais de copie partielle — c'est
+  justement ce filtrage qui produisait le mélange silencieux.
+- Vérifié : `tsc --noEmit` et `next build` passent ; ESLint : 7 `any` préexistants dans
+  `actions.ts` (un de moins qu'avant). Pas testé dans le navigateur.
 
 ### 2026-09-25
 
