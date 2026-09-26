@@ -10,7 +10,8 @@
 
 ## 1. Où en est la saison
 
-- Saison active : **2026-27** (pré-saison / démarrage).
+- Saison active : **2026-27 en staging**, mais **encore 2025-26 en prod** (2026-27 pas encore
+  activée là-bas) — les scripts qui prennent « la saison active » ciblent donc 2025-26 en prod.
 - **Prod** : vidée volontairement le 2026-09-20 → 0 alignement, ressaisie manuelle des
   alignements par David en cours. Historique complet reconstruit en **staging** seulement.
 - Backup hors-ligne (`backup/pool_backup.html`) régénéré chaque dimanche depuis la prod.
@@ -34,7 +35,7 @@ projections (colonne Moyenne), salaires PuckPedia.
 | Seuils LTIR paramétrables (`app_settings`) | ✅ migré | ✅ migré | — |
 | Marqueur désaccord CBS≠ESPN (`espn_est_return_date`) | ✅ (aucun cas actuel) | ✅ migré | Colonne prod vide jusqu'au prochain cron `injuries.yml` (dernier run avant la fusion) — vérifier qu'elle se remplit. Marqueur invisible tant qu'aucun écart ≥ 5 j |
 | Demandes de LTIR avec approbation admin | ✅ code | ✅ code | Tester de bout en bout (pooler soumet → admin approuve) avec un vrai compte pooler |
-| Projections (NHL.com / CBS / Pool Pro / Hockey Mag, colonne Moyenne) | ✅ | ⚠ incomplet | **Prod : Pool Pro et Hockey Mag absents (0 ligne), CBS partiel (367 vs 966 en staging)** — importer en prod (+ les 6 correctifs de doublons du 2026-09-22) |
+| Projections (NHL.com / CBS / Pool Pro / Hockey Mag, colonne Moyenne) | ✅ | ⚠ incomplet | Prod : Pool Pro / Hockey Mag absents, CBS partiel — **à lancer par David**, voir section 4 bis |
 | Sélecteur de saison sur `/statistiques/projections` | À valider | — | Saison active par défaut ; une seule option tant que seule 2026-27 a des projections |
 | Sidebar de navigation + onglet « Prochains matchs » | ✅ | ✅ validé (mobile inclus) | — |
 | Transactions entre poolers (échanges + approbation) | ✅ | ✅ | Test réel à deux poolers |
@@ -48,6 +49,32 @@ projections (colonne Moyenne), salaires PuckPedia.
 - [ ] Notifications courriel des commentaires (babillard / planification) avec deux vrais
       comptes distincts.
 - [ ] Rendu mobile des pages de consultation récentes (blessures, projections, AHL).
+
+## 4 bis. À lancer par David — projections en prod
+
+Écritures prod bloquées pour Claude (mode auto) — à lancer toi-même, dans cet ordre, depuis
+`python_script/` (chaque `--apply` demande « oui ») :
+
+```powershell
+python import_projections_cbs.py ..\excel\CBS_Proj_2026-2027.xlsx --season 2026-27 --apply
+python import_projections_pool_pro.py --season 2026-27 --apply
+python import_projections_hockey_magazine.py --season 2026-27 --apply
+python fix_projections_doublons.py --env prod --apply      # APRÈS les imports
+python fix_projections_doublons.py --env staging --apply   # staging aussi (orphelins recréés le 25/09)
+```
+
+⚠ `--season 2026-27` obligatoire : sans lui, les scripts ciblent 2025-26 (saison active prod).
+Simulations déjà faites (lecture seule) : Pool Pro 400/400, Hockey Mag 422/422, CBS 966 +
+~60 retraités non trouvés (normal).
+
+## 4 ter. Bug pipeline — fiches joueurs en double
+
+- `import_supabase.py` (PuckPedia) jumelle par nom : PuckPedia écrit maintenant « Marner,
+  Mitch » → fiche « Mitch Marner » créée **avec ses propres contrats**, en double de
+  « Mitchell Marner » (staging et prod).
+- `import_drafts.py` recrée « Matt Savoie » / « Dmitriy Simashev » à chaque exécution.
+- Correctif à décider : table d'alias de prénoms (ou jumelage par `nhl_id`) dans les deux
+  scripts, puis fusion de la fiche Mitch Marner dans la vraie.
 
 ## 5. Décisions en attente de David
 

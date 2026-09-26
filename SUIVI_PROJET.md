@@ -55,6 +55,27 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Constaté au passage en prod : Pool Pro et Hockey Mag à 0 ligne, CBS 367 (vs 966 en staging)
   — imports jamais répliqués en prod, ajouté à `ETAT_PROJET.md`.
 
+**[Chore] — préparation de l'import des projections en prod** (`python_script/fix_projections_doublons.py` nouveau) :
+- David a demandé de répliquer les projections en prod. **Écritures prod refusées par le
+  mode automatique de Claude Code** — rien n'a été écrit en prod ; commandes laissées à David
+  dans `ETAT_PROJET.md` (section 4 bis).
+- Découvertes en lecture seule :
+  - la prod a encore **2025-26 comme saison active** (staging : 2026-27) — les scripts
+    d'import sans `--season` auraient écrit en 2025-26 ;
+  - les orphelins du 2026-09-22 existent en prod (J.J. Moser, Matty Beniers, Matt Savoie,
+    Dmitriy Simashev, Mitch Marner) et **3 ont été recréés en staging le 2026-09-25** par le
+    pipeline : « Marner, Mitch » chez PuckPedia → fiche en double **avec contrats**
+    (`import_supabase.py`, jumelage par nom) ; Matt Savoie / Dmitriy Simashev recréés par
+    `import_drafts.py`. Correctif pipeline non fait — à décider avec David ;
+  - Aliaksei Protas : CBS le nomme « Alexei » (non jumelé) — sa valeur CBS en staging (59)
+    était celle d'Ilya ; la bonne est 63.
+- `fix_projections_doublons.py` : jumelage par nom (IDs différents entre bases), déplace les
+  projections des orphelins vers la vraie fiche, supprime l'orphelin seulement s'il n'est
+  référencé nulle part (Mitch Marner gardé, à cause des contrats), corrige Protas. Dry-run par
+  défaut, `--env staging|prod`, `--apply` + « oui ». Simulé sur les deux bases.
+- Dry-runs des 3 imports contre la prod : Pool Pro 400/400, Hockey Mag 422/422, CBS ~60
+  vétérans retraités non trouvés (attendu).
+
 ### 2026-09-25
 
 **[Chore] — salaires/contrats PuckPedia poussés en prod** (`python_script/PuckPedia_*.csv`,
