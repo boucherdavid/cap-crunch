@@ -398,7 +398,7 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
 
             {preview.data.existingCount > 0 && (
               <p className="text-xs text-red-700 font-medium mb-4 bg-red-50 border border-red-200 rounded px-2 py-1.5">
-                Transition impossible : la saison cible contient déjà {preview.data.existingCount} ligne{preview.data.existingCount > 1 ? 's' : ''} d&apos;alignement.
+                Transition impossible : la saison cible contient déjà {`${preview.data.existingCount} ligne${preview.data.existingCount > 1 ? 's' : ''} d'alignement.`}
                 La copie ne ferait qu&apos;ajouter les joueurs manquants et mélangerait l&apos;ancien contenu (ex : des tests) avec la nouvelle saison.
                 Videz d&apos;abord la saison cible (en staging : <code>python_script/reset_saison_staging.py</code>).
               </p>
