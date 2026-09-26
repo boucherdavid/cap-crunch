@@ -21,6 +21,12 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-25
 
+**[Chore] — salaires/contrats PuckPedia poussés en prod** (`python_script/PuckPedia_*.csv`,
+`python_script/teams_offline/*.csv`) :
+- Pipeline validé en staging par David, CSV commités (`efe834a`) puis fusionnés sur `main`
+  (`49e9f91`) — déclenche `import.yml` (réimport prod). Exécution du workflow pas encore
+  vérifiée.
+
 **[Style] — ajustements de présentation** (`app/components/Navbar.tsx`,
 `app/app/statistiques/projections/{page.tsx,ProjectionsTable.tsx}`) :
 - Groupe de menu « Repêchage annuel » renommé « Repêchage annuel des poolers ».
