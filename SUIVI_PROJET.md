@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-25
+Derniere mise a jour: 2026-09-26
 
 ## Role du fichier
 
@@ -18,6 +18,18 @@ techniques : voir `CLAUDE.md` (sections 1 à 6) — c'est la référence mainten
 qu'un second inventaire dérive silencieusement de la réalité comme celui qui était ici
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
+
+### 2026-09-26
+
+**[Docs] — nouvel instantané `ETAT_PROJET.md` à la racine** (`ETAT_PROJET.md`, `CLAUDE.md`) :
+- Demande de David : un document qui résume toujours où on en est (fonctionnalités, tests,
+  etc.) — ce journal, devenu très long, ne remplit plus ce rôle.
+- `ETAT_PROJET.md` est **réécrit** à chaque fin de tâche (pas empilé) : état staging/prod,
+  statut de validation des fonctionnalités récentes, tests restants, décisions en attente,
+  backlog. Règle ajoutée à `CLAUDE.md` sections 3, 10 et 11.
+- Premier jet construit à partir des « reste à faire » du journal ; les points marqués ⚠
+  (migrations des seuils LTIR / `espn_est_return_date` en prod, imports Pool Pro / Hockey Mag
+  en prod, workflow `import.yml`) sont à confirmer par David.
 
 ### 2026-09-25
 

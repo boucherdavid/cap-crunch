@@ -1,7 +1,8 @@
 ﻿# Cap Crunch — Référence Projet
 
 Ce fichier sert de référence stable pour Claude Code.
-Le suivi des changements, des décisions récentes et de l'état courant va dans `SUIVI_PROJET.md`.
+Le suivi des changements et des décisions récentes va dans `SUIVI_PROJET.md` (journal) ;
+l'instantané « où on en est » (fonctionnalités, tests, en attente) va dans `ETAT_PROJET.md`.
 
 ---
 
@@ -155,6 +156,7 @@ python scrape_injuries.py --apply    # exécution réelle, sans confirmation (vo
 Hockey_Pool_App/
 ├── CLAUDE.md                  ← Ce fichier (référence stable)
 ├── SUIVI_PROJET.md            ← Journal de bord actif (à mettre à jour chaque session)
+├── ETAT_PROJET.md             ← Instantané de l'état courant (réécrit chaque session)
 ├── schema.sql                 ← Schéma de référence de la base de données
 ├── start_app.ps1              ← Démarrer l'app localement (toujours contre staging)
 ├── stop_app.ps1               ← Arrêter l'app localement
@@ -1280,7 +1282,7 @@ Règle ajoutée le 2026-08-28 après un déploiement direct sur `main` par erreu
 Après chaque tâche complétée, exécuter **sans demander confirmation** :
 
 ```bash
-# 1. Mettre à jour SUIVI_PROJET.md (voir section 11)
+# 1. Mettre à jour SUIVI_PROJET.md et ETAT_PROJET.md (voir section 11)
 # 2. Stager tous les changements
 git add -A
 # 3. Committer avec message conventionnel
@@ -1335,6 +1337,11 @@ Exemples :
 
 **Règles :**
 - Ne jamais laisser une session se terminer sans mettre à jour `SUIVI_PROJET.md`
+- **Mettre aussi à jour `ETAT_PROJET.md`** (racine) à chaque fin de tâche — instantané que
+  David relit pour se rappeler où on en est : état staging/prod, fonctionnalités et leur
+  statut de validation, tests restants, migrations à rouler, décisions en attente, backlog.
+  Contrairement à `SUIVI_PROJET.md`, ce fichier est **réécrit** (pas un journal) : retirer
+  les points réglés, garder court (une page), changer la date « Dernière mise à jour ».
 - Si une route, composant ou règle métier change → évaluer si `CLAUDE.md` doit aussi être mis à jour
 - `CLAUDE.md` ne change que si une information de **référence stable** change (architecture, stack, conventions, règles métier)
 
