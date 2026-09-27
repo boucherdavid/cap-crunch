@@ -35,6 +35,8 @@ export type PlayerSearchResult = {
   position: string | null
   team: string | null
   draftOverall: number | null
+  capNumber: number | null
+  isElc: boolean
 }
 
 async function currentUserId(): Promise<string | null> {
@@ -245,52 +247,122 @@ export async function setWatchlistNoteAction(listId: number, itemId: number, not
   return error ? { error: error.message } : {}
 }
 
+export type SearchOptions = {
+  query?: string
+  position?: 'forward' | 'defense' | 'goalie'
+  teamCode?: string
+  maxSalary?: number
+  elcOnly?: boolean
+  sort?: 'salary' | 'name' | 'team' | 'draft'
+}
+
+function posBucket(position: string | null): 'forward' | 'defense' | 'goalie' {
+  const pos = (position ?? '').toUpperCase()
+  if (pos.includes('G')) return 'goalie'
+  if (pos.includes('D')) return 'defense'
+  return 'forward'
+}
+
+export async function listWatchlistTeamsAction(): Promise<{ teams: { code: string; name: string }[] }> {
+  const admin = createAdminClient()
+  const { data } = await admin.from('teams').select('code, name').order('code')
+  return { teams: data ?? [] }
+}
+
 /**
  * Recherche de joueurs DISPONIBLES à ajouter (jamais un joueur déjà dans un alignement de la
- * saison active — c'est tout l'intérêt : éviter de nommer un joueur déjà pris). 'recrues' =
- * joueurs du dernier repêchage LNH seulement.
+ * saison active — c'est tout l'intérêt : éviter de nommer un joueur déjà pris). Filtres et
+ * navigation sans nom, comme /simulation (David, 2026-09-27) — pratique quand on a oublié un nom.
+ * 'recrues' = joueurs du dernier repêchage LNH seulement (salaire/ELC sans objet).
+ * 'joueurs' sans nom = joueurs avec un contrat pour la saison active (évite les milliers de
+ * fiches sans contrat) ; avec un nom, tous les joueurs correspondants.
  */
-export async function searchWatchlistPlayersAction(kind: WatchlistKind, query: string): Promise<{ players: PlayerSearchResult[] }> {
+export async function searchWatchlistPlayersAction(
+  kind: WatchlistKind,
+  opts: SearchOptions,
+): Promise<{ players: PlayerSearchResult[]; truncated: boolean }> {
+  const empty = { players: [], truncated: false }
   const userId = await currentUserId()
-  if (!userId) return { players: [] }
-  const q = query.trim()
-  if (kind === 'joueurs' && q.length < 2) return { players: [] }
+  if (!userId) return empty
+  const q = (opts.query ?? '').trim()
 
   const admin = createAdminClient()
   const season = await activeSeason(admin)
   const draftYear = kind === 'recrues' ? await latestDraftYear(admin) : null
-  if (kind === 'recrues' && draftYear == null) return { players: [] }
+  if (kind === 'recrues' && draftYear == null) return empty
 
-  // Recherche insensible aux accents (même RPC que /admin/transactions), puis filtres.
+  // Recherche insensible aux accents (même RPC que /admin/transactions).
   let ids: number[] | null = null
   if (q.length >= 2) {
     const { data } = await admin.rpc('search_players_unaccent', { search_term: q }).select('id').limit(300)
     const found = ((data ?? []) as { id: number }[]).map(p => p.id)
-    if (found.length === 0) return { players: [] }
+    if (found.length === 0) return empty
     ids = found
   }
 
-  let dbQuery = admin.from('players').select('id, first_name, last_name, position, draft_overall, teams(code)')
-  if (ids) dbQuery = dbQuery.in('id', ids)
-  if (draftYear != null) dbQuery = dbQuery.eq('draft_year', draftYear)
-  dbQuery = kind === 'recrues'
-    ? dbQuery.order('draft_overall', { ascending: true, nullsFirst: false })
-    : dbQuery.order('last_name')
-  const { data } = await dbQuery.limit(kind === 'recrues' && !ids ? 300 : 60)
-
-  const rows = data ?? []
-  const taken = season && rows.length > 0 ? await takenMap(admin, season.id, rows.map(r => r.id as number)) : new Map()
-  return {
-    players: rows
-      .filter(r => !taken.has(r.id as number))
-      .slice(0, kind === 'recrues' && !ids ? 300 : 25)
-      .map(r => ({
-        id: r.id as number,
-        firstName: r.first_name as string,
-        lastName: r.last_name as string,
-        position: (r.position as string | null) ?? null,
-        team: (r.teams as unknown as { code: string } | null)?.code ?? null,
-        draftOverall: (r.draft_overall as number | null) ?? null,
-      })),
+  const needContract = kind === 'joueurs' && season && (!ids || opts.maxSalary != null || opts.elcOnly)
+  const contractsSelect = needContract ? 'player_contracts!inner(season, cap_number, is_elc)' : 'player_contracts(season, cap_number, is_elc)'
+  const teamsSelect = opts.teamCode ? 'teams!inner(code)' : 'teams(code)'
+  const buildQuery = () => {
+    let dbQuery = admin.from('players').select(`id, first_name, last_name, position, draft_overall, ${teamsSelect}, ${contractsSelect}`)
+    if (ids) dbQuery = dbQuery.in('id', ids)
+    if (draftYear != null) dbQuery = dbQuery.eq('draft_year', draftYear)
+    if (opts.teamCode) dbQuery = dbQuery.eq('teams.code', opts.teamCode)
+    if (needContract && season) {
+      dbQuery = dbQuery.eq('player_contracts.season', season.season).not('player_contracts.cap_number', 'is', null)
+      if (opts.maxSalary != null) dbQuery = dbQuery.lte('player_contracts.cap_number', opts.maxSalary)
+      if (opts.elcOnly) dbQuery = dbQuery.eq('player_contracts.is_elc', true)
+    }
+    return dbQuery.order('id')
   }
+  // Tout charger (par pages de 1000, ~1500 joueurs sous contrat) avant de trier : les joueurs
+  // pris et le filtre de position sont retirés après coup, et le tri par salaire doit porter
+  // sur l'ensemble, pas sur les 1000 premiers.
+  const data: unknown[] = []
+  for (let offset = 0; offset < 5000; offset += 1000) {
+    const { data: page } = await buildQuery().range(offset, offset + 999)
+    data.push(...(page ?? []))
+    if (!page || page.length < 1000) break
+  }
+
+  type Row = {
+    id: number; first_name: string; last_name: string; position: string | null; draft_overall: number | null
+    teams: { code: string } | null; player_contracts: { season: string; cap_number: number | null; is_elc: boolean }[] | null
+  }
+  const rows = data as Row[]
+  // Au-delà de ~200 ids, la liste d'ids ferait une URL trop longue : on charge plutôt tous les
+  // joueurs pris de la saison (quelques centaines de lignes).
+  const taken = season && rows.length > 0
+    ? await takenMap(admin, season.id, rows.length <= 200 ? rows.map(r => r.id) : undefined)
+    : new Map()
+
+  let players: PlayerSearchResult[] = rows
+    .filter(r => !taken.has(r.id))
+    .filter(r => !opts.position || posBucket(r.position) === opts.position)
+    .map(r => {
+      const c = r.player_contracts?.find(x => x.season === season?.season)
+      return {
+        id: r.id,
+        firstName: r.first_name,
+        lastName: r.last_name,
+        position: r.position ?? null,
+        team: r.teams?.code ?? null,
+        draftOverall: r.draft_overall ?? null,
+        capNumber: c?.cap_number ?? null,
+        isElc: c?.is_elc ?? false,
+      }
+    })
+
+  const sort = opts.sort ?? (kind === 'recrues' ? 'draft' : 'salary')
+  players.sort((a, b) => {
+    if (sort === 'draft') return (a.draftOverall ?? 9999) - (b.draftOverall ?? 9999)
+    if (sort === 'salary') return (b.capNumber ?? -1) - (a.capNumber ?? -1) || a.lastName.localeCompare(b.lastName)
+    if (sort === 'team') return (a.team ?? 'ZZZ').localeCompare(b.team ?? 'ZZZ') || a.lastName.localeCompare(b.lastName)
+    return a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName)
+  })
+
+  const limit = 150
+  const truncated = players.length > limit
+  players = players.slice(0, limit)
+  return { players, truncated }
 }

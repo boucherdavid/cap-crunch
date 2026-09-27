@@ -57,6 +57,12 @@ demande d'un pooler relayée par David :
   `repechage-recrues/page.tsx` et `SimulationTool.tsx`) et `next build` passent.
 - Migration `watchlists.sql` exécutée par David en staging et prod. Pas encore testé dans le
   navigateur.
+- Retour de David au premier essai : la recherche exigeait un nom. Filtres ajoutés comme dans
+  `/simulation` — nom optionnel, position, équipe, salaire max (M$) et ELC (agents libres),
+  tri (salaire, rang de repêchage, nom, équipe) ; sans nom, parcourt les disponibles
+  (agents libres = sous contrat pour la saison active, ~1500 joueurs chargés par pages de
+  1000 avant tri, 150 affichés avec avis « affine » au-delà). Badge ELC et salaire dans les
+  résultats.
 
 ### 2026-09-26
 

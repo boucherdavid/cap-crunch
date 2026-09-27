@@ -10,8 +10,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   listWatchlistsAction, createWatchlistAction, renameWatchlistAction, deleteWatchlistAction,
   getWatchlistItemsAction, addWatchlistItemAction, removeWatchlistItemAction,
-  reorderWatchlistAction, setWatchlistNoteAction, searchWatchlistPlayersAction,
-  type Watchlist, type WatchlistItem, type WatchlistKind, type PlayerSearchResult,
+  reorderWatchlistAction, setWatchlistNoteAction, searchWatchlistPlayersAction, listWatchlistTeamsAction,
+  type Watchlist, type WatchlistItem, type WatchlistKind, type PlayerSearchResult, type SearchOptions,
 } from '@/app/listes/actions'
 
 const KIND_LABEL: Record<WatchlistKind, string> = { joueurs: 'Agents libres', recrues: 'Recrues' }
@@ -66,7 +66,15 @@ export default function WatchlistPanel({
   const [adding, setAdding] = useState(false)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<PlayerSearchResult[]>([])
+  const [truncated, setTruncated] = useState(false)
   const [searching, setSearching] = useState(false)
+  // Filtres de recherche, comme /simulation (David, 2026-09-27) — parcourir sans connaître le nom.
+  const [fPosition, setFPosition] = useState<'' | 'forward' | 'defense' | 'goalie'>('')
+  const [fTeam, setFTeam] = useState('')
+  const [fMaxSalary, setFMaxSalary] = useState('')
+  const [fElc, setFElc] = useState(false)
+  const [fSort, setFSort] = useState<'' | NonNullable<SearchOptions['sort']>>('')
+  const [teams, setTeams] = useState<{ code: string; name: string }[]>([])
 
   const selected = lists.find(l => l.id === selectedId) ?? null
   const kindsKey = kinds.join(',')
@@ -122,18 +130,37 @@ export default function WatchlistPanel({
     }
   }, [refreshMs, loadItems])
 
-  // Recherche (délai de frappe). Pour les recrues, liste complète des disponibles sans requête.
+  // Équipes pour le filtre — chargées une seule fois, à la première ouverture de la recherche.
   useEffect(() => {
-    if (!adding || !selected) return
-    if (selected.kind === 'joueurs' && query.trim().length < 2) return
+    if (!adding || teams.length > 0) return
+    let cancelled = false
+    listWatchlistTeamsAction().then(res => { if (!cancelled) setTeams(res.teams) })
+    return () => { cancelled = true }
+  }, [adding, teams.length])
+
+  // Recherche (délai de frappe) — le nom est optionnel : sans nom, parcourt les disponibles
+  // selon les filtres.
+  const selectedKind = selected?.kind ?? null
+  useEffect(() => {
+    if (!adding || !selectedKind) return
+    const maxM = parseFloat(fMaxSalary.replace(',', '.'))
+    const opts: SearchOptions = {
+      query,
+      position: fPosition || undefined,
+      teamCode: fTeam || undefined,
+      maxSalary: selectedKind === 'joueurs' && !Number.isNaN(maxM) && maxM > 0 ? Math.round(maxM * 1_000_000) : undefined,
+      elcOnly: selectedKind === 'joueurs' && fElc ? true : undefined,
+      sort: fSort || undefined,
+    }
     const t = window.setTimeout(async () => {
       setSearching(true)
-      const res = await searchWatchlistPlayersAction(selected.kind, query)
+      const res = await searchWatchlistPlayersAction(selectedKind, opts)
       setSearching(false)
       setResults(res.players)
-    }, 250)
+      setTruncated(res.truncated)
+    }, 300)
     return () => window.clearTimeout(t)
-  }, [adding, query, selected])
+  }, [adding, selectedKind, query, fPosition, fTeam, fMaxSalary, fElc, fSort])
 
   const flash = (text: string) => { setMsg(text); window.setTimeout(() => setMsg(null), 3000) }
 
@@ -208,7 +235,9 @@ export default function WatchlistPanel({
   const shownItems = selectedId == null || loading ? [] : items
   const available = shownItems.filter(i => !i.takenBy)
   const taken = shownItems.filter(i => i.takenBy)
-  const shownResults = selected?.kind === 'joueurs' && query.trim().length < 2 ? [] : results
+  const shownResults = results
+  const hasFilters = !!(query || fPosition || fTeam || fMaxSalary || fElc || fSort)
+  const resetFilters = () => { setQuery(''); setFPosition(''); setFTeam(''); setFMaxSalary(''); setFElc(false); setFSort('') }
   const inList = new Set(items.map(i => i.playerId))
 
   return (
@@ -370,26 +399,68 @@ export default function WatchlistPanel({
                     <input
                       value={query}
                       onChange={e => setQuery(e.target.value)}
-                      placeholder={selected.kind === 'recrues' ? 'Filtrer les repêchés disponibles…' : 'Rechercher un joueur disponible (2 lettres min.)…'}
+                      placeholder="Nom (optionnel — ou parcours avec les filtres)…"
                       className="flex-1 min-w-0 border rounded-lg px-3 py-1.5 text-sm"
                       autoFocus
                     />
-                    <button type="button" onClick={() => { setAdding(false); setQuery(''); setResults([]) }} className="text-sm text-gray-500 hover:underline">Fermer</button>
+                    <button type="button" onClick={() => { setAdding(false); resetFilters(); setResults([]) }} className="text-sm text-gray-500 hover:underline">Fermer</button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <select value={fPosition} onChange={e => setFPosition(e.target.value as typeof fPosition)} className="border rounded-lg px-2 py-1 text-xs bg-white">
+                      <option value="">Toutes positions</option>
+                      <option value="forward">Attaquants</option>
+                      <option value="defense">Défenseurs</option>
+                      <option value="goalie">Gardiens</option>
+                    </select>
+                    <select value={fTeam} onChange={e => setFTeam(e.target.value)} className="border rounded-lg px-2 py-1 text-xs bg-white max-w-[12rem]">
+                      <option value="">Toutes équipes</option>
+                      {teams.map(t => <option key={t.code} value={t.code}>{t.name}</option>)}
+                    </select>
+                    {selected.kind === 'joueurs' && (
+                      <>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.25"
+                          value={fMaxSalary}
+                          onChange={e => setFMaxSalary(e.target.value)}
+                          placeholder="Salaire max (M$)"
+                          className="w-36 border rounded-lg px-2 py-1 text-xs"
+                        />
+                        <label className="flex items-center gap-1 text-xs text-gray-600">
+                          <input type="checkbox" checked={fElc} onChange={e => setFElc(e.target.checked)} />
+                          ELC seulement
+                        </label>
+                      </>
+                    )}
+                    <select value={fSort} onChange={e => setFSort(e.target.value as typeof fSort)} className="border rounded-lg px-2 py-1 text-xs bg-white">
+                      <option value="">{selected.kind === 'recrues' ? 'Tri : rang de repêchage' : 'Tri : salaire'}</option>
+                      {selected.kind === 'recrues' ? <option value="salary">Tri : salaire</option> : <option value="draft">Tri : rang de repêchage</option>}
+                      <option value="name">Tri : nom</option>
+                      <option value="team">Tri : équipe</option>
+                    </select>
+                    {hasFilters && (
+                      <button type="button" onClick={resetFilters} className="text-xs text-gray-500 hover:underline">Réinitialiser</button>
+                    )}
                   </div>
                   {searching && <p className="text-xs text-gray-400">Recherche…</p>}
-                  <ul className="max-h-64 overflow-y-auto divide-y divide-gray-50">
+                  <ul className="max-h-72 overflow-y-auto divide-y divide-gray-50">
                     {shownResults.filter(p => !inList.has(p.id)).map(p => (
                       <li key={p.id} className="py-1.5 flex items-center gap-2 text-sm">
-                        <span className="text-gray-800">{p.lastName}, {p.firstName}</span>
+                        <span className="text-gray-800 min-w-0">{p.lastName}, {p.firstName}</span>
                         <span className="text-xs text-gray-500">
-                          {[p.position, p.team, p.draftOverall ? `#${p.draftOverall}` : null].filter(Boolean).join(' · ')}
+                          {[p.position, p.team, p.draftOverall ? `#${p.draftOverall}` : null, fmtCap(p.capNumber)].filter(Boolean).join(' · ')}
                         </span>
-                        <button type="button" onClick={() => handleAdd(p)} className="ml-auto text-xs px-2 py-1 rounded bg-indigo-50 text-indigo-700 hover:bg-indigo-100">+ Ajouter</button>
+                        {p.isElc && <span className="text-[10px] px-1 rounded bg-emerald-50 text-emerald-700">ELC</span>}
+                        <button type="button" onClick={() => handleAdd(p)} className="ml-auto shrink-0 text-xs px-2 py-1 rounded bg-indigo-50 text-indigo-700 hover:bg-indigo-100">+ Ajouter</button>
                       </li>
                     ))}
                   </ul>
-                  {!searching && shownResults.length === 0 && (selected.kind === 'recrues' || query.trim().length >= 2) && (
+                  {!searching && shownResults.length === 0 && (
                     <p className="text-xs text-gray-400">Aucun joueur disponible trouvé.</p>
+                  )}
+                  {truncated && (
+                    <p className="text-xs text-gray-400 mt-1">Plus de résultats que ce qui est affiché — affine avec un nom, une équipe ou une position.</p>
                   )}
                 </div>
               )}
