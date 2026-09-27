@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-09-26
+**Dernière mise à jour :** 2026-09-27
 
 ---
 
@@ -36,6 +36,7 @@ projections (colonne Moyenne), salaires PuckPedia.
 | Marqueur désaccord CBS≠ESPN (`espn_est_return_date`) | ✅ (aucun cas actuel) | ✅ migré | Colonne prod vide jusqu'au prochain cron `injuries.yml` (dernier run avant la fusion) — vérifier qu'elle se remplit. Marqueur invisible tant qu'aucun écart ≥ 5 j |
 | Demandes de LTIR avec approbation admin | ✅ code | ✅ code | Tester de bout en bout (pooler soumet → admin approuve) avec un vrai compte pooler |
 | Projections (NHL.com / CBS / Pool Pro / Hockey Mag, colonne Moyenne) | ✅ | ✅ importé | Identiques staging/prod (406-407 / 966 / 400 / 422). ⚠ Page prod vide tant que 2025-26 est la saison active en prod : sélecteur de saison à fusionner sur `main`, ou activer 2026-27 |
+| `/poolers/[id]` : sélecteur de pooler visible + onglet conservé | À valider | — | Changer de pooler depuis Masse salariale doit rester sur Masse salariale |
 | Sélecteur de saison sur `/statistiques/projections` | À valider | — | Saison active par défaut ; une seule option tant que seule 2026-27 a des projections |
 | Sidebar de navigation + onglet « Prochains matchs » | ✅ | ✅ validé (mobile inclus) | — |
 | Transactions entre poolers (échanges + approbation) | ✅ | ✅ | Test réel à deux poolers |

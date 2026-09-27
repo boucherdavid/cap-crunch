@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-26
+Derniere mise a jour: 2026-09-27
 
 ## Role du fichier
 
@@ -18,6 +18,19 @@ techniques : voir `CLAUDE.md` (sections 1 à 6) — c'est la référence mainten
 qu'un second inventaire dérive silencieusement de la réalité comme celui qui était ici
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
+
+### 2026-09-27
+
+**[Feature] — `/poolers/[id]` : sélecteur de pooler plus visible, onglet conservé**
+(`app/components/PoolerSwitcher.tsx`, `app/app/poolers/[id]/{page.tsx,PoolerPageTabs.tsx}`) —
+retour d'un pooler relayé par David :
+- Sélecteur encadré en bleu avec libellé « Voir l'alignement de », police plus grande.
+- L'onglet ouvert est reflété dans l'URL (`?onglet=masse-salariale`, etc., via
+  `history.replaceState`, sans recharger) ; le sélecteur conserve la chaîne de requête en
+  changeant de pooler, et la page lit `?onglet=` au chargement (valeur inconnue → Alignement).
+  Liste des onglets valides dupliquée dans `page.tsx` (une constante exportée d'un module
+  `'use client'` n'est pas utilisable côté serveur).
+- Vérifié : `tsc --noEmit`, ESLint et `next build` passent. Pas testé dans le navigateur.
 
 ### 2026-09-26
 

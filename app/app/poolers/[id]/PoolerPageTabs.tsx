@@ -11,7 +11,7 @@ import type { DaySchedule, OrgPlayer } from '@/lib/nhlWeeklySchedule'
 import type { InjuryInfo } from '@/lib/injuries'
 import InjuryBadge from '@/components/InjuryBadge'
 
-type Tab = 'masse-salariale' | 'alignement' | 'historique' | 'recrues' | 'prochains-matchs'
+export type Tab = 'masse-salariale' | 'alignement' | 'historique' | 'recrues' | 'prochains-matchs'
 
 type ChangeLogEntry = {
   id: number
@@ -236,6 +236,7 @@ export default function PoolerPageTabs({
   schedule7,
   today,
   injuriesByNhlId,
+  initialTab,
 }: {
   masseSalarialeContent: React.ReactNode
   recruesContent: React.ReactNode
@@ -246,8 +247,18 @@ export default function PoolerPageTabs({
   schedule7: DaySchedule[]
   today: string
   injuriesByNhlId?: Map<number, InjuryInfo>
+  initialTab?: Tab
 }) {
-  const [tab, setTab] = useState<Tab>('alignement')
+  const [tab, setTabState] = useState<Tab>(initialTab ?? 'alignement')
+  // L'onglet est reflété dans l'URL (?onglet=) sans recharger la page, pour que
+  // PoolerSwitcher le conserve en changeant de pooler (David, 2026-09-27).
+  const setTab = (t: Tab) => {
+    setTabState(t)
+    const url = new URL(window.location.href)
+    if (t === 'alignement') url.searchParams.delete('onglet')
+    else url.searchParams.set('onglet', t)
+    window.history.replaceState(null, '', url)
+  }
   const [periodPopup, setPeriodPopup] = useState<PlayerContrib | null>(null)
 
   const btnClass = (t: Tab) =>
