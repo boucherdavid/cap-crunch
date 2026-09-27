@@ -67,7 +67,7 @@ demande d'un pooler relayée par David :
 **[Fix] — rechargement automatique de `/repechage-recrues` trop fréquent**
 (`app/app/repechage-recrues/page.tsx`, `app/components/AutoReload.tsx`) :
 - Rechargement complet toutes les 10 s dès que des choix existaient, même avant le début du
-  repêchage. Maintenant : 30 s, seulement une fois le repêchage commencé (`isDraftStarted`).
+  repêchage. Maintenant : 60 s (30 s d'abord, allongé à la demande de David — bouton « ↻ Rafraîchir » disponible), seulement une fois le repêchage commencé (`isDraftStarted`).
 - `AutoReload` saute un intervalle si le focus est dans un champ (input/textarea/select) —
   évite de perdre une recherche ou une note de « Mes listes » ; vaut aussi pour
   `/repechage-agents-libres`.
