@@ -64,6 +64,14 @@ demande d'un pooler relayée par David :
   1000 avant tri, 150 affichés avec avis « affine » au-delà). Badge ELC et salaire dans les
   résultats.
 
+**[Fix] — rechargement automatique de `/repechage-recrues` trop fréquent**
+(`app/app/repechage-recrues/page.tsx`, `app/components/AutoReload.tsx`) :
+- Rechargement complet toutes les 10 s dès que des choix existaient, même avant le début du
+  repêchage. Maintenant : 30 s, seulement une fois le repêchage commencé (`isDraftStarted`).
+- `AutoReload` saute un intervalle si le focus est dans un champ (input/textarea/select) —
+  évite de perdre une recherche ou une note de « Mes listes » ; vaut aussi pour
+  `/repechage-agents-libres`.
+
 ### 2026-09-26
 
 **[Docs] — nouvel instantané `ETAT_PROJET.md` à la racine** (`ETAT_PROJET.md`, `CLAUDE.md`) :

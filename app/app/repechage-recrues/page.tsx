@@ -120,7 +120,9 @@ export default async function RepechageRecruesPage({
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <AutoRefresh enabled={saison.is_active && !isDraftDone && totalPicks > 0} />
+          {/* 30 s, seulement une fois le repêchage commencé (David, 2026-09-27 — 10 s dès que des
+              choix existaient, même avant le début, était beaucoup trop fréquent). */}
+          <AutoRefresh enabled={saison.is_active && isDraftStarted && !isDraftDone && totalPicks > 0} intervalMs={30000} />
           <SaisonSelectClient saisons={saisons} selectedId={saison.id} />
         </div>
       </div>
