@@ -10,6 +10,7 @@ import {
 import { listTeamsAction } from '../repechage-agents-libres/actions'
 import { useSimState, groupRosterEntries, type RecrueOption, type SimEntry } from './useSimState'
 import SimPanel from './SimPanel'
+import WatchlistPanel from '@/components/WatchlistPanel'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
@@ -110,6 +111,13 @@ export default function SimulationTool({
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, preloadDone, preloadPlayerId, saisonId])
+
+  const handleSimulateFromList = (playerId: number) => {
+    loadPlayerByIdAction(saisonId, playerId).then(res => {
+      const p = res.player
+      if (p) myState.addFA({ id: p.id, first_name: p.first_name, last_name: p.last_name, position: p.position, cap_number: p.cap_number, ownerName: p.owner_name })
+    })
+  }
 
   // ── Scénarios sauvegardés (onglet "Mon alignement" seulement) — David, 2026-09-14.
   const [scenarios, setScenarios] = useState<Scenario[]>([])
@@ -267,6 +275,12 @@ export default function SimulationTool({
               <CurrentRosterColumn roster={myRoster} />
               <SimPanel title="Alignement simulé" poolCap={poolCap} state={myState} recruePlayers={myRecrue} teams={teams} saisonId={saisonId} />
             </div>
+          </div>
+
+          {/* Listes privées (David, 2026-09-27) — « Simuler » ajoute un agent libre de la liste à
+              l'alignement simulé, même chemin que le lien "Analyser" du ballotage. */}
+          <div className="mt-6">
+            <WatchlistPanel kinds={['joueurs', 'recrues']} defaultOpen={false} onSimulate={handleSimulateFromList} />
           </div>
         </>
       )}

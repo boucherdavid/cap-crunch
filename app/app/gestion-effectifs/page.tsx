@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import GestionEffectifsManager from './GestionEffectifsManager'
+import WatchlistPanel from '@/components/WatchlistPanel'
 
 export const metadata = { title: 'Gestion d\'effectifs' }
 export const dynamic = 'force-dynamic'
@@ -72,6 +73,8 @@ export default async function GestionEffectifsPage({
       <p className="text-sm text-gray-500 mb-6">
         Ajoutez une ou plusieurs actions, vérifiez l&apos;état projeté, puis soumettez en une seule opération.
       </p>
+      {/* Listes privées d'agents libres (David, 2026-09-27) — repliées par défaut ici. */}
+      <WatchlistPanel kinds={['joueurs']} defaultOpen={false} />
       <GestionEffectifsManager
         isAdmin={isAdmin}
         initialTab={tab === 'ballotage' ? 'ballotage' : tab === 'echanges' ? 'echanges' : 'mouvements'}

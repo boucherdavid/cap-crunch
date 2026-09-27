@@ -1242,3 +1242,33 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 -- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS ltir_grace_days INTEGER NOT NULL DEFAULT 3;
 -- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS injury_disagreement_days INTEGER NOT NULL DEFAULT 5;
 -- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS injury_removal_absence_days INTEGER NOT NULL DEFAULT 2;
+
+-- Migration 2026-09-27 : listes de joueurs à surveiller (« Mes listes », David) + fermeture de
+-- l'accès admin aux scénarios de simulation. Listes et scénarios sont PRIVÉS : RLS activée sans
+-- politique (aucun accès via l'API publique, admin compris) — tout passe par
+-- createAdminClient() filtré sur l'utilisateur connecté (app/app/listes/actions.ts,
+-- app/app/simulation/actions.ts). Script complet : supabase_migrations/watchlists.sql. À
+-- exécuter une seule fois dans le SQL Editor Supabase (staging d'abord, puis prod) :
+--
+-- CREATE TABLE watchlists (
+--   id SERIAL PRIMARY KEY,
+--   pooler_id UUID NOT NULL REFERENCES poolers(id) ON DELETE CASCADE,
+--   kind VARCHAR(10) NOT NULL CHECK (kind IN ('joueurs', 'recrues')),
+--   name VARCHAR(100) NOT NULL,
+--   created_at TIMESTAMPTZ DEFAULT NOW(),
+--   updated_at TIMESTAMPTZ DEFAULT NOW(),
+--   UNIQUE (pooler_id, kind, name)
+-- );
+-- CREATE TABLE watchlist_items (
+--   id SERIAL PRIMARY KEY,
+--   watchlist_id INTEGER NOT NULL REFERENCES watchlists(id) ON DELETE CASCADE,
+--   player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+--   rank INTEGER NOT NULL DEFAULT 0,
+--   note VARCHAR(200),
+--   created_at TIMESTAMPTZ DEFAULT NOW(),
+--   UNIQUE (watchlist_id, player_id)
+-- );
+-- CREATE INDEX watchlist_items_watchlist_idx ON watchlist_items (watchlist_id, rank);
+-- ALTER TABLE watchlists ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE watchlist_items ENABLE ROW LEVEL SECURITY;
+-- DROP POLICY IF EXISTS "Admin gère simulation_scenarios" ON simulation_scenarios;

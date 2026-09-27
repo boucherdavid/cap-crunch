@@ -32,6 +32,32 @@ retour d'un pooler relayé par David :
   `'use client'` n'est pas utilisable côté serveur).
 - Vérifié : `tsc --noEmit`, ESLint et `next build` passent. Pas testé dans le navigateur.
 
+**[Feature] — « Mes listes » : listes privées de joueurs à surveiller** (`supabase_migrations/watchlists.sql`,
+`schema.sql`, `app/app/listes/{actions.ts,page.tsx}`, `app/components/WatchlistPanel.tsx`,
+`app/components/Navbar.tsx`, `app/app/{repechage-recrues/page.tsx,repechage-agents-libres/AgentsLibresDashboard.tsx,gestion-effectifs/page.tsx,simulation/SimulationTool.tsx,aide/AideTabs.tsx}`) —
+demande d'un pooler relayée par David :
+- But : garder une trace des joueurs disponibles qui intéressent chaque pooler, surtout le soir
+  du pool, et éviter de nommer un joueur déjà pris.
+- Décisions de David : recrues = repêchage LNH le plus récent (2026, 223 joueurs en base) ;
+  listes **privées**, admin compris (l'admin est aussi un pooler) ; listes d'agents libres
+  accessibles partout où c'est pertinent (d'où Gestion d'effectifs en plus des 3 endroits
+  proposés).
+- Proposition retenue : un seul composant (`WatchlistPanel`) et les mêmes données aux 5
+  endroits, plutôt que 3 listes distinctes. Listes nommées, priorité ▲▼, note, recherche des
+  disponibles seulement, joueur pris masqué dans « Déjà pris (par X) » plutôt que supprimé,
+  rafraîchissement 15 s sur les pages de repêchage.
+- **Confidentialité** : tables sans politique RLS (service role filtré sur l'utilisateur).
+  Vérification au passage de `/simulation` demandée par David : l'app ne montrait déjà que ses
+  propres scénarios à chacun, mais la politique RLS « Admin gère simulation_scenarios »
+  permettait à l'admin de lire ceux des autres directement via l'API — retirée dans la même
+  migration.
+- Guide `/aide` : nouvelle section « Mes listes » ; section Simulation précise que les
+  scénarios sont privés.
+- Vérifié : `tsc --noEmit`, ESLint (fichiers touchés ; erreurs/avertissements préexistants dans
+  `repechage-recrues/page.tsx` et `SimulationTool.tsx`) et `next build` passent.
+- Migration `watchlists.sql` exécutée par David en staging et prod. Pas encore testé dans le
+  navigateur.
+
 ### 2026-09-26
 
 **[Docs] — nouvel instantané `ETAT_PROJET.md` à la racine** (`ETAT_PROJET.md`, `CLAUDE.md`) :

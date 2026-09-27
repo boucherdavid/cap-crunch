@@ -70,6 +70,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Mon alignement', href: '/dashboard', auth: true },
       { label: "Gestion d'effectifs", href: '/gestion-effectifs', auth: true },
       { label: 'Simulation', href: '/simulation', auth: true },
+      { label: 'Mes listes', href: '/listes', auth: true },
     ],
   },
   {

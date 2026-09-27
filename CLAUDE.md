@@ -229,6 +229,10 @@ Hockey_Pool_App/
   libération, une request par pooler l'ayant réclamée — voir section 6)
 - `trade_offers`/`trade_offer_items` (transactions proposées entre poolers, approbation admin
   — voir section 6)
+- `watchlists`/`watchlist_items` (« Mes listes », listes privées de joueurs à surveiller — voir
+  section 6) et `simulation_scenarios` (scénarios de `/simulation`) : **privées**, RLS activée
+  sans aucune politique — accès uniquement par `createAdminClient()` filtré sur l'utilisateur
+  connecté ; l'admin ne voit jamais les listes/scénarios d'un autre pooler (David, 2026-09-27)
 
 **Conventions :**
 - Statuts joueurs : `ELC`, `RFA`, `UFA`
@@ -259,7 +263,9 @@ heure de l'Est ; navigation précédent/suivant, voir section 6) `/resultats`
 **Mouvements**, l'outil existant ; **Ballotage**, réclamer un joueur libéré en cours de
 saison ; **Échanges**, proposer/répondre à des transactions entre poolers — voir section 6
 pour les trois) `/draft-center` (classement des prospects, vue publique)
-`/dashboard` (redirige vers son propre alignement) `/compte` `/signaler` `/aide` `/a-propos`
+`/dashboard` (redirige vers son propre alignement ; `/poolers/[id]` garde l'onglet ouvert dans
+`?onglet=` et le conserve en changeant de pooler) `/listes` (« Mes listes », menu Mon équipe —
+voir section 6) `/compte` `/signaler` `/aide` `/a-propos`
 (David, 2026-09-23 — « tour d'horizon » statique des fonctionnalités consultables/en
 libre-service, regroupé par section de menu avec lien direct vers chaque page ; distinct
 d'`/aide` (guide pas-à-pas + règlements) — les deux se renvoient l'un vers l'autre. Généré à
@@ -440,7 +446,7 @@ sont deux natures de contenu différentes.**
 
 | Section | Contenu |
 |---|---|
-| Mon équipe (nouveau nom de groupe — le lien "Mon alignement", ex-"Mon équipe", garde son nom de page inchangé depuis le renommage plus haut le même jour) | Mon alignement · Gestion d'effectifs · Simulation — "ce qui m'appartient / que je contrôle" |
+| Mon équipe (nouveau nom de groupe — le lien "Mon alignement", ex-"Mon équipe", garde son nom de page inchangé depuis le renommage plus haut le même jour) | Mon alignement · Gestion d'effectifs · Simulation · Mes listes (ajouté le 2026-09-27) — "ce qui m'appartient / que je contrôle" |
 | Le pool | Tous les alignements (ex-"Équipes") · Journal des transactions — "ce qui concerne les autres poolers" |
 | Classement du pool (ex-"Classement", renommé le 2026-09-23 (suite)) | Saison complète · Hebdomadaire · Mensuel |
 | Calendrier LNH (lien autonome, ex-sous-item de "Statistiques", sorti le 2026-09-23 (suite) — entre Classement du pool et Statistiques) | Le résumé personnel "mes joueurs cette semaine" a été extrait dans un onglet séparé sur `/poolers/[id]`, voir ci-dessous — cette page ne garde que la navigation jour par jour |
@@ -1135,6 +1141,24 @@ corrigée le 2026-09-20 :**
 - RLS `trade_offers`/`trade_offer_items` : lecture publique + admin seulement en écriture,
   même patron que `waiver_claims` — toutes les écritures passent par `createAdminClient()`
   depuis des Server Actions qui font leur propre vérification d'autorisation.
+
+**« Mes listes » — listes privées de joueurs à surveiller (`app/app/listes/actions.ts`,
+`app/components/WatchlistPanel.tsx`) — David, 2026-09-27 (retour d'un pooler) :**
+- Aide-mémoire par pooler, surtout pour le soir du pool : listes nommées de type `joueurs`
+  (agents libres = tout joueur absent des alignements actifs de la saison active) ou `recrues`
+  (joueurs du **dernier repêchage LNH** en base, `max(players.draft_year)` — ex: 2026).
+  Ordre de priorité (`rank`) et note par joueur.
+- La recherche ne propose que des joueurs disponibles. Un joueur pris n'est **pas** retiré de
+  la liste : calcul à la volée (`pooler_rosters` actifs de la saison active) → section repliée
+  « Déjà pris (par X) » — la liste reste réutilisable si le joueur est libéré.
+- Un seul composant, mêmes données partout : `/listes` (les deux types),
+  `/repechage-recrues` (recrues, rafraîchi 15 s, saison active seulement),
+  `/repechage-agents-libres` (agents libres, 15 s), `/gestion-effectifs` (agents libres, replié),
+  `/simulation` onglet Mon alignement (les deux, bouton « Simuler » pour un agent libre →
+  `loadPlayerByIdAction` + `addFA`, même chemin que « Analyser » du ballotage).
+- Privé, admin compris (voir section 4) — même règle appliquée aux scénarios de simulation,
+  dont la politique RLS « Admin gère simulation_scenarios » (lecture de tous les scénarios par
+  l'admin via l'API) a été retirée.
 
 **Suivi des blessures LNH + demandes de LTIR (`player_injuries`, `ltir_requests`) — David,
 2026-09-23 :**
