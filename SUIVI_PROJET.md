@@ -21,6 +21,13 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-28
 
+**[Feature] — sources de chaque blessure sur `/statistiques/blessures`** (`BlessuresTable.tsx`,
+`page.tsx`) — demande de David : sous le statut, pastilles « CBS » / « ESPN » (ESPN barrée si
+le joueur n'est pas recoupé) ; un clic déplie le détail côte à côte (CBS : statut brut, date
+de retour retenue, « mis à jour » ; ESPN : statut, note, date de retour) + « suivi depuis »
+(`first_seen_at`). Fiche mobile et tableau desktop (ligne dépliée sous la ligne du joueur).
+Aucune migration — `espn_note` était déjà en base, juste pas lu par la page.
+
 **[Fix] — recoupement ESPN rétabli en prod via l'API JSON** (`python_script/scrape_injuries.py`) :
 - `scrape_espn()` essaie d'abord l'API JSON ESPN (`/apis/site/v2/sports/hockey/nhl/injuries`),
   la page `espn.com/nhl/injuries` (`scrape_espn_page()`, ex-`scrape_espn()`) en dernier repli.
