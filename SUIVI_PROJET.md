@@ -26,7 +26,8 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 le joueur n'est pas recoupé) ; un clic déplie le détail côte à côte (CBS : statut brut, date
 de retour retenue, « mis à jour » ; ESPN : statut, note, date de retour) + « suivi depuis »
 (`first_seen_at`). Fiche mobile et tableau desktop (ligne dépliée sous la ligne du joueur).
-Aucune migration — `espn_note` était déjà en base, juste pas lu par la page.
+Aucune migration — `espn_note` était déjà en base, juste pas lu par la page. Validé par David
+  en staging, fusionné vers `main` (`ed247d0`) avec le correctif ESPN.
 
 **[Fix] — recoupement ESPN rétabli en prod via l'API JSON** (`python_script/scrape_injuries.py`) :
 - `scrape_espn()` essaie d'abord l'API JSON ESPN (`/apis/site/v2/sports/hockey/nhl/injuries`),

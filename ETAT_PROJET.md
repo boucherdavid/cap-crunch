@@ -21,8 +21,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : correctif ESPN des blessures + détail des sources (à fusionner) |
-| `main` (prod) | À jour — dernière fusion le 2026-09-28 (`da263a7`, chantier mobile) |
+| `staging` | À jour |
+| `main` (prod) | À jour — dernière fusion le 2026-09-28 (`ed247d0`, ESPN via API + détail des sources) |
 
 Livré en prod le 2026-09-28 : « Mes listes », scénarios de simulation privés, sélecteur de
 pooler + onglet conservé, sélecteur de saison des projections, correctif pipeline (alias de
@@ -42,8 +42,8 @@ desktop.
 | Transition de saison refusée si la saison cible a déjà des alignements | ✅ validé (bloc rouge) | ✅ | — |
 | Rechargement auto du repêchage des recrues (60 s, jamais pendant la saisie) | ✅ | ✅ | — |
 | Suivi des blessures + admissibilité LTIR + seuils paramétrables | ✅ | ✅ | — |
-| Détail des sources (CBS / ESPN) par blessure, `/statistiques/blessures` | ⏳ à valider | — | Cliquer les pastilles CBS/ESPN (mobile + desktop) |
-| Recoupement ESPN des blessures (API JSON `site.web.api.espn.com`) | ✅ | ✅ 70/76 (lancement manuel) | Fusionner vers `main` pour que le cron quotidien l'utilise |
+| Détail des sources (CBS / ESPN) par blessure, `/statistiques/blessures` | ✅ validé | ✅ | — |
+| Recoupement ESPN des blessures (API JSON `site.web.api.espn.com`) | ✅ | ✅ 70/76 | Confirmer au log du cron de demain midi |
 | Demandes de LTIR avec approbation admin | ✅ code | ✅ code | Tester de bout en bout avec un vrai compte pooler |
 | Transactions entre poolers (échanges + approbation) | ✅ | ✅ | Test réel à deux poolers |
 | Ballotage (réclamer / refuser / compléter) | ✅ | ✅ | Test réel à plusieurs poolers en saison |
