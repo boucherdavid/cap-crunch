@@ -38,6 +38,24 @@ David et des poolers (colonnes tassées en desktop, rendu mobile décevant) :
   par le téléphone) pour prendre effet.
 - Vérifié : `tsc --noEmit` et `next build`. Pas testé dans le navigateur.
 
+**[Style] — mobile : Gestion d'effectifs, Blessures, Mes listes, Projections, Journal, Tous les alignements**
+(ordre de priorité de David) :
+- Gestion d'effectifs : onglets à défilement horizontal ; Ballotage : boutons sous le joueur en
+  portrait ; Échanges : « Tu donnes / Tu reçois » empilés en portrait ; barre de soumission et
+  panier qui passent à la ligne. (La colonne d'historique de 320 px n'est affichée qu'à
+  l'admin — la vue pooler était déjà sur une colonne.)
+- Blessures : **fiches** en portrait (nom, équipe · pos, blessure, statut, LTIR, propriétaire)
+  au lieu du tableau de 7 colonnes ; tableau inchangé à partir de `sm`.
+- Mes listes : la note passe sur sa propre ligne en portrait.
+- Projections : portrait = nom figé (pastille, équipe · pos dessous), Moyenne, Tendance,
+  Progression ; les 4 sources, #, Équipe, Pos réapparaissent en paysage.
+- Journal des transactions : fiches en portrait (date courte · pooler, joueur, détail) ; échanges
+  « X donne » empilés en portrait.
+- Tous les alignements : déjà en fiches ; marges réduites, titre « Équipes » → « Tous les
+  alignements » (aligné sur le menu).
+- Vérifié : `tsc --noEmit`, `next build` ; ESLint : erreurs préexistantes dans
+  `gestion-effectifs` (lignes non touchées). Pas testé sur téléphone.
+
 **[Style] — mobile : classement, statistiques LNH, contrats LNH** (`app/app/classement/ClassementTable.tsx`,
 `app/app/statistiques/StatsTable.tsx`, `app/app/joueurs/JoueursTable.tsx`) — David a validé la page
 d'un pooler sur son téléphone (tous les onglets), même approche étendue :

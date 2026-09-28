@@ -359,7 +359,7 @@ export default function WatchlistPanel({
                         onBlur={e => handleNote(item, e.target.value)}
                         placeholder="Note…"
                         maxLength={200}
-                        className="flex-1 min-w-[8rem] border border-transparent hover:border-gray-200 focus:border-gray-300 rounded px-2 py-1 text-xs text-gray-600"
+                        className="max-sm:order-last max-sm:basis-full max-sm:ml-9 flex-1 min-w-[8rem] border border-transparent hover:border-gray-200 focus:border-gray-300 rounded px-2 py-1 text-xs text-gray-600"
                       />
                       {onSimulate && selected.kind === 'joueurs' && (
                         <button type="button" onClick={() => onSimulate(item.playerId)} className="text-xs text-emerald-700 hover:underline">Simuler</button>

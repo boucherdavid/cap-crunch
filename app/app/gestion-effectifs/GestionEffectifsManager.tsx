@@ -945,8 +945,8 @@ export default function GestionEffectifsManager({
           </div>
           <ul className="divide-y divide-gray-100">
             {cart.map(item => (
-              <li key={item.localId} className="flex items-center justify-between py-2.5 text-sm">
-                <span className="text-gray-700">{item.label}</span>
+              <li key={item.localId} className="flex items-center justify-between py-2.5 text-sm gap-2">
+                <span className="text-gray-700 min-w-0">{item.label}</span>
                 <button onClick={() => setCart(c => c.filter(i => i.localId !== item.localId))}
                   className="text-gray-400 hover:text-red-500 ml-4 shrink-0 text-xs">Retirer</button>
               </li>
@@ -1009,8 +1009,8 @@ export default function GestionEffectifsManager({
 
       {/* Submit */}
       {cart.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-5 flex items-center justify-between gap-4">
-          <div className="text-sm text-gray-600">
+        <div className="bg-white rounded-lg shadow p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="text-sm text-gray-600 min-w-0">
             <span className="font-medium">{poolerName}</span>
             {' — '}{cart.length} action{cart.length > 1 ? 's' : ''}
             {isAdmin && forceDateEnabled && ` — ${forcedDate}`}
@@ -1037,10 +1037,10 @@ export default function GestionEffectifsManager({
   const TAB_LABEL: Record<string, string> = { mouvements: 'Mouvements', ballotage: 'Ballotage', echanges: 'Échanges' }
 
   const tabs = (
-    <div className="flex gap-2 mb-6 border-b border-gray-200">
+    <div className="flex gap-2 mb-6 border-b border-gray-200 overflow-x-auto">
       {availableTabs.map(tab => (
         <button key={tab} onClick={() => setActiveTab(tab)}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+          className={`px-3 sm:px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap shrink-0 ${
             activeTab === tab ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}>
           {TAB_LABEL[tab]}

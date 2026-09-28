@@ -109,7 +109,7 @@ export default function ProjectionsTable({
     }`
 
   const sortHeaderClass = (key: SortKey) =>
-    `text-right px-4 py-3 font-medium cursor-pointer select-none ${sortKey === key ? 'text-blue-700' : 'text-gray-600 hover:text-gray-800'}`
+    `text-right px-2 sm:px-4 py-3 font-medium cursor-pointer select-none ${sortKey === key ? 'text-blue-700' : 'text-gray-600 hover:text-gray-800'}`
 
   // Fond pâle par source de projection (David, 2026-09-22) — aide à repérer d'un coup d'œil
   // quelle colonne vient d'où (NHL.com/CBS/Pool Pro/Hockey Mag.) sans dépendre de l'en-tête.
@@ -202,15 +202,15 @@ export default function ProjectionsTable({
                 plutôt que sur <thead> pour un support navigateur plus fiable ; chaque cellule a
                 son propre fond opaque (sinon le contenu défilé serait visible en transparence). */}
             <tr className="border-b">
-              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-8">#</th>
-              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-5" title="Disponibilité" />
-              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">{tab === 'goalies' ? 'Gardien' : 'Joueur'}</th>
-              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Équipe</th>
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-8 hidden sm:table-cell">#</th>
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-5 hidden sm:table-cell" title="Disponibilité" />
+              <th className="sticky top-0 max-sm:left-0 z-20 bg-gray-50 text-left px-2 sm:px-4 py-3 font-medium text-gray-600">{tab === 'goalies' ? 'Gardien' : 'Joueur'}</th>
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Équipe</th>
               <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Pos</th>
-              <th className={`sticky top-0 z-10 ${sortHeaderClass('nhlCom')} ${SOURCE_BG.nhlCom || 'bg-gray-50'}`} onClick={() => setSortKey('nhlCom')}>NHL.com</th>
-              <th className={`sticky top-0 z-10 ${sortHeaderClass('cbs')} ${SOURCE_BG.cbs}`} onClick={() => setSortKey('cbs')}>CBS</th>
-              <th className={`sticky top-0 z-10 ${sortHeaderClass('poolPro')} ${SOURCE_BG.poolPro}`} onClick={() => setSortKey('poolPro')}>Pool Pro</th>
-              <th className={`sticky top-0 z-10 ${sortHeaderClass('hockeyMagazine')} ${SOURCE_BG.hockeyMagazine}`} onClick={() => setSortKey('hockeyMagazine')}>Hockey Mag.</th>
+              <th className={`sticky top-0 z-10 ${sortHeaderClass('nhlCom')} ${SOURCE_BG.nhlCom || 'bg-gray-50'} hidden sm:table-cell`} onClick={() => setSortKey('nhlCom')}>NHL.com</th>
+              <th className={`sticky top-0 z-10 ${sortHeaderClass('cbs')} ${SOURCE_BG.cbs} hidden sm:table-cell`} onClick={() => setSortKey('cbs')}>CBS</th>
+              <th className={`sticky top-0 z-10 ${sortHeaderClass('poolPro')} ${SOURCE_BG.poolPro} hidden sm:table-cell`} onClick={() => setSortKey('poolPro')}>Pool Pro</th>
+              <th className={`sticky top-0 z-10 ${sortHeaderClass('hockeyMagazine')} ${SOURCE_BG.hockeyMagazine} hidden sm:table-cell`} onClick={() => setSortKey('hockeyMagazine')}>Hockey Mag.</th>
               <th
                 className={`sticky top-0 z-10 ${sortHeaderClass('average')} bg-indigo-50 border-l border-indigo-200`}
                 onClick={() => setSortKey('average')}
@@ -219,7 +219,7 @@ export default function ProjectionsTable({
                 Moyenne
               </th>
               <th className={`sticky top-0 z-10 bg-gray-50 ${sortHeaderClass('lastSeasonValue')} hidden sm:table-cell`} onClick={() => setSortKey('lastSeasonValue')}>Saison dernière</th>
-              <th className={`sticky top-0 z-10 bg-gray-50 ${sortHeaderClass('trend')}`} onClick={() => setSortKey('trend')}>Tendance 3 saisons</th>
+              <th className={`sticky top-0 z-10 bg-gray-50 ${sortHeaderClass('trend')}`} onClick={() => setSortKey('trend')}><span className="hidden sm:inline">Tendance 3 saisons</span><span className="sm:hidden">Tend.</span></th>
               <th
                 className={`sticky top-0 z-10 bg-gray-50 ${sortHeaderClass('trendPerGame')} hidden sm:table-cell`}
                 onClick={() => setSortKey('trendPerGame')}
@@ -227,7 +227,7 @@ export default function ProjectionsTable({
               >
                 Pts/Match (tend.)
               </th>
-              <th className="sticky top-0 z-10 bg-gray-50 text-center px-4 py-3 font-medium text-gray-600" title="Progression saison après saison">Prog.</th>
+              <th className="sticky top-0 z-10 bg-gray-50 text-center px-2 sm:px-4 py-3 font-medium text-gray-600" title="Progression saison après saison">Prog.</th>
             </tr>
           </thead>
           <tbody>
@@ -238,27 +238,31 @@ export default function ProjectionsTable({
             ) : (
               rows.map((p, i) => (
                 <tr key={`${normName(p.firstName + p.lastName)}-${i}`} className="border-b hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-2.5 text-gray-400 text-xs">{i + 1}</td>
-                  <td className="px-4 py-2.5"><AvailDot available={p.available} /></td>
-                  <td className="px-4 py-2.5 font-medium text-gray-800">
+                  <td className="px-4 py-2.5 text-gray-400 text-xs hidden sm:table-cell">{i + 1}</td>
+                  <td className="px-4 py-2.5 hidden sm:table-cell"><AvailDot available={p.available} /></td>
+                  {/* Portrait : pastille, équipe et position intégrées au nom, figé à gauche ; les 4
+                      sources se lisent en paysage, la Moyenne les résume (David, 2026-09-28). */}
+                  <td className="px-2 sm:px-4 py-2.5 font-medium text-gray-800 max-sm:sticky max-sm:left-0 max-sm:z-10 bg-white">
+                    <span className="sm:hidden mr-1.5 inline-block align-middle"><AvailDot available={p.available} /></span>
                     <PlayerLink nhlId={p.nhlId}>{p.lastName}, {p.firstName}</PlayerLink>
+                    <span className="sm:hidden block text-[11px] font-normal text-gray-400">{[p.team, p.position].filter(Boolean).join(' · ')}</span>
                   </td>
-                  <td className="px-4 py-2.5"><TeamBadge code={p.team} /></td>
+                  <td className="px-4 py-2.5 hidden sm:table-cell"><TeamBadge code={p.team} /></td>
                   <td className="px-4 py-2.5 text-gray-500 hidden sm:table-cell">{p.position ?? '—'}</td>
-                  <td className={`px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900 ${SOURCE_BG.nhlCom}`}>
+                  <td className={`px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900 ${SOURCE_BG.nhlCom} hidden sm:table-cell`}>
                     {p.nhlCom ?? '—'}
                   </td>
-                  <td className={`px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900 ${SOURCE_BG.cbs}`}>
+                  <td className={`px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900 ${SOURCE_BG.cbs} hidden sm:table-cell`}>
                     {p.cbs ?? '—'}
                   </td>
-                  <td className={`px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900 ${SOURCE_BG.poolPro}`}>
+                  <td className={`px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900 ${SOURCE_BG.poolPro} hidden sm:table-cell`}>
                     {p.poolPro ?? '—'}
                   </td>
-                  <td className={`px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900 ${SOURCE_BG.hockeyMagazine}`}>
+                  <td className={`px-4 py-2.5 text-right tabular-nums font-semibold text-gray-900 ${SOURCE_BG.hockeyMagazine} hidden sm:table-cell`}>
                     {p.hockeyMagazine ?? '—'}
                   </td>
                   <td
-                    className="px-4 py-2.5 text-right tabular-nums font-bold text-indigo-800 bg-indigo-50 border-l border-indigo-200"
+                    className="px-2 sm:px-4 py-2.5 text-right tabular-nums font-bold text-indigo-800 bg-indigo-50 border-l border-indigo-200"
                     title={p.average != null ? `Moyenne de ${p.averageSources} source${p.averageSources > 1 ? 's' : ''} sur 4` : undefined}
                   >
                     {p.average ?? '—'}
@@ -266,19 +270,19 @@ export default function ProjectionsTable({
                       <sup className="ml-0.5 text-[10px] font-normal text-indigo-400">{p.averageSources}</sup>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-gray-600 hidden sm:table-cell">
+                  <td className="px-2 sm:px-4 py-2.5 text-right tabular-nums text-gray-600 hidden sm:table-cell">
                     {p.lastSeasonValue ?? '—'}
                   </td>
                   <td
-                    className="px-4 py-2.5 text-right tabular-nums text-blue-700"
+                    className="px-2 sm:px-4 py-2.5 text-right tabular-nums text-blue-700"
                     title={p.trend != null ? `${p.trendPerGame?.toFixed(2)} ${unit}/match — ${p.trendSeasons} saison${p.trendSeasons > 1 ? 's' : ''}, ${p.trendGames} matchs` : 'Échantillon trop petit (< 10 matchs par saison)'}
                   >
                     {p.trend ?? '—'}
                   </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-gray-600 hidden sm:table-cell">
+                  <td className="px-2 sm:px-4 py-2.5 text-right tabular-nums text-gray-600 hidden sm:table-cell">
                     {p.trendPerGame != null ? p.trendPerGame.toFixed(2) : '—'}
                   </td>
-                  <td className="px-4 py-2.5 text-center">
+                  <td className="px-2 sm:px-4 py-2.5 text-center">
                     <DirectionBadge direction={p.trendDirection} />
                   </td>
                 </tr>

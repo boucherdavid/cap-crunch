@@ -325,13 +325,13 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap }: { sa
         <div className="space-y-3">
           {offers.map(o => (
             <div key={o.id} className="border border-gray-200 rounded-lg p-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                 <p className="font-medium text-gray-800">
                   {o.isProposer ? `Proposée à ${o.otherPoolerName}` : `Reçue de ${o.otherPoolerName}`}
                 </p>
                 <span className="text-xs text-gray-500">{STATUS_LABEL[o.status] ?? o.status}</span>
               </div>
-              <div className="grid grid-cols-2 gap-3 mt-2 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 text-sm">
                 {[
                   { label: 'Tu donnes', list: o.give },
                   { label: 'Tu reçois', list: o.receive },

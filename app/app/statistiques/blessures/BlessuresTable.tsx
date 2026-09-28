@@ -85,7 +85,34 @@ export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      {/* Portrait : une fiche par joueur plutôt qu'un tableau de 7 colonnes au statut en texte
+          long (David, 2026-09-28) ; le tableau reprend à partir de sm (paysage/desktop). */}
+      <ul className="sm:hidden bg-white rounded-lg shadow divide-y divide-gray-100">
+        {filtered.map(r => (
+          <li key={r.playerId} className="px-3 py-2.5 text-sm">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="font-medium text-gray-800 min-w-0">
+                <PlayerLink nhlId={r.nhlId}>{r.lastName}, {r.firstName}</PlayerLink>
+                <span className="ml-1 text-[11px] font-normal text-gray-400">{[r.teamCode, r.position].filter(Boolean).join(' · ')}</span>
+              </span>
+              {r.eligible && <span className="shrink-0 text-[10px] font-bold bg-emerald-100 text-emerald-700 rounded px-1.5 py-0.5">LTIR</span>}
+            </div>
+            <p className="text-red-600 text-xs mt-0.5">{r.injuryType}</p>
+            <p className="text-gray-600 text-xs mt-0.5">
+              {r.status}
+              {r.datesDisagree && <span className="ml-1 text-[10px] font-bold text-amber-700">⚠ ESPN : {fmtDate(r.espnEstReturnDate)}</span>}
+            </p>
+            <p className="mt-1 text-xs">
+              {r.owner
+                ? <><span className={`rounded px-1.5 py-0.5 font-medium ${OWNER_CLS[r.owner.playerType]}`}>{OWNER_LABEL[r.owner.playerType]}</span> <span className="text-gray-500">{r.owner.poolerName}</span></>
+                : <span className="text-green-600 font-medium">● Disponible</span>}
+            </p>
+          </li>
+        ))}
+        {filtered.length === 0 && <li className="text-center py-10 text-gray-400 text-sm">Aucun joueur ne correspond aux filtres.</li>}
+      </ul>
+
+      <div className="hidden sm:block bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto max-h-[75vh]">
           <table className="w-full text-sm">
             <thead>
