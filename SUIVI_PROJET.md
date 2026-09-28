@@ -21,6 +21,21 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-28
 
+**[Fix] — recoupement ESPN rétabli en prod via l'API JSON** (`python_script/scrape_injuries.py`) :
+- `scrape_espn()` essaie d'abord l'API JSON ESPN (`/apis/site/v2/sports/hockey/nhl/injuries`),
+  la page `espn.com/nhl/injuries` (`scrape_espn_page()`, ex-`scrape_espn()`) en dernier repli.
+  Même format de sortie : statut = `status` (`Out`/`Day-To-Day`/`Injured Reserve`, identique à
+  la page → `isOnNhlIr()` inchangé), date = `details.returnDate`, note = `longComment`.
+- Piège : même API sur deux hôtes, `site.api.espn.com` répond **403 (Akamai) depuis GitHub
+  Actions** (OK en local), `site.web.api.espn.com` passe. Trouvé avec une branche jetable
+  `probe-espn` (sonde de 8 URL depuis un runner, supprimée ensuite). La page web renvoie 202
+  vide depuis GitHub — d'où l'échec d'origine. Hôte `site.web` en premier, `site.api` en second.
+- `parse_est_return()` accepte maintenant une date ISO (`2026-10-02`, année explicite) en plus
+  du motif « Oct 2 ».
+- Validé : `injuries.yml` lancé manuellement sur `staging` → « [ESPN] 70/76 recoupés » ; prod :
+  70/87 lignes avec `espn_est_return_date` (0 avant). Le cron quotidien tourne sur `main` :
+  fusion requise pour que ça tienne.
+
 **[Diagnostic] — recoupement ESPN inopérant en prod** (aucun changement de code) — question de
 David sur la « colonne ESPN » (il n'y en a pas : la date ESPN n'apparaît qu'en « ⚠ ESPN : date »
 dans la colonne Statut, si écart ≥ 5 j avec CBS). Vérifié en base : prod 0/87 blessés avec date
