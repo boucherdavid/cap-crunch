@@ -43,7 +43,7 @@ projections (colonne Moyenne), salaires PuckPedia.
 | Sidebar de navigation + onglet « Prochains matchs » | ✅ | ✅ validé (mobile inclus) | — |
 | Transactions entre poolers (échanges + approbation) | ✅ | ✅ | Test réel à deux poolers |
 | Ballotage (réclamer / refuser / compléter) | ✅ | ✅ | Test réel à plusieurs poolers en saison |
-| Import salaires PuckPedia (`import.yml`) | ✅ | déclenché | Vérifier que le workflow GitHub a réussi |
+| Import salaires PuckPedia (`import.yml`) | ✅ | ✅ réussi (2026-09-25) | — |
 
 ## 4. Tests encore à faire (non bloquants mais à ne pas oublier)
 
@@ -80,8 +80,8 @@ transactions, 23 changements de statut, 3 ballotages, 1 échange, 3 surveillance
   automatique des doublons d'alias au début de `import_supabase.py`. Homonymes réels gardés
   distincts (Matt Murray SEA / Matthew Murray NSH).
 - ✅ Validé en staging (`run_pipeline_staging.ps1 --no-scrape`) : 5 fusions, 0 fiche créée.
-- Prod : se corrigera au premier pipeline prod après fusion sur `main` (simulation : 7
-  fusions). Projections déjà corrigées par David (`fix_projections_doublons.py`, 2026-09-26).
+- Prod : code sur `main` depuis le 2026-09-28 — le prochain `import.yml` (hebdo du lundi,
+  ~11h45 UTC en pratique) fera les 7 fusions prévues. Vérifier son log (`[DEDUP-ALIAS]`). Projections déjà corrigées par David (`fix_projections_doublons.py`, 2026-09-26).
 
 ## 5. Décisions en attente de David
 
