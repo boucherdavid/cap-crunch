@@ -39,11 +39,12 @@ projections (colonne Moyenne), salaires PuckPedia.
 | « Mes listes » (agents libres + recrues 2026, privées) | ✅ validé | ✅ déployé | — |
 | Scénarios de simulation privés (admin compris) | ✅ migré | ✅ migré | — |
 | `/poolers/[id]` : sélecteur de pooler visible + onglet conservé | ✅ validé | ✅ déployé | — |
+| Chantier mobile (paysage débloqué, 10 pages adaptées) + largeur desktop | ✅ validé | ✅ déployé 2026-09-28 | Réinstaller l'app PWA si le paysage reste bloqué |
 | Sélecteur de saison sur `/statistiques/projections` | ✅ validé | ✅ déployé | En prod, choisir 2026-27 (saison active prod encore 2025-26) |
 | Sidebar de navigation + onglet « Prochains matchs » | ✅ | ✅ validé (mobile inclus) | — |
 | Transactions entre poolers (échanges + approbation) | ✅ | ✅ | Test réel à deux poolers |
 | Ballotage (réclamer / refuser / compléter) | ✅ | ✅ | Test réel à plusieurs poolers en saison |
-| Import salaires PuckPedia (`import.yml`) | ✅ | déclenché | Vérifier que le workflow GitHub a réussi |
+| Import salaires PuckPedia (`import.yml`) | ✅ | ✅ réussi (2026-09-25) | — |
 
 ## 4. Tests encore à faire (non bloquants mais à ne pas oublier)
 
@@ -80,8 +81,8 @@ transactions, 23 changements de statut, 3 ballotages, 1 échange, 3 surveillance
   automatique des doublons d'alias au début de `import_supabase.py`. Homonymes réels gardés
   distincts (Matt Murray SEA / Matthew Murray NSH).
 - ✅ Validé en staging (`run_pipeline_staging.ps1 --no-scrape`) : 5 fusions, 0 fiche créée.
-- Prod : se corrigera au premier pipeline prod après fusion sur `main` (simulation : 7
-  fusions). Projections déjà corrigées par David (`fix_projections_doublons.py`, 2026-09-26).
+- Prod : code sur `main` depuis le 2026-09-28 — le prochain `import.yml` (hebdo du lundi,
+  ~11h45 UTC en pratique) fera les 7 fusions prévues. Vérifier son log (`[DEDUP-ALIAS]`). Projections déjà corrigées par David (`fix_projections_doublons.py`, 2026-09-26).
 
 ## 5. Décisions en attente de David
 

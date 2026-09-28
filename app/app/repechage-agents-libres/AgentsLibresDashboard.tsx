@@ -175,7 +175,7 @@ export default function AgentsLibresDashboard({
   const [adminOrderDirty, setAdminOrderDirty] = useState(false)
 
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4">
+    <div className="mx-auto py-8 px-4">
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Signatures des agents libres</h1>

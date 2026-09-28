@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { buildStandings } from '@/lib/standings'
 
-export const metadata = { title: 'Équipes' }
+export const metadata = { title: 'Tous les alignements' }
 export const dynamic = 'force-dynamic'
 
 const RANK_COLOR = ['text-yellow-500', 'text-gray-400', 'text-amber-600']
@@ -61,7 +61,7 @@ export default async function PoolersPage() {
   if (!season) {
     return (
       <div className="max-w-5xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Équipes</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-4">Tous les alignements</h1>
         <p className="text-gray-500">Aucune saison active.</p>
       </div>
     )
@@ -149,7 +149,7 @@ export default async function PoolersPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-800 mb-1">Équipes</h1>
+      <h1 className="text-2xl font-bold text-gray-800 mb-1">Tous les alignements</h1>
       <p className="text-sm text-gray-500 mb-6">
         Saison {season.season} &middot; Cap du pool : {formatCap(season.pool_cap)}
       </p>
@@ -166,7 +166,7 @@ export default async function PoolersPage() {
             <Link
               key={team.poolerId}
               href={`/poolers/${team.poolerId}`}
-              className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-5 flex flex-col gap-3 group"
+              className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-4 sm:p-5 flex flex-col gap-3 group"
             >
               {/* En-tête */}
               <div className="flex items-center gap-2">
@@ -208,7 +208,7 @@ export default async function PoolersPage() {
               </div>
 
               {/* Compteurs secondaires */}
-              <div className="flex gap-3 text-xs text-gray-500">
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
                 <span><span className="font-medium text-gray-700">{team.reservistes}</span> réservistes</span>
                 {team.banque > 0 && <span><span className="font-medium text-gray-700">{team.banque}</span> recrues</span>}
                 {team.ltir > 0 && <span className="text-orange-500"><span className="font-medium">{team.ltir}</span> LTIR</span>}

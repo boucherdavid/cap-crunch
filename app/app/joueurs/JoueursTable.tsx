@@ -252,9 +252,9 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b">
-              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Joueur</th>
-              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">{'\u00c9quipe'}</th>
-              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Pos</th>
+              <th className="sticky top-0 max-sm:left-0 z-20 bg-gray-50 text-left px-2 sm:px-4 py-3 font-medium text-gray-600">Joueur</th>
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">{'\u00c9quipe'}</th>
+              <th className="sticky top-0 z-10 bg-gray-50 text-left px-2 sm:px-4 py-3 font-medium text-gray-600">Pos</th>
               <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">{'\u00c2ge'}</th>
               <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">{'Exp\u00e9rience'}</th>
               {SEASONS.map((season) => (
@@ -314,7 +314,9 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
                     )
                   })()}
                   <tr className="border-b hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-gray-800">
+                    {/* Nom figé à gauche en portrait ; la colonne Équipe y est masquée (déjà dans le
+                        bandeau d'équipe au-dessus) — David, 2026-09-28. */}
+                    <td className="px-2 sm:px-4 py-3 font-medium text-gray-800 max-sm:sticky max-sm:left-0 max-sm:z-10 bg-white">
                       <span className="inline-flex items-center gap-2">
                         <span
                           title={player.is_available ? 'Disponible' : 'Dans un pool'}
@@ -325,10 +327,10 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
                         </PlayerLink>
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 hidden sm:table-cell">
                       <TeamBadge code={player.teams?.code} />
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{player.position ?? DASH}</td>
+                    <td className="px-2 sm:px-4 py-3 text-gray-600">{player.position ?? DASH}</td>
                     <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{player.age ?? DASH}</td>
                     <td className="px-4 py-3 hidden md:table-cell">
                       {player.status === 'ELC'
@@ -339,7 +341,7 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
                     {SEASONS.map((season) => {
                       const contract = getContract(season)
                       return (
-                        <td key={season} className={`px-4 py-3 text-right${season !== currentSeason ? ' hidden lg:table-cell' : ''}`}>
+                        <td key={season} className={`px-2 sm:px-4 py-3 text-right${season !== currentSeason ? ' hidden lg:table-cell' : ''}`}>
                           {contract ? (
                             <span>
                               {contract.contract_status && contract.contract_status !== player.status && (

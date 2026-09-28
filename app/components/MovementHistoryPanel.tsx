@@ -47,7 +47,7 @@ export default function MovementHistoryPanel({
   }, [poolerId, mode, refreshKey, saisonId, excludePreseason])
 
   return (
-    <div className="w-80 shrink-0 sticky top-4 self-start bg-white rounded-lg shadow flex flex-col max-h-[calc(100vh-2rem)]">
+    <div className="w-full lg:w-80 shrink-0 lg:sticky lg:top-4 self-start bg-white rounded-lg shadow flex flex-col max-h-[60vh] lg:max-h-[calc(100vh-2rem)]">
       <div className="p-4 border-b space-y-2">
         <h2 className="font-semibold text-gray-700 text-sm">Historique des mouvements</h2>
         <div className="flex border-b -mb-2">

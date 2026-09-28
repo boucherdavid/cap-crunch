@@ -87,7 +87,7 @@ export default function BallotageTab({ saisonId }: { saisonId: number }) {
         {claims.length === 0 && <p className="text-sm text-gray-400">Aucun joueur au ballotage en ce moment.</p>}
         <div className="space-y-2">
           {claims.map(c => (
-            <div key={c.id} className="flex items-center justify-between gap-3 border border-gray-200 rounded-lg p-3">
+            <div key={c.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-gray-200 rounded-lg p-3">
               <div className="min-w-0">
                 <div className="font-medium text-gray-800">
                   {c.playerName}
@@ -99,7 +99,7 @@ export default function BallotageTab({ saisonId }: { saisonId: number }) {
                   Libéré par {c.releasedByName} — {formatExpiry(c.expiresAt)}
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
                 <Link
                   href={`/simulation?addPlayer=${c.playerId}`}
                   className="border border-gray-300 text-gray-600 px-3 py-1.5 rounded text-sm font-medium hover:bg-gray-50"

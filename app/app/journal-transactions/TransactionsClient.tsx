@@ -111,7 +111,7 @@ function TradeCard({ items }: { items: any[] }) {
 
   return (
     <div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {poolerNames.map(name => (
           <div key={name}>
             <p className="text-xs font-semibold text-gray-500 uppercase mb-1">{name} donne</p>
@@ -276,7 +276,21 @@ export default function TransactionsClient({
       )}
 
       {tableRows.length > 0 && (
-        <div className="bg-white rounded-lg shadow overflow-x-auto mb-4">
+        <>
+        {/* Portrait : une fiche par mouvement (date courte · pooler, joueur, détail) plutôt qu'un
+            tableau de 4 colonnes à date longue (David, 2026-09-28). */}
+        <ul className="sm:hidden bg-white rounded-lg shadow divide-y divide-gray-100 mb-4">
+          {tableRows.map(({ tx, item, pooler, player, detail }) => (
+            <li key={item.id} className={`px-3 py-2 text-sm ${TAB_COLORS[tx._tab as TabKey]}`}>
+              <p className="text-[11px] text-gray-500">
+                {new Date(tx.created_at).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric' })} · <span className="font-medium text-gray-700">{pooler}</span>
+              </p>
+              <p className="text-gray-800 font-medium">{player}</p>
+              <p className="text-xs text-gray-600">{detail}</p>
+            </li>
+          ))}
+        </ul>
+        <div className="hidden sm:block bg-white rounded-lg shadow overflow-x-auto mb-4">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-gray-400 uppercase border-b border-gray-100">
@@ -298,12 +312,13 @@ export default function TransactionsClient({
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {tradeTxs.length > 0 && (
         <div className="space-y-4">
           {tradeTxs.map((tx: any) => (
-            <div key={tx.id} className="bg-white rounded-lg shadow p-5">
+            <div key={tx.id} className="bg-white rounded-lg shadow p-4 sm:p-5">
               <div className="flex items-start justify-between mb-3">
                 <div>
                   {tx.notes && <p className="font-medium text-gray-800">{tx.notes}</p>}

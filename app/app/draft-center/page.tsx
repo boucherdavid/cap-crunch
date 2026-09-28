@@ -38,7 +38,7 @@ export default async function DraftCenterPage({
   }).sort((a, b) => (a.avgRank ?? 9999) - (b.avgRank ?? 9999))
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
+    <div className="mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-gray-800">{'Classement des prospects'} {draftYear}</h1>
         {years.length > 1 && <DraftYearSelect years={years} selectedYear={draftYear} />}

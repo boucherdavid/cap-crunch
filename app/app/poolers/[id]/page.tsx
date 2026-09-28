@@ -181,15 +181,17 @@ function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft,
 
     return (
       <tr key={row.id} className="border-b hover:bg-gray-50">
-        <td className="px-3 py-2 font-medium text-gray-800">
+        {/* Nom figé à gauche, équipe sous le nom sur téléphone (David, 2026-09-28). */}
+        <td className="px-2 sm:px-3 py-2 font-medium text-gray-800 sticky left-0 z-10 bg-white">
           {player?.is_rookie && <span className="text-yellow-500 mr-1">{STAR}</span>}
           <PlayerLink nhlId={player?.nhl_id}>
             {player?.last_name}, {player?.first_name}
           </PlayerLink>
+          <span className="sm:hidden ml-1 text-[11px] font-normal text-gray-400">{player?.teams?.code}</span>
           {injury && <InjuryBadge injury={injury} />}
         </td>
-        <td className="px-3 py-2 w-14"><TeamBadge code={player?.teams?.code} size="sm" /></td>
-        <td className="px-3 py-2 w-10 text-gray-500">{player?.position ?? DASH}</td>
+        <td className="px-3 py-2 w-14 hidden sm:table-cell"><TeamBadge code={player?.teams?.code} size="sm" /></td>
+        <td className="px-2 sm:px-3 py-2 w-10 text-gray-500">{player?.position ?? DASH}</td>
         {showDraft
           ? <>
               <td className="px-3 py-2 text-xs">
@@ -202,7 +204,7 @@ function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft,
                     : <span className="text-gray-400">{DASH}</span>
                 }
               </td>
-              <td className="px-3 py-2 text-gray-400 text-xs">{draftLabel(player) ?? DASH}</td>
+              <td className="px-3 py-2 text-gray-400 text-xs hidden sm:table-cell">{draftLabel(player) ?? DASH}</td>
               <td className="px-3 py-2 text-xs">
                 {(() => {
                   const p = protectionRestante(row, saisonFin ?? 0, season)
@@ -216,7 +218,7 @@ function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft,
                   return cap > 0 ? formatCap(cap) : DASH
                 })()}
               </td>
-              <td className="px-3 py-2 text-right w-28 tabular-nums text-gray-400 text-xs">
+              <td className="px-3 py-2 text-right w-28 tabular-nums text-gray-400 text-xs hidden sm:table-cell">
                 {(() => {
                   const cap = nextSeason ? getNextCap(player, nextSeason) : null
                   return cap && cap > 0 ? formatCap(cap) : DASH
@@ -224,7 +226,7 @@ function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft,
               </td>
             </>
           : <>
-              <td className="px-3 py-2 text-right text-gray-700 w-28 tabular-nums">
+              <td className="px-2 sm:px-3 py-2 text-right text-gray-700 w-28 tabular-nums">
                 {formatCap(capNumber)}
                 {isEstimated && (
                   <span
@@ -235,11 +237,11 @@ function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft,
                   </span>
                 )}
               </td>
-              <td className="px-3 py-2 text-right text-gray-400 w-28 tabular-nums">{nextCap !== null ? formatCap(nextCap) : DASH}</td>
-              <td className="px-3 py-2 text-center w-8">
+              <td className="px-3 py-2 text-right text-gray-400 w-28 tabular-nums hidden sm:table-cell">{nextCap !== null ? formatCap(nextCap) : DASH}</td>
+              <td className="px-3 py-2 text-center w-8 hidden sm:table-cell">
                 <span className={TREND[trend].cls}>{TREND[trend].symbol}</span>
               </td>
-              <td className="px-3 py-2 text-right w-24">
+              <td className="px-2 sm:px-3 py-2 text-right w-24">
                 {years > 0
                   ? <span className="inline-flex items-center gap-1 justify-end">
                       <span className="tabular-nums text-gray-700">{years}&nbsp;an{years > 1 ? 's' : ''}</span>
@@ -261,22 +263,22 @@ function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft,
   const thead = (
     <thead>
       <tr className="bg-gray-50 border-b">
-        <th className="text-left px-3 py-2 font-medium text-gray-600">Joueur</th>
-        <th className="text-left px-3 py-2 font-medium text-gray-600 w-14">Équipe</th>
-        <th className="text-left px-3 py-2 font-medium text-gray-600 w-10">Pos</th>
+        <th className="text-left px-2 sm:px-3 py-2 font-medium text-gray-600 sticky left-0 z-10 bg-gray-50">Joueur</th>
+        <th className="text-left px-3 py-2 font-medium text-gray-600 w-14 hidden sm:table-cell">Équipe</th>
+        <th className="text-left px-2 sm:px-3 py-2 font-medium text-gray-600 w-10">Pos</th>
         {showDraft
           ? <>
               <th className="text-left px-3 py-2 font-medium text-gray-600">Type</th>
-              <th className="text-left px-3 py-2 font-medium text-gray-600">Rep. LNH</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600 hidden sm:table-cell">Rep. LNH</th>
               <th className="text-left px-3 py-2 font-medium text-gray-600">Protection</th>
               <th className="text-right px-3 py-2 font-medium text-gray-400 w-28">Cap {season}</th>
-              <th className="text-right px-3 py-2 font-medium text-gray-400 w-28">Cap {nextSeason}</th>
+              <th className="text-right px-3 py-2 font-medium text-gray-400 w-28 hidden sm:table-cell">Cap {nextSeason}</th>
             </>
           : <>
-              <th className="text-right px-3 py-2 font-medium text-gray-600 w-28">Cap {season}</th>
-              <th className="text-right px-3 py-2 font-medium text-gray-400 w-28">Cap {nextSeason}</th>
-              <th className="text-center px-3 py-2 font-medium text-gray-400 w-8">↕</th>
-              <th className="text-right px-3 py-2 font-medium text-gray-600 w-24">Contrat</th>
+              <th className="text-right px-2 sm:px-3 py-2 font-medium text-gray-600 w-28">Cap {season}</th>
+              <th className="text-right px-3 py-2 font-medium text-gray-400 w-28 hidden sm:table-cell">Cap {nextSeason}</th>
+              <th className="text-center px-3 py-2 font-medium text-gray-400 w-8 hidden sm:table-cell">↕</th>
+              <th className="text-right px-2 sm:px-3 py-2 font-medium text-gray-600 w-24">Contrat</th>
             </>
         }
       </tr>

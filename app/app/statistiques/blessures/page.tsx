@@ -98,7 +98,7 @@ export default async function BlessuresPage() {
     .filter((r: InjuryRow | null): r is InjuryRow => r !== null)
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       <BlessuresTable rows={rows} />
     </div>
   )

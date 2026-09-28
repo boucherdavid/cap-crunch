@@ -27,6 +27,71 @@ sélecteur de saison des projections. Part aussi en prod : correctif pipeline (a
 prénoms + fusion des doublons, appliqué au prochain `import.yml`), transition de saison
 bloquée si la cible est remplie, rechargement du repêchage des recrues à 60 s.
 
+**[Style] — plus de largeur en desktop, mode paysage débloqué sur mobile** (`app/app/layout.tsx`,
+`app/app/manifest.ts`, pages `repechage-agents-libres`, `repechage-recrues`, `draft-center`,
+`statistiques` (+ ahl, projections, blessures), `simulation`, `gestion-effectifs`) — retour de
+David et des poolers (colonnes tassées en desktop, rendu mobile décevant) :
+- `<main>` 1280 → 1800 px ; pages denses sans plafond propre (voir CLAUDE.md section 8) ;
+  Simulation 4xl → 7xl, blessures 5xl → 7xl, Gestion d'effectifs pooler 3xl → 6xl.
+- Manifeste PWA : `orientation: 'portrait'` → `'any'` — l'app installée **interdisait** le mode
+  paysage. Nécessite probablement de réinstaller l'app (ou attendre la mise à jour du manifeste
+  par le téléphone) pour prendre effet.
+- Vérifié : `tsc --noEmit` et `next build`. Pas testé dans le navigateur.
+
+**[Chore] — fusion `staging` → `main` (chantier mobile)** : validé par David sur téléphone —
+page d'un pooler, classement, statistiques, contrats LNH, Gestion d'effectifs, Blessures, Mes
+listes, Projections, Journal, Tous les alignements ; plus largeur desktop et paysage PWA.
+
+**[Fix] — mobile : Gestion d'effectifs écrasée en vue admin** (`app/components/MovementHistoryPanel.tsx`,
+`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `app/app/admin/transactions/TransactionBuilder.tsx`) —
+capture de David (portrait et paysage) : la colonne « Historique des mouvements » (320 px,
+admin seulement) laissait quelques pixels au formulaire. Elle passe maintenant sous le
+formulaire sous `lg` (hauteur max 60vh), à côté à partir de `lg`. Même mise en page dans
+`/admin/transactions`. Les 5 autres pages du lot ont été validées par David.
+
+**[Style] — mobile : Gestion d'effectifs, Blessures, Mes listes, Projections, Journal, Tous les alignements**
+(ordre de priorité de David) :
+- Gestion d'effectifs : onglets à défilement horizontal ; Ballotage : boutons sous le joueur en
+  portrait ; Échanges : « Tu donnes / Tu reçois » empilés en portrait ; barre de soumission et
+  panier qui passent à la ligne. (La colonne d'historique de 320 px n'est affichée qu'à
+  l'admin — la vue pooler était déjà sur une colonne.)
+- Blessures : **fiches** en portrait (nom, équipe · pos, blessure, statut, LTIR, propriétaire)
+  au lieu du tableau de 7 colonnes ; tableau inchangé à partir de `sm`.
+- Mes listes : la note passe sur sa propre ligne en portrait.
+- Projections : portrait = nom figé (pastille, équipe · pos dessous), Moyenne, Tendance,
+  Progression ; les 4 sources, #, Équipe, Pos réapparaissent en paysage.
+- Journal des transactions : fiches en portrait (date courte · pooler, joueur, détail) ; échanges
+  « X donne » empilés en portrait.
+- Tous les alignements : déjà en fiches ; marges réduites, titre « Équipes » → « Tous les
+  alignements » (aligné sur le menu).
+- Vérifié : `tsc --noEmit`, `next build` ; ESLint : erreurs préexistantes dans
+  `gestion-effectifs` (lignes non touchées). Pas testé sur téléphone.
+
+**[Style] — mobile : classement, statistiques LNH, contrats LNH** (`app/app/classement/ClassementTable.tsx`,
+`app/app/statistiques/StatsTable.tsx`, `app/app/joueurs/JoueursTable.tsx`) — David a validé la page
+d'un pooler sur son téléphone (tous les onglets), même approche étendue :
+- Classement (saison, hebdo, mensuel) : identique à l'Alignement (nom figé, équipe sous le nom,
+  V visible pour les gardiens).
+- Statistiques : en portrait, # masqué ; pastille de disponibilité (ou badges séries), équipe et
+  position intégrées à la cellule du nom, figée à gauche (`max-sm:sticky`, pour ne pas
+  chevaucher # et la pastille en desktop) ; marges réduites sur les colonnes numériques.
+- Contrats LNH : colonne Équipe masquée en portrait (déjà dans le bandeau d'équipe), nom figé.
+- Vérifié : `tsc --noEmit`, ESLint (1 avertissement `_mode` préexistant), `next build`. Pas
+  testé sur téléphone.
+
+**[Style] — mobile : page d'un pooler (1re page du chantier)** (`app/app/poolers/[id]/{page.tsx,PoolerPageTabs.tsx}`,
+`app/components/StreakLegend.tsx`) — pas de captures des poolers ; David a validé l'ordre
+proposé (alignement d'un pooler, classement, statistiques, contrats LNH), une page montrée
+avant les autres :
+- Barre d'onglets à défilement horizontal (5 onglets débordaient en portrait).
+- Alignement : nom figé à gauche (`sticky left-0`), équipe sous le nom en portrait, colonne V
+  visible en portrait (statistique principale des gardiens, était masquée), marges réduites.
+- Masse salariale / Recrues : nom figé à gauche, équipe sous le nom, Cap de l'an prochain,
+  tendance et Rep. LNH masqués en portrait (réaffichés dès `sm`, donc en paysage).
+- Légende des indicateurs repliable en portrait (`<details>`), inchangée à partir de `sm` —
+  vaut aussi pour `/statistiques` et `/classement-series`.
+- Vérifié : `tsc --noEmit`, ESLint, `next build`. Pas testé sur un vrai téléphone.
+
 ### 2026-09-27
 
 **[Feature] — `/poolers/[id]` : sélecteur de pooler plus visible, onglet conservé**
