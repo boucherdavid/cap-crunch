@@ -39,6 +39,7 @@ projections (colonne Moyenne), salaires PuckPedia.
 | « Mes listes » (agents libres + recrues 2026, privées) | ✅ validé | ✅ déployé | — |
 | Scénarios de simulation privés (admin compris) | ✅ migré | ✅ migré | — |
 | `/poolers/[id]` : sélecteur de pooler visible + onglet conservé | ✅ validé | ✅ déployé | — |
+| Chantier mobile (paysage débloqué, 10 pages adaptées) + largeur desktop | ✅ validé | ✅ déployé 2026-09-28 | Réinstaller l'app PWA si le paysage reste bloqué |
 | Sélecteur de saison sur `/statistiques/projections` | ✅ validé | ✅ déployé | En prod, choisir 2026-27 (saison active prod encore 2025-26) |
 | Sidebar de navigation + onglet « Prochains matchs » | ✅ | ✅ validé (mobile inclus) | — |
 | Transactions entre poolers (échanges + approbation) | ✅ | ✅ | Test réel à deux poolers |

@@ -38,6 +38,10 @@ David et des poolers (colonnes tassées en desktop, rendu mobile décevant) :
   par le téléphone) pour prendre effet.
 - Vérifié : `tsc --noEmit` et `next build`. Pas testé dans le navigateur.
 
+**[Chore] — fusion `staging` → `main` (chantier mobile)** : validé par David sur téléphone —
+page d'un pooler, classement, statistiques, contrats LNH, Gestion d'effectifs, Blessures, Mes
+listes, Projections, Journal, Tous les alignements ; plus largeur desktop et paysage PWA.
+
 **[Fix] — mobile : Gestion d'effectifs écrasée en vue admin** (`app/components/MovementHistoryPanel.tsx`,
 `app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `app/app/admin/transactions/TransactionBuilder.tsx`) —
 capture de David (portrait et paysage) : la colonne « Historique des mouvements » (320 px,
