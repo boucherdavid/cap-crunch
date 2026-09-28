@@ -21,6 +21,14 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-28
 
+**[UX] — `/repechage-agents-libres` : bandeau admin quand la saison active est déjà démarrée**
+(`AgentsLibresDashboard.tsx`) — David ne voyait plus le panneau admin (ordre, signatures,
+phase de libération) ni Räty/Svechkov activés. Pas un bug : la page ne lit que la saison
+**active** (encore 2025-26, déjà démarrée → panneau admin et libre-service masqués), et
+`syncExpiredRookieProtection` ne tourne que sur elle — les deux recrues expirées sont dans la
+banque de 2026-27. Il faut activer 2026-27 (hub, étape 2). Ajout d'un bandeau ambre, admin
+seulement, qui l'explique avec un lien vers le hub.
+
 **[Refactor] — hub Nouvelle saison : étape « Banque de recrues » retirée**
 (`admin/nouvelle-saison/page.tsx`, `DemarrerSaisonCard.tsx`) — proposition de David : les
 poolers gèrent leurs recrues de banque en même temps que leurs libérations, dans « Signatures

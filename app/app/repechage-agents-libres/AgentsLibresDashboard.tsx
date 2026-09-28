@@ -209,6 +209,18 @@ export default function AgentsLibresDashboard({
         </div>
       </div>
 
+      {/* Saison active déjà démarrée (David, 2026-09-28) : cette page ne lit que la saison active,
+          donc tant que la nouvelle saison n'est pas activée, panneau admin et libre-service sont
+          masqués sans explication — et les recrues à protection expirée de la nouvelle saison ne
+          sont pas encore activées (syncExpiredRookieProtection ne tourne que sur l'active). */}
+      {me.isAdmin && seasonStarted && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          La saison active ({season}) est déjà démarrée : le panneau admin et le libre-service sont masqués.
+          Pour préparer la saison suivante, active-la d&apos;abord dans{' '}
+          <a href="/admin/nouvelle-saison" className="font-medium underline hover:text-amber-900">Nouvelle saison</a> (étape 2).
+        </div>
+      )}
+
       {/* Widget "Signature en cours" (David, 2026-09-18) — extrait du Panneau admin pour rester
           visible en haut de page pendant un tour actif, sans avoir à déplier le panneau
           (déplacé en colonne de gauche ci-dessous) juste pour signer. */}
