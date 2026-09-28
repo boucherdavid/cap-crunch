@@ -36,7 +36,7 @@ projections (colonne Moyenne), salaires PuckPedia.
 | Marqueur désaccord CBS≠ESPN (`espn_est_return_date`) | ✅ (aucun cas actuel) | ✅ migré | Colonne prod vide jusqu'au prochain cron `injuries.yml` (dernier run avant la fusion) — vérifier qu'elle se remplit. Marqueur invisible tant qu'aucun écart ≥ 5 j |
 | Demandes de LTIR avec approbation admin | ✅ code | ✅ code | Tester de bout en bout (pooler soumet → admin approuve) avec un vrai compte pooler |
 | Projections (NHL.com / CBS / Pool Pro / Hockey Mag, colonne Moyenne) | ✅ | ✅ importé | Identiques staging/prod (406-407 / 966 / 400 / 422). ⚠ Page prod vide tant que 2025-26 est la saison active en prod : sélecteur de saison à fusionner sur `main`, ou activer 2026-27 |
-| « Mes listes » (agents libres + recrues 2026, privées) | ✅ validé (Simuler, Déjà pris) | migré, code pas encore sur `main` | Confirmer Gestion d'effectifs (panneau replié) |
+| « Mes listes » (agents libres + recrues 2026, privées) | ✅ validé | migré, code pas encore sur `main` | Fusion sur `main` |
 | Scénarios de simulation privés (admin compris) | ✅ migré | ✅ migré | — |
 | `/poolers/[id]` : sélecteur de pooler visible + onglet conservé | À valider | — | Changer de pooler depuis Masse salariale doit rester sur Masse salariale |
 | Sélecteur de saison sur `/statistiques/projections` | À valider | — | Saison active par défaut ; une seule option tant que seule 2026-27 a des projections |
