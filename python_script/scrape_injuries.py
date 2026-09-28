@@ -46,9 +46,13 @@ SUPABASE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
 CBS_URL = 'https://www.cbssports.com/nhl/injuries/'
 ESPN_URL = 'https://www.espn.com/nhl/injuries'
 # API JSON publique d'ESPN (David, 2026-09-28) — la page ci-dessus ne renvoie pas son JSON
-# embarqué aux serveurs de GitHub Actions ("Structure ESPN introuvable"), l'API oui. Page
-# gardée en repli.
-ESPN_API_URL = 'https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/injuries'
+# embarqué aux serveurs de GitHub Actions ("Structure ESPN introuvable"). Même API sur deux
+# hôtes : `site.api` répond 403 depuis GitHub Actions (Akamai), `site.web.api` passe (sondé
+# depuis un runner le 2026-09-28). Essayés dans l'ordre, page web gardée en dernier repli.
+ESPN_API_URLS = [
+    'https://site.web.api.espn.com/apis/site/v2/sports/hockey/nhl/injuries',
+    'https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/injuries',
+]
 
 # Garde-fous (David, 2026-09-25) — voir main().
 MIN_EXISTING_FOR_RATIO_CHECK = 10
@@ -183,9 +187,9 @@ def _find_injuries_blob(obj):
     return None
 
 
-def scrape_espn_api():
+def scrape_espn_api(url):
     """Même format que scrape_espn_page(), depuis l'API JSON d'ESPN."""
-    res = requests.get(ESPN_API_URL, headers=HEADERS, timeout=30)
+    res = requests.get(url, headers=HEADERS, timeout=30)
     res.raise_for_status()
     teams = res.json().get('injuries') or []
     records = []
@@ -214,14 +218,16 @@ def scrape_espn_api():
 def scrape_espn():
     """Retourne une liste de dicts {name, team, position, status_desc, est_return, note} —
     API JSON d'abord, page web en repli si l'API échoue ou ne renvoie rien."""
-    try:
-        records = scrape_espn_api()
-        if records:
-            print("[INFO] ESPN : données obtenues via l'API JSON.")
-            return records
-        print('[ATTENTION] API ESPN vide — repli sur la page web.')
-    except Exception as e:
-        print(f"[ATTENTION] Échec de l'API ESPN ({e}) — repli sur la page web.")
+    for url in ESPN_API_URLS:
+        try:
+            records = scrape_espn_api(url)
+            if records:
+                print(f"[INFO] ESPN : données obtenues via l'API JSON ({url.split('/')[2]}).")
+                return records
+            print(f'[ATTENTION] API ESPN vide ({url.split("/")[2]}).')
+        except Exception as e:
+            print(f"[ATTENTION] Échec de l'API ESPN ({e}).")
+    print('[ATTENTION] Aucune API ESPN utilisable — repli sur la page web.')
     return scrape_espn_page()
 
 
