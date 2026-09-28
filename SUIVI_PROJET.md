@@ -38,6 +38,13 @@ David et des poolers (colonnes tassées en desktop, rendu mobile décevant) :
   par le téléphone) pour prendre effet.
 - Vérifié : `tsc --noEmit` et `next build`. Pas testé dans le navigateur.
 
+**[Fix] — mobile : Gestion d'effectifs écrasée en vue admin** (`app/components/MovementHistoryPanel.tsx`,
+`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `app/app/admin/transactions/TransactionBuilder.tsx`) —
+capture de David (portrait et paysage) : la colonne « Historique des mouvements » (320 px,
+admin seulement) laissait quelques pixels au formulaire. Elle passe maintenant sous le
+formulaire sous `lg` (hauteur max 60vh), à côté à partir de `lg`. Même mise en page dans
+`/admin/transactions`. Les 5 autres pages du lot ont été validées par David.
+
 **[Style] — mobile : Gestion d'effectifs, Blessures, Mes listes, Projections, Journal, Tous les alignements**
 (ordre de priorité de David) :
 - Gestion d'effectifs : onglets à défilement horizontal ; Ballotage : boutons sous le joueur en

@@ -1074,7 +1074,9 @@ export default function GestionEffectifsManager({
   return (
     <div>
       {tabs}
-      <div className="flex gap-6 items-start">
+      {/* Historique à côté du formulaire en écran large, dessous sinon — la colonne de 320 px
+          écrasait le formulaire sur téléphone (David, 2026-09-28, vue admin). */}
+      <div className="flex flex-col lg:flex-row gap-6 lg:items-start">
         {mainContent}
         <MovementHistoryPanel poolerId={poolerId || null} poolerName={poolerName} refreshKey={historyRefresh} saisonId={saisonId} excludePreseason />
       </div>
