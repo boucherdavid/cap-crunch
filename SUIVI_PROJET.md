@@ -21,6 +21,18 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-28
 
+**[Fix] — repêchage admin : écran qui saute / se redessine à chaque sélection**
+(`admin/repechage/actions.ts`, `RookieSelect.tsx`) — signalé par David sur laptop, sur
+`/admin/repechage` (sauts, clignotement, liste déroulante déplacée). Cause probable :
+`saveDraftProgressAction` (sauvegarde immédiate de chaque sélection) appelait
+`revalidateDraftPages()` ; dans une Server Action, toute revalidation renvoie la page courante
+entièrement recalculée (recrues, picks, éditeur d'ordre) en pleine saisie. Retirée pour cette
+action seulement — `DraftBoard` garde les sélections en état local, et `/repechage-recrues` est
+`force-dynamic` (relue à chaque visite / rechargement auto). Soumission, annulation et ordre du
+repêchage gardent leur revalidation. Sélecteur élargi (`min-w-[22rem]`, libellé tronqué).
+Non reproduit en automatisé : mot de passe staging de `credentials/` périmé, et la génération
+d'une session par clé de service a été refusée par le mode auto — validation par David.
+
 **[Feature] — transition de saison : recrues encore protégées renvoyées en banque**
 (`admin/config/actions.ts`, `SeasonsManager.tsx`, `aide/AideTabs.tsx`) — demande de David :
 `transitionSeasonAction` copiait les actifs/réservistes encore protégés tels quels ; ils

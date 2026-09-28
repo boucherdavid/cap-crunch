@@ -124,7 +124,11 @@ export async function saveDraftProgressAction(
     if (error) return { error: error.message }
   }
 
-  revalidateDraftPages()
+  // Pas de revalidatePath ici (David, 2026-09-28) : dans une Server Action, toute revalidation
+  // renvoie la page admin courante entièrement recalculée — à chaque sélection, en pleine
+  // saisie, d'où des sauts d'écran et un tableau qui se redessine. DraftBoard garde déjà les
+  // sélections en état local, et /repechage-recrues est force-dynamic (relue à chaque visite
+  // et à chaque rechargement automatique) : rien à invalider.
   return {}
 }
 

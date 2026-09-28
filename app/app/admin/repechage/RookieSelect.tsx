@@ -81,7 +81,8 @@ export default function RookieSelect({
     : available
 
   return (
-    <div className="relative">
+    // Largeur minimale : le libellé complet (nom, position, équipe, rang LNH) était tronqué.
+    <div className="relative w-full min-w-[22rem]">
       <input
         ref={inputRef}
         type="text"
