@@ -38,6 +38,19 @@ David et des poolers (colonnes tassées en desktop, rendu mobile décevant) :
   par le téléphone) pour prendre effet.
 - Vérifié : `tsc --noEmit` et `next build`. Pas testé dans le navigateur.
 
+**[Style] — mobile : page d'un pooler (1re page du chantier)** (`app/app/poolers/[id]/{page.tsx,PoolerPageTabs.tsx}`,
+`app/components/StreakLegend.tsx`) — pas de captures des poolers ; David a validé l'ordre
+proposé (alignement d'un pooler, classement, statistiques, contrats LNH), une page montrée
+avant les autres :
+- Barre d'onglets à défilement horizontal (5 onglets débordaient en portrait).
+- Alignement : nom figé à gauche (`sticky left-0`), équipe sous le nom en portrait, colonne V
+  visible en portrait (statistique principale des gardiens, était masquée), marges réduites.
+- Masse salariale / Recrues : nom figé à gauche, équipe sous le nom, Cap de l'an prochain,
+  tendance et Rep. LNH masqués en portrait (réaffichés dès `sm`, donc en paysage).
+- Légende des indicateurs repliable en portrait (`<details>`), inchangée à partir de `sm` —
+  vaut aussi pour `/statistiques` et `/classement-series`.
+- Vérifié : `tsc --noEmit`, ESLint, `next build`. Pas testé sur un vrai téléphone.
+
 ### 2026-09-27
 
 **[Feature] — `/poolers/[id]` : sélecteur de pooler plus visible, onglet conservé**

@@ -13,9 +13,25 @@ const GOALIE_LEGEND = [
   { emoji: '🎯', label: 'GAA basse',  desc: 'GAA ≤ 2,50 sur les 5 derniers départs' },
 ]
 
+// Sur téléphone, la légende complète prenait tout l'écran avant le tableau — repliée derrière
+// un bouton (David, 2026-09-28) ; toujours dépliée à partir de sm (paysage/desktop).
 export default function StreakLegend() {
   return (
-    <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 space-y-3">
+    <>
+      <details className="sm:hidden rounded-lg border border-gray-100 bg-gray-50 px-4 py-2">
+        <summary className="text-xs font-semibold text-gray-500 cursor-pointer">Légende des indicateurs 🔥 ✅ 🧊</summary>
+        <div className="pt-2"><LegendContent /></div>
+      </details>
+      <div className="hidden sm:block rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
+        <LegendContent />
+      </div>
+    </>
+  )
+}
+
+function LegendContent() {
+  return (
+    <div className="space-y-3">
       <div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Indicateurs de séquence</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1">

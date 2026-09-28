@@ -181,12 +181,15 @@ function PlayerStatsRow({ p, streaks, onPeriodClick, injuriesByNhlId }: {
   const injury = p.nhlId ? injuriesByNhlId?.get(p.nhlId) : undefined
   return (
     <tr className={isActif ? 'hover:bg-gray-50' : 'hover:bg-gray-50 opacity-60'}>
-      <td className="px-4 py-2">
+      {/* Nom figé à gauche pendant le défilement horizontal, équipe sous le nom sur
+          téléphone (David, 2026-09-28 — rendu mobile jugé difficile à lire par les poolers). */}
+      <td className="px-2 sm:px-4 py-2 sticky left-0 z-10 bg-white">
         <PlayerLink nhlId={p.nhlId}>
           <span className={`font-medium ${isActif ? 'text-gray-800' : 'text-gray-500'}`}>
             {p.lastName}, {p.firstName}
           </span>
         </PlayerLink>
+        <span className="sm:hidden ml-1 text-[11px] text-gray-400">{p.teamAbbrev}</span>
         <StreakBadge info={p.nhlId ? streaks[p.nhlId] : undefined} />
         <GoalieBadge info={p.nhlId ? streaks[p.nhlId] : undefined} />
         {badge && <span className="ml-2 text-xs bg-gray-100 text-gray-400 rounded px-1">{badge}</span>}
@@ -206,7 +209,7 @@ function PlayerStatsRow({ p, streaks, onPeriodClick, injuriesByNhlId }: {
         <>
           <td className="px-2 py-2 text-center text-gray-500">{p.goals || '—'}</td>
           <td className="px-2 py-2 text-center text-gray-500">{p.assists || '—'}</td>
-          <td className="px-2 py-2 text-center text-gray-500 hidden sm:table-cell">{p.goalieWins}</td>
+          <td className="px-2 py-2 text-center text-gray-500">{p.goalieWins}</td>
           <td className="px-2 py-2 text-center text-gray-500 hidden sm:table-cell">{p.goalieOtl}</td>
           <td className="px-2 py-2 text-center text-gray-500 hidden sm:table-cell">{p.goalieShutouts || '—'}</td>
         </>
@@ -214,7 +217,7 @@ function PlayerStatsRow({ p, streaks, onPeriodClick, injuriesByNhlId }: {
         <>
           <td className="px-2 py-2 text-center text-gray-500">{p.goals}</td>
           <td className="px-2 py-2 text-center text-gray-500">{p.assists}</td>
-          <td className="px-2 py-2 text-center text-gray-400 hidden sm:table-cell">—</td>
+          <td className="px-2 py-2 text-center text-gray-400">—</td>
           <td className="px-2 py-2 text-center text-gray-400 hidden sm:table-cell">—</td>
           <td className="px-2 py-2 text-center text-gray-400 hidden sm:table-cell">—</td>
         </>
@@ -262,7 +265,7 @@ export default function PoolerPageTabs({
   const [periodPopup, setPeriodPopup] = useState<PlayerContrib | null>(null)
 
   const btnClass = (t: Tab) =>
-    `px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+    `px-3 sm:px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap shrink-0 ${
       tab === t
         ? 'border-blue-600 text-blue-600'
         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -287,7 +290,7 @@ export default function PoolerPageTabs({
           onClose={() => setPeriodPopup(null)}
         />
       )}
-      <div className="flex border-b border-gray-200 mb-6">
+      <div className="flex border-b border-gray-200 mb-6 overflow-x-auto">
         <button className={btnClass('alignement')} onClick={() => setTab('alignement')}>
           Alignement
         </button>
@@ -329,12 +332,12 @@ export default function PoolerPageTabs({
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-gray-400 text-xs uppercase tracking-wide">
                   <tr>
-                    <th className="px-4 py-2 text-left">Joueur</th>
+                    <th className="px-2 sm:px-4 py-2 text-left sticky left-0 z-10 bg-gray-50">Joueur</th>
                     <th className="px-2 py-2 hidden sm:table-cell">Éq.</th>
                     <th className="px-2 py-2">MJ</th>
                     <th className="px-2 py-2">B</th>
                     <th className="px-2 py-2">A</th>
-                    <th className="px-2 py-2 hidden sm:table-cell">V</th>
+                    <th className="px-2 py-2">V</th>
                     <th className="px-2 py-2 hidden sm:table-cell">DP</th>
                     <th className="px-2 py-2 hidden sm:table-cell">BL</th>
                     <th className="px-2 py-2 text-blue-500">PTS</th>
