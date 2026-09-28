@@ -15,6 +15,10 @@ jobs:
   backup:
     name: Régénère backup/pool_backup.html
     runs-on: ubuntu-latest
+    # Le jeton par défaut du dépôt est en lecture seule : sans cette permission, la génération
+    # réussit mais le `git push` final échoue en 403 (échec du 2026-09-27).
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout du dépôt

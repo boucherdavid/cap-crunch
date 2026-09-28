@@ -21,6 +21,18 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-28
 
+**[Fix] — backup hebdomadaire : push refusé (403)** (`.github/workflows/backup_tool.yml`) — repéré
+par David dans GitHub Actions (échec du 2026-09-27) : la génération réussit, mais le jeton par
+défaut du dépôt est en lecture seule (`default_workflow_permissions: read`) et le workflow ne
+demandait pas l'écriture → `git push` refusé. Ajout de `permissions: contents: write` au job
+(portée limitée à ce workflow, réglage du dépôt inchangé).
+
+**[Vérif] — correctif des doublons en prod** : l'`import.yml` du 2026-09-28 (12h41 UTC, code
+`508ebcf`) a fait 3 fusions `[DEDUP-ALIAS]` (Mitch Marner, Dmitry Kuzmin, Matthew Maggio) ; les
+4 autres orphelins avaient déjà été supprimés par `fix_projections_doublons.py`. Matt/Matthew
+Murray laissés distincts. « Mitch Marner » de PuckPedia jumelé à Mitchell (1439).
+
+
 **[Chore] — fusion `staging` → `main`** : validé par David en staging — « Mes listes »
 (création, filtres, Simuler, Déjà pris, 5 pages), sélecteur de pooler + onglet conservé,
 sélecteur de saison des projections. Part aussi en prod : correctif pipeline (alias de
