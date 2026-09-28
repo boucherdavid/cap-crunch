@@ -14,7 +14,9 @@ export default function manifest(): MetadataRoute.Manifest {
     display: 'standalone',
     background_color: '#f9fafb',
     theme_color: '#172437',
-    orientation: 'portrait',
+    // 'any' (David, 2026-09-28) : 'portrait' bloquait le mode paysage dans l'app installée —
+    // précieux sur téléphone pour les tableaux à plusieurs colonnes.
+    orientation: 'any',
     icons: [
       {
         src: `${iconDir}/icon-192x192.png`,

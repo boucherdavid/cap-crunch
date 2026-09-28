@@ -27,6 +27,17 @@ sélecteur de saison des projections. Part aussi en prod : correctif pipeline (a
 prénoms + fusion des doublons, appliqué au prochain `import.yml`), transition de saison
 bloquée si la cible est remplie, rechargement du repêchage des recrues à 60 s.
 
+**[Style] — plus de largeur en desktop, mode paysage débloqué sur mobile** (`app/app/layout.tsx`,
+`app/app/manifest.ts`, pages `repechage-agents-libres`, `repechage-recrues`, `draft-center`,
+`statistiques` (+ ahl, projections, blessures), `simulation`, `gestion-effectifs`) — retour de
+David et des poolers (colonnes tassées en desktop, rendu mobile décevant) :
+- `<main>` 1280 → 1800 px ; pages denses sans plafond propre (voir CLAUDE.md section 8) ;
+  Simulation 4xl → 7xl, blessures 5xl → 7xl, Gestion d'effectifs pooler 3xl → 6xl.
+- Manifeste PWA : `orientation: 'portrait'` → `'any'` — l'app installée **interdisait** le mode
+  paysage. Nécessite probablement de réinstaller l'app (ou attendre la mise à jour du manifeste
+  par le téléphone) pour prendre effet.
+- Vérifié : `tsc --noEmit` et `next build`. Pas testé dans le navigateur.
+
 ### 2026-09-27
 
 **[Feature] — `/poolers/[id]` : sélecteur de pooler plus visible, onglet conservé**

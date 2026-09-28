@@ -108,7 +108,7 @@ export default async function RepechageRecruesPage({
   const isDraftStarted = (usedPicksData?.length ?? 0) > 0 || hasPendingPick
 
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4">
+    <div className="mx-auto py-8 px-4">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Repêchage des recrues</h1>

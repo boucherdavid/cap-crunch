@@ -276,7 +276,7 @@ export default async function ProjectionsPage({
   })
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="mx-auto px-4 py-8">
       <ProjectionsTable players={players} season={poolSeason} seasonOptions={seasonOptions} />
     </div>
   )

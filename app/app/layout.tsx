@@ -86,7 +86,9 @@ export default async function RootLayout({
             où la nav devient un tiroir superposé plutôt qu'une colonne permanente. */}
         <div className="md:pl-64">
           <InstallBanner />
-          <main className="max-w-7xl mx-auto px-4 py-6">
+          {/* 1800 px (ex-1280, David 2026-09-28) : sur grand écran, le contenu était très tassé ;
+              chaque page garde sa propre largeur max si elle en a une (texte, formulaires). */}
+          <main className="max-w-[1800px] mx-auto px-4 lg:px-6 py-6">
             {children}
           </main>
         </div>

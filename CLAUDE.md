@@ -1280,6 +1280,14 @@ corrigée le 2026-09-20 :**
 
 Les pages **admin** sont desktop-only — pas de responsive requis.
 
+**Largeur desktop (David, 2026-09-28)** : `<main>` (`layout.tsx`) plafonne à 1800 px (ex-1280).
+Pages denses sans plafond propre (pleine largeur) : `/repechage-agents-libres`,
+`/repechage-recrues`, `/draft-center`, `/statistiques` (+ AHL, projections), `/gestion-effectifs`
+(admin). Pages de texte/formulaires gardent leur `max-w-*` pour la lisibilité.
+
+**PWA — orientation `any`** (`manifest.ts`, 2026-09-28) : `portrait` bloquait le mode paysage
+dans l'app installée — ne pas le remettre.
+
 Les pages de **consultation publique** doivent être utilisables sur mobile.
 Règle : quand on touche une page de consultation, on la rend responsive en même temps.
 
