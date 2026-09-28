@@ -55,7 +55,7 @@ export default async function NouvelleSaisonPage({
   // Avant l'étape 2 (Activer) : la saison en préparation est celle qui suit l'active (encore
   // l'ancienne saison, season_started=true). Après : elle EST l'active, mais pas encore
   // démarrée (season_started=false) — sans ce cas, activeIndex + 1 dérive vers la saison
-  // suivante dès qu'on active, et les étapes 3-6 pointent sur la mauvaise saison.
+  // suivante dès qu'on active, et les étapes 3-5 pointent sur la mauvaise saison.
   const defaultTarget =
     (activeSaison && !activeSaison.season_started ? activeSaison : null)
     ?? saisons[activeIndex + 1]
@@ -68,12 +68,10 @@ export default async function NouvelleSaisonPage({
 
   const [
     { count: rosterCount },
-    { count: recrueCount },
     { count: pickTotal },
     { count: pickUsed },
   ] = await Promise.all([
     supabase.from('pooler_rosters').select('id', { count: 'exact', head: true }).eq('pool_season_id', saison.id).eq('is_active', true),
-    supabase.from('pooler_rosters').select('id', { count: 'exact', head: true }).eq('pool_season_id', saison.id).eq('is_active', true).eq('player_type', 'recrue'),
     supabase.from('pool_draft_picks').select('id', { count: 'exact', head: true }).eq('pool_season_id', saison.id),
     supabase.from('pool_draft_picks').select('id', { count: 'exact', head: true }).eq('pool_season_id', saison.id).eq('is_used', true),
   ])
@@ -89,7 +87,7 @@ export default async function NouvelleSaisonPage({
     {
       n: 2,
       title: 'Activer la saison',
-      description: "Rend la saison consultable par tous les poolers (alignements, classement, calendrier, banque de recrues) pendant que tu termines la préparation. Personne ne peut modifier son alignement avant l'étape 7.",
+      description: "Rend la saison consultable par tous les poolers (alignements, classement, calendrier, banque de recrues) pendant que tu termines la préparation. Personne ne peut modifier son alignement avant l'étape 6.",
       href: () => `/admin/pool?tab=config`,
       status: saison.is_active ? 'Déjà active' : (activeSaison ? `Actuellement active : ${activeSaison.season}` : null),
     },
@@ -107,17 +105,15 @@ export default async function NouvelleSaisonPage({
       href: id => `/admin/repechage?saisonId=${id}`,
       status: pickTotal ? `${pickUsed ?? 0}/${pickTotal} sélections faites` : null,
     },
+    // Ex-étape 5 « Banque de recrues » (/admin/init?tab=recrues) retirée du hub (David,
+    // 2026-09-28) : les recrues repêchées entrent en banque à l'étape 4, la transition recopie
+    // la banque (et y renvoie les actifs/réservistes encore protégés), les protections expirées
+    // sont activées automatiquement au chargement de la pré-saison, et chaque pooler active ou
+    // libère lui-même ses recrues en libre-service. La page reste un filet de sécurité admin.
     {
       n: 5,
-      title: 'Banque de recrues',
-      description: "Assigner les recrues pas encore activées à la banque de chaque pooler.",
-      href: id => `/admin/init?tab=recrues&saisonId=${id}`,
-      status: `${recrueCount ?? 0} recrue(s) en banque`,
-    },
-    {
-      n: 6,
       title: 'Pré-saison',
-      description: 'Décisions ELC, libérations/ajustements, et repêchage guidé des agents libres — ordre du repêchage et phase de libération se gèrent depuis le panneau admin de cette page (visible seulement des admins).',
+      description: 'Chaque pooler active ou libère ses recrues de banque, libère les joueurs dont il ne veut plus, puis repêchage guidé des agents libres — ordre du repêchage et phase de libération se gèrent depuis le panneau admin de cette page (visible seulement des admins).',
       // Pointe vers le tableau de bord partagé plutôt que /admin/init?tab=presaison (David,
       // 2026-09-08) — le panneau admin rétractable y a été ajouté pour éviter de jongler entre
       // deux pages. Pas de &saisonId= ici : cette page ne gère que la saison régulière active,

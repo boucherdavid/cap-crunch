@@ -21,6 +21,15 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-28
 
+**[Refactor] — hub Nouvelle saison : étape « Banque de recrues » retirée**
+(`admin/nouvelle-saison/page.tsx`, `DemarrerSaisonCard.tsx`) — proposition de David : les
+poolers gèrent leurs recrues de banque en même temps que leurs libérations, dans « Signatures
+des agents libres ». Redondante : recrues repêchées déjà en banque (étape 4), banque recopiée
+par la transition, protections expirées activées automatiquement au chargement de la
+pré-saison (`syncExpiredRookieProtection`), activation/libération en libre-service. 7 → 6
+étapes (Pré-saison = 5, Démarrer = 6), description de Pré-saison ajustée.
+`/admin/init?tab=recrues` reste accessible (onglet de `/admin/init`) comme filet de sécurité.
+
 **[Fix] — repêchage admin : écran qui saute / se redessine à chaque sélection**
 (`admin/repechage/actions.ts`, `RookieSelect.tsx`) — signalé par David sur laptop, sur
 `/admin/repechage` (sauts, clignotement, liste déroulante déplacée). Cause probable :

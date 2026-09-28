@@ -577,13 +577,16 @@ existant, ex: tests en staging). Staging : vider d'abord avec
 `/admin/nouvelle-saison` : route à part (lien dans le dropdown Admin), hub orchestrateur qui
 séquence dans l'ordre recommandé les étapes de préparation d'une saison à venir — transition
 des rosters (`/admin/pool?tab=config`) → **activer la saison** → choix de repêchage →
-repêchage des recrues → banque de recrues → pré-saison (ELC, libérations, repêchage des
+repêchage des recrues → pré-saison (activer/libérer ses recrues de banque, libérations, repêchage des
 agents libres, tout déjà intégré dans `PresaisonManager`) → **démarrer la saison** (dernière
 étape). Chaque carte affiche un résumé en lecture seule (compteurs) et un lien qui
 pré-sélectionne la saison choisie via `?saisonId=` sur l'outil existant — aucune logique
 métier dupliquée, juste une orchestration/navigation, sauf la dernière carte (voir ci-dessous).
 Remplace le contenu détaillé du panneau "Guide admin" (`AdminGuidePanel.tsx`), qui pointe
 maintenant simplement vers ce hub.
+L'ex-étape « Banque de recrues » (`/admin/init?tab=recrues`) a été retirée du hub le 2026-09-28
+(David) — redondante avec le repêchage, la transition, l'activation auto des protections expirées
+et le libre-service des poolers ; la page reste accessible comme filet de sécurité admin.
 
 **Activer vs démarrer — deux bascules distinctes** (David, 2026-08-31, voir aussi section 6) :
 `is_active` (`activateSeasonAction`, `admin/config/actions.ts`) rend la saison consultable par

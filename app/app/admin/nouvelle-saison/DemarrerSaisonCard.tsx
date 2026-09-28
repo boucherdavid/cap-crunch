@@ -83,7 +83,7 @@ export default function DemarrerSaisonCard({
     return (
       <li className="bg-white rounded-lg shadow p-4 border-l-4 border-emerald-500">
         <div className="flex items-start gap-3">
-          <span className="shrink-0 w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center bg-emerald-600">7</span>
+          <span className="shrink-0 w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center bg-emerald-600">6</span>
           <div>
             <p className="font-semibold text-gray-800 text-sm">Démarrer la saison</p>
             <p className="text-sm text-gray-600 mt-0.5">
@@ -98,7 +98,7 @@ export default function DemarrerSaisonCard({
   return (
     <li className="bg-white rounded-lg shadow p-4 border-l-4 border-emerald-500">
       <div className="flex items-start gap-3">
-        <span className="shrink-0 w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center bg-emerald-600">7</span>
+        <span className="shrink-0 w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center bg-emerald-600">6</span>
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-gray-800 text-sm">Démarrer la saison</p>
           <p className="text-sm text-gray-600 mt-0.5">
