@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import TeamBadge from '@/components/TeamBadge'
 import PlayerLink from '@/components/PlayerLink'
 import { normalizeSearch } from '@/lib/normalizeSearch'
@@ -21,10 +21,67 @@ function fmtDate(iso: string | null): string {
   return new Date(iso + 'T12:00:00').toLocaleDateString('fr-CA', { day: 'numeric', month: 'short' })
 }
 
+function fmtTs(iso: string | null): string {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short' })
+}
+
+/** Pastilles des sources qui rapportent la blessure — cliquables pour déplier le détail. CBS est
+ * toujours présente (source principale, détermine qui est dans la liste) ; ESPN grisée si le
+ * joueur n'a pas été recoupé. */
+function SourceToggle({ r, open, onToggle }: { r: InjuryRow; open: boolean; onToggle: () => void }) {
+  const hasEspn = !!(r.espnStatusDesc || r.espnEstReturnDate || r.espnNote)
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      title="Voir le détail par source"
+      className="inline-flex items-center gap-1 text-[10px] font-semibold align-middle"
+    >
+      <span className="rounded px-1 py-0.5 bg-blue-50 text-blue-700">CBS</span>
+      <span className={`rounded px-1 py-0.5 ${hasEspn ? 'bg-rose-50 text-rose-700' : 'bg-gray-100 text-gray-400 line-through'}`}>ESPN</span>
+      <span className="text-gray-400">{open ? '▴' : '▾'}</span>
+    </button>
+  )
+}
+
+function SourcesDetail({ r }: { r: InjuryRow }) {
+  const hasEspn = !!(r.espnStatusDesc || r.espnEstReturnDate || r.espnNote)
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+      <div className="rounded border border-blue-100 bg-blue-50/40 p-2">
+        <p className="font-semibold text-blue-700 mb-1">CBS Sports <span className="font-normal text-gray-400">(principale)</span></p>
+        <p className="text-gray-700">{r.status || '—'}</p>
+        <p className="text-gray-500 mt-1">Retour estimé : {fmtDate(r.estReturnDate)}{r.updatedLabel && <> · Mis à jour : {r.updatedLabel}</>}</p>
+      </div>
+      <div className="rounded border border-rose-100 bg-rose-50/40 p-2">
+        <p className="font-semibold text-rose-700 mb-1">ESPN <span className="font-normal text-gray-400">(recoupement)</span></p>
+        {hasEspn ? (
+          <>
+            <p className="text-gray-700">{r.espnStatusDesc || '—'}{r.espnNote && r.espnNote.toLowerCase() !== (r.espnStatusDesc ?? '').toLowerCase() && <> — {r.espnNote}</>}</p>
+            <p className="text-gray-500 mt-1">Retour estimé : {fmtDate(r.espnEstReturnDate)}</p>
+          </>
+        ) : (
+          <p className="text-gray-400">Joueur absent de la liste ESPN.</p>
+        )}
+      </div>
+      <p className="sm:col-span-2 text-[11px] text-gray-400">Suivi depuis le {fmtTs(r.firstSeenAt)} — l&apos;admissibilité LTIR se base sur CBS (ESPN seulement si CBS n&apos;a pas de date).</p>
+    </div>
+  )
+}
+
 export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
   const [search, setSearch] = useState('')
   const [availOnly, setAvailOnly] = useState(false)
   const [eligibleOnly, setEligibleOnly] = useState(false)
+  const [openIds, setOpenIds] = useState<Set<number>>(new Set())
+  const toggle = (id: number) => setOpenIds(prev => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    return next
+  })
 
   const filtered = useMemo(() => {
     const q = normalizeSearch(search.trim())
@@ -102,6 +159,8 @@ export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
               {r.status}
               {r.datesDisagree && <span className="ml-1 text-[10px] font-bold text-amber-700">⚠ ESPN : {fmtDate(r.espnEstReturnDate)}</span>}
             </p>
+            <div className="mt-1"><SourceToggle r={r} open={openIds.has(r.playerId)} onToggle={() => toggle(r.playerId)} /></div>
+            {openIds.has(r.playerId) && <div className="mt-1.5"><SourcesDetail r={r} /></div>}
             <p className="mt-1 text-xs">
               {r.owner
                 ? <><span className={`rounded px-1.5 py-0.5 font-medium ${OWNER_CLS[r.owner.playerType]}`}>{OWNER_LABEL[r.owner.playerType]}</span> <span className="text-gray-500">{r.owner.poolerName}</span></>
@@ -128,7 +187,8 @@ export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
             </thead>
             <tbody>
               {filtered.map(r => (
-                <tr key={r.playerId} className="border-b last:border-0 hover:bg-gray-50">
+                <Fragment key={r.playerId}>
+                <tr className={`${openIds.has(r.playerId) ? '' : 'border-b last:border-0'} hover:bg-gray-50`}>
                   <td className="px-4 py-2.5 font-medium text-gray-800">
                     <PlayerLink nhlId={r.nhlId}>{r.lastName}, {r.firstName}</PlayerLink>
                   </td>
@@ -145,6 +205,7 @@ export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
                         ⚠ ESPN : {fmtDate(r.espnEstReturnDate)}
                       </span>
                     )}
+                    <div className="mt-1"><SourceToggle r={r} open={openIds.has(r.playerId)} onToggle={() => toggle(r.playerId)} /></div>
                   </td>
                   <td className="px-4 py-2.5">
                     {r.eligible
@@ -167,6 +228,12 @@ export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
                     }
                   </td>
                 </tr>
+                {openIds.has(r.playerId) && (
+                  <tr className="border-b last:border-0 bg-gray-50/60">
+                    <td colSpan={7} className="px-4 pb-3 pt-1"><SourcesDetail r={r} /></td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
               {filtered.length === 0 && (
                 <tr>

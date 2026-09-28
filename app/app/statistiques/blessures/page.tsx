@@ -19,6 +19,9 @@ export type InjuryRow = {
   eligible: boolean
   estReturnDate: string | null
   espnEstReturnDate: string | null
+  espnStatusDesc: string | null
+  espnNote: string | null
+  firstSeenAt: string | null
   datesDisagree: boolean
   owner: { poolerName: string; playerType: 'actif' | 'reserviste' | 'recrue' | 'ltir' } | null
 }
@@ -63,7 +66,7 @@ export default async function BlessuresPage() {
   const [{ data: injuriesData }, ownerByPlayerId, ltirSettings] = await Promise.all([
     supabase
       .from('player_injuries')
-      .select('player_id, injury_type, status, updated_label, est_return_date, espn_est_return_date, espn_status_desc, first_seen_at, players (id, nhl_id, first_name, last_name, position, teams (code))')
+      .select('player_id, injury_type, status, updated_label, est_return_date, espn_est_return_date, espn_status_desc, espn_note, first_seen_at, players (id, nhl_id, first_name, last_name, position, teams (code))')
       .order('player_id'),
     fetchOwnerByPlayerId(),
     fetchLtirSettings(supabase),
@@ -91,6 +94,9 @@ export default async function BlessuresPage() {
         }, ltirSettings),
         estReturnDate: row.est_return_date,
         espnEstReturnDate: row.espn_est_return_date,
+        espnStatusDesc: row.espn_status_desc,
+        espnNote: row.espn_note,
+        firstSeenAt: row.first_seen_at,
         datesDisagree: computeDatesDisagree(row.est_return_date, row.espn_est_return_date, ltirSettings),
         owner: ownerByPlayerId.get(player.id) ?? null,
       }

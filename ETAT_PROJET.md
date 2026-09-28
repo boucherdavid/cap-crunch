@@ -21,7 +21,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | À jour |
+| `staging` | En avance sur `main` : correctif ESPN des blessures + détail des sources (à fusionner) |
 | `main` (prod) | À jour — dernière fusion le 2026-09-28 (`da263a7`, chantier mobile) |
 
 Livré en prod le 2026-09-28 : « Mes listes », scénarios de simulation privés, sélecteur de
@@ -42,15 +42,14 @@ desktop.
 | Transition de saison refusée si la saison cible a déjà des alignements | ✅ validé (bloc rouge) | ✅ | — |
 | Rechargement auto du repêchage des recrues (60 s, jamais pendant la saisie) | ✅ | ✅ | — |
 | Suivi des blessures + admissibilité LTIR + seuils paramétrables | ✅ | ✅ | — |
-| Marqueur désaccord CBS≠ESPN (`espn_est_return_date`) | ✅ (aucun cas actuel) | ✅ migré | ⚠ Vérifier que la colonne prod se remplit (cron `injuries.yml`) |
+| Détail des sources (CBS / ESPN) par blessure, `/statistiques/blessures` | ⏳ à valider | — | Cliquer les pastilles CBS/ESPN (mobile + desktop) |
+| Recoupement ESPN des blessures (API JSON `site.web.api.espn.com`) | ✅ | ✅ 70/76 (lancement manuel) | Fusionner vers `main` pour que le cron quotidien l'utilise |
 | Demandes de LTIR avec approbation admin | ✅ code | ✅ code | Tester de bout en bout avec un vrai compte pooler |
 | Transactions entre poolers (échanges + approbation) | ✅ | ✅ | Test réel à deux poolers |
 | Ballotage (réclamer / refuser / compléter) | ✅ | ✅ | Test réel à plusieurs poolers en saison |
 
 ## 4. À faire / à vérifier
 
-- [ ] **Backup hebdomadaire** : corrigé le 2026-09-28 (permission d'écriture) — confirmer que
-      le run de dimanche (ou un lancement manuel) réussit.
 - [ ] **Staging — remise à neuf de 2026-27** (si pas encore fait) : 2026-27 mélange vrais
       alignements et tests. Depuis `python_script/` :
       `python reset_saison_staging.py 2026-27 --apply` (« oui »), puis refaire la transition

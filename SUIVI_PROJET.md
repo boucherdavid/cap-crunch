@@ -21,11 +21,43 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-28
 
+**[Feature] — sources de chaque blessure sur `/statistiques/blessures`** (`BlessuresTable.tsx`,
+`page.tsx`) — demande de David : sous le statut, pastilles « CBS » / « ESPN » (ESPN barrée si
+le joueur n'est pas recoupé) ; un clic déplie le détail côte à côte (CBS : statut brut, date
+de retour retenue, « mis à jour » ; ESPN : statut, note, date de retour) + « suivi depuis »
+(`first_seen_at`). Fiche mobile et tableau desktop (ligne dépliée sous la ligne du joueur).
+Aucune migration — `espn_note` était déjà en base, juste pas lu par la page.
+
+**[Fix] — recoupement ESPN rétabli en prod via l'API JSON** (`python_script/scrape_injuries.py`) :
+- `scrape_espn()` essaie d'abord l'API JSON ESPN (`/apis/site/v2/sports/hockey/nhl/injuries`),
+  la page `espn.com/nhl/injuries` (`scrape_espn_page()`, ex-`scrape_espn()`) en dernier repli.
+  Même format de sortie : statut = `status` (`Out`/`Day-To-Day`/`Injured Reserve`, identique à
+  la page → `isOnNhlIr()` inchangé), date = `details.returnDate`, note = `longComment`.
+- Piège : même API sur deux hôtes, `site.api.espn.com` répond **403 (Akamai) depuis GitHub
+  Actions** (OK en local), `site.web.api.espn.com` passe. Trouvé avec une branche jetable
+  `probe-espn` (sonde de 8 URL depuis un runner, supprimée ensuite). La page web renvoie 202
+  vide depuis GitHub — d'où l'échec d'origine. Hôte `site.web` en premier, `site.api` en second.
+- `parse_est_return()` accepte maintenant une date ISO (`2026-10-02`, année explicite) en plus
+  du motif « Oct 2 ».
+- Validé : `injuries.yml` lancé manuellement sur `staging` → « [ESPN] 70/76 recoupés » ; prod :
+  70/87 lignes avec `espn_est_return_date` (0 avant). Le cron quotidien tourne sur `main` :
+  fusion requise pour que ça tienne.
+
+**[Diagnostic] — recoupement ESPN inopérant en prod** (aucun changement de code) — question de
+David sur la « colonne ESPN » (il n'y en a pas : la date ESPN n'apparaît qu'en « ⚠ ESPN : date »
+dans la colonne Statut, si écart ≥ 5 j avec CBS). Vérifié en base : prod 0/87 blessés avec date
+ESPN (staging 59/71). Log de `injuries.yml` (2026-09-27) : « Structure ESPN introuvable » →
+ESPN ne sert pas ses données aux serveurs de GitHub Actions ; en local, 69/76 recoupés. Le
+scraper continue avec CBS seul (page et calcul LTIR intacts). Piste : API JSON ESPN — plan
+détaillé dans `ETAT_PROJET.md` (« Prochaine session »), pas testée faute de vérificateur de
+commandes disponible en fin de session.
+
 **[Fix] — backup hebdomadaire : push refusé (403)** (`.github/workflows/backup_tool.yml`) — repéré
 par David dans GitHub Actions (échec du 2026-09-27) : la génération réussit, mais le jeton par
 défaut du dépôt est en lecture seule (`default_workflow_permissions: read`) et le workflow ne
 demandait pas l'écriture → `git push` refusé. Ajout de `permissions: contents: write` au job
 (portée limitée à ce workflow, réglage du dépôt inchangé).
+Vérifié : lancement manuel (`gh workflow run`) réussi, fichier régénéré et poussé sur `main`.
 
 **[Vérif] — correctif des doublons en prod** : l'`import.yml` du 2026-09-28 (12h41 UTC, code
 `508ebcf`) a fait 3 fusions `[DEDUP-ALIAS]` (Mitch Marner, Dmitry Kuzmin, Matthew Maggio) ; les

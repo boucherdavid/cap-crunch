@@ -45,6 +45,14 @@ SUPABASE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
 
 CBS_URL = 'https://www.cbssports.com/nhl/injuries/'
 ESPN_URL = 'https://www.espn.com/nhl/injuries'
+# API JSON publique d'ESPN (David, 2026-09-28) — la page ci-dessus ne renvoie pas son JSON
+# embarqué aux serveurs de GitHub Actions ("Structure ESPN introuvable"). Même API sur deux
+# hôtes : `site.api` répond 403 depuis GitHub Actions (Akamai), `site.web.api` passe (sondé
+# depuis un runner le 2026-09-28). Essayés dans l'ordre, page web gardée en dernier repli.
+ESPN_API_URLS = [
+    'https://site.web.api.espn.com/apis/site/v2/sports/hockey/nhl/injuries',
+    'https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/injuries',
+]
 
 # Garde-fous (David, 2026-09-25) — voir main().
 MIN_EXISTING_FOR_RATIO_CHECK = 10
@@ -106,6 +114,13 @@ def parse_est_return(text: str, today: date) -> date | None:
     de plus de ~200 jours est en fait l'an prochain (ex: 'Jan 19' vu en septembre)."""
     if not text:
         return None
+    # Date ISO (API ESPN, `details.returnDate`) — année explicite, aucune inférence.
+    iso = re.match(r'(\d{4}-\d{2}-\d{2})', text.strip())
+    if iso:
+        try:
+            return date.fromisoformat(iso.group(1))
+        except ValueError:
+            return None
     m = re.search(r'\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+(\d{1,2})\b', text)
     if not m:
         return None
@@ -172,7 +187,51 @@ def _find_injuries_blob(obj):
     return None
 
 
+def scrape_espn_api(url):
+    """Même format que scrape_espn_page(), depuis l'API JSON d'ESPN."""
+    res = requests.get(url, headers=HEADERS, timeout=30)
+    res.raise_for_status()
+    teams = res.json().get('injuries') or []
+    records = []
+    for team_block in teams:
+        team = ESPN_TEAM_CODES.get(team_block.get('displayName', ''))
+        if not team:
+            print(f'[ATTENTION] Équipe ESPN non reconnue : {team_block.get("displayName")!r}')
+            continue
+        for item in team_block.get('injuries', []):
+            athlete = item.get('athlete') or {}
+            name = athlete.get('displayName')
+            if not name:
+                continue
+            details = item.get('details') or {}
+            records.append({
+                'name': name,
+                'team': team,
+                'position': (athlete.get('position') or {}).get('abbreviation') or '',
+                'status_desc': item.get('status') or '',
+                'est_return': details.get('returnDate') or '',
+                'note': item.get('longComment') or item.get('shortComment') or '',
+            })
+    return records
+
+
 def scrape_espn():
+    """Retourne une liste de dicts {name, team, position, status_desc, est_return, note} —
+    API JSON d'abord, page web en repli si l'API échoue ou ne renvoie rien."""
+    for url in ESPN_API_URLS:
+        try:
+            records = scrape_espn_api(url)
+            if records:
+                print(f"[INFO] ESPN : données obtenues via l'API JSON ({url.split('/')[2]}).")
+                return records
+            print(f'[ATTENTION] API ESPN vide ({url.split("/")[2]}).')
+        except Exception as e:
+            print(f"[ATTENTION] Échec de l'API ESPN ({e}).")
+    print('[ATTENTION] Aucune API ESPN utilisable — repli sur la page web.')
+    return scrape_espn_page()
+
+
+def scrape_espn_page():
     """Retourne une liste de dicts {name, team, position, status_desc, est_return, note}."""
     import json
     res = requests.get(ESPN_URL, headers=HEADERS, timeout=30)
