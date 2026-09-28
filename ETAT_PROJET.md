@@ -42,12 +42,24 @@ desktop.
 | Transition de saison refusée si la saison cible a déjà des alignements | ✅ validé (bloc rouge) | ✅ | — |
 | Rechargement auto du repêchage des recrues (60 s, jamais pendant la saisie) | ✅ | ✅ | — |
 | Suivi des blessures + admissibilité LTIR + seuils paramétrables | ✅ | ✅ | — |
-| Marqueur désaccord CBS≠ESPN (`espn_est_return_date`) | ✅ (aucun cas actuel) | ✅ migré | ⚠ Vérifier que la colonne prod se remplit (cron `injuries.yml`) |
+| Recoupement ESPN des blessures (date ESPN, marqueur « ⚠ ESPN ») | ✅ (fonctionne depuis un poste local) | ❌ **0 recoupement** | **ESPN ne renvoie pas ses données aux serveurs de GitHub Actions** (« Structure ESPN introuvable » dans le log de `injuries.yml`) ; en local : 69/76 recoupés. Le scraper continue avec CBS seul (rien de cassé, mais ni date ESPN de repli ni marqueur de désaccord en prod). Piste : passer par l'API JSON `site.api.espn.com/apis/site/v2/sports/hockey/nhl/injuries` — à tester |
 | Demandes de LTIR avec approbation admin | ✅ code | ✅ code | Tester de bout en bout avec un vrai compte pooler |
 | Transactions entre poolers (échanges + approbation) | ✅ | ✅ | Test réel à deux poolers |
 | Ballotage (réclamer / refuser / compléter) | ✅ | ✅ | Test réel à plusieurs poolers en saison |
 
 ## 4. À faire / à vérifier
+
+### ▶ Prochaine session — commencer ici : recoupement ESPN en prod
+
+1. Tester l'API JSON ESPN depuis le poste :
+   `https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/injuries` — vérifier qu'elle
+   contient nom, équipe, statut (`Out`/`Day-To-Day`/`Injured Reserve`), date de retour et note.
+2. Dans `python_script/scrape_injuries.py` (`scrape_espn()`) : utiliser l'API en premier, la
+   page `espn.com/nhl/injuries` (`window.__espnfitt__`) en repli ; même format de sortie
+   (`name, team, position, status_desc, est_return, note`) pour ne rien changer ailleurs.
+3. Valider en local (dry-run), puis **lancer `injuries.yml` manuellement sur GitHub** et
+   confirmer dans son log « [ESPN] N/M joueur(s) de CBS recoupé(s) » avec N > 0.
+4. Vérifier en base prod que `player_injuries.espn_est_return_date` se remplit.
 
 - [ ] **Staging — remise à neuf de 2026-27** (si pas encore fait) : 2026-27 mélange vrais
       alignements et tests. Depuis `python_script/` :

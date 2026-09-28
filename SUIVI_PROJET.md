@@ -21,6 +21,15 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-28
 
+**[Diagnostic] — recoupement ESPN inopérant en prod** (aucun changement de code) — question de
+David sur la « colonne ESPN » (il n'y en a pas : la date ESPN n'apparaît qu'en « ⚠ ESPN : date »
+dans la colonne Statut, si écart ≥ 5 j avec CBS). Vérifié en base : prod 0/87 blessés avec date
+ESPN (staging 59/71). Log de `injuries.yml` (2026-09-27) : « Structure ESPN introuvable » →
+ESPN ne sert pas ses données aux serveurs de GitHub Actions ; en local, 69/76 recoupés. Le
+scraper continue avec CBS seul (page et calcul LTIR intacts). Piste : API JSON ESPN — plan
+détaillé dans `ETAT_PROJET.md` (« Prochaine session »), pas testée faute de vérificateur de
+commandes disponible en fin de session.
+
 **[Fix] — backup hebdomadaire : push refusé (403)** (`.github/workflows/backup_tool.yml`) — repéré
 par David dans GitHub Actions (échec du 2026-09-27) : la génération réussit, mais le jeton par
 défaut du dépôt est en lecture seule (`default_workflow_permissions: read`) et le workflow ne
