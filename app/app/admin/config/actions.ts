@@ -157,6 +157,13 @@ export async function deactivateSeasonAction(saisonId: number): Promise<{ error?
   return {}
 }
 
+// Vrai contrat ELC signé pour la saison — contrairement à isElcActiveForSeason, qui suppose un
+// ELC en l'absence de contrat (prudent pour une recrue déjà classée, mais renverrait en banque
+// un vétéran non signé jamais classé recrue).
+function hasElcContractForSeason(contracts: { season: string; is_elc: boolean | null }[], season: string): boolean {
+  return contracts.some(c => c.season === season && !!c.is_elc)
+}
+
 export async function previewTransitionAction(
   fromSaisonId: number,
   toSaisonId: number,
@@ -209,6 +216,9 @@ export async function previewTransitionAction(
       const isExpired = isRookieProtectionExpired(e.rookie_type, e.pool_draft_year ?? null, isElcActiveForSeason(contracts, toSaison.season), seasonStartYear)
       if (isExpired) willLoseProtection++
       else willReturnToBank++
+    } else if ((e.player_type === 'actif' || e.player_type === 'reserviste') && hasElcContractForSeason(contracts, toSaison.season)) {
+      // Jamais classé recrue mais sous ELC pour la saison cible → agent libre recrue, retourné en banque.
+      willReturnToBank++
     }
 
     if (hasContract) continue
@@ -310,6 +320,14 @@ export async function transitionSeasonAction(
           playerType = 'recrue'
           backToBank++
         }
+      } else if ((playerType === 'actif' || playerType === 'reserviste') && hasElcContractForSeason(contracts, toSaison.season)) {
+        // Jamais classé recrue (signé directement actif/réserviste) mais encore sous ELC pour la
+        // saison cible → admissible à la banque comme agent libre (David, 2026-09-28) ; classé
+        // rookie_type='agent_libre', même classement rétroactif que deactivate()
+        // (gestion-effectifs/actions.ts). Protection = tant que l'ELC est actif.
+        playerType = 'recrue'
+        rookieClearFields = { rookie_type: 'agent_libre' }
+        backToBank++
       }
 
       return {

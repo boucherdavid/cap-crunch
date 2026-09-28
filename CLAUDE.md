@@ -28,7 +28,8 @@ Application web pour gérer un pool de hockey long terme, en remplacement d'un f
   automatiquement en Actif. Le pooler gère ensuite lui-même un éventuel surplus (réserve,
   libération, remise en banque tant que la protection n'est pas vraiment expirée) via le
   libre-service de `/repechage-agents-libres`. À la transition de saison, à l'inverse, tout
-  actif/réserviste **encore protégé** retourne automatiquement en banque (David, 2026-09-28 —
+  actif/réserviste **encore protégé** (y compris un agent libre sous ELC jamais classé recrue)
+  retourne automatiquement en banque (David, 2026-09-28 —
   montre au pooler qui y est encore admissible ; il réactive lui-même ceux qu'il garde).
   Détails en section 6.
 - Calcul des points (`buildStandings()`) : seules les fenêtres où le joueur est réellement
@@ -785,7 +786,9 @@ revue le 2026-09-14 :**
   Deux points d'entrée : `transitionSeasonAction` (`admin/config/actions.ts`, une fois par an
   à la transition de saison — ne gère que le premier cas ci-dessus, en clair dans la copie de
   roster ; depuis le 2026-09-28, y renvoie aussi en banque (`player_type='recrue'`) tout
-  actif/réserviste dont la protection est encore valide — `'promote'` préserve ensuite
+  actif/réserviste dont la protection est encore valide, ainsi que tout actif/réserviste jamais
+  classé recrue mais avec un vrai contrat ELC pour la saison cible (classé `'agent_libre'`) —
+  `'promote'` préserve ensuite
   `rookie_type` tant qu'elle n'est pas expirée, donc la réactivation par le pooler reste
   réversible) et `syncExpiredRookieProtection()` (interne, `admin/presaison/actions.ts`, gère les
   deux cas), appelée en tout début de `loadPresaisonDataAction` — se réapplique à **chaque

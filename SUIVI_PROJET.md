@@ -29,8 +29,12 @@ encore admissible à la banque. Il réactive lui-même ceux qu'il garde en pré-
 préserve `rookie_type` tant que la protection n'est pas expirée, donc la remise en banque reste
 possible ensuite. Cas inchangés : protection expirée (reste actif/réserviste, statut effacé),
 recrue déjà en banque. Aperçu de transition : nouveau bandeau bleu « N joueurs seront
-retournés en banque ». Critère = `rookie_type` non nul (même que le ★ du libre-service) : un
-joueur signé directement actif sur son ELC, jamais classé recrue, n'est pas renvoyé.
+retournés en banque ». Critères : `rookie_type` non nul et protection valide, **ou** jamais
+classé recrue mais avec un vrai contrat ELC pour la saison cible (agent libre signé directement
+actif — précision de David) → classé `rookie_type='agent_libre'`, comme `deactivate()`. Piège
+évité : `isElcActiveForSeason()` suppose un ELC s'il n'y a aucun contrat — renverrait en banque
+un vétéran non signé ; ce cas exige donc un contrat `is_elc=true` réel
+(`hasElcContractForSeason`). Staging (2025-26 → 2026-27) : 10 joueurs renvoyés, tous repêchés.
 Règle ajoutée dans `/aide` (Recrues). Non testé en conditions réelles (demande une transition
 sur une saison cible vide — voir remise à neuf de 2026-27 en staging).
 
