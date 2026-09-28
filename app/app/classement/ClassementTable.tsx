@@ -110,12 +110,14 @@ function PlayerRow({ p, onPeriodClick }: { p: PlayerContrib; onPeriodClick?: (p:
 
   return (
     <tr className={isActif ? 'hover:bg-gray-50' : 'hover:bg-gray-50 opacity-60'}>
-      <td className="px-4 py-2">
+      {/* Nom figé à gauche, équipe sous le nom en portrait (David, 2026-09-28). */}
+      <td className="px-2 sm:px-4 py-2 sticky left-0 z-10 bg-white">
         <PlayerLink nhlId={p.nhlId}>
           <span className={`font-medium ${isActif ? 'text-gray-800' : 'text-gray-500'}`}>
             {p.lastName}, {p.firstName}
           </span>
         </PlayerLink>
+        <span className="sm:hidden ml-1 text-[11px] text-gray-400">{p.teamAbbrev}</span>
         {badge && (
           <span className="ml-2 text-xs bg-gray-100 text-gray-400 rounded px-1">{badge}</span>
         )}
@@ -134,7 +136,7 @@ function PlayerRow({ p, onPeriodClick }: { p: PlayerContrib; onPeriodClick?: (p:
         <>
           <td className="px-2 py-2 text-center text-gray-500">{p.goals || '—'}</td>
           <td className="px-2 py-2 text-center text-gray-500">{p.assists || '—'}</td>
-          <td className="px-2 py-2 text-center text-gray-500 hidden sm:table-cell">{p.goalieWins}</td>
+          <td className="px-2 py-2 text-center text-gray-500">{p.goalieWins}</td>
           <td className="px-2 py-2 text-center text-gray-500 hidden sm:table-cell">{p.goalieOtl}</td>
           <td className="px-2 py-2 text-center text-gray-500 hidden sm:table-cell">{p.goalieShutouts || '—'}</td>
         </>
@@ -142,7 +144,7 @@ function PlayerRow({ p, onPeriodClick }: { p: PlayerContrib; onPeriodClick?: (p:
         <>
           <td className="px-2 py-2 text-center text-gray-500">{p.goals}</td>
           <td className="px-2 py-2 text-center text-gray-500">{p.assists}</td>
-          <td className="px-2 py-2 text-center text-gray-400 hidden sm:table-cell">—</td>
+          <td className="px-2 py-2 text-center text-gray-400">—</td>
           <td className="px-2 py-2 text-center text-gray-400 hidden sm:table-cell">—</td>
           <td className="px-2 py-2 text-center text-gray-400 hidden sm:table-cell">—</td>
         </>
@@ -207,12 +209,12 @@ export default function ClassementTable({ standings }: { standings: PoolerStandi
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50 text-gray-400 text-xs uppercase tracking-wide">
                       <tr>
-                        <th className="px-4 py-2 text-left">Joueur</th>
+                        <th className="px-2 sm:px-4 py-2 text-left sticky left-0 z-10 bg-gray-50">Joueur</th>
                         <th className="px-2 py-2 hidden sm:table-cell">Éq.</th>
                         <th className="px-2 py-2">MJ</th>
                         <th className="px-2 py-2">B</th>
                         <th className="px-2 py-2">A</th>
-                        <th className="px-2 py-2 hidden sm:table-cell">V</th>
+                        <th className="px-2 py-2">V</th>
                         <th className="px-2 py-2 hidden sm:table-cell">DP</th>
                         <th className="px-2 py-2 hidden sm:table-cell">BL</th>
                         <th className="px-2 py-2 text-blue-500">Pts</th>

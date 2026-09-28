@@ -38,6 +38,18 @@ David et des poolers (colonnes tassées en desktop, rendu mobile décevant) :
   par le téléphone) pour prendre effet.
 - Vérifié : `tsc --noEmit` et `next build`. Pas testé dans le navigateur.
 
+**[Style] — mobile : classement, statistiques LNH, contrats LNH** (`app/app/classement/ClassementTable.tsx`,
+`app/app/statistiques/StatsTable.tsx`, `app/app/joueurs/JoueursTable.tsx`) — David a validé la page
+d'un pooler sur son téléphone (tous les onglets), même approche étendue :
+- Classement (saison, hebdo, mensuel) : identique à l'Alignement (nom figé, équipe sous le nom,
+  V visible pour les gardiens).
+- Statistiques : en portrait, # masqué ; pastille de disponibilité (ou badges séries), équipe et
+  position intégrées à la cellule du nom, figée à gauche (`max-sm:sticky`, pour ne pas
+  chevaucher # et la pastille en desktop) ; marges réduites sur les colonnes numériques.
+- Contrats LNH : colonne Équipe masquée en portrait (déjà dans le bandeau d'équipe), nom figé.
+- Vérifié : `tsc --noEmit`, ESLint (1 avertissement `_mode` préexistant), `next build`. Pas
+  testé sur téléphone.
+
 **[Style] — mobile : page d'un pooler (1re page du chantier)** (`app/app/poolers/[id]/{page.tsx,PoolerPageTabs.tsx}`,
 `app/components/StreakLegend.tsx`) — pas de captures des poolers ; David a validé l'ordre
 proposé (alignement d'un pooler, classement, statistiques, contrats LNH), une page montrée

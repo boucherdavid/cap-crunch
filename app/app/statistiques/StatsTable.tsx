@@ -318,17 +318,17 @@ export default function StatsTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
-                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-8">#</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-5" title="Disponibilité" />
-                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Joueur</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Équipe</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Pos</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600">PJ</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Tps/M</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600">B</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600">A</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-800 font-semibold">Pts</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Pts/MJ</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-8 hidden sm:table-cell">#</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-5 hidden sm:table-cell" title="Disponibilité" />
+                <th className="sticky top-0 max-sm:left-0 z-20 bg-gray-50 text-left px-2 sm:px-4 py-3 font-medium text-gray-600">Joueur</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Équipe</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Pos</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-2 sm:px-4 py-3 font-medium text-gray-600">PJ</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-2 sm:px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Tps/M</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-2 sm:px-4 py-3 font-medium text-gray-600">B</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-2 sm:px-4 py-3 font-medium text-gray-600">A</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-2 sm:px-4 py-3 font-medium text-gray-800 font-semibold">Pts</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-2 sm:px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Pts/MJ</th>
               </tr>
             </thead>
             <tbody>
@@ -345,31 +345,35 @@ export default function StatsTable({
                   const ppm = s.gamesPlayed > 0 ? (s.points / s.gamesPlayed).toFixed(2) : '—'
                   return (
                     <tr key={s.id} className="border-b hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-2.5 text-gray-400 text-xs">{i + 1}</td>
-                      <td className="px-4 py-2.5">
+                      <td className="px-4 py-2.5 text-gray-400 text-xs hidden sm:table-cell">{i + 1}</td>
+                      <td className="px-4 py-2.5 hidden sm:table-cell">
                         {gameMode === 'series'
                           ? <PoolerBadges poolers={pickedBy} />
                           : <AvailDot available={avail} />}
                       </td>
-                      <td className="px-4 py-2.5 font-medium text-gray-800">
+                      <td className="px-2 sm:px-4 py-2.5 font-medium text-gray-800 max-sm:sticky max-sm:left-0 max-sm:z-10 bg-white">
                         <span className="inline-flex items-center gap-1.5">
+                          <span className="sm:hidden">
+                            {gameMode === 'series' ? <PoolerBadges poolers={pickedBy} /> : <AvailDot available={avail} />}
+                          </span>
                           <PlayerLink nhlId={s.id}>
                             {s.lastName}, {s.firstName}
                           </PlayerLink>
                           {showTimeSensitiveOverlay && gameMode === 'regular' && isRookie(s.firstName, s.lastName) && <RookieBadge />}
                           <StreakBadge info={streaksMap[s.id]} />
                         </span>
+                        <span className="sm:hidden block text-[11px] font-normal text-gray-400">{s.teamAbbrev} · {s.position}</span>
                       </td>
-                      <td className="px-4 py-2.5 text-gray-600">
+                      <td className="px-4 py-2.5 text-gray-600 hidden sm:table-cell">
                         <TeamBadge code={s.teamAbbrev} />
                       </td>
-                      <td className="px-4 py-2.5 text-gray-500">{s.position}</td>
-                      <td className="px-4 py-2.5 text-right text-gray-500 tabular-nums">{s.gamesPlayed || '—'}</td>
-                      <td className="px-4 py-2.5 text-right text-gray-500 tabular-nums hidden sm:table-cell">{formatTOI(s.toi)}</td>
-                      <td className="px-4 py-2.5 text-right text-gray-700">{s.goals}</td>
-                      <td className="px-4 py-2.5 text-right text-gray-700">{s.assists}</td>
-                      <td className="px-4 py-2.5 text-right font-semibold text-gray-900">{s.points}</td>
-                      <td className="px-4 py-2.5 text-right text-gray-500 tabular-nums hidden sm:table-cell">{ppm}</td>
+                      <td className="px-4 py-2.5 text-gray-500 hidden sm:table-cell">{s.position}</td>
+                      <td className="px-2 sm:px-4 py-2.5 text-right text-gray-500 tabular-nums">{s.gamesPlayed || '—'}</td>
+                      <td className="px-2 sm:px-4 py-2.5 text-right text-gray-500 tabular-nums hidden sm:table-cell">{formatTOI(s.toi)}</td>
+                      <td className="px-2 sm:px-4 py-2.5 text-right text-gray-700">{s.goals}</td>
+                      <td className="px-2 sm:px-4 py-2.5 text-right text-gray-700">{s.assists}</td>
+                      <td className="px-2 sm:px-4 py-2.5 text-right font-semibold text-gray-900">{s.points}</td>
+                      <td className="px-2 sm:px-4 py-2.5 text-right text-gray-500 tabular-nums hidden sm:table-cell">{ppm}</td>
                     </tr>
                   )
                 })
@@ -387,19 +391,19 @@ export default function StatsTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
-                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-8">#</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-5" title="Disponibilité" />
-                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Gardien</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600">Équipe</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600">PJ</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-green-700">V</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">D</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">DP</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-blue-700">BL</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600">%Arr</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600">Moy</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">B</th>
-                <th className="sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">A</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-8 hidden sm:table-cell">#</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 w-5 hidden sm:table-cell" title="Disponibilité" />
+                <th className="sticky top-0 max-sm:left-0 z-20 bg-gray-50 text-left px-2 sm:px-4 py-3 font-medium text-gray-600">Gardien</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">Équipe</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-2 sm:px-4 py-3 font-medium text-gray-600">PJ</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-2 sm:px-4 py-3 font-medium text-green-700">V</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-2 sm:px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">D</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-2 sm:px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">DP</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-2 sm:px-4 py-3 font-medium text-blue-700">BL</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-2 sm:px-4 py-3 font-medium text-gray-600">%Arr</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-2 sm:px-4 py-3 font-medium text-gray-600">Moy</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-2 sm:px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">B</th>
+                <th className="sticky top-0 z-10 bg-gray-50 text-right px-2 sm:px-4 py-3 font-medium text-gray-600 hidden sm:table-cell">A</th>
               </tr>
             </thead>
             <tbody>
@@ -415,14 +419,17 @@ export default function StatsTable({
                   const pickedBy = gameMode === 'series' ? getPickedBy(g.firstName, g.lastName) : []
                   return (
                     <tr key={g.id} className="border-b hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-2.5 text-gray-400 text-xs">{i + 1}</td>
-                      <td className="px-4 py-2.5">
+                      <td className="px-4 py-2.5 text-gray-400 text-xs hidden sm:table-cell">{i + 1}</td>
+                      <td className="px-4 py-2.5 hidden sm:table-cell">
                         {gameMode === 'series'
                           ? <PoolerBadges poolers={pickedBy} />
                           : <AvailDot available={avail} />}
                       </td>
-                      <td className="px-4 py-2.5 font-medium text-gray-800">
+                      <td className="px-2 sm:px-4 py-2.5 font-medium text-gray-800 max-sm:sticky max-sm:left-0 max-sm:z-10 bg-white">
                         <span className="inline-flex items-center gap-1.5">
+                          <span className="sm:hidden">
+                            {gameMode === 'series' ? <PoolerBadges poolers={pickedBy} /> : <AvailDot available={avail} />}
+                          </span>
                           <PlayerLink nhlId={g.id}>
                             {g.lastName}, {g.firstName}
                           </PlayerLink>
@@ -430,23 +437,24 @@ export default function StatsTable({
                           <StreakBadge info={streaksMap[g.id]} />
                           <GoalieBadge info={streaksMap[g.id]} />
                         </span>
+                        <span className="sm:hidden block text-[11px] font-normal text-gray-400">{g.teamAbbrev}</span>
                       </td>
-                      <td className="px-4 py-2.5 text-gray-600">
+                      <td className="px-4 py-2.5 text-gray-600 hidden sm:table-cell">
                         <TeamBadge code={g.teamAbbrev} />
                       </td>
-                      <td className="px-4 py-2.5 text-right text-gray-500 tabular-nums">{g.gamesStarted || '—'}</td>
-                      <td className="px-4 py-2.5 text-right font-medium text-green-700">{g.wins}</td>
-                      <td className="px-4 py-2.5 text-right text-gray-600 hidden sm:table-cell">{g.losses || '—'}</td>
-                      <td className="px-4 py-2.5 text-right text-gray-600 hidden sm:table-cell">{g.otLosses || '—'}</td>
-                      <td className="px-4 py-2.5 text-right text-blue-700">{g.shutouts}</td>
-                      <td className="px-4 py-2.5 text-right text-gray-600 tabular-nums">
+                      <td className="px-2 sm:px-4 py-2.5 text-right text-gray-500 tabular-nums">{g.gamesStarted || '—'}</td>
+                      <td className="px-2 sm:px-4 py-2.5 text-right font-medium text-green-700">{g.wins}</td>
+                      <td className="px-2 sm:px-4 py-2.5 text-right text-gray-600 hidden sm:table-cell">{g.losses || '—'}</td>
+                      <td className="px-2 sm:px-4 py-2.5 text-right text-gray-600 hidden sm:table-cell">{g.otLosses || '—'}</td>
+                      <td className="px-2 sm:px-4 py-2.5 text-right text-blue-700">{g.shutouts}</td>
+                      <td className="px-2 sm:px-4 py-2.5 text-right text-gray-600 tabular-nums">
                         {g.savePct ? g.savePct.toFixed(3) : '—'}
                       </td>
-                      <td className="px-4 py-2.5 text-right text-gray-600 tabular-nums">
+                      <td className="px-2 sm:px-4 py-2.5 text-right text-gray-600 tabular-nums">
                         {g.gaa ? g.gaa.toFixed(2) : '—'}
                       </td>
-                      <td className="px-4 py-2.5 text-right text-gray-700 hidden sm:table-cell">{g.goals}</td>
-                      <td className="px-4 py-2.5 text-right text-gray-700 hidden sm:table-cell">{g.assists}</td>
+                      <td className="px-2 sm:px-4 py-2.5 text-right text-gray-700 hidden sm:table-cell">{g.goals}</td>
+                      <td className="px-2 sm:px-4 py-2.5 text-right text-gray-700 hidden sm:table-cell">{g.assists}</td>
                     </tr>
                   )
                 })
