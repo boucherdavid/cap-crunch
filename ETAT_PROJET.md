@@ -49,8 +49,6 @@ desktop.
 
 ## 4. À faire / à vérifier
 
-- [ ] **Backup hebdomadaire** : corrigé le 2026-09-28 (permission d'écriture) — confirmer que
-      le run de dimanche (ou un lancement manuel) réussit.
 - [ ] **Staging — remise à neuf de 2026-27** (si pas encore fait) : 2026-27 mélange vrais
       alignements et tests. Depuis `python_script/` :
       `python reset_saison_staging.py 2026-27 --apply` (« oui »), puis refaire la transition

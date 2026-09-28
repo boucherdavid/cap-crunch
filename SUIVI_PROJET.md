@@ -26,6 +26,7 @@ par David dans GitHub Actions (échec du 2026-09-27) : la génération réussit,
 défaut du dépôt est en lecture seule (`default_workflow_permissions: read`) et le workflow ne
 demandait pas l'écriture → `git push` refusé. Ajout de `permissions: contents: write` au job
 (portée limitée à ce workflow, réglage du dépôt inchangé).
+Vérifié : lancement manuel (`gh workflow run`) réussi, fichier régénéré et poussé sur `main`.
 
 **[Vérif] — correctif des doublons en prod** : l'`import.yml` du 2026-09-28 (12h41 UTC, code
 `508ebcf`) a fait 3 fusions `[DEDUP-ALIAS]` (Mitch Marner, Dmitry Kuzmin, Matthew Maggio) ; les
