@@ -27,7 +27,10 @@ Application web pour gérer un pool de hockey long terme, en remplacement d'un f
   actif/réserviste reste où il est ; une recrue encore en banque (jamais promue) est activée
   automatiquement en Actif. Le pooler gère ensuite lui-même un éventuel surplus (réserve,
   libération, remise en banque tant que la protection n'est pas vraiment expirée) via le
-  libre-service de `/repechage-agents-libres`. Détails en section 6.
+  libre-service de `/repechage-agents-libres`. À la transition de saison, à l'inverse, tout
+  actif/réserviste **encore protégé** retourne automatiquement en banque (David, 2026-09-28 —
+  montre au pooler qui y est encore admissible ; il réactive lui-même ceux qu'il garde).
+  Détails en section 6.
 - Calcul des points (`buildStandings()`) : seules les fenêtres où le joueur est réellement
   `actif` comptent — `recrue`/`reserviste`/`ltir` ne rapportent aucun point. Un joueur peut
   être actif plusieurs fois non consécutives dans une même saison (ex: réserve puis rappelé) ;
@@ -781,7 +784,10 @@ revue le 2026-09-14 :**
     accès en écriture à `transactions`/`transaction_items` (RLS admin-only).
   Deux points d'entrée : `transitionSeasonAction` (`admin/config/actions.ts`, une fois par an
   à la transition de saison — ne gère que le premier cas ci-dessus, en clair dans la copie de
-  roster) et `syncExpiredRookieProtection()` (interne, `admin/presaison/actions.ts`, gère les
+  roster ; depuis le 2026-09-28, y renvoie aussi en banque (`player_type='recrue'`) tout
+  actif/réserviste dont la protection est encore valide — `'promote'` préserve ensuite
+  `rookie_type` tant qu'elle n'est pas expirée, donc la réactivation par le pooler reste
+  réversible) et `syncExpiredRookieProtection()` (interne, `admin/presaison/actions.ts`, gère les
   deux cas), appelée en tout début de `loadPresaisonDataAction` — se réapplique à **chaque
   chargement** de `/admin/init?tab=presaison` ou `/repechage-agents-libres`, pour capter les
   cas qui échapperaient à la transition annuelle (ex: un agent libre recrue dont l'ELC se

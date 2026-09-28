@@ -21,6 +21,19 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-28
 
+**[Feature] — transition de saison : recrues encore protégées renvoyées en banque**
+(`admin/config/actions.ts`, `SeasonsManager.tsx`, `aide/AideTabs.tsx`) — demande de David :
+`transitionSeasonAction` copiait les actifs/réservistes encore protégés tels quels ; ils
+reviennent maintenant en `recrue` (compteur `backToBank`), pour montrer au pooler qui est
+encore admissible à la banque. Il réactive lui-même ceux qu'il garde en pré-saison — `promote`
+préserve `rookie_type` tant que la protection n'est pas expirée, donc la remise en banque reste
+possible ensuite. Cas inchangés : protection expirée (reste actif/réserviste, statut effacé),
+recrue déjà en banque. Aperçu de transition : nouveau bandeau bleu « N joueurs seront
+retournés en banque ». Critère = `rookie_type` non nul (même que le ★ du libre-service) : un
+joueur signé directement actif sur son ELC, jamais classé recrue, n'est pas renvoyé.
+Règle ajoutée dans `/aide` (Recrues). Non testé en conditions réelles (demande une transition
+sur une saison cible vide — voir remise à neuf de 2026-27 en staging).
+
 **[Feature] — sources de chaque blessure sur `/statistiques/blessures`** (`BlessuresTable.tsx`,
 `page.tsx`) — demande de David : sous le statut, pastilles « CBS » / « ESPN » (ESPN barrée si
 le joueur n'est pas recoupé) ; un clic déplie le détail côte à côte (CBS : statut brut, date

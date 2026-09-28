@@ -686,6 +686,7 @@ const SECTIONS: Section[] = [
         <li>• Un joueur signé comme <strong>agent libre</strong> reste protégé tant que son ELC est actif, sans limite de nombre de saisons (pas de fenêtre de 5 ans pour lui).</li>
         <li>• Un joueur en banque de recrues ne compte pas dans la masse salariale, même s&apos;il joue dans la LNH.</li>
         <li>• Quand la protection expire <strong>pour de vrai</strong> (5 ans écoulés pour un repêché, ELC terminé pour un agent libre), la perte du statut recrue est <strong>automatique</strong> : s&apos;il était déjà actif ou réserviste, il reste où il est ; s&apos;il était encore en banque, il est activé automatiquement. Aucune action requise de votre part à ce moment précis.</li>
+        <li>• À chaque <strong>changement de saison</strong>, tout joueur actif ou réserviste encore protégé comme recrue est <strong>retourné automatiquement en banque</strong> — ça vous montre d&apos;un coup d&apos;œil qui y est encore admissible. Réactivez ceux que vous voulez garder pendant la pré-saison (Signatures des agents libres).</li>
         <li>• Vous pouvez vous-même <strong>activer ou remettre en banque</strong> n&apos;importe quelle recrue encore protégée en tout temps, depuis Gestion d&apos;effectifs ou Signatures des agents libres (ce dernier seulement avant le début de la saison).</li>
       </ul>
     ),

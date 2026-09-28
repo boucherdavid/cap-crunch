@@ -35,6 +35,7 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
     poolerCount: number
     noContract: { playerName: string; poolerName: string; playerType: string }[]
     willLoseProtection: number
+    willReturnToBank: number
     existingCount: number
   }
   const [transitioning, setTransitioning] = useState<number | null>(null)
@@ -91,7 +92,7 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
     if (result.error) {
       showMsg('error', result.error)
     } else {
-      showMsg('success', `${result.copied} entrées copiées vers la nouvelle saison.${result.returned ? ` ${result.returned} recrue${result.returned > 1 ? 's' : ''} à protection expirée — statut recrue perdu de façon permanente (reste${result.returned > 1 ? 'nt' : ''} actif/réserviste tel quel).` : ''}`)
+      showMsg('success', `${result.copied} entrées copiées vers la nouvelle saison.${result.returned ? ` ${result.returned} recrue${result.returned > 1 ? 's' : ''} à protection expirée — statut recrue perdu de façon permanente (reste${result.returned > 1 ? 'nt' : ''} actif/réserviste tel quel).` : ''}${result.backToBank ? ` ${result.backToBank} recrue${result.backToBank > 1 ? 's' : ''} encore protégée${result.backToBank > 1 ? 's' : ''} retournée${result.backToBank > 1 ? 's' : ''} en banque.` : ''}`)
       router.refresh()
     }
   }
@@ -401,6 +402,12 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
                 Transition impossible : la saison cible contient déjà {`${preview.data.existingCount} ligne${preview.data.existingCount > 1 ? 's' : ''} d'alignement.`}
                 La copie ne ferait qu&apos;ajouter les joueurs manquants et mélangerait l&apos;ancien contenu (ex : des tests) avec la nouvelle saison.
                 Videz d&apos;abord la saison cible (en staging : <code>python_script/reset_saison_staging.py</code>).
+              </p>
+            )}
+
+            {preview.data.willReturnToBank > 0 && (
+              <p className="text-xs text-blue-700 font-medium mb-4 bg-blue-50 rounded px-2 py-1.5">
+                {preview.data.willReturnToBank} joueur{preview.data.willReturnToBank > 1 ? 's' : ''} actif{preview.data.willReturnToBank > 1 ? 's' : ''}/réserviste{preview.data.willReturnToBank > 1 ? 's' : ''} encore protégé{preview.data.willReturnToBank > 1 ? 's' : ''} comme recrue {preview.data.willReturnToBank > 1 ? 'seront retournés' : 'sera retourné'} en banque — chaque pooler réactive lui-même ceux qu&apos;il veut garder, en pré-saison.
               </p>
             )}
 
