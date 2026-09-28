@@ -11,7 +11,8 @@
 ## 1. Où en est la saison
 
 - Saison active : **2026-27 en staging**, mais **encore 2025-26 en prod** (2026-27 pas encore
-  activée là-bas) — les scripts qui prennent « la saison active » ciblent donc 2025-26 en prod.
+  activée là-bas) — les scripts qui prennent « la saison active » ciblent donc 2025-26 en prod
+  (ex : imports de projections → toujours passer `--season 2026-27`).
 - **Prod** : vidée volontairement le 2026-09-20 → 0 alignement, ressaisie manuelle des
   alignements par David en cours. Historique complet reconstruit en **staging** seulement.
 - Backup hors-ligne (`backup/pool_backup.html`) régénéré chaque dimanche depuis la prod.
@@ -20,69 +21,48 @@
 
 | Branche | État |
 |---|---|
-| `staging` | À jour — tout le code récent |
-| `main` (prod) | À jour sauf le commit de doc `12d025c` (aucun impact fonctionnel) |
+| `staging` | À jour |
+| `main` (prod) | À jour — dernière fusion le 2026-09-28 (`da263a7`, chantier mobile) |
 
-Dernier chantier livré en prod : blessures LNH + demandes LTIR + seuils paramétrables,
-projections (colonne Moyenne), salaires PuckPedia.
+Livré en prod le 2026-09-28 : « Mes listes », scénarios de simulation privés, sélecteur de
+pooler + onglet conservé, sélecteur de saison des projections, correctif pipeline (alias de
+prénoms), transition de saison bloquée si la cible est remplie, chantier mobile + largeur
+desktop.
 
 ## 3. Fonctionnalités récentes — état de validation
 
 | Fonctionnalité | Staging | Prod | Reste à faire |
 |---|---|---|---|
-| Suivi des blessures (CBS + ESPN, cron quotidien) | ✅ validé | ✅ | — |
-| Admissibilité LTIR (IR LNH, période tampon, garde-fous scraper) | ✅ | ✅ | — |
-| Seuils LTIR paramétrables (`app_settings`) | ✅ migré | ✅ migré | — |
-| Marqueur désaccord CBS≠ESPN (`espn_est_return_date`) | ✅ (aucun cas actuel) | ✅ migré | Colonne prod vide jusqu'au prochain cron `injuries.yml` (dernier run avant la fusion) — vérifier qu'elle se remplit. Marqueur invisible tant qu'aucun écart ≥ 5 j |
-| Demandes de LTIR avec approbation admin | ✅ code | ✅ code | Tester de bout en bout (pooler soumet → admin approuve) avec un vrai compte pooler |
-| Projections (NHL.com / CBS / Pool Pro / Hockey Mag, colonne Moyenne) | ✅ | ✅ importé | Identiques staging/prod (406-407 / 966 / 400 / 422). ⚠ Page prod vide tant que 2025-26 est la saison active en prod : sélecteur de saison à fusionner sur `main`, ou activer 2026-27 |
-| « Mes listes » (agents libres + recrues 2026, privées) | ✅ validé | ✅ déployé | — |
+| Chantier mobile : paysage débloqué (PWA), 10 pages adaptées, largeur desktop | ✅ validé | ✅ | Poolers : réinstaller l'app si le paysage reste bloqué |
+| « Mes listes » (agents libres + recrues 2026, privées, 5 pages) | ✅ validé | ✅ | — |
 | Scénarios de simulation privés (admin compris) | ✅ migré | ✅ migré | — |
-| `/poolers/[id]` : sélecteur de pooler visible + onglet conservé | ✅ validé | ✅ déployé | — |
-| Chantier mobile (paysage débloqué, 10 pages adaptées) + largeur desktop | ✅ validé | ✅ déployé 2026-09-28 | Réinstaller l'app PWA si le paysage reste bloqué |
-| Sélecteur de saison sur `/statistiques/projections` | ✅ validé | ✅ déployé | En prod, choisir 2026-27 (saison active prod encore 2025-26) |
-| Sidebar de navigation + onglet « Prochains matchs » | ✅ | ✅ validé (mobile inclus) | — |
+| `/poolers/[id]` : sélecteur de pooler visible + onglet conservé | ✅ validé | ✅ | — |
+| Sélecteur de saison sur `/statistiques/projections` | ✅ validé | ✅ | En prod, choisir 2026-27 (saison active prod encore 2025-26) |
+| Projections (NHL.com / CBS / Pool Pro / Hockey Mag, Moyenne) | ✅ | ✅ importé | — |
+| Transition de saison refusée si la saison cible a déjà des alignements | ✅ validé (bloc rouge) | ✅ | — |
+| Rechargement auto du repêchage des recrues (60 s, jamais pendant la saisie) | ✅ | ✅ | — |
+| Suivi des blessures + admissibilité LTIR + seuils paramétrables | ✅ | ✅ | — |
+| Marqueur désaccord CBS≠ESPN (`espn_est_return_date`) | ✅ (aucun cas actuel) | ✅ migré | ⚠ Vérifier que la colonne prod se remplit (cron `injuries.yml`) |
+| Demandes de LTIR avec approbation admin | ✅ code | ✅ code | Tester de bout en bout avec un vrai compte pooler |
 | Transactions entre poolers (échanges + approbation) | ✅ | ✅ | Test réel à deux poolers |
 | Ballotage (réclamer / refuser / compléter) | ✅ | ✅ | Test réel à plusieurs poolers en saison |
-| Import salaires PuckPedia (`import.yml`) | ✅ | ✅ réussi (2026-09-25) | — |
 
-## 4. Tests encore à faire (non bloquants mais à ne pas oublier)
+## 4. À faire / à vérifier
 
-- [ ] Repêchage des agents libres : terminaison du repêchage + « Démarrer la saison »
-      (conformité + déclarations « prêt ») en staging, de bout en bout.
+- [ ] **Pipeline prod — fusions de doublons** : le premier `import.yml` après le 2026-09-28
+      doit faire 7 fusions (`[DEDUP-ALIAS]` dans le log : Mitch Marner, Matt Savoie, Dmitry
+      Kuzmin, Matthew Maggio, J.J. Moser, Matty Beniers, Dmitriy Simashev). Vérifier le log.
+- [ ] **Staging — remise à neuf de 2026-27** (si pas encore fait) : 2026-27 mélange vrais
+      alignements et tests. Depuis `python_script/` :
+      `python reset_saison_staging.py 2026-27 --apply` (« oui »), puis refaire la transition
+      2025-26 → 2026-27 (Admin > Gestion du pool > Configuration > Saisons), puis le
+      repêchage des recrues. Suppression bloquée pour Claude (mode auto).
+- [ ] Repêchage des agents libres : terminaison + « Démarrer la saison » (conformité +
+      déclarations « prêt ») en staging, de bout en bout.
 - [ ] Notifications courriel des commentaires (babillard / planification) avec deux vrais
       comptes distincts.
-- [ ] Rendu mobile des pages de consultation récentes (blessures, projections, AHL).
-
-## 4 bis. À lancer par David — remise à neuf de 2026-27 en staging
-
-2026-27 en staging mélange les vrais alignements et des tests (la transition ne fait
-qu'ajouter les joueurs absents, elle ne remplace rien). Suppression bloquée pour Claude (mode
-auto) — depuis `python_script/` :
-
-```powershell
-python reset_saison_staging.py 2026-27            # simulation (déjà vérifiée)
-python reset_saison_staging.py 2026-27 --apply    # « oui » pour confirmer
-```
-
-Puis refaire la transition 2025-26 → 2026-27 (désormais bloquée tant que la saison cible
-n'est pas vide — à tester au passage : l'aperçu doit montrer le bloc rouge AVANT le script,
-et plus rien APRÈS) (Admin > Gestion du pool > Configuration >
-Saisons), puis le repêchage des recrues. Simulation : 400 lignes d'alignement, 71
-transactions, 23 changements de statut, 3 ballotages, 1 échange, 3 surveillances cap, 8
-« prêt », 32 choix remis à neuf (dont 6 réassignés), saison remise à « non démarrée ».
-
-## 4 ter. Bug pipeline — fiches joueurs en double (corrigé en staging)
-
-- Cause : `import_supabase.py` (PuckPedia « Mitch Marner ») et `import_drafts.py` (API
-  repêchage : « Matt Savoie », « Dmitriy Simashev », « Matty Beniers », « J.J. Moser »)
-  jumelaient par nom exact → fiches orphelines, dont une avec contrats en double (Marner).
-- Correctif : alias de prénoms partagés (`python_script/name_aliases.py`) + fusion
-  automatique des doublons d'alias au début de `import_supabase.py`. Homonymes réels gardés
-  distincts (Matt Murray SEA / Matthew Murray NSH).
-- ✅ Validé en staging (`run_pipeline_staging.ps1 --no-scrape`) : 5 fusions, 0 fiche créée.
-- Prod : code sur `main` depuis le 2026-09-28 — le prochain `import.yml` (hebdo du lundi,
-  ~11h45 UTC en pratique) fera les 7 fusions prévues. Vérifier son log (`[DEDUP-ALIAS]`). Projections déjà corrigées par David (`fix_projections_doublons.py`, 2026-09-26).
+- [ ] Pages pas encore passées au mobile (si les poolers s'en plaignent) : `/statistiques/ahl`,
+      `/calendrier`, `/repechage-agents-libres`, `/repechage-recrues`, `/simulation`.
 
 ## 5. Décisions en attente de David
 
