@@ -6,6 +6,8 @@ mêmes pièges de jumelage (accents, nom seul vs nom+équipe), donc une seule im
 
 import unicodedata
 
+from name_aliases import canonical_first
+
 
 def normalize(s: str) -> str:
     s = unicodedata.normalize('NFKD', s or '').encode('ascii', 'ignore').decode()
@@ -50,6 +52,17 @@ def match_player(name: str, team: str, by_name_team: dict, by_name: dict, by_las
         return found_pid, f'nom seul (équipe DB={db_team!r} ≠ source={team!r})'
     if len(candidates) > 1:
         return None, f'{len(candidates)} joueurs du même nom, équipe {team!r} non trouvée parmi eux'
+    # Surnom connu ("Alexei" chez CBS vs "Aliaksei" en base) — voir name_aliases.py.
+    first, _, rest = name.strip().partition(' ')
+    if rest:
+        alias_key = normalize(f'{canonical_first(first)} {rest}')
+        if alias_key != key:
+            pid = by_name_team.get((alias_key, team))
+            if pid:
+                return pid, f'alias de prénom (source={name!r})'
+            alias_candidates = by_name.get(alias_key, [])
+            if len(alias_candidates) == 1:
+                return alias_candidates[0][0], f'alias de prénom (source={name!r}, équipe DB={alias_candidates[0][1]!r})'
     if by_lastname_team is not None:
         last = name.strip().split(' ')[-1]
         last_candidates = by_lastname_team.get((normalize(last), team), [])

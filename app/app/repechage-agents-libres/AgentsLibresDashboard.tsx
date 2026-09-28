@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import AutoReload from '@/components/AutoReload'
+import WatchlistPanel from '@/components/WatchlistPanel'
 import { submitTransactionAction } from '../admin/transactions/actions'
 import { submitSelfServiceAction, loadOwnRecrueBankAction, setReadyAction, leaveDraftQueueAction, searchSandboxFreeAgentsAction, listTeamsAction, type SandboxFreeAgentResult } from './actions'
 import AdminPanel from './AdminPanel'
@@ -243,6 +244,10 @@ export default function AgentsLibresDashboard({
           </div>
         </div>
       )}
+
+      {/* Listes privées d'agents libres à cibler (David, 2026-09-27) — un joueur signé par un
+          autre pooler passe dans « Déjà pris » (rafraîchi toutes les 15 s). */}
+      <WatchlistPanel kinds={['joueurs']} refreshMs={15000} />
 
       {/* Disposition en 3 colonnes (David, 2026-09-18, pour réduire le défilement pendant un
           repêchage en direct) : panneau admin à gauche (réglages/file d'attente, moins

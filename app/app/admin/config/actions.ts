@@ -166,16 +166,18 @@ export async function previewTransitionAction(
   poolerCount?: number
   noContract?: { playerName: string; poolerName: string; playerType: string }[]
   willLoseProtection?: number
+  existingCount?: number
 }> {
   const supabase = await createClient()
 
-  const [{ data: toSaison }, { data: rosters }] = await Promise.all([
+  const [{ data: toSaison }, { data: rosters }, existingCount] = await Promise.all([
     supabase.from('pool_seasons').select('season').eq('id', toSaisonId).single(),
     supabase
       .from('pooler_rosters')
       .select(`pooler_id, player_id, player_type, rookie_type, pool_draft_year, poolers (name), players (first_name, last_name, player_contracts (season, cap_number, is_elc))`)
       .eq('pool_season_id', fromSaisonId)
       .eq('is_active', true),
+    countTargetRosters(supabase, toSaisonId),
   ])
 
   if (!toSaison) return { error: 'Saison cible introuvable.' }
@@ -221,7 +223,19 @@ export async function previewTransitionAction(
 
   const poolerCount = new Set(entries.map((e: any) => e.pooler_id)).size
 
-  return { playerCount: entries.length, poolerCount, noContract, willLoseProtection }
+  return { playerCount: entries.length, poolerCount, noContract, willLoseProtection, existingCount }
+}
+
+// Lignes d'alignement déjà présentes dans la saison cible, actives ou non (David, 2026-09-26).
+// La transition ne fait qu'ajouter : une saison cible déjà remplie (ex: tests en staging)
+// produirait un mélange silencieux de l'ancien contenu et de la copie — la transition est
+// donc refusée tant que la saison cible n'est pas vide.
+async function countTargetRosters(supabase: Awaited<ReturnType<typeof createClient>>, toSaisonId: number) {
+  const { count } = await supabase
+    .from('pooler_rosters')
+    .select('id', { count: 'exact', head: true })
+    .eq('pool_season_id', toSaisonId)
+  return count ?? 0
 }
 
 export async function transitionSeasonAction(
@@ -248,19 +262,16 @@ export async function transitionSeasonAction(
   const entries = (rosters ?? []) as any[]
   if (entries.length === 0) return { error: 'Aucun roster à copier dans la saison source.' }
 
-  // Pas de contrainte unique (pooler_id, player_id, pool_season_id) fiable en base pour
-  // s'appuyer sur un upsert ON CONFLICT — on filtre nous-mêmes les entrées déjà copiées
-  // (relance après un essai précédent) plutôt que de dépendre d'une contrainte absente.
-  const { data: existing } = await supabase
-    .from('pooler_rosters')
-    .select('pooler_id, player_id')
-    .eq('pool_season_id', toSaisonId)
-  const existingKeys = new Set((existing ?? []).map((e: any) => `${e.pooler_id}:${e.player_id}`))
+  // Saison cible déjà remplie → refus (voir countTargetRosters). L'insertion plus bas est un
+  // seul lot, donc un échec ne laisse jamais une copie partielle à compléter.
+  const existingCount = await countTargetRosters(supabase, toSaisonId)
+  if (existingCount > 0) {
+    return { error: `La saison ${toSaison.season} contient déjà ${existingCount} ligne(s) d'alignement — transition refusée pour ne pas mélanger l'ancien contenu et la copie. Videz d'abord la saison cible.` }
+  }
 
   let returned = 0
 
   const toInsert = entries
-    .filter((e: any) => !existingKeys.has(`${e.pooler_id}:${e.player_id}`))
     .map((e: any) => {
       // Les joueurs en LTIR reviennent actif au début de la nouvelle saison
       const playerType = e.player_type === 'ltir' ? 'actif' : e.player_type

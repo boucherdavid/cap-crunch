@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import TeamBadge from '@/components/TeamBadge'
 import PoolerSwitcher from '@/components/PoolerSwitcher'
-import PoolerPageTabs from './PoolerPageTabs'
+import PoolerPageTabs, { type Tab } from './PoolerPageTabs'
 import PlayerLink from '@/components/PlayerLink'
 import { buildStandings } from '@/lib/standings'
 import { fetchStreaks, DEFAULT_INDICATOR_CONFIG } from '@/lib/streaks'
@@ -322,8 +322,20 @@ function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft,
   )
 }
 
-export default async function PoolerPage({ params }: { params: Promise<{ id: string }> }) {
+// Onglets valides pour ?onglet= (liste dupliquée ici : une valeur exportée d'un module
+// 'use client' n'est pas utilisable côté serveur).
+const TAB_IDS: Tab[] = ['alignement', 'masse-salariale', 'recrues', 'prochains-matchs', 'historique']
+
+export default async function PoolerPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ onglet?: string }>
+}) {
   const { id } = await params
+  const { onglet } = await searchParams
+  const initialTab = TAB_IDS.find(t => t === onglet) ?? 'alignement'
   const supabase = await createClient()
 
   const { data: saison } = await supabase
@@ -637,6 +649,7 @@ export default async function PoolerPage({ params }: { params: Promise<{ id: str
         schedule7={schedule7}
         today={today}
         injuriesByNhlId={injuriesByNhlId}
+        initialTab={initialTab}
       />
     </div>
   )

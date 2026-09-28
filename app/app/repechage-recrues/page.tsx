@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import DraftBoard from '../admin/repechage/DraftBoard'
 import SaisonSelectClient from './SaisonSelectClient'
 import AutoRefresh from '@/components/AutoReload'
+import WatchlistPanel from '@/components/WatchlistPanel'
 
 export const dynamic = 'force-dynamic'
 
@@ -119,10 +120,16 @@ export default async function RepechageRecruesPage({
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <AutoRefresh enabled={saison.is_active && !isDraftDone && totalPicks > 0} />
+          {/* 60 s, seulement une fois le repêchage commencé (David, 2026-09-27 — 10 s dès que des
+              choix existaient, même avant le début, était beaucoup trop fréquent). */}
+          <AutoRefresh enabled={saison.is_active && isDraftStarted && !isDraftDone && totalPicks > 0} intervalMs={60000} />
           <SaisonSelectClient saisons={saisons} selectedId={saison.id} />
         </div>
       </div>
+
+      {/* Listes privées de recrues à cibler (David, 2026-09-27) — rafraîchies toutes les 15 s
+          pendant le repêchage : une recrue repêchée par un autre pooler passe dans « Déjà pris ». */}
+      {saison.is_active && <WatchlistPanel kinds={['recrues']} refreshMs={15000} defaultOpen={!isDraftDone} />}
 
       {totalPicks === 0 ? (
         <div className="bg-gray-50 rounded-lg border border-gray-200 px-6 py-12 text-center">

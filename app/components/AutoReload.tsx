@@ -13,7 +13,13 @@ export default function AutoReload({ enabled, intervalMs = 10000 }: { enabled: b
     // router.refresh() (rafraîchissement RSC "doux") s'est avéré peu fiable ici — un
     // rechargement complet reproduit exactement ce qu'un F5 manuel fait déjà, dont on sait
     // qu'il fonctionne.
-    const id = setInterval(() => window.location.reload(), intervalMs)
+    // Pas de rechargement pendant qu'on écrit dans un champ (recherche, note de « Mes listes »,
+    // etc.) — ce serait perdu ; on réessaie au prochain intervalle (David, 2026-09-27).
+    const id = setInterval(() => {
+      const el = document.activeElement
+      if (el && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return
+      window.location.reload()
+    }, intervalMs)
     return () => clearInterval(id)
   }, [enabled, intervalMs])
 

@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-25
+Derniere mise a jour: 2026-09-28
 
 ## Role du fichier
 
@@ -19,7 +19,184 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-09-28
+
+**[Chore] — fusion `staging` → `main`** : validé par David en staging — « Mes listes »
+(création, filtres, Simuler, Déjà pris, 5 pages), sélecteur de pooler + onglet conservé,
+sélecteur de saison des projections. Part aussi en prod : correctif pipeline (alias de
+prénoms + fusion des doublons, appliqué au prochain `import.yml`), transition de saison
+bloquée si la cible est remplie, rechargement du repêchage des recrues à 60 s.
+
+### 2026-09-27
+
+**[Feature] — `/poolers/[id]` : sélecteur de pooler plus visible, onglet conservé**
+(`app/components/PoolerSwitcher.tsx`, `app/app/poolers/[id]/{page.tsx,PoolerPageTabs.tsx}`) —
+retour d'un pooler relayé par David :
+- Sélecteur encadré en bleu avec libellé « Voir l'alignement de », police plus grande.
+- L'onglet ouvert est reflété dans l'URL (`?onglet=masse-salariale`, etc., via
+  `history.replaceState`, sans recharger) ; le sélecteur conserve la chaîne de requête en
+  changeant de pooler, et la page lit `?onglet=` au chargement (valeur inconnue → Alignement).
+  Liste des onglets valides dupliquée dans `page.tsx` (une constante exportée d'un module
+  `'use client'` n'est pas utilisable côté serveur).
+- Vérifié : `tsc --noEmit`, ESLint et `next build` passent. Pas testé dans le navigateur.
+
+**[Feature] — « Mes listes » : listes privées de joueurs à surveiller** (`supabase_migrations/watchlists.sql`,
+`schema.sql`, `app/app/listes/{actions.ts,page.tsx}`, `app/components/WatchlistPanel.tsx`,
+`app/components/Navbar.tsx`, `app/app/{repechage-recrues/page.tsx,repechage-agents-libres/AgentsLibresDashboard.tsx,gestion-effectifs/page.tsx,simulation/SimulationTool.tsx,aide/AideTabs.tsx}`) —
+demande d'un pooler relayée par David :
+- But : garder une trace des joueurs disponibles qui intéressent chaque pooler, surtout le soir
+  du pool, et éviter de nommer un joueur déjà pris.
+- Décisions de David : recrues = repêchage LNH le plus récent (2026, 223 joueurs en base) ;
+  listes **privées**, admin compris (l'admin est aussi un pooler) ; listes d'agents libres
+  accessibles partout où c'est pertinent (d'où Gestion d'effectifs en plus des 3 endroits
+  proposés).
+- Proposition retenue : un seul composant (`WatchlistPanel`) et les mêmes données aux 5
+  endroits, plutôt que 3 listes distinctes. Listes nommées, priorité ▲▼, note, recherche des
+  disponibles seulement, joueur pris masqué dans « Déjà pris (par X) » plutôt que supprimé,
+  rafraîchissement 15 s sur les pages de repêchage.
+- **Confidentialité** : tables sans politique RLS (service role filtré sur l'utilisateur).
+  Vérification au passage de `/simulation` demandée par David : l'app ne montrait déjà que ses
+  propres scénarios à chacun, mais la politique RLS « Admin gère simulation_scenarios »
+  permettait à l'admin de lire ceux des autres directement via l'API — retirée dans la même
+  migration.
+- Guide `/aide` : nouvelle section « Mes listes » ; section Simulation précise que les
+  scénarios sont privés.
+- Vérifié : `tsc --noEmit`, ESLint (fichiers touchés ; erreurs/avertissements préexistants dans
+  `repechage-recrues/page.tsx` et `SimulationTool.tsx`) et `next build` passent.
+- Migration `watchlists.sql` exécutée par David en staging et prod. Pas encore testé dans le
+  navigateur.
+- Retour de David au premier essai : la recherche exigeait un nom. Filtres ajoutés comme dans
+  `/simulation` — nom optionnel, position, équipe, salaire max (M$) et ELC (agents libres),
+  tri (salaire, rang de repêchage, nom, équipe) ; sans nom, parcourt les disponibles
+  (agents libres = sous contrat pour la saison active, ~1500 joueurs chargés par pages de
+  1000 avant tri, 150 affichés avec avis « affine » au-delà). Badge ELC et salaire dans les
+  résultats.
+
+**[Fix] — rechargement automatique de `/repechage-recrues` trop fréquent**
+(`app/app/repechage-recrues/page.tsx`, `app/components/AutoReload.tsx`) :
+- Rechargement complet toutes les 10 s dès que des choix existaient, même avant le début du
+  repêchage. Maintenant : 60 s (30 s d'abord, allongé à la demande de David — bouton « ↻ Rafraîchir » disponible), seulement une fois le repêchage commencé (`isDraftStarted`).
+- `AutoReload` saute un intervalle si le focus est dans un champ (input/textarea/select) —
+  évite de perdre une recherche ou une note de « Mes listes » ; vaut aussi pour
+  `/repechage-agents-libres`.
+
+### 2026-09-26
+
+**[Docs] — nouvel instantané `ETAT_PROJET.md` à la racine** (`ETAT_PROJET.md`, `CLAUDE.md`) :
+- Demande de David : un document qui résume toujours où on en est (fonctionnalités, tests,
+  etc.) — ce journal, devenu très long, ne remplit plus ce rôle.
+- `ETAT_PROJET.md` est **réécrit** à chaque fin de tâche (pas empilé) : état staging/prod,
+  statut de validation des fonctionnalités récentes, tests restants, décisions en attente,
+  backlog. Règle ajoutée à `CLAUDE.md` sections 3, 10 et 11.
+- Premier jet construit à partir des « reste à faire » du journal ; les points marqués ⚠
+  (migrations des seuils LTIR / `espn_est_return_date` en prod, imports Pool Pro / Hockey Mag
+  en prod, workflow `import.yml`) sont à confirmer par David.
+- Confirmé par David : migration des 5 colonnes de seuils LTIR (`app_settings`) roulée en
+  staging et prod.
+- Question de David : le marqueur CBS≠ESPN n'apparaît nulle part. Ce n'est pas une colonne :
+  pastille « ⚠ CBS≠ESPN » à côté du badge et « ⚠ ESPN : <date> » dans la colonne Statut de
+  `/statistiques/blessures`, seulement si écart ≥ 5 jours. Vérifié en base : staging 59/71
+  blessés avec les deux dates, **toutes identiques** (0 cas) ; prod : colonne présente
+  (migration faite) mais vide — le dernier run du cron (2026-09-25 19:44 UTC) précède la
+  fusion sur `main` (20:18 UTC), le prochain run la remplira.
+- Validé par David : rendu mobile de la sidebar (tiroir) correct, onglet « Prochains matchs »
+  présent sur la page d'alignement.
+
+**[Feature] — sélecteur de saison sur `/statistiques/projections`**
+(`app/app/statistiques/projections/{page.tsx,ProjectionsTable.tsx}`) :
+- Demande de David : la page était codée en dur sur la saison active. `?saison=YYYY-YY`,
+  saison active par défaut ; options = saisons du pool (hors séries) ayant au moins une
+  projection, la saison active toujours incluse.
+- Tendance pondérée et « Saison dernière » calculées relativement à la saison affichée
+  (saison NHL dérivée de `YYYY-YY` pour une saison autre que l'active). Pastille de
+  disponibilité inchangée (toujours l'état actuel, même décision que `/statistiques`).
+- Pour l'instant seule 2026-27 a des projections (staging et prod) — une seule option.
+- Vérifié : `tsc --noEmit` et `next build` passent. ESLint : 3 erreurs React Compiler
+  (`useMemo`/`filterAndSort`) préexistantes, identiques avant la modification.
+- Constaté au passage en prod : Pool Pro et Hockey Mag à 0 ligne, CBS 367 (vs 966 en staging)
+  — imports jamais répliqués en prod, ajouté à `ETAT_PROJET.md`.
+
+**[Chore] — préparation de l'import des projections en prod** (`python_script/fix_projections_doublons.py` nouveau) :
+- David a demandé de répliquer les projections en prod. **Écritures prod refusées par le
+  mode automatique de Claude Code** — rien n'a été écrit en prod ; commandes laissées à David
+  dans `ETAT_PROJET.md` (section 4 bis).
+- Découvertes en lecture seule :
+  - la prod a encore **2025-26 comme saison active** (staging : 2026-27) — les scripts
+    d'import sans `--season` auraient écrit en 2025-26 ;
+  - les orphelins du 2026-09-22 existent en prod (J.J. Moser, Matty Beniers, Matt Savoie,
+    Dmitriy Simashev, Mitch Marner) et **3 ont été recréés en staging le 2026-09-25** par le
+    pipeline : « Marner, Mitch » chez PuckPedia → fiche en double **avec contrats**
+    (`import_supabase.py`, jumelage par nom) ; Matt Savoie / Dmitriy Simashev recréés par
+    `import_drafts.py`. Correctif pipeline non fait — à décider avec David ;
+  - Aliaksei Protas : CBS le nomme « Alexei » (non jumelé) — sa valeur CBS en staging (59)
+    était celle d'Ilya ; la bonne est 63.
+- `fix_projections_doublons.py` : jumelage par nom (IDs différents entre bases), déplace les
+  projections des orphelins vers la vraie fiche, supprime l'orphelin seulement s'il n'est
+  référencé nulle part (Mitch Marner gardé, à cause des contrats), corrige Protas. Dry-run par
+  défaut, `--env staging|prod`, `--apply` + « oui ». Simulé sur les deux bases.
+- Dry-runs des 3 imports contre la prod : Pool Pro 400/400, Hockey Mag 422/422, CBS ~60
+  vétérans retraités non trouvés (attendu).
+
+**[Fix] — le pipeline ne recrée plus de fiches joueurs en double sous un surnom**
+(`python_script/name_aliases.py` nouveau, `import_supabase.py`, `import_drafts.py`,
+`projections_common.py`) :
+- Confirmé via l'API LNH : les orphelins viennent de l'API de repêchage (« Matty Beniers »,
+  « J.J. Moser », « Matt Savoie », « Dmitriy Simashev ») et de PuckPedia (« Marner, Mitch »).
+- `name_aliases.py` : table variante → prénom canonique (mitch/matt/matty/dmitriy/dmitry/
+  alexei/j.j.). Utilisée en **repli seulement**, après échec du jumelage exact, et seulement
+  si un seul candidat : `import_supabase.py` (garde le prénom en base, ne l'écrase pas),
+  `import_drafts.py`, `projections_common.py` (« Alexei Protas » CBS → Aliaksei).
+- `merge_alias_duplicates()` (fin de `deduplicate_players`) : fusionne les fiches d'un même
+  groupe d'alias. Garde la fiche « réelle » (nhl_id, sinon contrats), **pas** forcément celle
+  au prénom canonique — la simulation a montré Matt Maggio / Dmitri Kuzmin (vraies fiches) vs
+  Matthew Maggio / Dmitry Kuzmin (orphelins du repêchage). Plusieurs fiches réelles sur des
+  équipes différentes = homonymes, laissées telles quelles (Matt Murray SEA 32 ans / Matthew
+  Murray NSH 28 ans). Projections du doublon déplacées avant la fusion.
+- Simulé d'abord en lecture seule (écritures interceptées) sur les deux bases, puis
+  `run_pipeline_staging.ps1 --no-scrape` roulé : 5 fusions, « Mitch Marner » jumelé à
+  Mitchell (1439), 0 fiche insérée. Kuzmin perd `draft_year=2021` (hors fenêtre de 5 ans,
+  sans impact). Prod : 7 fusions prévues au premier pipeline prod après fusion sur `main`.
+
+**[Chore] — projections importées en prod par David** : les 3 imports (`--season 2026-27`)
+et `fix_projections_doublons.py` (staging + prod) roulés par David. Vérifié en lecture seule :
+staging et prod identiques (nhl_com 406/407, cbs 966, pool_pro 400, hockey_magazine 422),
+aucune ligne écrite par erreur en 2025-26, Aliaksei Protas CBS = 63, orphelins J.J./Matty/
+Dmitriy supprimés. Reste : la page prod affiche la saison active (2025-26, vide) tant que le
+sélecteur n'est pas sur `main` ou que 2026-27 n'est pas activée en prod.
+
+**[Chore] — script de remise à neuf d'une saison en staging** (`python_script/reset_saison_staging.py` nouveau) :
+- David a refait la transition 2025-26 → 2026-27 en staging et voyait encore ses tests.
+  Cause : `transitionSeasonAction` ne fait qu'**ajouter** les (pooler, joueur) absents de la
+  saison cible — rien n'est remplacé, et un joueur libéré en test (ligne inactive) n'est pas
+  recopié. Staging 2026-27 : 400 lignes, 70 joueurs actifs absents de 2025-26, 71 de 2025-26
+  manquants/inactifs. Prod non concernée (2026-27 vide depuis le 2026-09-20).
+- Décision de David : tout remettre à neuf, y compris les 32 choix de repêchage (6
+  réassignés) et les 32 recrues repêchées en test.
+- Script : refuse de tourner si `.env.staging` = prod ; supprime tout ce qui appartient à la
+  saison (alignements, transactions + items, historique, ballotages + réclamations, échanges +
+  items, LTIR, surveillance cap, snapshots, « prêt », état du repêchage AL), remet les choix à
+  neuf et `season_started=false`. Garde la configuration de la saison (dont
+  `presaison_draft_order`). Dry-run vérifié ; `--apply` bloqué pour Claude (mode auto) —
+  laissé à David.
+
+**[Fix] — la transition de saison refuse une saison cible déjà remplie**
+(`app/app/admin/config/{actions.ts,SeasonsManager.tsx}`) :
+- Accepté par David. `previewTransitionAction` renvoie `existingCount` (lignes
+  `pooler_rosters` de la saison cible, actives ou non) ; l'aperçu affiche un bloc rouge et
+  désactive « Confirmer la transition ». `transitionSeasonAction` refuse aussi côté serveur.
+- Le filtrage « relance après un essai précédent » (ajout des seuls couples absents) est
+  retiré : l'insertion est un seul lot, un échec ne laisse jamais de copie partielle — c'est
+  justement ce filtrage qui produisait le mélange silencieux.
+- Vérifié : `tsc --noEmit` et `next build` passent ; ESLint : 7 `any` préexistants dans
+  `actions.ts` (un de moins qu'avant). Pas testé dans le navigateur.
+
 ### 2026-09-25
+
+**[Chore] — salaires/contrats PuckPedia poussés en prod** (`python_script/PuckPedia_*.csv`,
+`python_script/teams_offline/*.csv`) :
+- Pipeline validé en staging par David, CSV commités (`efe834a`) puis fusionnés sur `main`
+  (`49e9f91`) — déclenche `import.yml` (réimport prod). Exécution du workflow pas encore
+  vérifiée.
 
 **[Style] — ajustements de présentation** (`app/components/Navbar.tsx`,
 `app/app/statistiques/projections/{page.tsx,ProjectionsTable.tsx}`) :

@@ -1,7 +1,8 @@
 ﻿# Cap Crunch — Référence Projet
 
 Ce fichier sert de référence stable pour Claude Code.
-Le suivi des changements, des décisions récentes et de l'état courant va dans `SUIVI_PROJET.md`.
+Le suivi des changements et des décisions récentes va dans `SUIVI_PROJET.md` (journal) ;
+l'instantané « où on en est » (fonctionnalités, tests, en attente) va dans `ETAT_PROJET.md`.
 
 ---
 
@@ -155,6 +156,7 @@ python scrape_injuries.py --apply    # exécution réelle, sans confirmation (vo
 Hockey_Pool_App/
 ├── CLAUDE.md                  ← Ce fichier (référence stable)
 ├── SUIVI_PROJET.md            ← Journal de bord actif (à mettre à jour chaque session)
+├── ETAT_PROJET.md             ← Instantané de l'état courant (réécrit chaque session)
 ├── schema.sql                 ← Schéma de référence de la base de données
 ├── start_app.ps1              ← Démarrer l'app localement (toujours contre staging)
 ├── stop_app.ps1               ← Arrêter l'app localement
@@ -227,6 +229,10 @@ Hockey_Pool_App/
   libération, une request par pooler l'ayant réclamée — voir section 6)
 - `trade_offers`/`trade_offer_items` (transactions proposées entre poolers, approbation admin
   — voir section 6)
+- `watchlists`/`watchlist_items` (« Mes listes », listes privées de joueurs à surveiller — voir
+  section 6) et `simulation_scenarios` (scénarios de `/simulation`) : **privées**, RLS activée
+  sans aucune politique — accès uniquement par `createAdminClient()` filtré sur l'utilisateur
+  connecté ; l'admin ne voit jamais les listes/scénarios d'un autre pooler (David, 2026-09-27)
 
 **Conventions :**
 - Statuts joueurs : `ELC`, `RFA`, `UFA`
@@ -257,7 +263,9 @@ heure de l'Est ; navigation précédent/suivant, voir section 6) `/resultats`
 **Mouvements**, l'outil existant ; **Ballotage**, réclamer un joueur libéré en cours de
 saison ; **Échanges**, proposer/répondre à des transactions entre poolers — voir section 6
 pour les trois) `/draft-center` (classement des prospects, vue publique)
-`/dashboard` (redirige vers son propre alignement) `/compte` `/signaler` `/aide` `/a-propos`
+`/dashboard` (redirige vers son propre alignement ; `/poolers/[id]` garde l'onglet ouvert dans
+`?onglet=` et le conserve en changeant de pooler) `/listes` (« Mes listes », menu Mon équipe —
+voir section 6) `/compte` `/signaler` `/aide` `/a-propos`
 (David, 2026-09-23 — « tour d'horizon » statique des fonctionnalités consultables/en
 libre-service, regroupé par section de menu avec lien direct vers chaque page ; distinct
 d'`/aide` (guide pas-à-pas + règlements) — les deux se renvoient l'un vers l'autre. Généré à
@@ -438,7 +446,7 @@ sont deux natures de contenu différentes.**
 
 | Section | Contenu |
 |---|---|
-| Mon équipe (nouveau nom de groupe — le lien "Mon alignement", ex-"Mon équipe", garde son nom de page inchangé depuis le renommage plus haut le même jour) | Mon alignement · Gestion d'effectifs · Simulation — "ce qui m'appartient / que je contrôle" |
+| Mon équipe (nouveau nom de groupe — le lien "Mon alignement", ex-"Mon équipe", garde son nom de page inchangé depuis le renommage plus haut le même jour) | Mon alignement · Gestion d'effectifs · Simulation · Mes listes (ajouté le 2026-09-27) — "ce qui m'appartient / que je contrôle" |
 | Le pool | Tous les alignements (ex-"Équipes") · Journal des transactions — "ce qui concerne les autres poolers" |
 | Classement du pool (ex-"Classement", renommé le 2026-09-23 (suite)) | Saison complète · Hebdomadaire · Mensuel |
 | Calendrier LNH (lien autonome, ex-sous-item de "Statistiques", sorti le 2026-09-23 (suite) — entre Classement du pool et Statistiques) | Le résumé personnel "mes joueurs cette semaine" a été extrait dans un onglet séparé sur `/poolers/[id]`, voir ci-dessous — cette page ne garde que la navigation jour par jour |
@@ -555,6 +563,12 @@ ci-dessous — la page publique `/planification` (vue pooler) n'est pas affecté
 Repêchage annuel en direct (tableau de sélection) : route à part `/admin/repechage`
 (pas un onglet — lien direct dans la Navbar), distinct de l'onglet `/admin/init?tab=choix`
 qui ne sert qu'à réassigner un pick déjà existant.
+
+**Transition des rosters (`transitionSeasonAction`, `admin/config/actions.ts`)** — copie les
+actifs de la saison source vers la saison cible ; **refusée si la saison cible contient déjà des
+lignes `pooler_rosters`** (David, 2026-09-26 — sinon mélange silencieux avec un contenu
+existant, ex: tests en staging). Staging : vider d'abord avec
+`python_script/reset_saison_staging.py <saison> --apply`.
 
 `/admin/nouvelle-saison` : route à part (lien dans le dropdown Admin), hub orchestrateur qui
 séquence dans l'ordre recommandé les étapes de préparation d'une saison à venir — transition
@@ -1029,6 +1043,12 @@ corrigée le 2026-09-20 :**
 **Python :**
 - `csv_path` doit être relatif à `BASE_DIR` (requis pour GitHub Actions)
 - L'environnement virtuel est dans `python_script/venv/` (ne pas committer)
+- Surnoms/translittérations de prénoms (« Mitch »/« Mitchell », « Matt »/« Matthew »,
+  « Dmitriy »/« Dmitri »...) : `python_script/name_aliases.py`, partagé par `import_supabase.py`,
+  `import_drafts.py` et `projections_common.py` (repli après échec du jumelage exact).
+  `import_supabase.py` fusionne aussi les doublons d'alias déjà en base
+  (`merge_alias_duplicates`, garde la fiche avec nhl_id/contrats). Nouvel orphelin repéré →
+  ajouter la variante dans `FIRST_NAME_ALIASES` plutôt que de corriger à la main.
 
 **Courriels (`app/lib/email.ts`) :**
 - Envoi via SMTP Gmail (compte personnel de David), pas un service transactionnel — décision du
@@ -1121,6 +1141,24 @@ corrigée le 2026-09-20 :**
 - RLS `trade_offers`/`trade_offer_items` : lecture publique + admin seulement en écriture,
   même patron que `waiver_claims` — toutes les écritures passent par `createAdminClient()`
   depuis des Server Actions qui font leur propre vérification d'autorisation.
+
+**« Mes listes » — listes privées de joueurs à surveiller (`app/app/listes/actions.ts`,
+`app/components/WatchlistPanel.tsx`) — David, 2026-09-27 (retour d'un pooler) :**
+- Aide-mémoire par pooler, surtout pour le soir du pool : listes nommées de type `joueurs`
+  (agents libres = tout joueur absent des alignements actifs de la saison active) ou `recrues`
+  (joueurs du **dernier repêchage LNH** en base, `max(players.draft_year)` — ex: 2026).
+  Ordre de priorité (`rank`) et note par joueur.
+- La recherche ne propose que des joueurs disponibles. Un joueur pris n'est **pas** retiré de
+  la liste : calcul à la volée (`pooler_rosters` actifs de la saison active) → section repliée
+  « Déjà pris (par X) » — la liste reste réutilisable si le joueur est libéré.
+- Un seul composant, mêmes données partout : `/listes` (les deux types),
+  `/repechage-recrues` (recrues, rafraîchi 15 s, saison active seulement),
+  `/repechage-agents-libres` (agents libres, 15 s), `/gestion-effectifs` (agents libres, replié),
+  `/simulation` onglet Mon alignement (les deux, bouton « Simuler » pour un agent libre →
+  `loadPlayerByIdAction` + `addFA`, même chemin que « Analyser » du ballotage).
+- Privé, admin compris (voir section 4) — même règle appliquée aux scénarios de simulation,
+  dont la politique RLS « Admin gère simulation_scenarios » (lecture de tous les scénarios par
+  l'admin via l'API) a été retirée.
 
 **Suivi des blessures LNH + demandes de LTIR (`player_injuries`, `ltir_requests`) — David,
 2026-09-23 :**
@@ -1280,7 +1318,7 @@ Règle ajoutée le 2026-08-28 après un déploiement direct sur `main` par erreu
 Après chaque tâche complétée, exécuter **sans demander confirmation** :
 
 ```bash
-# 1. Mettre à jour SUIVI_PROJET.md (voir section 11)
+# 1. Mettre à jour SUIVI_PROJET.md et ETAT_PROJET.md (voir section 11)
 # 2. Stager tous les changements
 git add -A
 # 3. Committer avec message conventionnel
@@ -1335,6 +1373,11 @@ Exemples :
 
 **Règles :**
 - Ne jamais laisser une session se terminer sans mettre à jour `SUIVI_PROJET.md`
+- **Mettre aussi à jour `ETAT_PROJET.md`** (racine) à chaque fin de tâche — instantané que
+  David relit pour se rappeler où on en est : état staging/prod, fonctionnalités et leur
+  statut de validation, tests restants, migrations à rouler, décisions en attente, backlog.
+  Contrairement à `SUIVI_PROJET.md`, ce fichier est **réécrit** (pas un journal) : retirer
+  les points réglés, garder court (une page), changer la date « Dernière mise à jour ».
 - Si une route, composant ou règle métier change → évaluer si `CLAUDE.md` doit aussi être mis à jour
 - `CLAUDE.md` ne change que si une information de **référence stable** change (architecture, stack, conventions, règles métier)
 

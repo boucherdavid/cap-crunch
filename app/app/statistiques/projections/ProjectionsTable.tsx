@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import type { ProjectionRow } from './page'
 import TeamBadge from '@/components/TeamBadge'
 import PlayerLink from '@/components/PlayerLink'
@@ -53,10 +54,14 @@ function DirectionBadge({ direction }: { direction: 'up' | 'down' | 'stable' | n
 export default function ProjectionsTable({
   players,
   season,
+  seasonOptions,
 }: {
   players: ProjectionRow[]
   season: string | null
+  seasonOptions: string[]
 }) {
+  const router = useRouter()
+  const pathname = usePathname()
   const [tab, setTab] = useState<Tab>('forwards')
   const [search, setSearch] = useState('')
   const [selectedTeam, setSelectedTeam] = useState('')
@@ -117,7 +122,21 @@ export default function ProjectionsTable({
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
         <h1 className="text-2xl font-bold text-gray-800">Projections {season ?? ''}</h1>
-        <span className="text-sm text-gray-500">{rows.length} joueur{rows.length > 1 ? 's' : ''}</span>
+        <div className="flex items-center gap-3">
+          {seasonOptions.length > 0 && (
+            <select
+              value={season ?? ''}
+              onChange={e => router.push(`${pathname}?saison=${e.target.value}`)}
+              className="border rounded-lg px-3 py-2 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Saison"
+            >
+              {seasonOptions.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          )}
+          <span className="text-sm text-gray-500">{rows.length} joueur{rows.length > 1 ? 's' : ''}</span>
+        </div>
       </div>
 
       <p className="text-sm text-gray-500 mb-4">

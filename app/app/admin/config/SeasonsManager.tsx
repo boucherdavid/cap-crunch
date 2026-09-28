@@ -35,6 +35,7 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
     poolerCount: number
     noContract: { playerName: string; poolerName: string; playerType: string }[]
     willLoseProtection: number
+    existingCount: number
   }
   const [transitioning, setTransitioning] = useState<number | null>(null)
   const [preview, setPreview] = useState<{ toId: number; data: TransitionPreview } | null>(null)
@@ -395,6 +396,14 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
               </div>
             )}
 
+            {preview.data.existingCount > 0 && (
+              <p className="text-xs text-red-700 font-medium mb-4 bg-red-50 border border-red-200 rounded px-2 py-1.5">
+                Transition impossible : la saison cible contient déjà {`${preview.data.existingCount} ligne${preview.data.existingCount > 1 ? 's' : ''} d'alignement.`}
+                La copie ne ferait qu&apos;ajouter les joueurs manquants et mélangerait l&apos;ancien contenu (ex : des tests) avec la nouvelle saison.
+                Videz d&apos;abord la saison cible (en staging : <code>python_script/reset_saison_staging.py</code>).
+              </p>
+            )}
+
             {preview.data.willLoseProtection > 0 && (
               <p className="text-xs text-amber-700 font-medium mb-4 bg-amber-100 rounded px-2 py-1.5">
                 {preview.data.willLoseProtection} recrue{preview.data.willLoseProtection > 1 ? 's' : ''} {preview.data.willLoseProtection > 1 ? 'ont' : 'a'} une protection expirée pour cette saison (fin d&apos;ELC, ou plafond 5 ans pour un repêché) —
@@ -405,7 +414,7 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
             <div className="flex gap-2 pt-2">
               <button
                 onClick={handleConfirmTransition}
-                disabled={applyingTransition}
+                disabled={applyingTransition || preview.data.existingCount > 0}
                 className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-40"
               >
                 {applyingTransition ? 'Copie en cours...' : 'Confirmer la transition'}

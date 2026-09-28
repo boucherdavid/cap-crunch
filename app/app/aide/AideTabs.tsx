@@ -271,13 +271,36 @@ const SECTIONS: Section[] = [
         <ul className="text-sm text-gray-700 space-y-1.5 mb-4">
           <li>• Retirez un de vos joueurs, ajoutez un agent libre (ou un joueur déjà possédé par un autre pooler, identifié en orange — pratique pour simuler une transaction) ou une recrue de votre banque.</li>
           <li>• Chaque joueur ajouté a un statut à choisir : <strong>Actif / Réserviste / IR</strong>.</li>
-          <li>• <strong>Scénarios sauvegardés</strong> : donnez un nom à votre simulation pour la retrouver plus tard — plusieurs scénarios peuvent être gardés en parallèle.</li>
+          <li>• <strong>Scénarios sauvegardés</strong> : donnez un nom à votre simulation pour la retrouver plus tard — plusieurs scénarios peuvent être gardés en parallèle. Vos scénarios sont <strong>privés</strong> : personne d&apos;autre, administrateur compris, ne peut les voir.</li>
         </ul>
         <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Onglet Transaction</h4>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Choisissez un autre pooler pour voir les deux alignements côte à côte.</li>
           <li>• Utilisez le bouton <strong>→</strong> pour envoyer un de vos joueurs chez l&apos;autre pooler (ou l&apos;inverse) et voir l&apos;impact sur les deux masses salariales en même temps.</li>
           <li>• Les mêmes outils que Mon alignement (agent libre, recrue de banque, statut Actif/Réserviste/IR) sont disponibles des deux côtés.</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
+    id: 'guide-listes',
+    tab: 'guide',
+    title: 'Mes listes',
+    keywords: 'mes listes liste souhait cibles aide memoire bloc note agents libres recrues repechage soir du pool disponible deja pris privee',
+    href: '/listes',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Accédez-y via <strong>Mon équipe → Mes listes</strong> — un aide-mémoire des joueurs qui vous intéressent,
+          à préparer pendant la saison et à consulter le soir du pool.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• Deux types de listes : <strong>Agents libres</strong> (tout joueur qui n&apos;est dans aucun alignement) et <strong>Recrues</strong> (joueurs du dernier repêchage LNH, à repêcher au pool).</li>
+          <li>• Créez autant de listes nommées que vous voulez, classez les joueurs par priorité (▲▼) et ajoutez une courte note.</li>
+          <li>• La recherche ne propose que des joueurs <strong>encore disponibles</strong>.</li>
+          <li>• Un joueur pris par un pooler n&apos;est pas effacé : il passe dans <strong>Déjà pris</strong>, avec le nom du pooler. Le soir du pool, la liste se met à jour d&apos;elle-même.</li>
+          <li>• Vos listes sont <strong>privées</strong> : personne d&apos;autre, administrateur compris, ne peut les voir.</li>
+          <li>• Elles se retrouvent aussi dans Signatures des agents libres, Repêchage des recrues, Gestion d&apos;effectifs et Simulation (bouton <strong>Simuler</strong> pour tester l&apos;impact d&apos;un agent libre sur votre masse salariale).</li>
         </ul>
       </div>
     ),
