@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-27
+Derniere mise a jour: 2026-09-28
 
 ## Role du fichier
 
@@ -18,6 +18,14 @@ techniques : voir `CLAUDE.md` (sections 1 à 6) — c'est la référence mainten
 qu'un second inventaire dérive silencieusement de la réalité comme celui qui était ici
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
+
+### 2026-09-28
+
+**[Chore] — fusion `staging` → `main`** : validé par David en staging — « Mes listes »
+(création, filtres, Simuler, Déjà pris, 5 pages), sélecteur de pooler + onglet conservé,
+sélecteur de saison des projections. Part aussi en prod : correctif pipeline (alias de
+prénoms + fusion des doublons, appliqué au prochain `import.yml`), transition de saison
+bloquée si la cible est remplie, rechargement du repêchage des recrues à 60 s.
 
 ### 2026-09-27
 
