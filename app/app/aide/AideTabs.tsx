@@ -111,6 +111,21 @@ const SECTIONS: Section[] = [
       </div>
     ),
   },
+  {
+    id: 'install-paysage',
+    tab: 'installation',
+    title: 'Téléphone : mode paysage',
+    keywords: 'paysage portrait tourner telephone colonnes tableau mobile rotation bloque reinstaller',
+    content: (
+      <div>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• En portrait, les tableaux n&apos;affichent que les colonnes essentielles — le nom du joueur reste figé à gauche quand vous faites défiler.</li>
+          <li>• <strong>Tournez votre téléphone en paysage</strong> pour voir toutes les colonnes (équipe, statistiques détaillées, contrats des saisons suivantes…).</li>
+          <li>• Si l&apos;application installée refuse de passer en paysage, désinstallez-la puis réinstallez-la (voir ci-dessus) — une ancienne version bloquait le mode paysage.</li>
+        </ul>
+      </div>
+    ),
+  },
 
   // ── GUIDE D'UTILISATION ───────────────────────────────────────────────────
   {

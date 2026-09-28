@@ -125,6 +125,9 @@ const result = await Promise.race([
 - Pages admin : pas de responsive requis
 - Tableaux : toujours `overflow-x-auto` sur le conteneur parent
 - Colonnes à masquer sur mobile : `hidden sm:table-cell` (et le `<th>` correspondant)
+- Conventions mobiles complètes (nom figé à gauche, équipe sous le nom, fiches en portrait pour
+  le texte long, colonne latérale sous `lg`…) : voir `CLAUDE.md` racine, section 8
+  (établies le 2026-09-28)
 
 ---
 

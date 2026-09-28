@@ -38,6 +38,19 @@ David et des poolers (colonnes tassées en desktop, rendu mobile décevant) :
   par le téléphone) pour prendre effet.
 - Vérifié : `tsc --noEmit` et `next build`. Pas testé dans le navigateur.
 
+**[Docs] — documentation du chantier mobile** (`CLAUDE.md`, `app/CLAUDE.md`, `ETAT_PROJET.md`,
+`app/app/aide/AideTabs.tsx`) — demande de David :
+- `CLAUDE.md` section 8 : conventions mobiles établies (sm = frontière portrait/paysage, nom
+  figé, équipe sous le nom, fiches pour le texte long, onglets défilants, colonne latérale
+  sous `lg`, légendes repliables), liste des pages adaptées et de celles qui restent ;
+  `app/CLAUDE.md` y renvoie.
+- `ETAT_PROJET.md` réécrit au propre (tout est en prod ; points à vérifier : fusions de
+  doublons au prochain `import.yml`, remise à neuf 2026-27 en staging, colonne ESPN prod).
+  Vérifications en base impossibles pendant la session (vérificateur du mode auto
+  indisponible) — laissées « à vérifier ».
+- `/aide` → Installation : nouvelle fiche « Téléphone : mode paysage » (colonnes essentielles
+  en portrait, tourner pour tout voir, réinstaller l'app si le paysage reste bloqué).
+
 **[Chore] — fusion `staging` → `main` (chantier mobile)** : validé par David sur téléphone —
 page d'un pooler, classement, statistiques, contrats LNH, Gestion d'effectifs, Blessures, Mes
 listes, Projections, Journal, Tous les alignements ; plus largeur desktop et paysage PWA.

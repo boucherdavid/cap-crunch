@@ -1295,8 +1295,34 @@ Règle : quand on touche une page de consultation, on la rend responsive en mêm
 - Masquer les colonnes secondaires sur mobile : `hidden sm:table-cell`
 - Pas de layout en colonnes côte à côte sur mobile (`flex-wrap` ou `grid-cols-1`)
 
+**Conventions mobiles établies le 2026-09-28** (chantier validé par David sur téléphone — les
+poolers trouvaient le rendu mobile décevant). `sm` (640 px) = frontière portrait/paysage d'un
+téléphone : tout ce qui est masqué en portrait revient automatiquement en paysage.
+- **Tableau de joueurs** : nom figé à gauche (`sticky left-0 z-10 bg-white` sur la cellule,
+  `bg-gray-50` sur le `<th>`) ; si des colonnes précèdent le nom en desktop (#, pastille),
+  les masquer en portrait et figer le nom seulement en portrait (`max-sm:sticky max-sm:left-0`)
+  pour ne pas les chevaucher. Avec un en-tête déjà `sticky top-0`, le `<th>` du nom prend
+  `sticky top-0 max-sm:left-0 z-20`.
+- **Équipe (et position) sous le nom** en portrait (`sm:hidden text-[11px] text-gray-400`)
+  plutôt qu'une colonne ; la colonne passe `hidden sm:table-cell`.
+- Marges `px-2 sm:px-4` sur les cellules ; ne garder en portrait que les colonnes essentielles
+  (ex : Projections → Moyenne, Tendance, Progression ; gardiens → V toujours visible).
+- **Contenu texte long** (statut de blessure, mouvement du journal) : **fiches** en portrait
+  (`<ul className="sm:hidden">`) + tableau `hidden sm:block` — deux rendus des mêmes données.
+- Barres d'onglets : `overflow-x-auto` + `whitespace-nowrap shrink-0` sur les boutons.
+- Colonne latérale fixe (ex : `MovementHistoryPanel`, `w-80`) : dessous sous `lg`
+  (`flex flex-col lg:flex-row`, `w-full lg:w-80`) — sinon elle écrase le contenu principal
+  même en paysage.
+- Légendes longues (`StreakLegend`) : repliées dans un `<details>` en portrait.
+
+Pages adaptées selon ces conventions : `/poolers/[id]` (tous les onglets), `/classement` (+
+hebdo, mensuel), `/statistiques`, `/joueurs`, `/gestion-effectifs`, `/statistiques/blessures`,
+`/statistiques/projections`, `/journal-transactions`, `/poolers`, panneau « Mes listes ». Pas
+encore : `/statistiques/ahl`, `/calendrier`, `/repechage-agents-libres`, `/repechage-recrues`,
+`/simulation`.
+
 Pages de consultation : `/`, `/joueurs`, `/statistiques`, `/statistiques/ahl`,
-`/statistiques/blessures`, `/repechage`,
+`/statistiques/blessures`, `/statistiques/projections`, `/repechage`,
 `/poolers`, `/poolers/[id]`, `/journal-transactions`, `/gestion-series`, `/classement-series`,
 `/classement`, `/classement/hebdomadaire`, `/classement/mensuel`, `/aide`, `/a-propos`
 
