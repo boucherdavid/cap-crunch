@@ -49,9 +49,8 @@ desktop.
 
 ## 4. À faire / à vérifier
 
-- [ ] **Pipeline prod — fusions de doublons** : le premier `import.yml` après le 2026-09-28
-      doit faire 7 fusions (`[DEDUP-ALIAS]` dans le log : Mitch Marner, Matt Savoie, Dmitry
-      Kuzmin, Matthew Maggio, J.J. Moser, Matty Beniers, Dmitriy Simashev). Vérifier le log.
+- [ ] **Backup hebdomadaire** : corrigé le 2026-09-28 (permission d'écriture) — confirmer que
+      le run de dimanche (ou un lancement manuel) réussit.
 - [ ] **Staging — remise à neuf de 2026-27** (si pas encore fait) : 2026-27 mélange vrais
       alignements et tests. Depuis `python_script/` :
       `python reset_saison_staging.py 2026-27 --apply` (« oui »), puis refaire la transition
