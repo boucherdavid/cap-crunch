@@ -21,8 +21,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : recrues renvoyées en banque à la transition + correctif repêchage admin |
-| `main` (prod) | À jour — dernière fusion le 2026-09-28 (`ed247d0`, ESPN via API + détail des sources) |
+| `staging` | En avance sur `main` : recrues renvoyées en banque à la transition (à tester avant fusion) |
+| `main` (prod) | Correctif repêchage admin reporté seul le 2026-09-28 (`e43a9cd`) |
 
 Livré en prod le 2026-09-28 : « Mes listes », scénarios de simulation privés, sélecteur de
 pooler + onglet conservé, sélecteur de saison des projections, correctif pipeline (alias de
@@ -42,7 +42,7 @@ desktop.
 | Transition de saison refusée si la saison cible a déjà des alignements | ✅ validé (bloc rouge) | ✅ | — |
 | Rechargement auto du repêchage des recrues (60 s, jamais pendant la saisie) | ✅ | ✅ | — |
 | Suivi des blessures + admissibilité LTIR + seuils paramétrables | ✅ | ✅ | — |
-| Repêchage admin : plus de saut d'écran à chaque sélection | ⏳ à valider | — | Choisir quelques recrues dans Admin > Repêchage recrues (laptop) |
+| Repêchage admin : plus de saut d'écran à chaque sélection | ✅ validé | ✅ | — |
 | Transition de saison : recrues encore protégées renvoyées en banque | ⏳ code | — | Tester lors de la remise à neuf de 2026-27 en staging (bandeau bleu dans l'aperçu + banque de chaque pooler) |
 | Détail des sources (CBS / ESPN) par blessure, `/statistiques/blessures` | ✅ validé | ✅ | — |
 | Recoupement ESPN des blessures (API JSON `site.web.api.espn.com`) | ✅ | ✅ 70/76 | Confirmer au log du cron de demain midi |

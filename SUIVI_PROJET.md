@@ -31,7 +31,9 @@ action seulement — `DraftBoard` garde les sélections en état local, et `/rep
 `force-dynamic` (relue à chaque visite / rechargement auto). Soumission, annulation et ordre du
 repêchage gardent leur revalidation. Sélecteur élargi (`min-w-[22rem]`, libellé tronqué).
 Non reproduit en automatisé : mot de passe staging de `credentials/` périmé, et la génération
-d'une session par clé de service a été refusée par le mode auto — validation par David.
+d'une session par clé de service a été refusée par le mode auto — validation par David. Validé
+  par David, reporté **seul** sur `main` (`e43a9cd`) — le renvoi en banque à la transition
+  reste sur `staging` jusqu'à son test.
 
 **[Feature] — transition de saison : recrues encore protégées renvoyées en banque**
 (`admin/config/actions.ts`, `SeasonsManager.tsx`, `aide/AideTabs.tsx`) — demande de David :
