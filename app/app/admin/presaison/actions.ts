@@ -9,6 +9,7 @@ import { getEffectiveCap } from '@/lib/capUtils'
 import { isRookieProtectionExpired, isElcActiveForSeason } from '@/lib/rookieProtection'
 import { applyTransactionItems, type TxItemPayload } from '../transactions/actions'
 import { DEFAULT_NHL_MINIMUM_SALARY } from './types'
+import { fetchInjuriesByPlayerId } from '@/lib/injuries'
 import type { PoolerCapInfo, DraftState } from './types'
 
 const TURN_DURATION_DEFAULT = 90
@@ -105,7 +106,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
 
   await syncExpiredRookieProtection(supabase, saisonId, saisonRow.season, seasonStartYear)
 
-  const [{ data: saison }, { data: poolers }, { data: rosters }, { data: settings }, { data: readyRows }] = await Promise.all([
+  const [{ data: saison }, { data: poolers }, { data: rosters }, { data: settings }, { data: readyRows }, injuriesByPlayerId] = await Promise.all([
     supabase
       .from('pool_seasons')
       .select('season, pool_cap, presaison_draft_order')
@@ -121,6 +122,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
       .eq('is_active', true),
     supabase.from('app_settings').select('unsigned_player_cap_multiplier, nhl_minimum_salary').eq('id', 1).maybeSingle(),
     supabase.from('presaison_pooler_ready').select('pooler_id, ready_at').eq('pool_season_id', saisonId),
+    fetchInjuriesByPlayerId(supabase),
   ])
 
   if (!saison) return { error: 'Saison introuvable.' }
@@ -139,6 +141,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
       isCompliant: false,
       counts: { forward: 0, defense: 0, goalie: 0, reserviste: 0 },
       roster: [],
+      bank: [],
       isOverLimits: false,
       slotsManquants: 0,
       capNeededForReady: 0,
@@ -159,7 +162,17 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
     // Recrue encore en banque → syncExpiredRookieProtection() ci-dessus vient de promouvoir
     // automatiquement toute recrue à protection expirée ; une ligne 'recrue' encore présente
     // ici est donc toujours protégée, hors du repêchage pré-saison.
-    if (type === 'recrue') continue
+    if (type === 'recrue') {
+      info.bank.push({
+        roster_id: entry.id,
+        player_id: entry.player_id,
+        playerName: `${entry.players?.last_name}, ${entry.players?.first_name}`,
+        position: pos,
+        rookieType: entry.rookie_type ?? null,
+        poolDraftYear: entry.pool_draft_year ?? null,
+      })
+      continue
+    }
 
     info.roster.push({
       roster_id: entry.id,
@@ -170,6 +183,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
       cap_number: capNum,
       isEstimatedCap: capIsEstimated,
       rookieType: entry.rookie_type ?? null,
+      injury: injuriesByPlayerId.get(entry.player_id) ?? null,
     })
 
     if (type === 'actif' || type === 'reserviste') info.capUsed += capNum

@@ -407,6 +407,12 @@ recrue est déjà signée — son `cap_number` est réellement déduit dans la s
 indicatif) ; reste une simulation, pas soumissible (l'activation réelle passe par "Activer ou
 libérer une recrue" dans l'onglet Actuel).
 
+**LTIR et recrues de banque dans `/repechage-agents-libres` (David, 2026-09-28)** — l'alignement
+déplié de chaque pooler montre sa banque (`PoolerCapInfo.bank`) et les blessures
+(`RosterEntry.injury`) ; l'admin peut y activer une recrue, mettre un actif **admissible** sur
+LTIR et l'en sortir (`handleAdminSetType` → `submitTransactionAction`). Le pooler, lui, fait une
+**demande** de LTIR depuis Mon alignement (même `ltir_requests` qu'en saison, approbation admin).
+
 **Libérer au nom d'un pooler, depuis `/repechage-agents-libres` (David, 2026-09-08)** — chaque
 ligne de l'alignement déplié (`PoolerCard`, "Voir l'alignement de X") a maintenant un bouton
 ✕ admin-only qui appelle `submitTransactionAction` (`action_type='release'`,

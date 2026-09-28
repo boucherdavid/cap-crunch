@@ -43,6 +43,7 @@ desktop.
 | Rechargement auto du repêchage des recrues (60 s, jamais pendant la saisie) | ✅ | ✅ | — |
 | Suivi des blessures + admissibilité LTIR + seuils paramétrables | ✅ | ✅ | — |
 | Repêchage admin : plus de saut d'écran à chaque sélection | ✅ validé | ✅ | — |
+| Hub AL : LTIR (admin direct / pooler sur demande) + activer une recrue au nom d'un pooler | ⏳ à valider | — | Après activation de 2026-27 : bouton → LTIR sur un blessé admissible, Demander LTIR côté pooler, → Actif dans la banque |
 | Hub Nouvelle saison : étape « Banque de recrues » retirée (6 étapes) | ⏳ à valider | — | Regarder `/admin/nouvelle-saison` |
 | Transition de saison : recrues encore protégées renvoyées en banque | ⏳ code | — | Tester lors de la remise à neuf de 2026-27 en staging (bandeau bleu dans l'aperçu + banque de chaque pooler) |
 | Détail des sources (CBS / ESPN) par blessure, `/statistiques/blessures` | ✅ validé | ✅ | — |

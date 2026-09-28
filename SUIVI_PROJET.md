@@ -21,6 +21,22 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-28
 
+**[Feature] — hub « Signatures des agents libres » : LTIR et activation de recrues**
+(`AgentsLibresDashboard.tsx`, `admin/presaison/actions.ts`, `types.ts`, `aide/LtirRulesContent.tsx`)
+— demande de David : en pré-saison, rien ne permettait de mettre un joueur sur LTIR
+(Gestion d'effectifs fermée), ni à l'admin d'activer une recrue de banque au nom d'un pooler.
+- `loadPresaisonDataAction` : chaque pooler reçoit sa banque (`bank`, ex-lignes `recrue`
+  ignorées) et chaque joueur son info de blessure (`injury`, `fetchInjuriesByPlayerId`).
+- Alignement déplié (admin) : badge Blessé/Admissible, « → LTIR » sur un actif **admissible**,
+  « → Actif » sur un LTIR (retour), section « Banque de recrues » avec « → Actif » (promote).
+  `handleAdminSetType` généralise l'ancien bascule actif↔réserviste (`submitTransactionAction`,
+  notes « Ajustement pré-saison », pré-saison = ni validation ni journal).
+- Mon alignement (pooler) : « Demander LTIR » sur un actif admissible → même système qu'en saison
+  (`ltir_requests`, approbation dans `/admin/effectifs?tab=approbation`, choix de David) ;
+  « LTIR demandé » + Annuler tant que c'est en attente.
+- `groupRosterByPosition` : nouveau groupe « LTIR » (un LTIR apparaissait parmi les
+  attaquants/défenseurs).
+
 **[UX] — `/repechage-agents-libres` : bandeau admin quand la saison active est déjà démarrée**
 (`AgentsLibresDashboard.tsx`) — David ne voyait plus le panneau admin (ordre, signatures,
 phase de libération) ni Räty/Svechkov activés. Pas un bug : la page ne lit que la saison

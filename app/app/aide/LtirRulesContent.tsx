@@ -19,6 +19,7 @@ export default function LtirRulesContent() {
         <p className="font-medium text-gray-800 mb-1.5">Mettre un joueur sur le LTIR</p>
         <ul className="space-y-1.5">
           <li>• Depuis <strong>Gestion d&apos;effectifs</strong>, choisissez <strong>LTIR</strong> (ou <strong>LTIR + signature</strong> pour signer un remplaçant dans le même geste). Au lieu de s&apos;appliquer tout de suite, votre demande est envoyée à l&apos;administrateur pour approbation.</li>
+          <li>• En <strong>pré-saison</strong> (avant le début de la saison), la demande se fait plutôt depuis <strong>Signatures des agents libres</strong> → Mon alignement : bouton <strong>Demander LTIR</strong> à côté d&apos;un joueur actif admissible, même approbation par l&apos;administrateur.</li>
           <li>• Tant que l&apos;administrateur n&apos;a pas décidé, un bandeau <strong>En attente d&apos;approbation</strong> s&apos;affiche et vous pouvez annuler votre demande.</li>
           <li>• Si elle est approuvée, la <strong>date effective est celle de votre demande</strong>, pas celle de l&apos;approbation — une approbation tardive ne vous pénalise pas.</li>
           <li>• Un joueur sur le LTIR ne compte pas dans votre masse salariale et ne rapporte aucun point.</li>

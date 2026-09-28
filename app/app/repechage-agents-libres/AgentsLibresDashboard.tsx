@@ -7,17 +7,24 @@ import { submitTransactionAction } from '../admin/transactions/actions'
 import { submitSelfServiceAction, loadOwnRecrueBankAction, setReadyAction, leaveDraftQueueAction, searchSandboxFreeAgentsAction, listTeamsAction, type SandboxFreeAgentResult } from './actions'
 import AdminPanel from './AdminPanel'
 import TourEnCoursPanel from './TourEnCoursPanel'
+import InjuryBadge from '@/components/InjuryBadge'
+import type { InjuryInfo } from '@/lib/injuries'
+import type { BankEntry } from '../admin/presaison/types'
+import { submitLtirRequestAction, cancelLtirRequestAction, getPendingLtirRequestsAction } from '../gestion-effectifs/ltir-actions'
+import type { LtirRequestView } from '@/lib/ltirRequests'
 
 type Me = { id: string; name: string; isAdmin: boolean }
 type RosterEntry = {
   roster_id: number; player_id: number; player_type: string; playerName: string
   position: string | null; cap_number: number; isEstimatedCap: boolean
   rookieType: string | null
+  injury: InjuryInfo | null
 }
 type PoolerInfo = {
   id: string; name: string; capUsed: number; capSpace: number; isCompliant: boolean
   counts: { forward: number; defense: number; goalie: number; reserviste: number }
   roster: RosterEntry[]
+  bank: BankEntry[]
   isOverLimits: boolean
   slotsManquants: number
   capNeededForReady: number
@@ -60,10 +67,12 @@ function groupRosterByPosition<T extends { position: string | null; cap_number: 
   roster: T[],
 ): { label: string; entries: T[] }[] {
   const groups: { label: string; match: (e: T) => boolean }[] = [
-    { label: 'Attaquants', match: e => e.player_type !== 'reserviste' && posBucket(e.position) === 'forward' },
-    { label: 'Défenseurs', match: e => e.player_type !== 'reserviste' && posBucket(e.position) === 'defense' },
-    { label: 'Gardiens', match: e => e.player_type !== 'reserviste' && posBucket(e.position) === 'goalie' },
+    { label: 'Attaquants', match: e => e.player_type !== 'reserviste' && e.player_type !== 'ltir' && posBucket(e.position) === 'forward' },
+    { label: 'Défenseurs', match: e => e.player_type !== 'reserviste' && e.player_type !== 'ltir' && posBucket(e.position) === 'defense' },
+    { label: 'Gardiens', match: e => e.player_type !== 'reserviste' && e.player_type !== 'ltir' && posBucket(e.position) === 'goalie' },
     { label: 'Réservistes', match: e => e.player_type === 'reserviste' },
+    // Groupe à part (David, 2026-09-28) : un LTIR ne compte ni dans le 12/6/2 ni dans la masse.
+    { label: 'LTIR', match: e => e.player_type === 'ltir' },
   ]
   return groups
     .map(g => ({ label: g.label, entries: roster.filter(g.match).sort((a, b) => b.cap_number - a.cap_number) }))
@@ -79,6 +88,7 @@ const GROUP_ACCENT: Record<string, { border: string; text: string }> = {
   Défenseurs: { border: 'border-purple-300', text: 'text-purple-500' },
   Gardiens: { border: 'border-amber-300', text: 'text-amber-500' },
   Réservistes: { border: 'border-gray-300', text: 'text-gray-400' },
+  LTIR: { border: 'border-red-300', text: 'text-red-500' },
 }
 function groupAccent(label: string) {
   return GROUP_ACCENT[label] ?? { border: 'border-gray-200', text: 'text-gray-400' }
@@ -530,13 +540,19 @@ function PoolerCard({
     }
   }
 
-  const handleAdminToggleType = async (entry: RosterEntry) => {
-    setTogglingId(entry.player_id); setToggleErr(null)
+  const handleAdminToggleType = (entry: RosterEntry) =>
+    handleAdminSetType(entry.player_id, entry.player_type, entry.player_type === 'actif' ? 'reserviste' : 'actif')
+
+  // Changement de statut au nom d'un pooler — actif↔réserviste, mise sur LTIR / retour de LTIR,
+  // activation d'une recrue de banque (David, 2026-09-28 : l'admin doit pouvoir faire depuis le
+  // hub ce que le pooler fait lui-même). Pré-saison : submitTransactionAction ne valide ni ne
+  // journalise rien tant que season_started=false.
+  const handleAdminSetType = async (playerId: number, oldType: string, newType: string) => {
+    setTogglingId(playerId); setToggleErr(null)
     try {
-      const newType = entry.player_type === 'actif' ? 'reserviste' : 'actif'
       const result = await submitTransactionAction(saisonId, 'Ajustement pré-saison', [{
-        action_type: 'type_change', from_pooler_id: pooler.id, to_pooler_id: pooler.id,
-        player_id: entry.player_id, old_player_type: entry.player_type, new_player_type: newType,
+        action_type: oldType === 'recrue' ? 'promote' : 'type_change', from_pooler_id: pooler.id, to_pooler_id: pooler.id,
+        player_id: playerId, old_player_type: oldType, new_player_type: newType,
       }])
       if (result.error) { setTogglingId(null); setToggleErr(result.error) } else { window.location.reload() }
     } catch {
@@ -634,9 +650,30 @@ function PoolerCard({
                       <span className="flex-1">
                         <span className="text-gray-400 mr-1">{e.position ?? DASH}</span>
                         {e.playerName}
+                        {e.injury && <span className="ml-1"><InjuryBadge injury={e.injury} /></span>}
                         {banqueMode && banqueEligible && <span className="ml-1 text-amber-500" title="Encore sous protection recrue — éligible">★</span>}
                       </span>
                       <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
+                      {isAdmin && !releaseMode && !banqueMode && e.player_type === 'actif' && e.injury?.eligible && (
+                        <button
+                          onClick={() => handleAdminSetType(e.player_id, 'actif', 'ltir')}
+                          disabled={togglingId === e.player_id}
+                          title="Admissible LTIR — mettre sur LTIR (ne compte plus dans la masse ni le 12/6/2)"
+                          className="text-[10px] px-1.5 py-0.5 border border-red-200 rounded text-red-600 hover:bg-red-50 shrink-0 disabled:opacity-40"
+                        >
+                          {togglingId === e.player_id ? '...' : '→ LTIR'}
+                        </button>
+                      )}
+                      {isAdmin && !releaseMode && !banqueMode && e.player_type === 'ltir' && (
+                        <button
+                          onClick={() => handleAdminSetType(e.player_id, 'ltir', 'actif')}
+                          disabled={togglingId === e.player_id}
+                          title="Retour de LTIR"
+                          className="text-[10px] px-1.5 py-0.5 border rounded text-gray-500 hover:text-blue-600 hover:border-blue-300 shrink-0 disabled:opacity-40"
+                        >
+                          {togglingId === e.player_id ? '...' : '→ Actif'}
+                        </button>
+                      )}
                       {isAdmin && !releaseMode && !banqueMode && canToggleType && (
                         <button
                           onClick={() => handleAdminToggleType(e)}
@@ -669,6 +706,34 @@ function PoolerCard({
               </div>
             </div>
           ))}
+          {pooler.bank.length > 0 && (
+            <div className="border-l-2 pl-2 border-emerald-300">
+              <p className="text-[10px] font-semibold uppercase tracking-wide mb-0.5 text-emerald-600">Banque de recrues ({pooler.bank.length})</p>
+              <div className="space-y-0.5">
+                {pooler.bank.map(b => (
+                  <div key={b.roster_id} className="flex items-center justify-between text-xs text-gray-500 py-0.5 gap-2">
+                    <span className="flex-1">
+                      <span className="text-gray-400 mr-1">{b.position ?? DASH}</span>
+                      {b.playerName}
+                      <span className="ml-1 text-[10px] text-gray-400">
+                        {b.rookieType === 'agent_libre' ? 'AL (ELC)' : b.poolDraftYear ? `Rep. ${b.poolDraftYear}` : ''}
+                      </span>
+                    </span>
+                    {isAdmin && !releaseMode && !banqueMode && (
+                      <button
+                        onClick={() => handleAdminSetType(b.player_id, 'recrue', 'actif')}
+                        disabled={togglingId === b.player_id}
+                        title="Activer cette recrue (compte alors dans la masse salariale)"
+                        className="text-[10px] px-1.5 py-0.5 border rounded text-gray-500 hover:text-emerald-600 hover:border-emerald-300 shrink-0 disabled:opacity-40"
+                      >
+                        {togglingId === b.player_id ? '...' : '→ Actif'}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {releaseMode && (
             <div className="flex items-center gap-3 pt-2 border-t">
               <span className="text-xs text-gray-500 flex-1">
@@ -792,6 +857,43 @@ function MonAlignement({
   const [recrueLoading, setRecrueLoading] = useState(!seasonStarted)
   const [selectedRecrueId, setSelectedRecrueId] = useState('')
   const [recrueNewType, setRecrueNewType] = useState<'actif' | 'reserviste'>('actif')
+
+  // Demandes de LTIR en pré-saison (David, 2026-09-28) — même système qu'en saison
+  // (ltir_requests, approbation admin dans /admin/effectifs?tab=approbation) : rien ne bouge
+  // dans l'alignement avant que l'admin approuve. Seulement pour un actif admissible.
+  const [pendingLtir, setPendingLtir] = useState<LtirRequestView[]>([])
+  const [ltirBusyId, setLtirBusyId] = useState<number | null>(null)
+  const loadPendingLtir = useCallback(async () => {
+    if (!myPooler || seasonStarted) return
+    setPendingLtir(await getPendingLtirRequestsAction(saisonId, myPooler.id))
+  }, [myPooler, saisonId, seasonStarted])
+  useEffect(() => {
+    if (!myPooler || seasonStarted) return
+    let cancelled = false
+    ;(async () => {
+      const requests = await getPendingLtirRequestsAction(saisonId, myPooler.id)
+      if (!cancelled) setPendingLtir(requests)
+    })()
+    return () => { cancelled = true }
+  }, [myPooler, saisonId, seasonStarted])
+
+  const handleRequestLtir = async (playerId: number) => {
+    if (!myPooler) return
+    setLtirBusyId(playerId); setSelfErr(null)
+    const result = await submitLtirRequestAction(saisonId, myPooler.id, playerId)
+    if (result.error) setSelfErr(result.error)
+    await loadPendingLtir()
+    setLtirBusyId(null)
+  }
+
+  const handleCancelLtir = async (requestId: number, playerId: number) => {
+    if (!myPooler) return
+    setLtirBusyId(playerId); setSelfErr(null)
+    const result = await cancelLtirRequestAction(requestId, myPooler.id)
+    if (result.error) setSelfErr(result.error)
+    await loadPendingLtir()
+    setLtirBusyId(null)
+  }
 
   // Signale au parent qu'une sélection de libération/mise en banque/recrue est en cours, pour
   // mettre en pause AutoReload le temps que le pooler fasse son choix (voir
@@ -1140,9 +1242,34 @@ function MonAlignement({
                           <span className="flex-1 text-gray-600">
                             <span className="text-gray-400 mr-1">{e.position ?? DASH}</span>
                             {e.playerName}
+                            {e.injury && <span className="ml-1"><InjuryBadge injury={e.injury} /></span>}
                             {banqueMode && banqueEligible && <span className="ml-1 text-amber-500" title="Encore sous protection recrue — éligible">★</span>}
                           </span>
                           <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
+                          {!seasonStarted && !releaseMode && !banqueMode && e.player_type === 'actif' && e.injury?.eligible && (() => {
+                            const pending = pendingLtir.find(r => r.ltirPlayerId === e.player_id)
+                            return pending ? (
+                              <span className="inline-flex items-center gap-1 shrink-0">
+                                <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 rounded px-1.5 py-0.5" title="En attente d'approbation par l'admin">LTIR demandé</span>
+                                <button
+                                  onClick={() => handleCancelLtir(pending.id, e.player_id)}
+                                  disabled={ltirBusyId === e.player_id}
+                                  className="text-[10px] text-gray-400 hover:text-red-600 disabled:opacity-40"
+                                >
+                                  Annuler
+                                </button>
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleRequestLtir(e.player_id)}
+                                disabled={ltirBusyId === e.player_id}
+                                title="Admissible LTIR — demande envoyée à l'admin pour approbation"
+                                className="text-[10px] px-1.5 py-0.5 border border-red-200 rounded text-red-600 hover:bg-red-50 shrink-0 disabled:opacity-40"
+                              >
+                                {ltirBusyId === e.player_id ? '...' : 'Demander LTIR'}
+                              </button>
+                            )
+                          })()}
                           {canToggleType && !releaseMode && !banqueMode && (
                             <button
                               onClick={() => handleToggleType(e)}
