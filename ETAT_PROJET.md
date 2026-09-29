@@ -21,8 +21,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : correctif des doublons de la recherche Mode init (pagination sans tri unique) — à fusionner après validation |
-| `main` (prod) | À jour — dernière fusion le 2026-09-28 (`6d3c801`) |
+| `staging` | À jour |
+| `main` (prod) | À jour — dernière fusion le 2026-09-29 (`c7b17b7`, correctif doublons recherche Mode init) |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
 détail des sources par blessure, correctif de saut d'écran du repêchage admin, renvoi en banque
