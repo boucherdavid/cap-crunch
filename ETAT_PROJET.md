@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-09-28
+**Dernière mise à jour :** 2026-09-29
 
 ---
 
@@ -21,7 +21,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | À jour |
+| `staging` | En avance sur `main` : correctif des doublons de la recherche Mode init (pagination sans tri unique) — à fusionner après validation |
 | `main` (prod) | À jour — dernière fusion le 2026-09-28 (`6d3c801`) |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +

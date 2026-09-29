@@ -129,7 +129,7 @@ export async function buildStandings(supabase: any, seasonId: string | number, r
       .eq('season', nhlSeason)
       .eq('game_type', 2)
     if (range) query = query.gte('game_start_time', range.from).lt('game_start_time', range.to)
-    const { data: page } = await query.range(offset, offset + PAGE - 1)
+    const { data: page } = await query.order('id').range(offset, offset + PAGE - 1)
     if (!page || page.length === 0) break
     gameLogRows.push(...(page as GameLogRow[]))
     if (page.length < PAGE) break

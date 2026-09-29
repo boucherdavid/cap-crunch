@@ -210,6 +210,7 @@ export default async function ProjectionsPage({
         .select('player_id, source, projected_points, projected_wins, players(nhl_id, first_name, last_name, position, teams(code))')
         .eq('season', poolSeason)
         .in('source', ['nhl_com', 'cbs', 'pool_pro', 'hockey_magazine'])
+        .order('id')
         .range(offset, offset + 999)
       const page = (batch as unknown as RawProjection[] | null) ?? []
       rows.push(...page)

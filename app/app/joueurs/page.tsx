@@ -62,6 +62,7 @@ export default async function JoueursPage() {
         teams (code, name),
         player_contracts (season, cap_number, contract_status)
       `)
+      .order('id')
       .range(from, to),
   )
 
