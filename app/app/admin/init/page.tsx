@@ -37,6 +37,7 @@ async function fetchAllRookies(
       .from('players')
       .select('id, first_name, last_name, position, status, draft_year, draft_round, draft_overall, teams(code)')
       .or(orFilter)
+      .order('id')
       .range(offset, offset + PAGE - 1)
     all.push(...(data ?? []))
     if ((data ?? []).length < PAGE) break
@@ -91,6 +92,7 @@ export default async function AdminInitPage({
           .from('players')
           .select('id, first_name, last_name, position, status, is_available, is_rookie, draft_year, draft_round, draft_overall, teams(code), player_contracts(season, cap_number)')
           .order('last_name')
+          .order('id')
           .range(from, to),
       ),
       saisonRosters

@@ -19,7 +19,26 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-09-29
+
+**[Fix] — Doublons dans la recherche de joueurs de Mode init (prod)** (`app/app/admin/init/page.tsx`,
+`app/lib/standings.ts`, `app/app/joueurs/page.tsx`, `app/app/listes/actions.ts`,
+`app/app/statistiques/projections/page.tsx`, `app/app/admin/suivi/export-actions.ts`) :
+- Symptôme (David, init de la prod) : chercher « Brober » affichait 7× « Hughes, Jack » au-dessus
+  de Broberg. Cause : la liste des joueurs était paginée par blocs de 1000 triés sur `last_name`
+  seul — tri non unique, donc Postgres peut renvoyer les ex æquo dans un ordre différent d'une
+  page à l'autre (doublons, et joueurs manquants). Les doublons partageaient la même `key` React,
+  ce qui laissait des lignes « fantômes » affichées même quand le filtre ne les retenait plus.
+- Correctif : `.order('id')` ajouté comme départage unique à toutes les requêtes paginées par
+  `.range()` (y compris le game logs de `buildStandings()`, qui n'avait aucun tri — risque
+  théorique de points comptés en double/omis).
+- Règle : toute pagination `.range()` doit avoir un tri **unique** (finir par `id`).
+
 ### 2026-09-28
+
+**[Déploiement]** — `staging` fusionné vers `main` (`6d3c801`) à la demande de David : renvoi en
+banque à la transition, hub Nouvelle saison à 6 étapes, bandeau admin du hub AL, LTIR et
+activation de recrues dans le hub AL. Tests en conditions réelles encore à faire (voir ETAT_PROJET.md).
 
 **[Feature] — hub « Signatures des agents libres » : LTIR et activation de recrues**
 (`AgentsLibresDashboard.tsx`, `admin/presaison/actions.ts`, `types.ts`, `aide/LtirRulesContent.tsx`)

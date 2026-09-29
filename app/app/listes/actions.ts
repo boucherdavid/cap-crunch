@@ -78,7 +78,7 @@ async function takenMap(admin: ReturnType<typeof createAdminClient>, seasonId: n
       .eq('pool_season_id', seasonId)
       .eq('is_active', true)
     if (playerIds) q = q.in('player_id', playerIds)
-    const { data } = await q.range(offset, offset + 999)
+    const { data } = await q.order('id').range(offset, offset + 999)
     for (const r of data ?? []) {
       map.set(r.player_id as number, (r.poolers as unknown as { name: string } | null)?.name ?? '?')
     }

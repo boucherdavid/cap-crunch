@@ -67,6 +67,7 @@ export async function exportJournalCsvAction(
       `)
       .eq('pool_season_id', saisonId)
       .order('changed_at', { ascending: true })
+      .order('id')
       .range(offset, offset + PAGE - 1)
     if (error) return { error: error.message }
     if (!data || data.length === 0) break
