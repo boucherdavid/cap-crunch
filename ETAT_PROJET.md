@@ -21,8 +21,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : recrues renvoyées en banque à la transition (à tester avant fusion) + hub Nouvelle saison à 6 étapes |
-| `main` (prod) | Correctif repêchage admin reporté seul le 2026-09-28 (`e43a9cd`) |
+| `staging` | À jour |
+| `main` (prod) | À jour — dernière fusion le 2026-09-28 (`6d3c801`) |
 
 Livré en prod le 2026-09-28 : « Mes listes », scénarios de simulation privés, sélecteur de
 pooler + onglet conservé, sélecteur de saison des projections, correctif pipeline (alias de
@@ -43,9 +43,9 @@ desktop.
 | Rechargement auto du repêchage des recrues (60 s, jamais pendant la saisie) | ✅ | ✅ | — |
 | Suivi des blessures + admissibilité LTIR + seuils paramétrables | ✅ | ✅ | — |
 | Repêchage admin : plus de saut d'écran à chaque sélection | ✅ validé | ✅ | — |
-| Hub AL : LTIR (admin direct / pooler sur demande) + activer une recrue au nom d'un pooler | ⏳ à valider | — | Après activation de 2026-27 : bouton → LTIR sur un blessé admissible, Demander LTIR côté pooler, → Actif dans la banque |
-| Hub Nouvelle saison : étape « Banque de recrues » retirée (6 étapes) | ⏳ à valider | — | Regarder `/admin/nouvelle-saison` |
-| Transition de saison : recrues encore protégées renvoyées en banque | ⏳ code | — | Tester lors de la remise à neuf de 2026-27 en staging (bandeau bleu dans l'aperçu + banque de chaque pooler) |
+| Hub AL : LTIR (admin direct / pooler sur demande) + activer une recrue au nom d'un pooler | ⏳ à valider | ✅ déployé | Après activation de 2026-27 : bouton → LTIR sur un blessé admissible, Demander LTIR côté pooler, → Actif dans la banque |
+| Hub Nouvelle saison : étape « Banque de recrues » retirée (6 étapes) | ⏳ à valider | ✅ déployé | Regarder `/admin/nouvelle-saison` |
+| Transition de saison : recrues encore protégées renvoyées en banque | ⏳ code | ✅ déployé | Tester lors de la remise à neuf de 2026-27 en staging (bandeau bleu dans l'aperçu + banque de chaque pooler) |
 | Détail des sources (CBS / ESPN) par blessure, `/statistiques/blessures` | ✅ validé | ✅ | — |
 | Recoupement ESPN des blessures (API JSON `site.web.api.espn.com`) | ✅ | ✅ 70/76 | Confirmer au log du cron de demain midi |
 | Demandes de LTIR avec approbation admin | ✅ code | ✅ code | Tester de bout en bout avec un vrai compte pooler |

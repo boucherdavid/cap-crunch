@@ -21,6 +21,10 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-28
 
+**[Déploiement]** — `staging` fusionné vers `main` (`6d3c801`) à la demande de David : renvoi en
+banque à la transition, hub Nouvelle saison à 6 étapes, bandeau admin du hub AL, LTIR et
+activation de recrues dans le hub AL. Tests en conditions réelles encore à faire (voir ETAT_PROJET.md).
+
 **[Feature] — hub « Signatures des agents libres » : LTIR et activation de recrues**
 (`AgentsLibresDashboard.tsx`, `admin/presaison/actions.ts`, `types.ts`, `aide/LtirRulesContent.tsx`)
 — demande de David : en pré-saison, rien ne permettait de mettre un joueur sur LTIR
