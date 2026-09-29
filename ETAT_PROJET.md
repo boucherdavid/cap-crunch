@@ -24,7 +24,12 @@
 | `staging` | À jour |
 | `main` (prod) | À jour — dernière fusion le 2026-09-28 (`6d3c801`) |
 
-Livré en prod le 2026-09-28 : « Mes listes », scénarios de simulation privés, sélecteur de
+Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
+détail des sources par blessure, correctif de saut d'écran du repêchage admin, renvoi en banque
+des recrues encore protégées à la transition, hub Nouvelle saison à 6 étapes, LTIR et activation
+de recrues dans le hub AL, bandeau admin du hub AL quand la saison active est déjà démarrée.
+
+Livré plus tôt le même jour : « Mes listes », scénarios de simulation privés, sélecteur de
 pooler + onglet conservé, sélecteur de saison des projections, correctif pipeline (alias de
 prénoms), transition de saison bloquée si la cible est remplie, chantier mobile + largeur
 desktop.
@@ -47,12 +52,29 @@ desktop.
 | Hub Nouvelle saison : étape « Banque de recrues » retirée (6 étapes) | ⏳ à valider | ✅ déployé | Regarder `/admin/nouvelle-saison` |
 | Transition de saison : recrues encore protégées renvoyées en banque | ⏳ code | ✅ déployé | Tester lors de la remise à neuf de 2026-27 en staging (bandeau bleu dans l'aperçu + banque de chaque pooler) |
 | Détail des sources (CBS / ESPN) par blessure, `/statistiques/blessures` | ✅ validé | ✅ | — |
-| Recoupement ESPN des blessures (API JSON `site.web.api.espn.com`) | ✅ | ✅ 70/76 | Confirmer au log du cron de demain midi |
+| Recoupement ESPN des blessures (API JSON `site.web.api.espn.com`) | ✅ | ✅ 70/76 | Confirmer dans le log du cron du 2026-09-29 (midi ET) : « [ESPN] N/M recoupés » avec N > 0 |
 | Demandes de LTIR avec approbation admin | ✅ code | ✅ code | Tester de bout en bout avec un vrai compte pooler |
 | Transactions entre poolers (échanges + approbation) | ✅ | ✅ | Test réel à deux poolers |
 | Ballotage (réclamer / refuser / compléter) | ✅ | ✅ | Test réel à plusieurs poolers en saison |
 
 ## 4. À faire / à vérifier
+
+### ▶ Prochaine session — commencer ici
+
+1. **Activer 2026-27** (hub `/admin/nouvelle-saison`, étape 2) là où David prépare la saison —
+   sa capture du hub montrait « Actuellement active : 2025-26 ». Tant que ce n'est pas fait,
+   `/repechage-agents-libres` lit 2025-26 (déjà démarrée) : panneau admin et libre-service
+   masqués (un bandeau ambre l'explique maintenant), et Räty/Svechkov (protection expirée,
+   banque de 2026-27) ne sont pas activés — ils le seront au premier chargement de la page
+   une fois 2026-27 active.
+2. Valider ensuite dans le hub AL : → LTIR / → Actif (admin), Demander LTIR (pooler) puis
+   approbation dans `/admin/effectifs?tab=approbation`, → Actif dans la banque d'un pooler.
+3. Vérifier le log de `injuries.yml` du 2026-09-29 (recoupement ESPN > 0).
+4. `credentials/poolers-staging.md` : mot de passe de `david@staging.test` périmé — le mettre à
+   jour pour que Claude puisse tester l'interface staging en automatisé (Playwright).
+
+Petit défaut connu : la notification « demande LTIR approuvée » pointe vers
+`/gestion-effectifs`, encore fermée aux poolers en pré-saison (cosmétique).
 
 - [ ] **Staging — remise à neuf de 2026-27** (si pas encore fait) : 2026-27 mélange vrais
       alignements et tests. Depuis `python_script/` :
