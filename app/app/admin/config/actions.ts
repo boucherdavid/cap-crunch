@@ -157,6 +157,13 @@ export async function deactivateSeasonAction(saisonId: number): Promise<{ error?
   return {}
 }
 
+// Vrai contrat ELC signé pour la saison — contrairement à isElcActiveForSeason, qui suppose un
+// ELC en l'absence de contrat (prudent pour une recrue déjà classée, mais renverrait en banque
+// un vétéran non signé jamais classé recrue).
+function hasElcContractForSeason(contracts: { season: string; is_elc: boolean | null }[], season: string): boolean {
+  return contracts.some(c => c.season === season && !!c.is_elc)
+}
+
 export async function previewTransitionAction(
   fromSaisonId: number,
   toSaisonId: number,
@@ -166,6 +173,7 @@ export async function previewTransitionAction(
   poolerCount?: number
   noContract?: { playerName: string; poolerName: string; playerType: string }[]
   willLoseProtection?: number
+  willReturnToBank?: number
   existingCount?: number
 }> {
   const supabase = await createClient()
@@ -197,6 +205,8 @@ export async function previewTransitionAction(
   // admin/presaison/actions.ts) — pas comptée ici, cet aperçu ne porte que sur la copie de
   // roster elle-même.
   let willLoseProtection = 0
+  // Actifs/réservistes encore protégés → retournés en banque par la transition (David, 2026-09-28).
+  let willReturnToBank = 0
 
   for (const e of entries) {
     const contracts: any[] = e.players?.player_contracts ?? []
@@ -205,6 +215,10 @@ export async function previewTransitionAction(
     if ((e.player_type === 'actif' || e.player_type === 'reserviste') && e.rookie_type) {
       const isExpired = isRookieProtectionExpired(e.rookie_type, e.pool_draft_year ?? null, isElcActiveForSeason(contracts, toSaison.season), seasonStartYear)
       if (isExpired) willLoseProtection++
+      else willReturnToBank++
+    } else if ((e.player_type === 'actif' || e.player_type === 'reserviste') && hasElcContractForSeason(contracts, toSaison.season)) {
+      // Jamais classé recrue mais sous ELC pour la saison cible → agent libre recrue, retourné en banque.
+      willReturnToBank++
     }
 
     if (hasContract) continue
@@ -223,7 +237,7 @@ export async function previewTransitionAction(
 
   const poolerCount = new Set(entries.map((e: any) => e.pooler_id)).size
 
-  return { playerCount: entries.length, poolerCount, noContract, willLoseProtection, existingCount }
+  return { playerCount: entries.length, poolerCount, noContract, willLoseProtection, willReturnToBank, existingCount }
 }
 
 // Lignes d'alignement déjà présentes dans la saison cible, actives ou non (David, 2026-09-26).
@@ -241,7 +255,7 @@ async function countTargetRosters(supabase: Awaited<ReturnType<typeof createClie
 export async function transitionSeasonAction(
   fromSaisonId: number,
   toSaisonId: number,
-): Promise<{ error?: string; copied?: number; returned?: number }> {
+): Promise<{ error?: string; copied?: number; returned?: number; backToBank?: number }> {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -270,11 +284,12 @@ export async function transitionSeasonAction(
   }
 
   let returned = 0
+  let backToBank = 0
 
   const toInsert = entries
     .map((e: any) => {
       // Les joueurs en LTIR reviennent actif au début de la nouvelle saison
-      const playerType = e.player_type === 'ltir' ? 'actif' : e.player_type
+      let playerType = e.player_type === 'ltir' ? 'actif' : e.player_type
 
       const contracts: any[] = e.players?.player_contracts ?? []
 
@@ -296,7 +311,23 @@ export async function transitionSeasonAction(
         if (isRookieProtectionExpired(e.rookie_type, e.pool_draft_year ?? null, isElcActiveForSeason(contracts, toSaison.season), seasonStartYear)) {
           rookieClearFields = { rookie_type: null, pool_draft_year: null }
           returned++
+        } else {
+          // Protection encore valide → retour automatique en banque (David, 2026-09-28) : montre
+          // d'un coup d'œil au pooler quels joueurs y sont encore admissibles. Il réactive
+          // lui-même ceux qu'il veut garder (libre-service de /repechage-agents-libres —
+          // 'promote' préserve rookie_type tant que la protection n'est pas expirée, donc la
+          // remise en banque reste possible ensuite).
+          playerType = 'recrue'
+          backToBank++
         }
+      } else if ((playerType === 'actif' || playerType === 'reserviste') && hasElcContractForSeason(contracts, toSaison.season)) {
+        // Jamais classé recrue (signé directement actif/réserviste) mais encore sous ELC pour la
+        // saison cible → admissible à la banque comme agent libre (David, 2026-09-28) ; classé
+        // rookie_type='agent_libre', même classement rétroactif que deactivate()
+        // (gestion-effectifs/actions.ts). Protection = tant que l'ELC est actif.
+        playerType = 'recrue'
+        rookieClearFields = { rookie_type: 'agent_libre' }
+        backToBank++
       }
 
       return {
@@ -318,14 +349,14 @@ export async function transitionSeasonAction(
       }
     })
 
-  if (toInsert.length === 0) return { copied: 0, returned: 0 }
+  if (toInsert.length === 0) return { copied: 0, returned: 0, backToBank: 0 }
 
   const { error } = await supabase.from('pooler_rosters').insert(toInsert)
 
   if (error) return { error: error.message }
 
   revalidateAll()
-  return { copied: toInsert.length, returned }
+  return { copied: toInsert.length, returned, backToBank }
 }
 
 // Masque/affiche une saison inactive dans les sélecteurs publics (/journal-transactions,

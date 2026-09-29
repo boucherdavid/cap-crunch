@@ -27,7 +27,11 @@ Application web pour gérer un pool de hockey long terme, en remplacement d'un f
   actif/réserviste reste où il est ; une recrue encore en banque (jamais promue) est activée
   automatiquement en Actif. Le pooler gère ensuite lui-même un éventuel surplus (réserve,
   libération, remise en banque tant que la protection n'est pas vraiment expirée) via le
-  libre-service de `/repechage-agents-libres`. Détails en section 6.
+  libre-service de `/repechage-agents-libres`. À la transition de saison, à l'inverse, tout
+  actif/réserviste **encore protégé** (y compris un agent libre sous ELC jamais classé recrue)
+  retourne automatiquement en banque (David, 2026-09-28 —
+  montre au pooler qui y est encore admissible ; il réactive lui-même ceux qu'il garde).
+  Détails en section 6.
 - Calcul des points (`buildStandings()`) : seules les fenêtres où le joueur est réellement
   `actif` comptent — `recrue`/`reserviste`/`ltir` ne rapportent aucun point. Un joueur peut
   être actif plusieurs fois non consécutives dans une même saison (ex: réserve puis rappelé) ;
@@ -403,6 +407,12 @@ recrue est déjà signée — son `cap_number` est réellement déduit dans la s
 indicatif) ; reste une simulation, pas soumissible (l'activation réelle passe par "Activer ou
 libérer une recrue" dans l'onglet Actuel).
 
+**LTIR et recrues de banque dans `/repechage-agents-libres` (David, 2026-09-28)** — l'alignement
+déplié de chaque pooler montre sa banque (`PoolerCapInfo.bank`) et les blessures
+(`RosterEntry.injury`) ; l'admin peut y activer une recrue, mettre un actif **admissible** sur
+LTIR et l'en sortir (`handleAdminSetType` → `submitTransactionAction`). Le pooler, lui, fait une
+**demande** de LTIR depuis Mon alignement (même `ltir_requests` qu'en saison, approbation admin).
+
 **Libérer au nom d'un pooler, depuis `/repechage-agents-libres` (David, 2026-09-08)** — chaque
 ligne de l'alignement déplié (`PoolerCard`, "Voir l'alignement de X") a maintenant un bouton
 ✕ admin-only qui appelle `submitTransactionAction` (`action_type='release'`,
@@ -573,13 +583,16 @@ existant, ex: tests en staging). Staging : vider d'abord avec
 `/admin/nouvelle-saison` : route à part (lien dans le dropdown Admin), hub orchestrateur qui
 séquence dans l'ordre recommandé les étapes de préparation d'une saison à venir — transition
 des rosters (`/admin/pool?tab=config`) → **activer la saison** → choix de repêchage →
-repêchage des recrues → banque de recrues → pré-saison (ELC, libérations, repêchage des
+repêchage des recrues → pré-saison (activer/libérer ses recrues de banque, libérations, repêchage des
 agents libres, tout déjà intégré dans `PresaisonManager`) → **démarrer la saison** (dernière
 étape). Chaque carte affiche un résumé en lecture seule (compteurs) et un lien qui
 pré-sélectionne la saison choisie via `?saisonId=` sur l'outil existant — aucune logique
 métier dupliquée, juste une orchestration/navigation, sauf la dernière carte (voir ci-dessous).
 Remplace le contenu détaillé du panneau "Guide admin" (`AdminGuidePanel.tsx`), qui pointe
 maintenant simplement vers ce hub.
+L'ex-étape « Banque de recrues » (`/admin/init?tab=recrues`) a été retirée du hub le 2026-09-28
+(David) — redondante avec le repêchage, la transition, l'activation auto des protections expirées
+et le libre-service des poolers ; la page reste accessible comme filet de sécurité admin.
 
 **Activer vs démarrer — deux bascules distinctes** (David, 2026-08-31, voir aussi section 6) :
 `is_active` (`activateSeasonAction`, `admin/config/actions.ts`) rend la saison consultable par
@@ -781,7 +794,12 @@ revue le 2026-09-14 :**
     accès en écriture à `transactions`/`transaction_items` (RLS admin-only).
   Deux points d'entrée : `transitionSeasonAction` (`admin/config/actions.ts`, une fois par an
   à la transition de saison — ne gère que le premier cas ci-dessus, en clair dans la copie de
-  roster) et `syncExpiredRookieProtection()` (interne, `admin/presaison/actions.ts`, gère les
+  roster ; depuis le 2026-09-28, y renvoie aussi en banque (`player_type='recrue'`) tout
+  actif/réserviste dont la protection est encore valide, ainsi que tout actif/réserviste jamais
+  classé recrue mais avec un vrai contrat ELC pour la saison cible (classé `'agent_libre'`) —
+  `'promote'` préserve ensuite
+  `rookie_type` tant qu'elle n'est pas expirée, donc la réactivation par le pooler reste
+  réversible) et `syncExpiredRookieProtection()` (interne, `admin/presaison/actions.ts`, gère les
   deux cas), appelée en tout début de `loadPresaisonDataAction` — se réapplique à **chaque
   chargement** de `/admin/init?tab=presaison` ou `/repechage-agents-libres`, pour capter les
   cas qui échapperaient à la transition annuelle (ex: un agent libre recrue dont l'ELC se

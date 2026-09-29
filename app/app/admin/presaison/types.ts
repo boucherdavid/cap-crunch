@@ -1,3 +1,5 @@
+import type { InjuryInfo } from '@/lib/injuries'
+
 // Salaire minimum LNH — utilisé comme seuil de participation au repêchage AL et comme coût
 // par poste manquant pour l'indicateur de préparation. Valeur réelle stockée dans
 // app_settings.nhl_minimum_salary (change chaque convention collective) ; ceci n'est que le
@@ -19,6 +21,20 @@ export type RosterEntry = {
   // jamais éligible — cohérent avec le fait qu'elle ne peut plus redevenir recrue nulle part
   // ailleurs dans l'app.
   rookieType: string | null
+  // Blessure LNH en cours (player_injuries) avec l'admissibilité LTIR calculée — sert aux
+  // boutons LTIR du hub (David, 2026-09-28). null = pas blessé.
+  injury: InjuryInfo | null
+}
+
+// Recrue encore en banque (player_type='recrue', protection valide) — affichée dans
+// l'alignement déplié pour que l'admin puisse l'activer au nom du pooler (David, 2026-09-28).
+export type BankEntry = {
+  roster_id: number
+  player_id: number
+  playerName: string
+  position: string | null
+  rookieType: string | null
+  poolDraftYear: number | null
 }
 
 export type PoolerCapInfo = {
@@ -29,6 +45,7 @@ export type PoolerCapInfo = {
   isCompliant: boolean
   counts: { forward: number; defense: number; goalie: number; reserviste: number }
   roster: RosterEntry[]
+  bank: BankEntry[]
   // Indicateur de préparation au repêchage AL (informationnel, pas un blocage). Deux états
   // distincts, pas confondre : "trop de joueurs / trop de cap utilisé" (isOverLimits — il faut
   // libérer des joueurs, pas signer) vs "manque d'espace pour compléter l'alignement au

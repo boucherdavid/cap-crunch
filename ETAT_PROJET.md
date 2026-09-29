@@ -21,8 +21,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : correctif ESPN des blessures + détail des sources (à fusionner) |
-| `main` (prod) | À jour — dernière fusion le 2026-09-28 (`da263a7`, chantier mobile) |
+| `staging` | En avance sur `main` : recrues renvoyées en banque à la transition (à tester avant fusion) + hub Nouvelle saison à 6 étapes |
+| `main` (prod) | Correctif repêchage admin reporté seul le 2026-09-28 (`e43a9cd`) |
 
 Livré en prod le 2026-09-28 : « Mes listes », scénarios de simulation privés, sélecteur de
 pooler + onglet conservé, sélecteur de saison des projections, correctif pipeline (alias de
@@ -42,8 +42,12 @@ desktop.
 | Transition de saison refusée si la saison cible a déjà des alignements | ✅ validé (bloc rouge) | ✅ | — |
 | Rechargement auto du repêchage des recrues (60 s, jamais pendant la saisie) | ✅ | ✅ | — |
 | Suivi des blessures + admissibilité LTIR + seuils paramétrables | ✅ | ✅ | — |
-| Détail des sources (CBS / ESPN) par blessure, `/statistiques/blessures` | ⏳ à valider | — | Cliquer les pastilles CBS/ESPN (mobile + desktop) |
-| Recoupement ESPN des blessures (API JSON `site.web.api.espn.com`) | ✅ | ✅ 70/76 (lancement manuel) | Fusionner vers `main` pour que le cron quotidien l'utilise |
+| Repêchage admin : plus de saut d'écran à chaque sélection | ✅ validé | ✅ | — |
+| Hub AL : LTIR (admin direct / pooler sur demande) + activer une recrue au nom d'un pooler | ⏳ à valider | — | Après activation de 2026-27 : bouton → LTIR sur un blessé admissible, Demander LTIR côté pooler, → Actif dans la banque |
+| Hub Nouvelle saison : étape « Banque de recrues » retirée (6 étapes) | ⏳ à valider | — | Regarder `/admin/nouvelle-saison` |
+| Transition de saison : recrues encore protégées renvoyées en banque | ⏳ code | — | Tester lors de la remise à neuf de 2026-27 en staging (bandeau bleu dans l'aperçu + banque de chaque pooler) |
+| Détail des sources (CBS / ESPN) par blessure, `/statistiques/blessures` | ✅ validé | ✅ | — |
+| Recoupement ESPN des blessures (API JSON `site.web.api.espn.com`) | ✅ | ✅ 70/76 | Confirmer au log du cron de demain midi |
 | Demandes de LTIR avec approbation admin | ✅ code | ✅ code | Tester de bout en bout avec un vrai compte pooler |
 | Transactions entre poolers (échanges + approbation) | ✅ | ✅ | Test réel à deux poolers |
 | Ballotage (réclamer / refuser / compléter) | ✅ | ✅ | Test réel à plusieurs poolers en saison |

@@ -21,12 +21,77 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-28
 
+**[Feature] — hub « Signatures des agents libres » : LTIR et activation de recrues**
+(`AgentsLibresDashboard.tsx`, `admin/presaison/actions.ts`, `types.ts`, `aide/LtirRulesContent.tsx`)
+— demande de David : en pré-saison, rien ne permettait de mettre un joueur sur LTIR
+(Gestion d'effectifs fermée), ni à l'admin d'activer une recrue de banque au nom d'un pooler.
+- `loadPresaisonDataAction` : chaque pooler reçoit sa banque (`bank`, ex-lignes `recrue`
+  ignorées) et chaque joueur son info de blessure (`injury`, `fetchInjuriesByPlayerId`).
+- Alignement déplié (admin) : badge Blessé/Admissible, « → LTIR » sur un actif **admissible**,
+  « → Actif » sur un LTIR (retour), section « Banque de recrues » avec « → Actif » (promote).
+  `handleAdminSetType` généralise l'ancien bascule actif↔réserviste (`submitTransactionAction`,
+  notes « Ajustement pré-saison », pré-saison = ni validation ni journal).
+- Mon alignement (pooler) : « Demander LTIR » sur un actif admissible → même système qu'en saison
+  (`ltir_requests`, approbation dans `/admin/effectifs?tab=approbation`, choix de David) ;
+  « LTIR demandé » + Annuler tant que c'est en attente.
+- `groupRosterByPosition` : nouveau groupe « LTIR » (un LTIR apparaissait parmi les
+  attaquants/défenseurs).
+
+**[UX] — `/repechage-agents-libres` : bandeau admin quand la saison active est déjà démarrée**
+(`AgentsLibresDashboard.tsx`) — David ne voyait plus le panneau admin (ordre, signatures,
+phase de libération) ni Räty/Svechkov activés. Pas un bug : la page ne lit que la saison
+**active** (encore 2025-26, déjà démarrée → panneau admin et libre-service masqués), et
+`syncExpiredRookieProtection` ne tourne que sur elle — les deux recrues expirées sont dans la
+banque de 2026-27. Il faut activer 2026-27 (hub, étape 2). Ajout d'un bandeau ambre, admin
+seulement, qui l'explique avec un lien vers le hub.
+
+**[Refactor] — hub Nouvelle saison : étape « Banque de recrues » retirée**
+(`admin/nouvelle-saison/page.tsx`, `DemarrerSaisonCard.tsx`) — proposition de David : les
+poolers gèrent leurs recrues de banque en même temps que leurs libérations, dans « Signatures
+des agents libres ». Redondante : recrues repêchées déjà en banque (étape 4), banque recopiée
+par la transition, protections expirées activées automatiquement au chargement de la
+pré-saison (`syncExpiredRookieProtection`), activation/libération en libre-service. 7 → 6
+étapes (Pré-saison = 5, Démarrer = 6), description de Pré-saison ajustée.
+`/admin/init?tab=recrues` reste accessible (onglet de `/admin/init`) comme filet de sécurité.
+
+**[Fix] — repêchage admin : écran qui saute / se redessine à chaque sélection**
+(`admin/repechage/actions.ts`, `RookieSelect.tsx`) — signalé par David sur laptop, sur
+`/admin/repechage` (sauts, clignotement, liste déroulante déplacée). Cause probable :
+`saveDraftProgressAction` (sauvegarde immédiate de chaque sélection) appelait
+`revalidateDraftPages()` ; dans une Server Action, toute revalidation renvoie la page courante
+entièrement recalculée (recrues, picks, éditeur d'ordre) en pleine saisie. Retirée pour cette
+action seulement — `DraftBoard` garde les sélections en état local, et `/repechage-recrues` est
+`force-dynamic` (relue à chaque visite / rechargement auto). Soumission, annulation et ordre du
+repêchage gardent leur revalidation. Sélecteur élargi (`min-w-[22rem]`, libellé tronqué).
+Non reproduit en automatisé : mot de passe staging de `credentials/` périmé, et la génération
+d'une session par clé de service a été refusée par le mode auto — validation par David. Validé
+  par David, reporté **seul** sur `main` (`e43a9cd`) — le renvoi en banque à la transition
+  reste sur `staging` jusqu'à son test.
+
+**[Feature] — transition de saison : recrues encore protégées renvoyées en banque**
+(`admin/config/actions.ts`, `SeasonsManager.tsx`, `aide/AideTabs.tsx`) — demande de David :
+`transitionSeasonAction` copiait les actifs/réservistes encore protégés tels quels ; ils
+reviennent maintenant en `recrue` (compteur `backToBank`), pour montrer au pooler qui est
+encore admissible à la banque. Il réactive lui-même ceux qu'il garde en pré-saison — `promote`
+préserve `rookie_type` tant que la protection n'est pas expirée, donc la remise en banque reste
+possible ensuite. Cas inchangés : protection expirée (reste actif/réserviste, statut effacé),
+recrue déjà en banque. Aperçu de transition : nouveau bandeau bleu « N joueurs seront
+retournés en banque ». Critères : `rookie_type` non nul et protection valide, **ou** jamais
+classé recrue mais avec un vrai contrat ELC pour la saison cible (agent libre signé directement
+actif — précision de David) → classé `rookie_type='agent_libre'`, comme `deactivate()`. Piège
+évité : `isElcActiveForSeason()` suppose un ELC s'il n'y a aucun contrat — renverrait en banque
+un vétéran non signé ; ce cas exige donc un contrat `is_elc=true` réel
+(`hasElcContractForSeason`). Staging (2025-26 → 2026-27) : 10 joueurs renvoyés, tous repêchés.
+Règle ajoutée dans `/aide` (Recrues). Non testé en conditions réelles (demande une transition
+sur une saison cible vide — voir remise à neuf de 2026-27 en staging).
+
 **[Feature] — sources de chaque blessure sur `/statistiques/blessures`** (`BlessuresTable.tsx`,
 `page.tsx`) — demande de David : sous le statut, pastilles « CBS » / « ESPN » (ESPN barrée si
 le joueur n'est pas recoupé) ; un clic déplie le détail côte à côte (CBS : statut brut, date
 de retour retenue, « mis à jour » ; ESPN : statut, note, date de retour) + « suivi depuis »
 (`first_seen_at`). Fiche mobile et tableau desktop (ligne dépliée sous la ligne du joueur).
-Aucune migration — `espn_note` était déjà en base, juste pas lu par la page.
+Aucune migration — `espn_note` était déjà en base, juste pas lu par la page. Validé par David
+  en staging, fusionné vers `main` (`ed247d0`) avec le correctif ESPN.
 
 **[Fix] — recoupement ESPN rétabli en prod via l'API JSON** (`python_script/scrape_injuries.py`) :
 - `scrape_espn()` essaie d'abord l'API JSON ESPN (`/apis/site/v2/sports/hockey/nhl/injuries`),
