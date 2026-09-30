@@ -37,6 +37,9 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   David) ; sans elle, le bouton est désactivé avec une explication. La génération cible toujours
   la prod, même lancée depuis staging.
 - Page « Copie de secours » dans le menu Aide, + entrées dans le guide de l'Aide et À propos.
+- Jeton `GITHUB_WORKFLOW_TOKEN` créé par David (fine-grained, `cap-crunch` seulement, Actions en
+  lecture/écriture) et ajouté dans les deux projets Vercel ; il a fallu un nouveau déploiement pour
+  qu'il soit pris en compte. Bouton testé avec succès sur staging, fusionné sur `main` (`38b9e96`).
 
 **[Feat] — Blessures : filtre « Mes joueurs seulement »** (`app/statistiques/blessures/page.tsx`,
 `BlessuresTable.tsx`, `app/aide/AideTabs.tsx`) :

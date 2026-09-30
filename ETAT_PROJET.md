@@ -22,8 +22,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : Classement déplacé dans « Le pool » + sélecteur Saison complète / Mensuel / Hebdomadaire ; filtre « Mes joueurs seulement » sur Blessures (validés) ; page Copie de secours — à valider, jeton GitHub à créer |
-| `main` (prod) | À jour — dernière fusion le 2026-09-30 (`ca7a094` : espaces SWC, passe du correcteur, tutoiement) |
+| `staging` | À jour |
+| `main` (prod) | À jour — dernière fusion le 2026-09-30 (`38b9e96` : Classement dans « Le pool » + sélecteur, filtre « Mes joueurs » sur Blessures, Copie de secours) |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
 détail des sources par blessure, correctif de saut d'écran du repêchage admin, renvoi en banque
@@ -62,9 +62,6 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **Jeton GitHub pour « Mettre à jour maintenant »** (Copie de secours) : créer un jeton
-  « fine-grained » (dépôt `cap-crunch` seulement, permission *Actions* : lecture/écriture), l'ajouter
-  comme `GITHUB_WORKFLOW_TOKEN` dans les deux projets Vercel, puis redéployer.
 
 
 0. **Prod — saisie Mode init 2025-26 : terminée et conforme** (vérifié le 2026-09-30) — les
