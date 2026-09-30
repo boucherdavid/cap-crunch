@@ -21,6 +21,16 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-30
 
+**[Feat] — Copie de secours : un alignement à la fois** (`python_script/generate_backup_tool.py`) :
+- Demande de David : l'onglet Alignements affichait les 8 alignements à la suite (trop chargé).
+  Sélecteur « Alignement de : » en haut de l'onglet (⚠ à côté d'un pooler qui dépasse le cap), un
+  seul alignement rendu ; choix mémorisé dans le navigateur (`localStorage`, clé séparée des
+  modifications, donc « Réinitialiser depuis l'export » ne le touche pas).
+- Testé : génération contre staging dans un fichier temporaire (le `backup/pool_backup.html` du
+  dépôt n'est pas modifié), `node --check` du JavaScript produit, puis exécution avec un faux DOM
+  (1 carte rendue, changement de pooler OK, choix mémorisé).
+- Prend effet à la prochaine génération : la tâche GitHub utilise le script de `main`.
+
 **[Feat] — Copie de secours téléchargeable + mise à jour manuelle par l'admin**
 (`app/copie-de-secours/` : `page.tsx`, `telecharger/route.ts`, `actions.ts`, `BackupAdminPanel.tsx` ;
 `lib/backupTool.ts`, `components/Navbar.tsx`, `app/aide/AideTabs.tsx`, `app/a-propos/page.tsx`) :

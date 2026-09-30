@@ -550,6 +550,16 @@ function buildPlayerOptions() {
     </optgroup>`).join('');
 }
 
+const PICKER_KEY = STORAGE_KEY + ':pooler';
+let selectedPoolerId = null;
+try { selectedPoolerId = localStorage.getItem(PICKER_KEY); } catch (e) {}
+
+function selectPooler(id) {
+  selectedPoolerId = id;
+  try { localStorage.setItem(PICKER_KEY, id); } catch (e) {}
+  renderAlignements();
+}
+
 function renderAlignements() {
   const container = document.getElementById('panel-alignements');
   container.innerHTML = '';
@@ -561,10 +571,23 @@ function renderAlignements() {
 
   const playerOptions = buildPlayerOptions();
   const poolCap = getPoolCap();
+  const capUsedFor = id => (byPooler.get(id) || []).filter(e => e.playerType !== 'ltir').reduce((s, e) => s + capForPlayer(e), 0);
 
-  BASELINE.poolers.forEach(p => {
+  // Un seul alignement affiché à la fois (David, 2026-09-30 — la page entière était trop
+  // chargée) : sélecteur de pooler, choix mémorisé dans ce navigateur. ⚠ = dépasse le cap.
+  if (!BASELINE.poolers.some(p => p.id === selectedPoolerId)) selectedPoolerId = BASELINE.poolers[0]?.id ?? null;
+  const picker = document.createElement('div');
+  picker.className = 'toolbar';
+  picker.innerHTML = `
+    <label for="poolerPicker"><strong>Alignement de :</strong></label>
+    <select id="poolerPicker" onchange="selectPooler(this.value)">
+      ${BASELINE.poolers.map(p => `<option value="${p.id}" ${p.id === selectedPoolerId ? 'selected' : ''}>${p.name}${capUsedFor(p.id) > poolCap ? ' ⚠' : ''}</option>`).join('')}
+    </select>`;
+  container.appendChild(picker);
+
+  BASELINE.poolers.filter(p => p.id === selectedPoolerId).forEach(p => {
     const entries = byPooler.get(p.id) || [];
-    const capUsed = entries.filter(e => e.playerType !== 'ltir').reduce((s, e) => s + capForPlayer(e), 0);
+    const capUsed = capUsedFor(p.id);
     const over = capUsed > poolCap;
 
     let lastGroup = null;

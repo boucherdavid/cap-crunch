@@ -22,7 +22,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | À jour |
+| `staging` | En avance sur `main` : copie de secours, sélecteur d'alignement (un pooler à la fois) — à fusionner puis régénérer la copie |
 | `main` (prod) | À jour — dernière fusion le 2026-09-30 (`38b9e96` : Classement dans « Le pool » + sélecteur, filtre « Mes joueurs » sur Blessures, Copie de secours) |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
