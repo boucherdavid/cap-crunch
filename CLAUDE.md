@@ -132,7 +132,8 @@ python sync_staging_to_prod.py --apply   # exécution réelle — demande confir
 # toujours prod (python_script/.env), comme les autres scripts — utiliser `.env.staging` pour
 # prévisualiser sans toucher prod. Régénéré aussi automatiquement chaque dimanche
 # (.github/workflows/backup_tool.yml), qui commite/pousse le fichier régénéré directement sur
-# la branche par défaut (backup/ n'est PAS dans .gitignore).
+# la branche par défaut (backup/ n'est PAS dans .gitignore). Téléchargeable par les poolers et
+# relançable par l'admin depuis l'app : page /copie-de-secours (voir section 5).
 cd python_script
 python generate_backup_tool.py   # écrit backup/pool_backup.html
 ```
@@ -274,7 +275,12 @@ voir section 6) `/compte` `/signaler` `/aide` `/a-propos`
 libre-service, regroupé par section de menu avec lien direct vers chaque page ; distinct
 d'`/aide` (guide pas-à-pas + règlements) — les deux se renvoient l'un vers l'autre. Généré à
 partir d'un résumé produit pour recueillir les retours de quelques poolers ; ajouté au menu
-Ressources) `/offline`
+Ressources) `/copie-de-secours` (David, 2026-09-30 — télécharger `backup/pool_backup.html`, lu
+directement sur GitHub via l'API contents car le dépôt est public (`lib/backupTool.ts`, route
+`/copie-de-secours/telecharger`) ; section admin qui relance `.github/workflows/backup_tool.yml`
+par `workflow_dispatch` et suit l'exécution — exige `GITHUB_WORKFLOW_TOKEN` dans Vercel, jeton
+« fine-grained » limité au dépôt, permission Actions lecture/écriture ; sans lui, bouton désactivé)
+`/offline`
 `/planification` (sondage type Doodle pour une rencontre — vue pooler : ses disponibilités,
 le résumé, le babillard propre au sondage ; notifie les admins par push à chaque
 soumission/commentaire). Gestion (créer le sondage, ajouter/retirer des dates) sur
@@ -457,16 +463,15 @@ sont deux natures de contenu différentes.**
 | Section | Contenu |
 |---|---|
 | Mon équipe (nouveau nom de groupe — le lien "Mon alignement", ex-"Mon équipe", garde son nom de page inchangé depuis le renommage plus haut le même jour) | Mon alignement · Gestion d'effectifs · Simulation · Mes listes (ajouté le 2026-09-27) — "ce qui m'appartient / que je contrôle" |
-| Le pool | Tous les alignements (ex-"Équipes") · Journal des transactions — "ce qui concerne les autres poolers" |
-| Classement du pool (ex-"Classement", renommé le 2026-09-23 (suite)) | Saison complète · Hebdomadaire · Mensuel |
-| Calendrier LNH (lien autonome, ex-sous-item de "Statistiques", sorti le 2026-09-23 (suite) — entre Classement du pool et Statistiques) | Le résumé personnel "mes joueurs cette semaine" a été extrait dans un onglet séparé sur `/poolers/[id]`, voir ci-dessous — cette page ne garde que la navigation jour par jour |
+| Le pool | Classement · Tous les alignements (ex-"Équipes") · Journal des transactions — "ce qui concerne les autres poolers". Le groupe "Classement du pool" a été retiré le 2026-09-30 (David) : un seul lien Classement, avec un sélecteur Saison complète (défaut) / Mensuel / Hebdomadaire en haut de la page (`app/classement/PeriodSelector.tsx`, routes `/classement`, `/classement/mensuel`, `/classement/hebdomadaire` inchangées) |
+| Calendrier LNH (lien autonome, ex-sous-item de "Statistiques", sorti le 2026-09-23 (suite) — entre Le pool et Statistiques) | Le résumé personnel "mes joueurs cette semaine" a été extrait dans un onglet séparé sur `/poolers/[id]`, voir ci-dessous — cette page ne garde que la navigation jour par jour |
 | Statistiques (ex-partie de "LNH") | LNH · Projections · AHL |
 | Blessures | Lien autonome (plus regroupé sous "LNH", qui cachait la page selon le retour du pooler) |
 | Contrats LNH | Lien autonome (ex-sous-item de "LNH") |
 | Prospects LNH (ex-"Recrues", réduit) | Classement pré-repêchage · Repêchage LNH — référence sur le vrai repêchage LNH, rien de propre au pool |
 | Repêchage annuel des poolers (nouveau groupe, « des poolers » ajouté le 2026-09-25 pour le distinguer du repêchage LNH) | Repêchage des recrues (ex-"Repêchage interne", renommé le 2026-09-23 pour cohérence avec le `<h1>` de la page, qui disait déjà "Repêchage des recrues") · Signatures des agents libres — "notre repêchage annuel", regroupe les deux rituels séquentiels de pré-saison (repêcher les recrues, puis signer les agents libres) |
 | Communauté (scindé de "Ressources", trop vague) | Babillard · Planification |
-| Aide (scindé de "Ressources") | Aide & Règlements · À propos |
+| Aide (scindé de "Ressources") | Aide & Règlements · À propos · Copie de secours (ajouté le 2026-09-30) |
 | Admin (admin seulement) | Deux sous-groupes inchangés : Opérations courantes · Mise en place saisonnière |
 
 **Historique horizontal (2026-08-30 → 2026-09-14, remplacé) :** dropdowns Alignements ·

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { buildStandings } from '@/lib/standings'
 import { currentMondayET, mondayOfWeek, weekRange } from '@/lib/dateRanges'
 import ClassementTable from '../ClassementTable'
+import PeriodSelector from '../PeriodSelector'
 import WeekNav from './WeekNav'
 
 export const metadata = { title: 'Classement hebdomadaire' }
@@ -36,10 +37,15 @@ export default async function ClassementHebdoPage({
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-800 mb-1">Classement hebdomadaire</h1>
-      <p className="text-sm text-gray-500 mb-4">
-        Saison {season.season}{' '}&middot; Joueurs actifs, réservistes et LTIR
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800 mb-1">Classement</h1>
+          <p className="text-sm text-gray-500">
+            Saison {season.season}{' '}&middot; Joueurs actifs, réservistes et LTIR
+          </p>
+        </div>
+        <PeriodSelector active="hebdomadaire" />
+      </div>
       <WeekNav monday={monday} />
       <div className="mt-4">
         <ClassementTable standings={standings} />

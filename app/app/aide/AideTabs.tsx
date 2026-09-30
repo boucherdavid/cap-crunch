@@ -330,7 +330,7 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accède au classement via <strong>Classement du pool → Saison complète</strong>{' '}ou via la page d&apos;accueil.
+          Accède au classement via <strong>Le pool → Classement</strong>{' '}ou via la page d&apos;accueil.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Le tableau affiche le rang, les points totaux et le détail (buts, passes, victoires, défaites prol.).</li>
@@ -338,7 +338,7 @@ const SECTIONS: Section[] = [
           <li>• La page d&apos;accueil affiche un widget <strong>Joueurs en action ce soir</strong> : combien de joueurs de chaque pooler jouent le soir même.</li>
         </ul>
         <p className="text-sm text-gray-600 mt-3">
-          Deux autres fenêtres sont disponibles, mêmes colonnes mais bornées dans le temps : le{' '}
+          Le sélecteur en haut de la page propose, en plus de la <strong>saison complète</strong> (par défaut), deux fenêtres bornées dans le temps avec les mêmes colonnes : le{' '}
           <Link href="/classement/hebdomadaire" className="text-blue-600 hover:underline font-medium">classement hebdomadaire</Link>{' '}
           (lundi à dimanche) et le{' '}
           <Link href="/classement/mensuel" className="text-blue-600 hover:underline font-medium">classement mensuel</Link>{' '}
@@ -509,7 +509,7 @@ const SECTIONS: Section[] = [
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Type de blessure et statut (ex. « Expected to be out until at least Oct 2 »), en anglais tel que fourni par CBS Sports. Un statut qui commence par <strong>« IR. »</strong> signifie que l&apos;équipe LNH a placé le joueur sur sa liste des blessés.</li>
           <li>• La colonne <strong>LTIR</strong> affiche <strong>Admissible</strong> quand le joueur respecte les critères du pool (voir Règlements → Blessures et LTIR). Le filtre <strong>Admissibles LTIR seulement</strong> ne garde que ceux-là.</li>
-          <li>• La colonne <strong>Dans le pool</strong> indique quel pooler possède le joueur et son type de roster (actif/réserviste/recrue/LTIR), ou <strong>Disponible</strong> si personne.</li>
+          <li>• La colonne <strong>Dans le pool</strong> indique quel pooler possède le joueur et son type de roster (actif/réserviste/recrue/LTIR), ou <strong>Disponible</strong> si personne. Le filtre <strong>Mes joueurs seulement</strong> (une fois connecté) ne garde que tes propres joueurs blessés, peu importe leur statut.</li>
           <li>• Un badge rouge <strong>Blessé</strong> ou vert <strong>Admissible LTIR</strong> apparaît aussi directement sur les joueurs actifs et réservistes (Mon alignement, Tous les alignements) et dans les menus de Gestion d&apos;effectifs. Survole-le pour voir le détail.</li>
           <li>• Un marqueur ambre <strong>⚠ CBS≠ESPN</strong> signale que les deux sources annoncent des dates de retour sensiblement différentes — à vérifier par toi-même avant de décider.</li>
         </ul>
@@ -616,6 +616,26 @@ const SECTIONS: Section[] = [
     ),
   },
 
+  {
+    id: 'guide-copie-de-secours',
+    tab: 'guide',
+    title: 'Copie de secours',
+    keywords: 'copie secours backup telecharger hors ligne fichier html excel panne sauvegarde',
+    href: '/copie-de-secours',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Accède-y via <strong>Aide → Copie de secours</strong>{' '}— tout le pool dans un seul fichier, au cas où l&apos;app serait hors service.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• Le fichier contient les alignements de tous les poolers, les contrats LNH, les choix de repêchage et le journal des mouvements.</li>
+          <li>• Ouvre-le dans ton navigateur (double-clic) : il fonctionne sans connexion Internet.</li>
+          <li>• Les ajustements que tu y fais restent enregistrés dans ton navigateur seulement — ils ne modifient jamais l&apos;app.</li>
+          <li>• Il est régénéré automatiquement chaque dimanche ; l&apos;administrateur peut aussi le mettre à jour sur demande.</li>
+        </ul>
+      </div>
+    ),
+  },
   {
     id: 'guide-donnees-vides',
     tab: 'guide',

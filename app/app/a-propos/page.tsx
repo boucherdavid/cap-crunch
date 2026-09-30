@@ -40,6 +40,11 @@ const CATEGORIES: Category[] = [
     label: 'Le pool',
     items: [
       {
+        title: 'Classement',
+        href: '/classement',
+        description: 'Rang, points totaux et détail (buts, passes, victoires, défaites en prolongation) pour chaque pooler, sur la saison complète, le mois ou la semaine (sélecteur en haut de la page). Clique sur un joueur pour voir sa contribution détaillée.',
+      },
+      {
         title: 'Tous les alignements',
         href: '/poolers',
         description: 'Liste des 8 poolers avec rang au classement et masse salariale utilisée — chaque nom mène à son alignement détaillé.',
@@ -48,22 +53,6 @@ const CATEGORIES: Category[] = [
         title: 'Journal des transactions',
         href: '/journal-transactions',
         description: 'Historique public, en lecture seule, de tous les mouvements du pool (signatures, libérations, changements de statut, échanges).',
-      },
-    ],
-  },
-  {
-    id: 'classement',
-    label: 'Classement du pool',
-    items: [
-      {
-        title: 'Saison complète',
-        href: '/classement',
-        description: 'Rang, points totaux et détail (buts, passes, victoires, défaites en prolongation) pour chaque pooler. Clique sur un joueur pour voir sa contribution détaillée.',
-      },
-      {
-        title: 'Hebdomadaire et mensuel',
-        href: '/classement/hebdomadaire',
-        description: 'Mêmes données que le classement complet, bornées à une semaine (lundi à dimanche) ou à un mois civil, avec navigation précédent/suivant.',
       },
     ],
   },
@@ -160,6 +149,12 @@ const CATEGORIES: Category[] = [
         title: 'Aide & Règlements',
         href: '/aide',
         description: "Guide d'utilisation détaillé par fonctionnalité et règlements du pool, avec une barre de recherche.",
+      },
+      {
+        title: 'Copie de secours',
+        href: '/copie-de-secours',
+        note: 'Hors ligne',
+        description: "Tout le pool (alignements, contrats, choix de repêchage, journal) dans un seul fichier à télécharger, utilisable sans Internet si l'app est en panne. Mis à jour chaque dimanche.",
       },
     ],
   },

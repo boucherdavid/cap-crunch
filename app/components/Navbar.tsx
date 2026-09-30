@@ -77,17 +77,9 @@ const NAV_GROUPS: NavGroup[] = [
     id: 'le-pool',
     label: 'Le pool',
     items: [
+      { label: 'Classement', href: '/classement' },
       { label: 'Tous les alignements', href: '/poolers' },
       { label: 'Journal des transactions', href: '/journal-transactions' },
-    ],
-  },
-  {
-    id: 'classement',
-    label: 'Classement du pool',
-    items: [
-      { label: 'Saison complète', href: '/classement' },
-      { label: 'Hebdomadaire', href: '/classement/hebdomadaire' },
-      { label: 'Mensuel', href: '/classement/mensuel' },
     ],
   },
   { id: 'calendrier', label: 'Calendrier LNH', href: '/calendrier' },
@@ -132,6 +124,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Aide & Règlements', href: '/aide' },
       { label: 'À propos', href: '/a-propos' },
+      { label: 'Copie de secours', href: '/copie-de-secours', auth: true },
     ],
   },
 ]

@@ -21,6 +21,41 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-30
 
+**[Feat] — Copie de secours téléchargeable + mise à jour manuelle par l'admin**
+(`app/copie-de-secours/` : `page.tsx`, `telecharger/route.ts`, `actions.ts`, `BackupAdminPanel.tsx` ;
+`lib/backupTool.ts`, `components/Navbar.tsx`, `app/aide/AideTabs.tsx`, `app/a-propos/page.tsx`) :
+- Demande de David : rendre `backup/pool_backup.html` téléchargeable par les poolers, et permettre
+  à l'admin de le régénérer depuis l'app.
+- Le dépôt GitHub est public et le fichier n'y contient que des données déjà publiques (noms des
+  poolers, alignements, contrats — aucun courriel/identifiant) : l'app le lit directement sur GitHub
+  (API contents, pas raw.githubusercontent.com dont le cache CDN sert une version vieille de
+  quelques minutes juste après une régénération). Aucun stockage supplémentaire. Téléchargement
+  réservé aux utilisateurs connectés (comme toutes les routes, `proxy.ts`).
+- Admin : bouton qui déclenche la même tâche GitHub que le dimanche (`workflow_dispatch` sur
+  `backup_tool.yml`, branche `main`), puis suit l'exécution toutes les 10 s et rafraîchit la date à
+  la fin. Exige la variable d'environnement `GITHUB_WORKFLOW_TOKEN` dans Vercel (à créer par
+  David) ; sans elle, le bouton est désactivé avec une explication. La génération cible toujours
+  la prod, même lancée depuis staging.
+- Page « Copie de secours » dans le menu Aide, + entrées dans le guide de l'Aide et À propos.
+
+**[Feat] — Blessures : filtre « Mes joueurs seulement »** (`app/statistiques/blessures/page.tsx`,
+`BlessuresTable.tsx`, `app/aide/AideTabs.tsx`) :
+- Demande de David : un pooler peut ne voir que ses propres joueurs blessés (tous statuts :
+  actif, réserviste, recrue, LTIR). `owner` porte maintenant `poolerId` ; la page passe l'id de
+  l'utilisateur connecté (`poolers.id` = id Auth). Bouton visible seulement une fois connecté,
+  mutuellement exclusif avec « Disponibles seulement » (ensemble, la liste serait toujours vide).
+
+**[Feat] — Classement : un seul lien dans « Le pool », sélecteur de période** (`components/Navbar.tsx`,
+`app/classement/PeriodSelector.tsx`, les 3 pages de classement, `app/aide/AideTabs.tsx`,
+`app/a-propos/page.tsx`) :
+- Demande de David : le groupe de menu « Classement du pool » disparaît ; « Classement » devient le
+  premier lien de « Le pool ». Sur la page, un sélecteur Saison complète (par défaut) / Mensuel /
+  Hebdomadaire, en haut à droite (sous le titre sur téléphone), titre commun « Classement ».
+- Les trois routes restent (`/classement`, `/classement/mensuel`, `/classement/hebdomadaire`) : le
+  sélecteur navigue simplement entre elles, les liens existants et la navigation précédent/suivant
+  continuent de fonctionner ; le lien du menu reste surligné sur les trois (`isActive` couvre les
+  sous-chemins). Aide et À propos mis à jour.
+
 **[Données] — Revalidation de la saisie Mode init en prod** : David a corrigé ses alignements et
 celui de Vincent (19 → 20 actifs, une recrue activée chacun). Vérifié par script (lecture seule) :
 les 8 poolers ont exactement 12 attaquants / 6 défenseurs / 2 gardiens actifs et au moins
@@ -79,6 +114,7 @@ et les quelques textes admin encore au « vous » (« Vide d'abord… », « N'o
 Accords ton/ta/tes vérifiés un par un (« ta masse salariale », « ton écran »). Une espace perdue
 par SWC créée par la conversion (« t&apos;intéressent » sur plusieurs lignes) a été attrapée par
 `check:jsx-spaces` et corrigée. Règle ajoutée dans `CLAUDE.md` §7 et dans la skill `correcteur`.
+- Validé par David sur staging, fusionné sur `main` (`ca7a094`).
 
 ### 2026-09-29
 
