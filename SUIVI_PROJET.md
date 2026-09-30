@@ -21,6 +21,14 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-30
 
+**[Docs] — Résumé du facteur de plafond pour un pooler actuaire** (`calcul_salaire/resume_facteur.md`,
+page https://claude.ai/artifact/VNqLbSxDLySgAg8zSbyLht, privée — à partager par David) :
+- Une page : contexte, définitions (N, R, P, N*), règle proposée
+  `f = P̄ × N × [1 + λ (N*/N − 1)]` (P̄ = 0,76, λ = ½ → 1,28 en 2026-27), données, résultats
+  2013-2027, options, recommandation et six points à faire valider.
+- Incohérence corrigée dans `calcul_facteur.md` : 1,28 (+0,04) respecte la borne de ±0,05 ; avec
+  la borne de ±0,03 suggérée, 2026-27 serait limité à 1,27.
+
 **[Analyse] — Facteur de plafond : période de transition et suggestions ciblées**
 (`calcul_salaire/prix_du_marche.py`, `calcul_salaire/analyse_jeunes.py`, `calcul_facteur.md`) :
 - Objectif précisé par David : éviter que les poolers qui reconstruisent décrochent quand les gros
