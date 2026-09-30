@@ -34,6 +34,13 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   théorique de points comptés en double/omis).
 - Règle : toute pagination `.range()` doit avoir un tri **unique** (finir par `id`).
 
+**[Données] — Nettoyage de 92 fiches `players` corrompues en prod** (SQL manuel par David) :
+- Noms du type `BathersonRWage28cap$4.98M` (position + âge + cap collés au nom), tous créés le
+  2026-08-10, sans `nhl_id`, ids 3365–3471 — artefact d'un import ponctuel raté ; les CSV actuels
+  sont propres. Aucune référence dans les autres tables. Supprimées via
+  `DELETE FROM players WHERE nhl_id IS NULL AND last_name ~ '(Wage|Cage|Dage|Gage)[0-9]+cap\$'`.
+  Vérifié ensuite : 0 fiche corrompue en prod (2520 joueurs) et en staging (2517).
+
 ### 2026-09-28
 
 **[Déploiement]** — `staging` fusionné vers `main` (`6d3c801`) à la demande de David : renvoi en
