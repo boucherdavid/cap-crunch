@@ -71,9 +71,10 @@ function SourcesDetail({ r }: { r: InjuryRow }) {
   )
 }
 
-export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
+export default function BlessuresTable({ rows, myPoolerId }: { rows: InjuryRow[]; myPoolerId: string | null }) {
   const [search, setSearch] = useState('')
   const [availOnly, setAvailOnly] = useState(false)
+  const [mineOnly, setMineOnly] = useState(false)
   const [eligibleOnly, setEligibleOnly] = useState(false)
   const [openIds, setOpenIds] = useState<Set<number>>(new Set())
   const toggle = (id: number) => setOpenIds(prev => {
@@ -88,6 +89,7 @@ export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
     return rows
       .filter(r => {
         if (availOnly && r.owner) return false
+        if (mineOnly && r.owner?.poolerId !== myPoolerId) return false
         if (eligibleOnly && !r.eligible) return false
         if (q) {
           const name = normalizeSearch(`${r.firstName} ${r.lastName}`)
@@ -97,7 +99,7 @@ export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
         return true
       })
       .sort((a, b) => (a.teamCode ?? '').localeCompare(b.teamCode ?? '') || a.lastName.localeCompare(b.lastName))
-  }, [rows, search, availOnly, eligibleOnly])
+  }, [rows, search, availOnly, mineOnly, myPoolerId, eligibleOnly])
 
   return (
     <div>
@@ -119,7 +121,7 @@ export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
         />
         <button
           type="button"
-          onClick={() => setAvailOnly(v => !v)}
+          onClick={() => { setAvailOnly(v => !v); setMineOnly(false) }}
           className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
             availOnly
               ? 'border-green-500 bg-green-50 text-green-700 font-medium'
@@ -129,6 +131,20 @@ export default function BlessuresTable({ rows }: { rows: InjuryRow[] }) {
           <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
           Disponibles seulement
         </button>
+        {/* « Mes joueurs » et « Disponibles » s'excluent : ensemble, la liste serait toujours vide. */}
+        {myPoolerId && (
+          <button
+            type="button"
+            onClick={() => { setMineOnly(v => !v); setAvailOnly(false) }}
+            className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+              mineOnly
+                ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
+                : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            Mes joueurs seulement
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setEligibleOnly(v => !v)}

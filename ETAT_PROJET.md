@@ -22,7 +22,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : Classement déplacé dans « Le pool » + sélecteur Saison complète / Mensuel / Hebdomadaire — à valider |
+| `staging` | En avance sur `main` : Classement déplacé dans « Le pool » + sélecteur Saison complète / Mensuel / Hebdomadaire ; filtre « Mes joueurs seulement » sur Blessures — à valider |
 | `main` (prod) | À jour — dernière fusion le 2026-09-30 (`ca7a094` : espaces SWC, passe du correcteur, tutoiement) |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +

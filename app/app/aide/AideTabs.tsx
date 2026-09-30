@@ -509,7 +509,7 @@ const SECTIONS: Section[] = [
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Type de blessure et statut (ex. « Expected to be out until at least Oct 2 »), en anglais tel que fourni par CBS Sports. Un statut qui commence par <strong>« IR. »</strong> signifie que l&apos;équipe LNH a placé le joueur sur sa liste des blessés.</li>
           <li>• La colonne <strong>LTIR</strong> affiche <strong>Admissible</strong> quand le joueur respecte les critères du pool (voir Règlements → Blessures et LTIR). Le filtre <strong>Admissibles LTIR seulement</strong> ne garde que ceux-là.</li>
-          <li>• La colonne <strong>Dans le pool</strong> indique quel pooler possède le joueur et son type de roster (actif/réserviste/recrue/LTIR), ou <strong>Disponible</strong> si personne.</li>
+          <li>• La colonne <strong>Dans le pool</strong> indique quel pooler possède le joueur et son type de roster (actif/réserviste/recrue/LTIR), ou <strong>Disponible</strong> si personne. Le filtre <strong>Mes joueurs seulement</strong> (une fois connecté) ne garde que tes propres joueurs blessés, peu importe leur statut.</li>
           <li>• Un badge rouge <strong>Blessé</strong> ou vert <strong>Admissible LTIR</strong> apparaît aussi directement sur les joueurs actifs et réservistes (Mon alignement, Tous les alignements) et dans les menus de Gestion d&apos;effectifs. Survole-le pour voir le détail.</li>
           <li>• Un marqueur ambre <strong>⚠ CBS≠ESPN</strong> signale que les deux sources annoncent des dates de retour sensiblement différentes — à vérifier par toi-même avant de décider.</li>
         </ul>

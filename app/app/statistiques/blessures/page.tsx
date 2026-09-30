@@ -23,13 +23,13 @@ export type InjuryRow = {
   espnNote: string | null
   firstSeenAt: string | null
   datesDisagree: boolean
-  owner: { poolerName: string; playerType: 'actif' | 'reserviste' | 'recrue' | 'ltir' } | null
+  owner: { poolerId: string; poolerName: string; playerType: 'actif' | 'reserviste' | 'recrue' | 'ltir' } | null
 }
 
 /** Qui possède chaque joueur dans la saison active, peu importe son type de roster —
  * contexte utile ici (contrairement au widget d'accueil, cette page couvre toute la LNH,
  * pas seulement les actifs/réservistes du pool). */
-async function fetchOwnerByPlayerId(): Promise<Map<number, { poolerName: string; playerType: 'actif' | 'reserviste' | 'recrue' | 'ltir' }>> {
+async function fetchOwnerByPlayerId(): Promise<Map<number, { poolerId: string; poolerName: string; playerType: 'actif' | 'reserviste' | 'recrue' | 'ltir' }>> {
   try {
     const supabase = await createClient()
     const { data: season } = await supabase
@@ -42,16 +42,16 @@ async function fetchOwnerByPlayerId(): Promise<Map<number, { poolerName: string;
 
     const { data: rosters } = await supabase
       .from('pooler_rosters')
-      .select('player_id, player_type, poolers (name)')
+      .select('player_id, pooler_id, player_type, poolers (name)')
       .eq('pool_season_id', season.id)
       .eq('is_active', true)
     if (!rosters) return new Map()
 
-    const map = new Map<number, { poolerName: string; playerType: 'actif' | 'reserviste' | 'recrue' | 'ltir' }>()
-    for (const r of rosters as unknown as { player_id: number; player_type: string; poolers: { name: string } | null }[]) {
+    const map = new Map<number, { poolerId: string; poolerName: string; playerType: 'actif' | 'reserviste' | 'recrue' | 'ltir' }>()
+    for (const r of rosters as unknown as { player_id: number; pooler_id: string; player_type: string; poolers: { name: string } | null }[]) {
       const type = r.player_type === 'agent_libre' ? 'reserviste' : r.player_type
       if (r.poolers && ['actif', 'reserviste', 'recrue', 'ltir'].includes(type)) {
-        map.set(r.player_id, { poolerName: r.poolers.name, playerType: type as 'actif' | 'reserviste' | 'recrue' | 'ltir' })
+        map.set(r.player_id, { poolerId: r.pooler_id, poolerName: r.poolers.name, playerType: type as 'actif' | 'reserviste' | 'recrue' | 'ltir' })
       }
     }
     return map
@@ -63,13 +63,14 @@ async function fetchOwnerByPlayerId(): Promise<Map<number, { poolerName: string;
 export default async function BlessuresPage() {
   const supabase = await createClient()
 
-  const [{ data: injuriesData }, ownerByPlayerId, ltirSettings] = await Promise.all([
+  const [{ data: injuriesData }, ownerByPlayerId, ltirSettings, { data: { user } }] = await Promise.all([
     supabase
       .from('player_injuries')
       .select('player_id, injury_type, status, updated_label, est_return_date, espn_est_return_date, espn_status_desc, espn_note, first_seen_at, players (id, nhl_id, first_name, last_name, position, teams (code))')
       .order('player_id'),
     fetchOwnerByPlayerId(),
     fetchLtirSettings(supabase),
+    supabase.auth.getUser(),
   ])
 
   const rows: InjuryRow[] = (injuriesData ?? [])
@@ -105,7 +106,7 @@ export default async function BlessuresPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <BlessuresTable rows={rows} />
+      <BlessuresTable rows={rows} myPoolerId={user?.id ?? null} />
     </div>
   )
 }

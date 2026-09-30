@@ -21,6 +21,13 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-30
 
+**[Feat] — Blessures : filtre « Mes joueurs seulement »** (`app/statistiques/blessures/page.tsx`,
+`BlessuresTable.tsx`, `app/aide/AideTabs.tsx`) :
+- Demande de David : un pooler peut ne voir que ses propres joueurs blessés (tous statuts :
+  actif, réserviste, recrue, LTIR). `owner` porte maintenant `poolerId` ; la page passe l'id de
+  l'utilisateur connecté (`poolers.id` = id Auth). Bouton visible seulement une fois connecté,
+  mutuellement exclusif avec « Disponibles seulement » (ensemble, la liste serait toujours vide).
+
 **[Feat] — Classement : un seul lien dans « Le pool », sélecteur de période** (`components/Navbar.tsx`,
 `app/classement/PeriodSelector.tsx`, les 3 pages de classement, `app/aide/AideTabs.tsx`,
 `app/a-propos/page.tsx`) :
