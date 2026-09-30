@@ -201,39 +201,83 @@ et 132 M$ avec 1,26. Ce calcul retire déjà les 20 recrues encore protégées q
 banque à la transition (101,9 M$ de contrats). Les poolers devront donc faire des choix l'été
 prochain, quel que soit le facteur retenu : c'est l'effet normal des fins de contrats d'entrée.
 
-### Lecture
+### Référence historique : 2013-14
 
-1. **Le plafond du pool est volontairement plus serré que l'équipe idéale.** En 2025-26, le
-   facteur de 1,24 correspond à 78 % du coût d'une équipe idéale (1,24 ÷ 1,597) : la marge est
-   négative (−22 %). C'est ce qui force les choix.
-2. **La pression a augmenté, mais modérément, en 2026-27.** L'équipe idéale coûte 1,628 × le
-   plafond LNH au lieu de 1,597 (+1,9 %) : les salaires des bons joueurs montent un peu plus vite
-   que le plafond, pas beaucoup plus.
-3. **Garder la même pression qu'en 2025-26** (méthode « marge d'origine », avec 2025-26 comme
-   année de référence faute de contrats plus anciens dans l'app) :
+Calculé avec `calcul_salaire/calcul_facteur_2013.py`, à partir de « Pool LT - 2013-2014.xls » (le
+plus vieux fichier disponible ; le pool a commencé en 2011-12 à 6 poolers) : contrats 2013-14 de
+tous les joueurs LNH (feuille Données), alignements réels des 6 poolers, classement sur 2011-12 et
+2012-13 (saison écourtée par le lock-out).
 
-   ```
-   1,24 × (1,628 ÷ 1,597) = 1,264
-   ```
+| | 2013-14 |
+|---|---|
+| Plafond LNH | 64,3 M$ |
+| Plafond du pool | 80 M$ = 1,244 × LNH (le 1,24 était déjà en vigueur) |
+| Facteur naturel, 6 poolers (la taille réelle du pool) | 1,786 |
+| Facteur naturel ramené à 8 poolers (pour comparer avec aujourd'hui) | 1,714 |
+| Facteur réalisé (alignements réels) | 1,198 (de 1,111 à 1,244) |
 
-   Les deux variantes donnent presque la même chose : 1,254 (avec 2 réservistes de plus) et 1,258
-   (réservistes au coût médian réel).
+Le nombre de poolers compte : avec moins d'équipes, chacune a de meilleurs joueurs, donc plus
+chers. Pour comparer les époques, il faut le même nombre d'équipes (8).
 
-### Recommandation
+### Lecture : le « taux de pression »
 
-| Facteur | Plafond du pool 2026-27 (104 M$) | Écart avec 1,24 |
-|---|---|---|
-| 1,24 (actuel) | 129 M$ | — |
-| **1,26** (même pression qu'en 2025-26) | **132 M$** (131,04 M$ arrondi au million supérieur) | +3 M$ |
-| 1,27 | 133 M$ (132,08 M$ arrondi) | +4 M$ |
+Le plus parlant est le **taux de pression** : la part d'une équipe idéale qu'on peut se payer
+avec le plafond du pool.
 
-Un facteur de **1,26** garde exactement la même contrainte qu'en 2025-26 ; il respecte la règle
-de lissage (±0,05 par année). Le recalculer chaque été avec le même script.
+```
+Taux de pression = facteur du pool ÷ facteur naturel
+```
+
+| Saison | Facteur naturel (8 poolers) | Facteur du pool | Taux de pression |
+|---|---|---|---|
+| 2013-14 | 1,714 | 1,24 | **72 %** |
+| 2025-26 | 1,597 | 1,24 | **78 %** |
+| 2026-27 | 1,628 | 1,24 | **76 %** |
+
+1. **Depuis 2013, le pool est devenu un peu moins serré, pas plus.** Avec le même 1,24, on pouvait
+   se payer 72 % d'une équipe idéale en 2013-14, contre 78 % en 2025-26. Les meilleurs joueurs
+   coûtent aujourd'hui un peu moins cher par rapport au plafond LNH qu'en 2013.
+2. **2026-27 marque une petite remontée** : de 78 % à 76 %. Les fins de contrats d'entrée et les
+   nouveaux contrats calibrés sur le plafond futur commencent à se faire sentir.
+3. **Les équipes dépensent autant qu'avant** : facteur réalisé de 1,198 en 2013-14 et de 1,208 en
+   2025-26. Le plafond « mord » de la même façon depuis le début.
+
+### Suggestions pour améliorer la formule
+
+1. **Fixer un taux de pression plutôt qu'un facteur.** La règle devient : « chaque été, le
+   facteur = taux de pression × facteur naturel ». On décide une fois quel niveau de difficulté on
+   veut (ex. : 76 %), et le facteur suit le marché tout seul. C'est plus facile à expliquer
+   qu'une « marge » négative.
+2. **Comparer à nombre de poolers constant (8).** Sinon, un changement de taille du pool fausse la
+   comparaison entre les années.
+3. **Classer sur les points par match** (minimum 40 matchs) plutôt que sur les totaux de saison :
+   une blessure ou un lock-out ne fait plus sortir un bon joueur du classement.
+4. **Lisser et borner plus serré** : moyenne des deux dernières saisons et variation limitée à
+   ±0,03 par année (le facteur naturel bouge d'environ 2 % par année ; ±0,05 permet des sauts
+   plus gros que ce qu'on observe).
+5. **Garder un indicateur de « douleur »** : le coût des alignements réels avec les contrats de la
+   saison suivante, recrues protégées retirées (1,297 pour 2026-27, contre 1,24 permis). Ce n'est
+   pas la règle, mais ça dit d'avance combien d'équipes devront couper.
+6. **Annoncer l'arrondi** : arrondir le plafond au million supérieur ajoute jusqu'à 1 M$ (~1 %).
+
+### Options pour 2026-27
+
+| Taux de pression visé | Facteur 2026-27 | Plafond du pool (104 M$) | Ce que ça veut dire |
+|---|---|---|---|
+| 72 % (niveau 2013-14) | 1,18 | 123 M$ | Revenir à la difficulté d'origine : plus serré qu'aujourd'hui |
+| 76 % | **1,24** (inchangé) | 129 M$ | Accepter la petite hausse de difficulté de cette année |
+| 78 % (niveau 2025-26) | **1,26** | 132 M$ | Garder exactement la difficulté de la saison dernière |
+
+Les données ne justifient pas une forte hausse du facteur : même avec la hausse des salaires,
+le pool reste moins serré qu'en 2013-14. **1,24 et 1,26 sont tous deux défendables** ; 1,26
+neutralise simplement la petite hausse de cette année. Le vrai choix pour le groupe est le
+**taux de pression** qu'on veut garder, et la règle de le recalculer chaque été.
 
 ### Limites à mentionner
 
-- La « marge d'origine » est calculée sur 2025-26, pas sur l'année où le 1,24 a été adopté
-  (l'app ne contient pas de contrats plus anciens).
+- 2013-14 : le classement repose sur 2011-12 et la saison écourtée de 2012-13, le barème actuel est
+  supposé identique à celui de l'époque, et 867 des 1 394 contrats ont été jumelés à des stats
+  (les autres n'avaient pas joué dans la LNH ces saisons-là : recrues, ligue mineure, blessés).
 - Le classement par points ignore la valeur « keeper » (âge, potentiel) : un jeune joueur peu
   productif mais prometteur n'est pas dans l'équipe idéale.
 - Les gardiens et les patineurs sont classés ensemble pour les réservistes, avec des barèmes

@@ -21,6 +21,20 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-30
 
+**[Analyse] — Facteur de plafond : référence historique 2013-14 + suggestions**
+(`calcul_salaire/calcul_facteur_2013.py`, `calcul_salaire/calcul_facteur.md`, `.gitignore`) :
+- À partir du fichier Excel 2013-14 de David (contrats LNH, alignements des 6 poolers) : le 1,24
+  était déjà en vigueur (80 M$ ≈ 1,244 × 64,3 M$). Facteur naturel 1,786 (6 poolers), 1,714 ramené
+  à 8 poolers ; facteur réalisé 1,198.
+- Nouvelle lecture en « taux de pression » (facteur ÷ naturel à 8 poolers) : 72 % en 2013-14, 78 %
+  en 2025-26, 76 % en 2026-27 avec 1,24. Le pool est un peu moins serré qu'en 2013 : 1,24 et 1,26
+  sont tous deux défendables ; le vrai choix est le taux de pression à garder.
+- Jumelage des noms Excel ↔ stats LNH avec secours nom + initiale (Mike/Michael, P.A./Pierre-
+  Alexandre…). Le fichier Excel n'est pas versionné (dépôt public) : `calcul_salaire/*.xls` ajouté
+  au `.gitignore`. Le script exige `xlrd` (non ajouté aux dépendances du pipeline).
+- Même correction de la protection recrue appliquée à staging : 22 lignes en 2025-26, 9 en 2026-27
+  (règle année pool = année LNH vérifiée à 100 % là aussi).
+
 **[Analyse] — Facteur de plafond du pool appuyé sur des données** (`calcul_salaire/calcul_facteur.py`,
 `calcul_salaire/calcul_facteur.md`) :
 - Méthode du document de David mise en œuvre (Python plutôt que DuckDB : données de l'app en
