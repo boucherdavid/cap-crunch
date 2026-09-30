@@ -22,8 +22,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : tri unique (`order('id')`) dans les requêtes paginées des scripts Python — à fusionner (les workflows GitHub tournent depuis `main`) |
-| `main` (prod) | À jour — dernière fusion le 2026-09-29 (`c7b17b7`, correctif doublons recherche Mode init) |
+| `staging` | À jour |
+| `main` (prod) | À jour — dernière fusion le 2026-09-30 (tri unique des requêtes paginées, scripts Python) |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
 détail des sources par blessure, correctif de saut d'écran du repêchage admin, renvoi en banque
@@ -62,19 +62,9 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-0. **Prod — saisie Mode init 2025-26 : alignements conformes** (vérifié le 2026-09-30, après
-   correction par David des alignements de David et Vincent) — les 8 poolers ont 12 attaquants,
-   6 défenseurs, 2 gardiens actifs et au moins 2 réservistes. Reste à faire :
-   - **Oliver Ekman-Larsson en triple en prod** — SQL pas encore roulé (fiches 3050 UTA et 3051
-     VAN à supprimer, 2502 TOR = la vraie ; + contrat 2029-30 périmé de 2502 à 2 126 667 $) :
-     ```sql
-     DELETE FROM player_contracts WHERE player_id IN (3050, 3051);
-     DELETE FROM players WHERE id IN (3050, 3051);
-     DELETE FROM player_contracts WHERE player_id = 2502 AND season = '2029-30';
-     ```
-     Avant : vérifier qu'aucun alignement ne pointe vers 3050/3051
-     (`SELECT * FROM pooler_rosters WHERE player_id IN (3050, 3051);` → 0 ligne).
-   - Fusionner `staging` → `main` (tri unique des scripts Python, `900be24`) après le go de David.
+0. **Prod — saisie Mode init 2025-26 : terminée et conforme** (vérifié le 2026-09-30) — les
+   8 poolers ont 12 attaquants, 6 défenseurs, 2 gardiens actifs et au moins 2 réservistes ;
+   doublons Ekman-Larsson supprimés.
 1. **Activer 2026-27** (hub `/admin/nouvelle-saison`, étape 2) là où David prépare la saison —
    sa capture du hub montrait « Actuellement active : 2025-26 ». Tant que ce n'est pas fait,
    `/repechage-agents-libres` lit 2025-26 (déjà démarrée) : panneau admin et libre-service

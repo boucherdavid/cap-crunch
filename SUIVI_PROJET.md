@@ -24,7 +24,9 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 **[Données] — Revalidation de la saisie Mode init en prod** : David a corrigé ses alignements et
 celui de Vincent (19 → 20 actifs, une recrue activée chacun). Vérifié par script (lecture seule) :
 les 8 poolers ont exactement 12 attaquants / 6 défenseurs / 2 gardiens actifs et au moins
-2 réservistes. Doublons Ekman-Larsson toujours à supprimer (SQL dans `ETAT_PROJET.md`).
+2 réservistes. Doublons Ekman-Larsson supprimés par David (fiches 3050/3051 + contrat 2029-30
+périmé de 2502) — vérifié : une seule fiche restante. `staging` fusionné sur `main` (tri unique
+des scripts Python, utilisés par les workflows GitHub).
 
 ### 2026-09-29
 
