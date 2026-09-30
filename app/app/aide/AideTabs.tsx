@@ -617,6 +617,26 @@ const SECTIONS: Section[] = [
   },
 
   {
+    id: 'guide-copie-de-secours',
+    tab: 'guide',
+    title: 'Copie de secours',
+    keywords: 'copie secours backup telecharger hors ligne fichier html excel panne sauvegarde',
+    href: '/copie-de-secours',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Accède-y via <strong>Aide → Copie de secours</strong>{' '}— tout le pool dans un seul fichier, au cas où l&apos;app serait hors service.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• Le fichier contient les alignements de tous les poolers, les contrats LNH, les choix de repêchage et le journal des mouvements.</li>
+          <li>• Ouvre-le dans ton navigateur (double-clic) : il fonctionne sans connexion Internet.</li>
+          <li>• Les ajustements que tu y fais restent enregistrés dans ton navigateur seulement — ils ne modifient jamais l&apos;app.</li>
+          <li>• Il est régénéré automatiquement chaque dimanche ; l&apos;administrateur peut aussi le mettre à jour sur demande.</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
     id: 'guide-donnees-vides',
     tab: 'guide',
     title: 'Une page de données semble vide ou incomplète',

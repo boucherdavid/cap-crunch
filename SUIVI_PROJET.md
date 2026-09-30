@@ -21,6 +21,23 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-30
 
+**[Feat] — Copie de secours téléchargeable + mise à jour manuelle par l'admin**
+(`app/copie-de-secours/` : `page.tsx`, `telecharger/route.ts`, `actions.ts`, `BackupAdminPanel.tsx` ;
+`lib/backupTool.ts`, `components/Navbar.tsx`, `app/aide/AideTabs.tsx`, `app/a-propos/page.tsx`) :
+- Demande de David : rendre `backup/pool_backup.html` téléchargeable par les poolers, et permettre
+  à l'admin de le régénérer depuis l'app.
+- Le dépôt GitHub est public et le fichier n'y contient que des données déjà publiques (noms des
+  poolers, alignements, contrats — aucun courriel/identifiant) : l'app le lit directement sur GitHub
+  (API contents, pas raw.githubusercontent.com dont le cache CDN sert une version vieille de
+  quelques minutes juste après une régénération). Aucun stockage supplémentaire. Téléchargement
+  réservé aux utilisateurs connectés (comme toutes les routes, `proxy.ts`).
+- Admin : bouton qui déclenche la même tâche GitHub que le dimanche (`workflow_dispatch` sur
+  `backup_tool.yml`, branche `main`), puis suit l'exécution toutes les 10 s et rafraîchit la date à
+  la fin. Exige la variable d'environnement `GITHUB_WORKFLOW_TOKEN` dans Vercel (à créer par
+  David) ; sans elle, le bouton est désactivé avec une explication. La génération cible toujours
+  la prod, même lancée depuis staging.
+- Page « Copie de secours » dans le menu Aide, + entrées dans le guide de l'Aide et À propos.
+
 **[Feat] — Blessures : filtre « Mes joueurs seulement »** (`app/statistiques/blessures/page.tsx`,
 `BlessuresTable.tsx`, `app/aide/AideTabs.tsx`) :
 - Demande de David : un pooler peut ne voir que ses propres joueurs blessés (tous statuts :

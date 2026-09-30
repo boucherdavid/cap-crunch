@@ -124,6 +124,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Aide & Règlements', href: '/aide' },
       { label: 'À propos', href: '/a-propos' },
+      { label: 'Copie de secours', href: '/copie-de-secours', auth: true },
     ],
   },
 ]

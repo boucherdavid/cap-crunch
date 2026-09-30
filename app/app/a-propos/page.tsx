@@ -150,6 +150,12 @@ const CATEGORIES: Category[] = [
         href: '/aide',
         description: "Guide d'utilisation détaillé par fonctionnalité et règlements du pool, avec une barre de recherche.",
       },
+      {
+        title: 'Copie de secours',
+        href: '/copie-de-secours',
+        note: 'Hors ligne',
+        description: "Tout le pool (alignements, contrats, choix de repêchage, journal) dans un seul fichier à télécharger, utilisable sans Internet si l'app est en panne. Mis à jour chaque dimanche.",
+      },
     ],
   },
   {
