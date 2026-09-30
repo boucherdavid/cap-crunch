@@ -22,8 +22,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : copie de secours : sélecteur d'alignement, onglet Simulation d'échange, masse salariale sans les recrues — à fusionner puis régénérer la copie |
-| `main` (prod) | À jour — dernière fusion le 2026-09-30 (`38b9e96` : Classement dans « Le pool » + sélecteur, filtre « Mes joueurs » sur Blessures, Copie de secours) |
+| `staging` | À jour |
+| `main` (prod) | À jour — dernière fusion le 2026-09-30 (`1ac5f9b` : copie de secours — sélecteur d'alignement, simulation d'échange, masse salariale sans les recrues) |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
 détail des sources par blessure, correctif de saut d'écran du repêchage admin, renvoi en banque

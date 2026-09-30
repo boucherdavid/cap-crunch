@@ -38,6 +38,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   pour git, qui stocke du LF.
 - Testé : génération contre staging dans un fichier temporaire, `node --check`, puis exécution
   avec un faux DOM (sélection, avant/après, statut à l'arrivée, application + journal).
+- Fusionné sur `main` (`1ac5f9b`) ; prend effet à la prochaine génération de la copie.
 
 **[Feat] — Copie de secours : un alignement à la fois** (`python_script/generate_backup_tool.py`) :
 - Demande de David : l'onglet Alignements affichait les 8 alignements à la suite (trop chargé).
