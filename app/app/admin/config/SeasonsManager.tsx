@@ -407,13 +407,13 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
 
             {preview.data.willReturnToBank > 0 && (
               <p className="text-xs text-blue-700 font-medium mb-4 bg-blue-50 rounded px-2 py-1.5">
-                {preview.data.willReturnToBank} joueur{preview.data.willReturnToBank > 1 ? 's' : ''} actif{preview.data.willReturnToBank > 1 ? 's' : ''}/réserviste{preview.data.willReturnToBank > 1 ? 's' : ''} encore protégé{preview.data.willReturnToBank > 1 ? 's' : ''} comme recrue {preview.data.willReturnToBank > 1 ? 'seront retournés' : 'sera retourné'} en banque — chaque pooler réactive lui-même ceux qu&apos;il veut garder, en pré-saison.
+                {preview.data.willReturnToBank} joueur{preview.data.willReturnToBank > 1 ? 's' : ''} actif{preview.data.willReturnToBank > 1 ? 's' : ''}/réserviste{preview.data.willReturnToBank > 1 ? 's' : ''} encore protégé{preview.data.willReturnToBank > 1 ? 's' : ''} comme recrue{preview.data.willReturnToBank > 1 ? 's' : ''} {preview.data.willReturnToBank > 1 ? 'seront retournés' : 'sera retourné'}{' '}en banque — chaque pooler réactive lui-même ceux qu&apos;il veut garder, en pré-saison.
               </p>
             )}
 
             {preview.data.willLoseProtection > 0 && (
               <p className="text-xs text-amber-700 font-medium mb-4 bg-amber-100 rounded px-2 py-1.5">
-                {preview.data.willLoseProtection} recrue{preview.data.willLoseProtection > 1 ? 's' : ''} {preview.data.willLoseProtection > 1 ? 'ont' : 'a'} une protection expirée pour cette saison (fin d&apos;ELC, ou plafond 5 ans pour un repêché) —
+                {preview.data.willLoseProtection} recrue{preview.data.willLoseProtection > 1 ? 's' : ''} {preview.data.willLoseProtection > 1 ? 'ont' : 'a'}{' '}une protection expirée pour cette saison (fin d&apos;ELC ou plafond de 5 ans pour un repêché) —
                 {preview.data.willLoseProtection > 1 ? ' elles perdront' : ' elle perdra'} leur statut recrue de façon permanente, mais rest{preview.data.willLoseProtection > 1 ? 'ent' : 'e'} active{preview.data.willLoseProtection > 1 ? 's' : ''}/réserviste{preview.data.willLoseProtection > 1 ? 's' : ''} telle{preview.data.willLoseProtection > 1 ? 's' : ''} quelle{preview.data.willLoseProtection > 1 ? 's' : ''}.
               </p>
             )}

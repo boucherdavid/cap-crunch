@@ -18,7 +18,7 @@ const STEPS: Step[] = [
     body: (
       <>
         <code>./run_pipeline_staging.ps1</code> pour valider, puis committer/pousser les CSV
-        modifiés sur <code>main</code> pour déclencher l&apos;import automatique en prod (voir
+        modifiés sur <code>main</code>{' '}pour déclencher l&apos;import automatique en prod (voir
         CLAUDE.md section 2). Met à jour les contrats/salaires de la nouvelle saison dans{' '}
         <code>player_contracts</code>. La nouvelle saison doit déjà exister dans{' '}
         <strong>Configuration → Saisons</strong> (sinon la créer là, avec son plafond NHL).

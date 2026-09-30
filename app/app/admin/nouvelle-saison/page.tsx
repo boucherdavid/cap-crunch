@@ -132,7 +132,7 @@ export default async function NouvelleSaisonPage({
         <SaisonSelectNav saisons={saisons} selectedId={saison.id} baseHref="/admin/nouvelle-saison" />
       </div>
       <p className="text-gray-500 text-sm mb-6">
-        Séquence recommandée pour préparer <strong>{saison.season}</strong>{saison.is_active ? ' (déjà active)' : ''} — chaque
+        Séquence recommandée pour préparer <strong>{saison.season}</strong>{saison.is_active ? ' (déjà active)' : ''}{' '}— chaque
         étape se fait sur cette saison sans devoir l&apos;activer, jusqu&apos;au dernier geste.
       </p>
 

@@ -887,7 +887,7 @@ export default function GestionEffectifsManager({
               {r.newPlayerName && <> + signature de {r.newPlayerName}</>}
             </p>
             <p className="text-xs text-sky-700 mt-0.5">
-              Soumis le {new Date(r.submittedAt).toLocaleDateString('fr-CA')} — rien ne bouge tant que l&apos;admin n&apos;a pas approuvé. La date effective sera celle de la soumission.
+              Soumis le {new Date(r.submittedAt).toLocaleDateString('fr-CA')}{' '}— rien ne bouge tant que l&apos;admin n&apos;a pas approuvé. La date effective sera celle de la soumission.
             </p>
           </div>
           <button onClick={() => handleCancelLtirRequest(r.id)}

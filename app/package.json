@@ -6,7 +6,8 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:jsx-spaces": "node scripts/check-jsx-spaces.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.0",

@@ -179,7 +179,7 @@ const SECTIONS: Section[] = [
       <div>
         <p className="text-sm text-gray-600 mb-3">
           Accédez à votre outil de gestion via <strong>Alignements → Gestion d&apos;effectifs</strong>. C&apos;est ici que vous ajustez
-          vous-même votre alignement une fois la <strong>saison démarrée</strong> par l&apos;administrateur.
+          vous-même votre alignement une fois la <strong>saison démarrée</strong>{' '}par l&apos;administrateur.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Basculez un joueur <strong>actif ↔ réserviste</strong> selon vos besoins.</li>
@@ -202,7 +202,7 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Onglet <strong>Ballotage</strong> de Gestion d&apos;effectifs — quand un joueur est libéré
+          Onglet <strong>Ballotage</strong>{' '}de Gestion d&apos;effectifs — quand un joueur est libéré
           en cours de saison, il y apparaît et devient réclamable par n&apos;importe quel autre pooler
           pendant un délai limité.
         </p>
@@ -225,7 +225,7 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Onglet <strong>Échanges</strong> de Gestion d&apos;effectifs — proposez un échange de joueurs
+          Onglet <strong>Échanges</strong>{' '}de Gestion d&apos;effectifs — proposez un échange de joueurs
           (actif, réserviste ou recrue) et/ou de choix de repêchage à un autre pooler.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
@@ -264,7 +264,7 @@ const SECTIONS: Section[] = [
         <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Signer un agent libre</h4>
         <p className="text-sm text-gray-700">
           Pendant votre tour, la signature d&apos;un agent libre repéré dans le bac à sable est effectuée par l&apos;administrateur en votre nom.
-          Vous pouvez aussi <strong>passer votre tour</strong> si vous n&apos;avez personne à signer.
+          Vous pouvez aussi <strong>passer votre tour</strong>{' '}si vous n&apos;avez personne à signer.
         </p>
       </div>
     ),
@@ -330,7 +330,7 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez au classement via <strong>Classement → Saison complète</strong> ou via la page d&apos;accueil.
+          Accédez au classement via <strong>Classement → Saison complète</strong>{' '}ou via la page d&apos;accueil.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Le tableau affiche le rang, les points totaux et le détail (buts, passes, victoires, défaites prol.).</li>
@@ -504,7 +504,7 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez-y via <strong>Blessures</strong> dans le menu — la liste des joueurs actuellement
+          Accédez-y via <strong>Blessures</strong>{' '}dans le menu — la liste des joueurs actuellement
           blessés dans la LNH, mise à jour automatiquement une fois par jour (vers midi, heure de l&apos;Est).
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
@@ -527,7 +527,7 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez-y via <strong>LNH → Statistiques → Projections</strong> — regroupe en un seul tableau ce qui est normalement
+          Accédez-y via <strong>LNH → Statistiques → Projections</strong>{' '}— regroupe en un seul tableau ce qui est normalement
           visible joueur par joueur dans le panneau détail (cliquable depuis n&apos;importe quelle page via le nom d&apos;un joueur).
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">

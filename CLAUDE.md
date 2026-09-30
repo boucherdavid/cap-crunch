@@ -1296,6 +1296,16 @@ corrigée le 2026-09-20 :**
 - `async/await` — pas de `.then()` chaîné
 - Nommage : composants en PascalCase, fonctions/variables en camelCase, fichiers en kebab-case
 
+**Textes de l'interface — relecture obligatoire (David, 2026-09-30)** : tout texte visible
+(JSX, messages d'erreur/succès, notifications push/courriel, `/aide`) suit les règles de la skill
+de projet `correcteur` (`.claude/skills/correcteur/SKILL.md`, adaptée de
+`skill_Claude/skill_correcteur.md`) : orthographe et accords (vérifier le singulier ET le pluriel
+des chaînes dynamiques), espace avant `: ! ? ;`, aucun mot collé ni double espace, pas de point
+final sur boutons/titres/libellés courts. Après toute modification de texte JSX, lancer
+`cd app && npm run check:jsx-spaces` : SWC supprime l'espace devant un texte qui contient une
+entité HTML (`&apos;`, `&middot;`...) et un saut de ligne (« ontune protection ») — correctif
+`{' '}`, appliqué automatiquement par `-- --fix`.
+
 ---
 
 ## 8. Responsive (mobile)

@@ -28,6 +28,22 @@ les 8 poolers ont exactement 12 attaquants / 6 défenseurs / 2 gardiens actifs e
 périmé de 2502) — vérifié : une seule fiche restante. `staging` fusionné sur `main` (tri unique
 des scripts Python, utilisés par les workflows GitHub).
 
+**[Fix/Outil] — Espaces supprimées par SWC dans le JSX + skill `correcteur`** (13 fichiers,
+`app/scripts/check-jsx-spaces.mjs`, `.claude/skills/correcteur/SKILL.md`, `CLAUDE.md`) :
+- Symptôme (David) : « ontune protection », « retournésen banque » dans l'aperçu de la
+  transition de saison, alors que le code source a bien l'espace. Cause isolée en compilant des
+  cas minimaux avec le SWC de Next : un texte JSX qui contient une **entité HTML** (`&apos;`,
+  `&middot;`...) **et un saut de ligne** perd son espace de tête (celle qui le sépare du
+  `{...}`/`<balise>` précédent) ; l'espace de fin est conservée ; sans entité ou sur une seule
+  ligne, rien n'est perdu. Même symptôme que le correctif ponctuel `07203bd` (2026-09-26).
+- `npm run check:jsx-spaces` (analyseur TypeScript, repère exactement ce motif ; `-- --fix`
+  insère `{' '}`) : 20 cas corrigés — aperçu de transition, `/classement` (+ hebdo, mensuel :
+  « Saison 2026-27· Joueurs actifs »), 7 dans `/aide`, pré-saison, hub AL, Gestion d'effectifs,
+  Guide admin, hub Nouvelle saison.
+- Skill de projet `correcteur` (règles de David, `skill_Claude/skill_correcteur.md`, adaptées au
+  JSX) + règle dans `CLAUDE.md` §7 : relecture obligatoire de tout texte visible. Au passage,
+  aperçu de transition : « comme recrues » accordé au pluriel, virgule superflue retirée.
+
 ### 2026-09-29
 
 **[Fix] — Doublons dans la recherche de joueurs de Mode init (prod)** (`app/app/admin/init/page.tsx`,
