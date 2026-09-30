@@ -62,6 +62,13 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
+- **À corriger avant la transition 2026-27 en prod** : les recrues repêchées par le pool saisies
+  directement en « actif » en Mode init n'ont pas `rookie_type`/`pool_draft_year` (Carlsson, Bedard,
+  Fantilli, Gauthier, Hutson…). Sans correction, elles ne retourneront pas en banque à la
+  transition. Piste : compléter ces champs d'après le repêchage du pool (staging a l'historique).
+- **Facteur de plafond** : analyse faite (`calcul_salaire/`), recommandation 1,26 — à présenter
+  aux poolers ; si adopté, changer le facteur de 2026-27 dans Configuration → Saisons.
+
 
 
 0. **Prod — saisie Mode init 2025-26 : terminée et conforme** (vérifié le 2026-09-30) — les

@@ -21,6 +21,19 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-30
 
+**[Analyse] — Facteur de plafond du pool appuyé sur des données** (`calcul_salaire/calcul_facteur.py`,
+`calcul_salaire/calcul_facteur.md`) :
+- Méthode du document de David mise en œuvre (Python plutôt que DuckDB : données de l'app en
+  prod + statistiques officielles LNH) : facteur naturel (top 96 A / 48 D / 16 G + 16 réservistes
+  selon le barème du pool, moyenne de 2 saisons) et facteur réalisé (alignements réels).
+- Résultats : naturel 1,597 (2025-26) → 1,628 (2026-27) ; réalisé 2025-26 = 1,208 (97 % du 1,24).
+  Même pression qu'en 2025-26 → **1,26** (plafond 2026-27 de 132 M$ au lieu de 129 M$).
+- **Découvert en passant (prod)** : les recrues repêchées par le pool placées directement en
+  « actif » pendant la saisie Mode init n'ont ni `rookie_type` ni `pool_draft_year` (Carlsson,
+  Bedard, Fantilli, Gauthier, Hutson…) — seules les recrues mises en banque les ont (148 lignes).
+  À la transition vers 2026-27, l'app ne les renverra pas en banque et leur nouveau salaire
+  comptera tout de suite. Non corrigé, à décider avec David.
+
 **[Feat/Fix] — Copie de secours : onglet « Simulation d'échange » + masse salariale corrigée**
 (`python_script/generate_backup_tool.py`) :
 - Demande de David : simuler un échange entre deux poolers dans la copie de secours. Nouvel onglet :
