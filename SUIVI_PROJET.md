@@ -32,7 +32,15 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   « actif » pendant la saisie Mode init n'ont ni `rookie_type` ni `pool_draft_year` (Carlsson,
   Bedard, Fantilli, Gauthier, Hutson…) — seules les recrues mises en banque les ont (148 lignes).
   À la transition vers 2026-27, l'app ne les renverra pas en banque et leur nouveau salaire
-  comptera tout de suite. Non corrigé, à décider avec David.
+  comptera tout de suite.
+- **Corrigé en prod (même jour, accord de David)** : 20 lignes actif/réserviste 2025-26 complétées
+  en `rookie_type='repeche'`, `pool_draft_year` = année de repêchage LNH. Règle vérifiée sur les
+  138 recrues repêchées déjà renseignées : année du pool = année LNH dans 100 % des cas. Jack
+  Hughes (Sébastien F.) exclu — sa fiche porte à tort le repêchage 2022 R2 d'un homonyme (le vrai,
+  des Devils, a été repêché en 2019) : erreur de jumelage par nom dans `import_drafts.py`, à
+  corriger. Vérifié : à la transition 2026-27, 20 recrues retourneront en banque (dont Carlsson,
+  Bedard, Fantilli, Gauthier), 13 perdront leur statut (5 ans écoulés). Staging a le même manque,
+  non corrigé (environnement de test).
 
 **[Feat/Fix] — Copie de secours : onglet « Simulation d'échange » + masse salariale corrigée**
 (`python_script/generate_backup_tool.py`) :

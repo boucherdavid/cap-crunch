@@ -195,10 +195,11 @@ estimés) et la saison 2026-27 qui servirait au classement vient de commencer.
 
 Les équipes utilisent en moyenne 97 % du plafond de 1,24 : le plafond « mord ».
 
-À titre indicatif, les mêmes alignements avec les contrats 2026-27 coûteraient 1,405 × le plafond
-LNH (146 M$ en moyenne, contre 129 M$ permis), surtout à cause de fins de contrats d'entrée
-(Carlsson, Bedard, Fantilli, Gauthier…). Ce chiffre est surévalué : une partie de ces joueurs
-retourneront en banque à la transition s'ils sont encore protégés.
+À titre indicatif, les mêmes alignements avec les contrats 2026-27 coûteraient en moyenne
+134,8 M$ (1,297 × le plafond LNH ; de 1,170 à 1,466 selon l'équipe), contre 129 M$ permis avec 1,24
+et 132 M$ avec 1,26. Ce calcul retire déjà les 20 recrues encore protégées qui retourneront en
+banque à la transition (101,9 M$ de contrats). Les poolers devront donc faire des choix l'été
+prochain, quel que soit le facteur retenu : c'est l'effet normal des fins de contrats d'entrée.
 
 ### Lecture
 
