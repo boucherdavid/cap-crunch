@@ -61,12 +61,12 @@ const SECTIONS: Section[] = [
       <div>
         <p className="text-xs text-gray-500 mb-3">Chrome ou Edge</p>
         <ol className="text-sm text-gray-700 space-y-1.5 list-decimal list-inside">
-          <li>Ouvrez le site dans Chrome ou Edge</li>
-          <li>Cliquez sur le bouton <strong>Installer</strong> dans la barre de navigation du site</li>
-          <li>Confirmez l&apos;installation dans la fenêtre qui s&apos;ouvre</li>
+          <li>Ouvre le site dans Chrome ou Edge</li>
+          <li>Clique sur le bouton <strong>Installer</strong> dans la barre de navigation du site</li>
+          <li>Confirme l&apos;installation dans la fenêtre qui s&apos;ouvre</li>
         </ol>
         <p className="text-xs text-gray-400 mt-3">
-          Si le bouton n&apos;apparaît pas, cherchez l&apos;icône d&apos;installation (⊕) à droite de la barre d&apos;adresse du navigateur.
+          Si le bouton n&apos;apparaît pas, cherche l&apos;icône d&apos;installation (⊕) à droite de la barre d&apos;adresse du navigateur.
         </p>
       </div>
     ),
@@ -80,13 +80,13 @@ const SECTIONS: Section[] = [
       <div>
         <p className="text-xs text-gray-500 mb-3">Safari uniquement</p>
         <ol className="text-sm text-gray-700 space-y-1.5 list-decimal list-inside">
-          <li>Ouvrez le site dans <strong>Safari</strong></li>
-          <li>Appuyez sur le bouton Partager <strong>⬆</strong> en bas de l&apos;écran</li>
-          <li>Faites défiler et choisissez <strong>« Sur l&apos;écran d&apos;accueil »</strong></li>
-          <li>Confirmez en appuyant sur <strong>Ajouter</strong></li>
+          <li>Ouvre le site dans <strong>Safari</strong></li>
+          <li>Appuie sur le bouton Partager <strong>⬆</strong> en bas de l&apos;écran</li>
+          <li>Fais défiler et choisis <strong>« Sur l&apos;écran d&apos;accueil »</strong></li>
+          <li>Confirme en appuyant sur <strong>Ajouter</strong></li>
         </ol>
         <p className="text-xs text-gray-400 mt-3">
-          L&apos;icône apparaîtra sur votre écran d&apos;accueil comme une application normale.
+          L&apos;icône apparaîtra sur ton écran d&apos;accueil comme une application normale.
         </p>
       </div>
     ),
@@ -100,10 +100,10 @@ const SECTIONS: Section[] = [
       <div>
         <p className="text-xs text-gray-500 mb-3">Chrome</p>
         <ol className="text-sm text-gray-700 space-y-1.5 list-decimal list-inside">
-          <li>Ouvrez le site dans <strong>Chrome</strong></li>
+          <li>Ouvre le site dans <strong>Chrome</strong></li>
           <li>Une bannière d&apos;installation peut apparaître automatiquement</li>
-          <li>Sinon, appuyez sur le menu <strong>⋮</strong> en haut à droite</li>
-          <li>Choisissez <strong>« Ajouter à l&apos;écran d&apos;accueil »</strong></li>
+          <li>Sinon, appuie sur le menu <strong>⋮</strong> en haut à droite</li>
+          <li>Choisis <strong>« Ajouter à l&apos;écran d&apos;accueil »</strong></li>
         </ol>
         <p className="text-xs text-gray-400 mt-3">
           L&apos;application s&apos;ouvre ensuite sans la barre d&apos;adresse du navigateur.
@@ -119,9 +119,9 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <ul className="text-sm text-gray-700 space-y-1.5">
-          <li>• En portrait, les tableaux n&apos;affichent que les colonnes essentielles — le nom du joueur reste figé à gauche quand vous faites défiler.</li>
-          <li>• <strong>Tournez votre téléphone en paysage</strong> pour voir toutes les colonnes (équipe, statistiques détaillées, contrats des saisons suivantes…).</li>
-          <li>• Si l&apos;application installée refuse de passer en paysage, désinstallez-la puis réinstallez-la (voir ci-dessus) — une ancienne version bloquait le mode paysage.</li>
+          <li>• En portrait, les tableaux n&apos;affichent que les colonnes essentielles — le nom du joueur reste figé à gauche quand tu fais défiler.</li>
+          <li>• <strong>Tourne ton téléphone en paysage</strong> pour voir toutes les colonnes (équipe, statistiques détaillées, contrats des saisons suivantes…).</li>
+          <li>• Si l&apos;application installée refuse de passer en paysage, désinstalle-la puis réinstalle-la (voir ci-dessus) — une ancienne version bloquait le mode paysage.</li>
         </ul>
       </div>
     ),
@@ -131,39 +131,39 @@ const SECTIONS: Section[] = [
   {
     id: 'guide-equipe',
     tab: 'guide',
-    title: 'Mon équipe',
+    title: 'Mon alignement',
     keywords: 'equipe alignement roster organisation actif reserviste recrue ltir picks repechage cap masse salariale pooler switcher',
     href: '/dashboard',
     screenshot: '/guide/mon-equipe.png',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez à votre alignement via <strong>Alignements → Mon équipe</strong> dans la barre de navigation.
+          Accède à ton alignement via <strong>Mon équipe → Mon alignement</strong> dans le menu.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
-          <li>• L&apos;onglet <strong>Organisation</strong> affiche votre roster complet : actifs, réservistes, recrues et joueurs LTIR.</li>
-          <li>• Votre <strong>masse salariale</strong> et le cap restant sont affichés en haut de page.</li>
-          <li>• Vos <strong>choix de repêchage</strong> sont listés en bas, regroupés par saison.</li>
-          <li>• Le <strong>sélecteur de pooler</strong> en haut vous permet de consulter l&apos;alignement d&apos;un autre pooler.</li>
+          <li>• L&apos;onglet <strong>Organisation</strong> affiche ton alignement complet : actifs, réservistes, recrues et joueurs LTIR.</li>
+          <li>• Ta <strong>masse salariale</strong> et le cap restant sont affichés en haut de page.</li>
+          <li>• Tes <strong>choix de repêchage</strong> sont listés en bas, regroupés par saison.</li>
+          <li>• Le <strong>sélecteur de pooler</strong> en haut te permet de consulter l&apos;alignement d&apos;un autre pooler.</li>
         </ul>
-        <p className="text-xs text-gray-400 mt-3 italic">Pour modifier vous-même votre alignement (actif/réserviste, libération, recrues), voir <strong>Gestion d&apos;effectifs</strong> ci-dessous.</p>
+        <p className="text-xs text-gray-400 mt-3 italic">Pour modifier toi-même ton alignement (actif/réserviste, libération, recrues), voir <strong>Gestion d&apos;effectifs</strong> ci-dessous.</p>
       </div>
     ),
   },
   {
     id: 'guide-equipes',
     tab: 'guide',
-    title: 'Équipes',
+    title: 'Tous les alignements',
     keywords: 'equipes poolers liste rang classement masse salariale alignement des autres',
     href: '/poolers',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez via <strong>Alignements → Équipes</strong> — la liste des 8 poolers du pool.
+          Accède-y via <strong>Le pool → Tous les alignements</strong> — la liste des 8 poolers du pool.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Chaque ligne affiche le <strong>rang</strong> au classement et la <strong>masse salariale</strong> utilisée.</li>
-          <li>• Cliquez sur un pooler pour ouvrir son alignement complet (même vue que <strong>Mon équipe</strong>, mais pour lui).</li>
+          <li>• Clique sur un pooler pour ouvrir son alignement complet (même vue que <strong>Mon alignement</strong>, mais pour lui).</li>
         </ul>
       </div>
     ),
@@ -178,17 +178,17 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez à votre outil de gestion via <strong>Alignements → Gestion d&apos;effectifs</strong>. C&apos;est ici que vous ajustez
-          vous-même votre alignement une fois la <strong>saison démarrée</strong> par l&apos;administrateur.
+          Accède à ton outil de gestion via <strong>Mon équipe → Gestion d&apos;effectifs</strong>. C&apos;est ici que tu ajustes
+          toi-même ton alignement une fois la <strong>saison démarrée</strong>{' '}par l&apos;administrateur.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
-          <li>• Basculez un joueur <strong>actif ↔ réserviste</strong> selon vos besoins.</li>
-          <li>• <strong>Libérez</strong> un joueur pour le retirer de votre alignement.</li>
-          <li>• <strong>Activez ou remettez en banque</strong> une recrue encore protégée, à tout moment.</li>
-          <li>• Vos changements doivent respecter les limites du pool (voir Règlements) : maximum 12 attaquants / 6 défenseurs / 2 gardiens actifs, minimum 2 réservistes, et votre masse salariale sous le cap.</li>
+          <li>• Bascule un joueur <strong>actif ↔ réserviste</strong> selon tes besoins.</li>
+          <li>• <strong>Libère</strong> un joueur pour le retirer de ton alignement.</li>
+          <li>• <strong>Active ou remets en banque</strong> une recrue encore protégée, à tout moment.</li>
+          <li>• Tes changements doivent respecter les limites du pool (voir Règlements) : maximum 12 attaquants / 6 défenseurs / 2 gardiens actifs, minimum 2 réservistes, et ta masse salariale sous le cap.</li>
           <li>• Libérer un joueur en cours de saison le met automatiquement au <strong>ballotage</strong> (onglet Ballotage, voir plus bas) — les autres poolers ont un délai pour le réclamer.</li>
         </ul>
-        <p className="text-xs text-gray-400 mt-3 italic">Avant le début officiel de la saison, ces mêmes ajustements se font plutôt depuis <strong>Signatures des agents libres</strong> (Alignements, voir plus bas).</p>
+        <p className="text-xs text-gray-400 mt-3 italic">Avant le début officiel de la saison, ces mêmes ajustements se font plutôt depuis <strong>Signatures des agents libres</strong> (Repêchage annuel des poolers, voir plus bas).</p>
       </div>
     ),
   },
@@ -202,15 +202,15 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Onglet <strong>Ballotage</strong> de Gestion d&apos;effectifs — quand un joueur est libéré
+          Onglet <strong>Ballotage</strong>{' '}de Gestion d&apos;effectifs — quand un joueur est libéré
           en cours de saison, il y apparaît et devient réclamable par n&apos;importe quel autre pooler
           pendant un délai limité.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
-          <li>• Cliquez <strong>Réclamer</strong> pour signaler votre intérêt — vous pouvez réclamer plusieurs joueurs en même temps. <strong>Refuser</strong> est optionnel, mais si tous les poolers plus prioritaires que vous refusent, vous êtes averti que vous allez l&apos;obtenir sans attendre la fin du délai.</li>
+          <li>• Clique <strong>Réclamer</strong> pour signaler ton intérêt — tu peux réclamer plusieurs joueurs en même temps. <strong>Refuser</strong> est optionnel, mais si tous les poolers plus prioritaires que toi refusent, tu es averti que tu vas l&apos;obtenir sans attendre la fin du délai.</li>
           <li>• Si plusieurs poolers réclament le même joueur, celui avec la <strong>priorité la plus haute</strong> (pire classé au moment de la libération) le remporte.</li>
           <li>• Si personne ne réclame avant la fin du délai, le joueur redevient simplement un agent libre normal.</li>
-          <li>• Une fois gagné, un bandeau apparaît dans l&apos;onglet <strong>Mouvements</strong> pour l&apos;ajouter vous-même à votre alignement (actif ou réserviste, au choix) — ajustez au besoin (libération) pour rester conforme, vous avez 48h pour le faire.</li>
+          <li>• Une fois gagné, un bandeau apparaît dans l&apos;onglet <strong>Mouvements</strong> pour l&apos;ajouter toi-même à ton alignement (actif ou réserviste, au choix) — ajuste au besoin (libération) pour rester conforme, tu as 48 h pour le faire.</li>
         </ul>
       </div>
     ),
@@ -225,13 +225,13 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Onglet <strong>Échanges</strong> de Gestion d&apos;effectifs — proposez un échange de joueurs
+          Onglet <strong>Échanges</strong>{' '}de Gestion d&apos;effectifs — propose un échange de joueurs
           (actif, réserviste ou recrue) et/ou de choix de repêchage à un autre pooler.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
-          <li>• Le pooler visé doit <strong>accepter ou refuser</strong> votre proposition.</li>
+          <li>• Le pooler visé doit <strong>accepter ou refuser</strong> ta proposition.</li>
           <li>• Si accepté, l&apos;<strong>admin doit approuver</strong> l&apos;échange avant que quoi que ce soit ne bouge.</li>
-          <li>• Une fois approuvé, vous avez un délai pour <strong>confirmer</strong> que le résultat entre dans votre masse salariale et votre composition (12/6/2 + réservistes) — si ça ne rentre pas encore, une section dédiée directement dans cet onglet vous permet d&apos;ajuster au passage (libérer, changer actif/réserviste, activer ou remettre en banque une recrue), pas besoin d&apos;aller dans Mouvements séparément.</li>
+          <li>• Une fois approuvé, tu as un délai pour <strong>confirmer</strong> que le résultat entre dans ta masse salariale et ta composition (12/6/2 + réservistes) — si ça ne rentre pas encore, une section dédiée directement dans cet onglet te permet d&apos;ajuster au passage (libérer, changer actif/réserviste, activer ou remettre en banque une recrue), pas besoin d&apos;aller dans Mouvements séparément.</li>
           <li>• L&apos;échange s&apos;exécute seulement une fois que <strong>les deux poolers</strong> ont confirmé. Si l&apos;un des deux ne confirme pas à temps, l&apos;échange est annulé pour les deux — personne ne perd rien, à refaire au besoin.</li>
         </ul>
       </div>
@@ -247,24 +247,24 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez-y via <strong>Alignements → Signatures des agents libres</strong>. C&apos;est l&apos;étape de préparation avant chaque
+          Accède-y via <strong>Repêchage annuel des poolers → Signatures des agents libres</strong>. C&apos;est l&apos;étape de préparation avant chaque
           nouvelle saison, où chaque pooler ajuste son alignement et où des agents libres sont signés à tour de rôle.
         </p>
         <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Tableau de bord partagé</h4>
         <ul className="text-sm text-gray-700 space-y-1.5 mb-4">
-          <li>• Votre masse salariale, l&apos;alignement de n&apos;importe quel pooler (dépliable), et la file d&apos;attente indiquant à qui le tour.</li>
+          <li>• Ta masse salariale, l&apos;alignement de n&apos;importe quel pooler (dépliable), et la file d&apos;attente indiquant à qui le tour.</li>
           <li>• Un fil <strong>Activité récente</strong> liste les signatures, libérations et changements de tous les poolers.</li>
         </ul>
         <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Mon alignement</h4>
         <ul className="text-sm text-gray-700 space-y-1.5 mb-4">
-          <li>• Onglet <strong>Actuel</strong> : ajustez réellement votre alignement — actif ↔ réserviste, libération (quand la phase de libération est ouverte), activer/remettre en banque une recrue (toujours permis).</li>
-          <li>• Onglet <strong>Bac à sable</strong> : simulez l&apos;ajout d&apos;un agent libre ou d&apos;une recrue de votre banque pour voir l&apos;impact sur votre masse salariale <em>avant</em> de décider — rien n&apos;est enregistré tant que vous ne le soumettez pas. Filtrez par position, salaire maximum, équipe ou statut ELC pour trouver un joueur.</li>
-          <li>• Une fois satisfait de votre alignement, cliquez <strong>Mon alignement est prêt</strong> — l&apos;administrateur en a besoin pour démarrer la saison.</li>
+          <li>• Onglet <strong>Actuel</strong> : ajuste réellement ton alignement — actif ↔ réserviste, libération (quand la phase de libération est ouverte), activer/remettre en banque une recrue (toujours permis).</li>
+          <li>• Onglet <strong>Simulation</strong> : simule l&apos;ajout d&apos;un agent libre ou d&apos;une recrue de ta banque pour voir l&apos;impact sur ta masse salariale <em>avant</em> de décider — rien n&apos;est enregistré tant que tu ne le soumets pas. Filtre par position, salaire maximum, équipe ou statut ELC pour trouver un joueur.</li>
+          <li>• Une fois satisfait de ton alignement, clique <strong>Mon alignement est prêt</strong> — l&apos;administrateur en a besoin pour démarrer la saison.</li>
         </ul>
         <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Signer un agent libre</h4>
         <p className="text-sm text-gray-700">
-          Pendant votre tour, la signature d&apos;un agent libre repéré dans le bac à sable est effectuée par l&apos;administrateur en votre nom.
-          Vous pouvez aussi <strong>passer votre tour</strong> si vous n&apos;avez personne à signer.
+          Pendant ton tour, la signature d&apos;un agent libre repéré dans la simulation est effectuée par l&apos;administrateur en ton nom.
+          Tu peux aussi <strong>passer ton tour</strong>{' '}si tu n&apos;as personne à signer.
         </p>
       </div>
     ),
@@ -279,19 +279,19 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez-y via <strong>Alignements → Simulation</strong> — testez des changements d&apos;alignement <strong>toute l&apos;année</strong>,
-          pas seulement en pré-saison. Rien n&apos;est jamais appliqué pour de vrai : pour un vrai changement, utilisez Gestion d&apos;effectifs.
+          Accède-y via <strong>Mon équipe → Simulation</strong> — teste des changements d&apos;alignement <strong>toute l&apos;année</strong>,
+          pas seulement en pré-saison. Rien n&apos;est jamais appliqué pour de vrai : pour un vrai changement, utilise Gestion d&apos;effectifs.
         </p>
         <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Onglet Mon alignement</h4>
         <ul className="text-sm text-gray-700 space-y-1.5 mb-4">
-          <li>• Retirez un de vos joueurs, ajoutez un agent libre (ou un joueur déjà possédé par un autre pooler, identifié en orange — pratique pour simuler une transaction) ou une recrue de votre banque.</li>
+          <li>• Retire un de tes joueurs, ajoute un agent libre (ou un joueur déjà possédé par un autre pooler, identifié en orange — pratique pour simuler une transaction) ou une recrue de ta banque.</li>
           <li>• Chaque joueur ajouté a un statut à choisir : <strong>Actif / Réserviste / IR</strong>.</li>
-          <li>• <strong>Scénarios sauvegardés</strong> : donnez un nom à votre simulation pour la retrouver plus tard — plusieurs scénarios peuvent être gardés en parallèle. Vos scénarios sont <strong>privés</strong> : personne d&apos;autre, administrateur compris, ne peut les voir.</li>
+          <li>• <strong>Scénarios sauvegardés</strong> : donne un nom à ta simulation pour la retrouver plus tard — plusieurs scénarios peuvent être gardés en parallèle. Tes scénarios sont <strong>privés</strong> : personne d&apos;autre, administrateur compris, ne peut les voir.</li>
         </ul>
         <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Onglet Transaction</h4>
         <ul className="text-sm text-gray-700 space-y-1.5">
-          <li>• Choisissez un autre pooler pour voir les deux alignements côte à côte.</li>
-          <li>• Utilisez le bouton <strong>→</strong> pour envoyer un de vos joueurs chez l&apos;autre pooler (ou l&apos;inverse) et voir l&apos;impact sur les deux masses salariales en même temps.</li>
+          <li>• Choisis un autre pooler pour voir les deux alignements côte à côte.</li>
+          <li>• Utilise le bouton <strong>→</strong> pour envoyer un de tes joueurs chez l&apos;autre pooler (ou l&apos;inverse) et voir l&apos;impact sur les deux masses salariales en même temps.</li>
           <li>• Les mêmes outils que Mon alignement (agent libre, recrue de banque, statut Actif/Réserviste/IR) sont disponibles des deux côtés.</li>
         </ul>
       </div>
@@ -306,16 +306,16 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez-y via <strong>Mon équipe → Mes listes</strong> — un aide-mémoire des joueurs qui vous intéressent,
+          Accède-y via <strong>Mon équipe → Mes listes</strong>{' '}— un aide-mémoire des joueurs qui t&apos;intéressent,
           à préparer pendant la saison et à consulter le soir du pool.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Deux types de listes : <strong>Agents libres</strong> (tout joueur qui n&apos;est dans aucun alignement) et <strong>Recrues</strong> (joueurs du dernier repêchage LNH, à repêcher au pool).</li>
-          <li>• Créez autant de listes nommées que vous voulez, classez les joueurs par priorité (▲▼) et ajoutez une courte note.</li>
+          <li>• Crée autant de listes nommées que tu veux, classe les joueurs par priorité (▲▼) et ajoute une courte note.</li>
           <li>• La recherche ne propose que des joueurs <strong>encore disponibles</strong>.</li>
           <li>• Un joueur pris par un pooler n&apos;est pas effacé : il passe dans <strong>Déjà pris</strong>, avec le nom du pooler. Le soir du pool, la liste se met à jour d&apos;elle-même.</li>
-          <li>• Vos listes sont <strong>privées</strong> : personne d&apos;autre, administrateur compris, ne peut les voir.</li>
-          <li>• Elles se retrouvent aussi dans Signatures des agents libres, Repêchage des recrues, Gestion d&apos;effectifs et Simulation (bouton <strong>Simuler</strong> pour tester l&apos;impact d&apos;un agent libre sur votre masse salariale).</li>
+          <li>• Tes listes sont <strong>privées</strong> : personne d&apos;autre, administrateur compris, ne peut les voir.</li>
+          <li>• Elles se retrouvent aussi dans Signatures des agents libres, Repêchage des recrues, Gestion d&apos;effectifs et Simulation (bouton <strong>Simuler</strong> pour tester l&apos;impact d&apos;un agent libre sur ta masse salariale).</li>
         </ul>
       </div>
     ),
@@ -330,11 +330,11 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez au classement via <strong>Classement → Saison complète</strong> ou via la page d&apos;accueil.
+          Accède au classement via <strong>Classement du pool → Saison complète</strong>{' '}ou via la page d&apos;accueil.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Le tableau affiche le rang, les points totaux et le détail (buts, passes, victoires, défaites prol.).</li>
-          <li>• Cliquez sur le nom d&apos;un pooler pour consulter son alignement complet.</li>
+          <li>• Clique sur le nom d&apos;un pooler pour consulter son alignement complet.</li>
           <li>• La page d&apos;accueil affiche un widget <strong>Joueurs en action ce soir</strong> : combien de joueurs de chaque pooler jouent le soir même.</li>
         </ul>
         <p className="text-sm text-gray-600 mt-3">
@@ -356,11 +356,11 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Consultez l&apos;historique de tous les mouvements via <strong>Alignements → Journal des transactions</strong>.
+          Consulte l&apos;historique de tous les mouvements via <strong>Le pool → Journal des transactions</strong>.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Les transactions sont séparées en deux catégories : <strong>Échanges</strong> (joueurs et picks entre poolers) et <strong>Ajustements</strong> (signatures, libérations, changements de type).</li>
-          <li>• C&apos;est un historique en <strong>lecture seule</strong> — vos propres ajustements se font depuis Gestion d&apos;effectifs, et les échanges entre poolers sont traités par l&apos;administrateur.</li>
+          <li>• C&apos;est un historique en <strong>lecture seule</strong> — tes propres ajustements se font depuis Gestion d&apos;effectifs, et les échanges entre poolers sont traités par l&apos;administrateur.</li>
         </ul>
       </div>
     ),
@@ -386,7 +386,7 @@ const SECTIONS: Section[] = [
           <li>• Case à cocher <strong>Notifications par courriel</strong> — reçoit les mêmes alertes par courriel, peu importe l&apos;appareil.</li>
           <li>• Bouton <strong>Tester le courriel</strong> pour confirmer la réception.</li>
         </ul>
-        <p className="text-xs text-gray-400 italic">Vous pouvez activer les deux, un seul, ou aucun — désactivable en tout temps depuis Mon compte.</p>
+        <p className="text-xs text-gray-400 italic">Tu peux activer les deux, un seul, ou aucun — désactivable en tout temps depuis Mon compte.</p>
       </div>
     ),
   },
@@ -399,12 +399,12 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez au babillard via <strong>Ressources → Babillard</strong>.
+          Accède au babillard via <strong>Communauté → Babillard</strong>.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• L&apos;administrateur y publie des communications pour l&apos;ensemble du pool.</li>
           <li>• Chaque communication peut être commentée par les poolers.</li>
-          <li>• Si vous avez activé les notifications (push ou courriel, Mon compte), vous êtes avisé lors d&apos;une nouvelle communication.</li>
+          <li>• Si tu as activé les notifications (push ou courriel, Mon compte), tu es avisé lors d&apos;une nouvelle communication.</li>
         </ul>
         <p className="text-xs text-gray-400 mt-3 italic">Distinct du babillard de la page Planification, propre au sondage de rencontre.</p>
       </div>
@@ -419,10 +419,10 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez-y via <strong>Ressources → Planification</strong> — un sondage type Doodle pour trouver une date de rencontre du pool.
+          Accède-y via <strong>Communauté → Planification</strong> — un sondage type Doodle pour trouver une date de rencontre du pool.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
-          <li>• Indiquez vos <strong>disponibilités</strong> pour chacune des dates proposées par l&apos;administrateur.</li>
+          <li>• Indique tes <strong>disponibilités</strong> pour chacune des dates proposées par l&apos;administrateur.</li>
           <li>• Un résumé affiche la meilleure date selon les réponses de tous.</li>
           <li>• Un babillard propre au sondage permet d&apos;échanger sur l&apos;organisation de la rencontre.</li>
         </ul>
@@ -439,16 +439,15 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez au calendrier via <strong>LNH → Calendrier</strong>.
+          Accède au calendrier via <strong>Calendrier LNH</strong> dans le menu.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5 mb-4">
-          <li>• La vue par défaut affiche les matchs de la <strong>semaine en cours</strong>, naviguez avec les boutons précédent/suivant ou le sélecteur de date.</li>
-          <li>• Filtrez par <strong>équipe</strong> pour voir uniquement les matchs de cette équipe.</li>
-          <li>• Quand un filtre équipe est actif, le bouton <strong>Calendrier</strong> charge la saison complète sous forme de grille mensuelle — navigez mois par mois.</li>
+          <li>• La page affiche les matchs d&apos;<strong>une journée</strong> : navigue avec les flèches, le bouton <strong>Aujourd&apos;hui</strong> ou le sélecteur de date.</li>
+          <li>• Si tu es connecté, le nombre de matchs impliquant tes joueurs est indiqué pour la journée.</li>
         </ul>
-        <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Analyse 7 prochains jours</h4>
+        <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Prochains matchs de tes joueurs</h4>
         <ul className="text-sm text-gray-700 space-y-1.5">
-          <li>• Si vous êtes connecté, un bloc résumé affiche le nombre de matchs dans les 7 prochains jours pour chacun de vos joueurs actifs.</li>
+          <li>• L&apos;onglet <strong>Prochains matchs</strong> de Mon alignement (ou de l&apos;alignement de n&apos;importe quel pooler) affiche le nombre de matchs de chaque joueur dans les prochains jours (horizon réglable de 2 à 7 jours).</li>
           <li>• Code couleur : <span className="text-green-600 font-medium">vert ≥ 4 matchs</span>, <span className="text-blue-600 font-medium">bleu ≥ 2</span>, gris = aucun.</li>
         </ul>
       </div>
@@ -464,13 +463,13 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez aux statistiques via <strong>LNH → Statistiques</strong>.
+          Accède aux statistiques via <strong>Statistiques → LNH</strong>.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
-          <li>• Consultez les stats des patineurs (triés par points) et des gardiens (triés par victoires).</li>
+          <li>• Consulte les stats des patineurs (triés par points) et des gardiens (triés par victoires).</li>
           <li>• Un <strong>point vert</strong> indique qu&apos;un joueur appartient déjà à un pooler dans la saison active.</li>
-          <li>• Basculez entre <strong>Saison régulière</strong> et <strong>Séries</strong> avec le toggle en haut à droite.</li>
-          <li>• Filtrez par attaquants / défenseurs et effectuez une recherche par nom.</li>
+          <li>• Bascule entre <strong>Saison régulière</strong> et <strong>Séries</strong> avec le sélecteur en haut à droite.</li>
+          <li>• Filtre par attaquants / défenseurs et fais une recherche par nom.</li>
         </ul>
       </div>
     ),
@@ -485,11 +484,11 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez-y via <strong>LNH → Statistiques → AHL</strong> — les mêmes informations que pour la LNH, mais pour la ligue de développement.
+          Accède-y via <strong>Statistiques → AHL</strong> — les mêmes informations que pour la LNH, mais pour la ligue de développement.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Stats des patineurs et des gardiens AHL, avec la même pastille de disponibilité (vert = déjà pris) que Statistiques LNH.</li>
-          <li>• Utile pour suivre vos prospects en banque de recrues avant leur arrivée dans la LNH.</li>
+          <li>• Utile pour suivre tes prospects en banque de recrues avant leur arrivée dans la LNH.</li>
           <li>• Le badge <strong>R</strong> indique le statut recrue au sens de la ligue AHL — distinct de la protection recrue du pool (voir Règlements).</li>
         </ul>
       </div>
@@ -504,15 +503,15 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez-y via <strong>Blessures</strong> dans le menu — la liste des joueurs actuellement
+          Accède-y via <strong>Blessures</strong>{' '}dans le menu — la liste des joueurs actuellement
           blessés dans la LNH, mise à jour automatiquement une fois par jour (vers midi, heure de l&apos;Est).
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Type de blessure et statut (ex. « Expected to be out until at least Oct 2 »), en anglais tel que fourni par CBS Sports. Un statut qui commence par <strong>« IR. »</strong> signifie que l&apos;équipe LNH a placé le joueur sur sa liste des blessés.</li>
           <li>• La colonne <strong>LTIR</strong> affiche <strong>Admissible</strong> quand le joueur respecte les critères du pool (voir Règlements → Blessures et LTIR). Le filtre <strong>Admissibles LTIR seulement</strong> ne garde que ceux-là.</li>
           <li>• La colonne <strong>Dans le pool</strong> indique quel pooler possède le joueur et son type de roster (actif/réserviste/recrue/LTIR), ou <strong>Disponible</strong> si personne.</li>
-          <li>• Un badge rouge <strong>Blessé</strong> ou vert <strong>Admissible LTIR</strong> apparaît aussi directement sur les joueurs actifs et réservistes (Mon alignement, Tous les alignements) et dans les menus de Gestion d&apos;effectifs. Survolez-le pour voir le détail.</li>
-          <li>• Un marqueur ambre <strong>⚠ CBS≠ESPN</strong> signale que les deux sources annoncent des dates de retour sensiblement différentes — à vérifier par vous-même avant de décider.</li>
+          <li>• Un badge rouge <strong>Blessé</strong> ou vert <strong>Admissible LTIR</strong> apparaît aussi directement sur les joueurs actifs et réservistes (Mon alignement, Tous les alignements) et dans les menus de Gestion d&apos;effectifs. Survole-le pour voir le détail.</li>
+          <li>• Un marqueur ambre <strong>⚠ CBS≠ESPN</strong> signale que les deux sources annoncent des dates de retour sensiblement différentes — à vérifier par toi-même avant de décider.</li>
         </ul>
       </div>
     ),
@@ -527,7 +526,7 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez-y via <strong>LNH → Statistiques → Projections</strong> — regroupe en un seul tableau ce qui est normalement
+          Accède-y via <strong>Statistiques → Projections</strong>{' '}— regroupe en un seul tableau ce qui est normalement
           visible joueur par joueur dans le panneau détail (cliquable depuis n&apos;importe quelle page via le nom d&apos;un joueur).
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
@@ -550,7 +549,7 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez-y via <strong>LNH → Contrats</strong> — la table complète des joueurs de la LNH.
+          Accède-y via <strong>Contrats LNH</strong> dans le menu — la table complète des joueurs de la LNH.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Contrat et salaire (<strong>cap number</strong>) par saison pour chaque joueur.</li>
@@ -570,7 +569,7 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez-y via <strong>Recrues → Classement pré-repêchage</strong>.
+          Accède-y via <strong>Prospects LNH → Classement pré-repêchage</strong>.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Classement des prospects du <strong>prochain repêchage LNH</strong>, en combinant plusieurs sources externes en un rang moyen.</li>
@@ -589,7 +588,7 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez-y via <strong>Recrues → Repêchage LNH</strong> — les résultats réels du repêchage de la LNH.
+          Accède-y via <strong>Prospects LNH → Repêchage LNH</strong> — les résultats réels du repêchage de la LNH.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Couvre les <strong>5 dernières années</strong> (la fenêtre de protection recrue du pool), ronde par ronde, avec l&apos;équipe LNH qui a sélectionné chaque joueur.</li>
@@ -601,14 +600,14 @@ const SECTIONS: Section[] = [
   {
     id: 'guide-repechage-recrues',
     tab: 'guide',
-    title: 'Repêchage interne',
+    title: 'Repêchage des recrues',
     keywords: 'repechage interne recrues pool saison qui a repeche qui',
     href: '/repechage-recrues',
     screenshot: '/guide/repechage-recrues.png',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accédez-y via <strong>Recrues → Repêchage interne</strong> — le tableau du repêchage des recrues propre au pool lui-même.
+          Accède-y via <strong>Repêchage annuel des poolers → Repêchage des recrues</strong> — le tableau du repêchage des recrues propre au pool lui-même.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Qui a repêché qui, par saison, avec un sélecteur pour revoir les éditions précédentes.</li>
@@ -629,10 +628,10 @@ const SECTIONS: Section[] = [
           et sont gardés en mémoire quelques minutes à quelques heures pour accélérer l&apos;affichage.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
-          <li>• Si une de ces pages semble vide ou vous manque des joueurs de façon inattendue, il s&apos;agit le plus souvent d&apos;un <strong>accroc passager</strong> avec la source externe plutôt que d&apos;une vraie perte de données.</li>
+          <li>• Si une de ces pages semble vide ou qu&apos;il y manque des joueurs de façon inattendue, il s&apos;agit le plus souvent d&apos;un <strong>accroc passager</strong> avec la source externe plutôt que d&apos;une vraie perte de données.</li>
           <li>• Sur Statistiques LNH et AHL, un bandeau rouge avec un bouton <strong>Recharger la page</strong> apparaît automatiquement dans ce cas.</li>
           <li>• Ailleurs, un simple rechargement de la page règle généralement le problème.</li>
-          <li>• Si ça persiste après quelques essais, utilisez <strong>Signaler un problème</strong> (menu de votre compte).</li>
+          <li>• Si ça persiste après quelques essais, utilise <strong>Signaler un problème</strong> (menu de ton compte).</li>
         </ul>
       </div>
     ),
@@ -648,7 +647,7 @@ const SECTIONS: Section[] = [
       <ul className="text-sm text-gray-700 space-y-1.5">
         <li>• <strong>12 attaquants</strong>, <strong>6 défenseurs</strong> et <strong>2 gardiens</strong> actifs au maximum.</li>
         <li>• Minimum <strong>2 réservistes</strong> (toutes positions confondues).</li>
-        <li>• Une fois la saison officiellement démarrée par l&apos;administrateur, tout mouvement soumis dans Gestion d&apos;effectifs doit laisser votre alignement à exactement ces nombres — un sous-effectif est tout aussi bloquant qu&apos;un dépassement (c&apos;est pour ça que les mouvements groupés existent : libérer et activer en un seul geste, sans jamais passer par un état invalide).</li>
+        <li>• Une fois la saison officiellement démarrée par l&apos;administrateur, tout mouvement soumis dans Gestion d&apos;effectifs doit laisser ton alignement à exactement ces nombres — un sous-effectif est tout aussi bloquant qu&apos;un dépassement (c&apos;est pour ça que les mouvements groupés existent : libérer et activer en un seul geste, sans jamais passer par un état invalide).</li>
       </ul>
     ),
   },
@@ -659,11 +658,11 @@ const SECTIONS: Section[] = [
     keywords: 'cap plafond salarial nhl facteur million admin ajustable ltir recrue masse',
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
-        <li>• Le cap du pool est fixé par l&apos;administrateur. Il est calculé à partir du plafond salarial NHL de la saison, multiplié par un facteur (généralement 1.24–1.25) et arrondi au million supérieur.</li>
-        <li>• Le facteur et le plafond NHL peuvent être ajustés par l&apos;administrateur avant ou pendant une saison.</li>
+        <li>• Le cap du pool est fixé par l&apos;administrateur. Il est calculé à partir du plafond salarial LNH de la saison, multiplié par un facteur (généralement 1,24–1,25) et arrondi au million supérieur.</li>
+        <li>• Le facteur et le plafond LNH peuvent être ajustés par l&apos;administrateur avant ou pendant une saison.</li>
         <li>• Seuls les joueurs <strong>actifs</strong> et <strong>réservistes</strong> comptent dans la masse salariale.</li>
         <li>• Les joueurs en <strong>LTIR</strong> et dans la <strong>banque de recrues</strong> ne comptent <em>pas</em> dans la masse.</li>
-        <li>• Un joueur sans contrat réel compte une masse <strong>simulée</strong> (dernier contrat connu × un facteur, généralement 1.20) pour éviter qu&apos;il compte 0$ — si ce joueur signe ensuite un vrai contrat qui vous fait dépasser le cap, vous avez un délai (par défaut 7 jours) pour vous ajuster vous-même avant que l&apos;administrateur ne doive intervenir.</li>
+        <li>• Un joueur sans contrat réel compte une masse <strong>simulée</strong> (dernier contrat connu × un facteur, généralement 1,20) pour éviter qu&apos;il compte 0 $ — si ce joueur signe ensuite un vrai contrat qui te fait dépasser le cap, tu as un délai (par défaut 7 jours) pour t&apos;ajuster toi-même avant que l&apos;administrateur ne doive intervenir.</li>
       </ul>
     ),
   },
@@ -682,12 +681,12 @@ const SECTIONS: Section[] = [
     keywords: 'recrue banque draft repeche elc agent libre protection saisons contrat masse salariale expiration automatique activer liberer',
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
-        <li>• Un joueur <strong>repêché</strong> par le pool reste protégé pendant <strong>5 saisons</strong> après son année de repêchage, peu importe la durée de son contrat d&apos;entrée (ELC) — la fin de l&apos;ELC ne fait pas perdre la protection avant ces 5 ans. Vous gardez donc l&apos;option de le laisser en banque même une fois son ELC terminé.</li>
+        <li>• Un joueur <strong>repêché</strong> par le pool reste protégé pendant <strong>5 saisons</strong> après son année de repêchage, peu importe la durée de son contrat d&apos;entrée (ELC) — la fin de l&apos;ELC ne fait pas perdre la protection avant ces 5 ans. Tu gardes donc l&apos;option de le laisser en banque même une fois son ELC terminé.</li>
         <li>• Un joueur signé comme <strong>agent libre</strong> reste protégé tant que son ELC est actif, sans limite de nombre de saisons (pas de fenêtre de 5 ans pour lui).</li>
         <li>• Un joueur en banque de recrues ne compte pas dans la masse salariale, même s&apos;il joue dans la LNH.</li>
-        <li>• Quand la protection expire <strong>pour de vrai</strong> (5 ans écoulés pour un repêché, ELC terminé pour un agent libre), la perte du statut recrue est <strong>automatique</strong> : s&apos;il était déjà actif ou réserviste, il reste où il est ; s&apos;il était encore en banque, il est activé automatiquement. Aucune action requise de votre part à ce moment précis.</li>
-        <li>• À chaque <strong>changement de saison</strong>, tout joueur actif ou réserviste encore protégé comme recrue est <strong>retourné automatiquement en banque</strong> — ça vous montre d&apos;un coup d&apos;œil qui y est encore admissible. Réactivez ceux que vous voulez garder pendant la pré-saison (Signatures des agents libres).</li>
-        <li>• Vous pouvez vous-même <strong>activer ou remettre en banque</strong> n&apos;importe quelle recrue encore protégée en tout temps, depuis Gestion d&apos;effectifs ou Signatures des agents libres (ce dernier seulement avant le début de la saison).</li>
+        <li>• Quand la protection expire <strong>pour de vrai</strong> (5 ans écoulés pour un repêché, ELC terminé pour un agent libre), la perte du statut recrue est <strong>automatique</strong> : s&apos;il était déjà actif ou réserviste, il reste où il est ; s&apos;il était encore en banque, il est activé automatiquement. Aucune action requise de ta part à ce moment précis.</li>
+        <li>• À chaque <strong>changement de saison</strong>, tout joueur actif ou réserviste encore protégé comme recrue est <strong>retourné automatiquement en banque</strong> — ça te montre d&apos;un coup d&apos;œil qui y est encore admissible. Réactive ceux que tu veux garder pendant la pré-saison (Signatures des agents libres).</li>
+        <li>• Tu peux toi-même <strong>activer ou remettre en banque</strong> n&apos;importe quelle recrue encore protégée en tout temps, depuis Gestion d&apos;effectifs ou Signatures des agents libres (ce dernier seulement avant le début de la saison).</li>
       </ul>
     ),
   },
@@ -699,8 +698,8 @@ const SECTIONS: Section[] = [
     href: '/gestion-effectifs',
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
-        <li>• Les <strong>échanges entre poolers</strong> (joueurs, choix de repêchage) se proposent vous-même via l&apos;onglet <strong>Échanges</strong> de Gestion d&apos;effectifs — voir les règles détaillées plus bas. L&apos;admin garde un droit d&apos;approbation sur chacun.</li>
-        <li>• Les ajustements sur votre propre alignement (actif/réserviste, libération, recrues) se font en libre-service via <strong>Gestion d&apos;effectifs</strong> une fois la saison démarrée, ou via <strong>Signatures des agents libres</strong> avant le début de la saison.</li>
+        <li>• Tu proposes toi-même les <strong>échanges entre poolers</strong> (joueurs, choix de repêchage) via l&apos;onglet <strong>Échanges</strong> de Gestion d&apos;effectifs — voir les règles détaillées plus bas. L&apos;admin garde un droit d&apos;approbation sur chacun.</li>
+        <li>• Les ajustements sur ton propre alignement (actif/réserviste, libération, recrues) se font en libre-service via <strong>Gestion d&apos;effectifs</strong> une fois la saison démarrée, ou via <strong>Signatures des agents libres</strong> avant le début de la saison.</li>
         <li>• Pour tester l&apos;impact d&apos;un changement ou d&apos;un échange avant de le faire pour de vrai, voir <strong>Simulation</strong> — disponible toute l&apos;année, purement en aperçu.</li>
       </ul>
     ),
@@ -715,9 +714,9 @@ const SECTIONS: Section[] = [
       <ul className="text-sm text-gray-700 space-y-1.5">
         <li>• S&apos;applique uniquement aux libérations en <strong>cours de saison</strong> (pas aux libérations de la phase pré-saison).</li>
         <li>• La priorité de réclamation est l&apos;<strong>ordre inverse du classement</strong> au moment précis de la libération — elle ne change pas même si le classement bouge ensuite. <strong>Avant le 1ᵉʳ novembre</strong> (le classement n&apos;a pas encore de sens en tout début de saison), c&apos;est plutôt l&apos;ordre du repêchage des agents libres pré-saison qui sert de priorité.</li>
-        <li>• Réclamable jusqu&apos;à <strong>23h59 (heure de l&apos;Est) du 2e jour suivant</strong> la libération (délai configurable par l&apos;administrateur) — attribué le lendemain de cette date limite.</li>
+        <li>• Réclamable jusqu&apos;à <strong>23 h 59 (heure de l&apos;Est) du 2e jour suivant</strong> la libération (délai configurable par l&apos;administrateur) — attribué le lendemain de cette date limite.</li>
         <li>• En cas de réclamations multiples sur le même joueur, seule la priorité tranche.</li>
-        <li>• Une fois gagné, vous avez <strong>48h</strong> pour l&apos;ajouter vous-même à votre alignement, sinon l&apos;administrateur doit intervenir manuellement.</li>
+        <li>• Une fois gagné, tu as <strong>48 h</strong> pour l&apos;ajouter toi-même à ton alignement, sinon l&apos;administrateur doit intervenir manuellement.</li>
       </ul>
     ),
   },
@@ -748,8 +747,8 @@ const SECTIONS: Section[] = [
       <ul className="text-sm text-gray-700 space-y-1.5">
         <li>• Se déroule avant le début de chaque nouvelle saison, une fois le repêchage des recrues terminé.</li>
         <li>• Une <strong>phase de libération</strong> permet d&apos;abord à chaque pooler d&apos;ajuster sa masse salariale (libérer des joueurs signés) avant que le repêchage débute.</li>
-        <li>• Le repêchage se déroule ensuite <strong>à tour de rôle</strong>, selon un ordre déterminé par l&apos;administrateur — vous pouvez signer un agent libre pendant votre tour ou <strong>passer</strong>.</li>
-        <li>• Actif ↔ réserviste et l&apos;activation/retrait de vos recrues de banque restent toujours permis, peu importe la phase en cours.</li>
+        <li>• Le repêchage se déroule ensuite <strong>à tour de rôle</strong>, selon un ordre déterminé par l&apos;administrateur — tu peux signer un agent libre pendant ton tour ou <strong>passer</strong>.</li>
+        <li>• Actif ↔ réserviste et l&apos;activation/retrait de tes recrues de banque restent toujours permis, peu importe la phase en cours.</li>
         <li>• La saison ne peut démarrer que lorsque tous les poolers ont déclaré leur alignement <strong>prêt</strong> et respectent les limites du pool.</li>
       </ul>
     ),
@@ -858,7 +857,7 @@ export default function AideTabs({ ltirSettings }: { ltirSettings: LtirSettings 
           {activeTab === 'installation' && (
             <div className="space-y-4">
               <p className="text-sm text-gray-600">
-                Cap Crunch est une application web progressive (PWA). Vous pouvez l&apos;installer sur votre appareil pour y accéder comme une application normale, sans passer par un navigateur.
+                Cap Crunch est une application web progressive (PWA). Tu peux l&apos;installer sur ton appareil pour y accéder comme une application normale, sans passer par un navigateur.
               </p>
               {tabSections.map(s => (
                 <SectionCard key={s.id} s={s} />

@@ -23,7 +23,7 @@ export async function submitFeedbackAction(
     description: description.trim(),
   })
 
-  if (error) return { error: 'Erreur lors de l\'envoi. Réessayez.' }
+  if (error) return { error: 'Erreur lors de l\'envoi. Réessaie.' }
 
   const TYPE_LABEL: Record<string, string> = { bug: 'Bug', suggestion: 'Suggestion', autre: 'Commentaire' }
   // after() : voir le commentaire dans lib/threadNotify.ts.

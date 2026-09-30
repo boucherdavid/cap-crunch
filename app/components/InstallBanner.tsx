@@ -82,11 +82,11 @@ export default function InstallBanner() {
         <div className="min-w-0">
           <p className="text-white text-sm font-medium">Installer Cap Crunch</p>
           {prompt ? (
-            <p className="text-pool-silver text-xs">Accès rapide depuis votre bureau ou écran d&apos;accueil</p>
+            <p className="text-pool-silver text-xs">Accès rapide depuis ton bureau ou ton écran d&apos;accueil</p>
           ) : isIOS ? (
-            <p className="text-pool-silver text-xs">Safari → Partager → «Sur l&apos;écran d&apos;accueil»</p>
+            <p className="text-pool-silver text-xs">Safari → Partager → « Sur l&apos;écran d&apos;accueil »</p>
           ) : (
-            <p className="text-pool-silver text-xs">Menu du navigateur → «Installer l&apos;application»</p>
+            <p className="text-pool-silver text-xs">Menu du navigateur → « Installer l&apos;application »</p>
           )}
         </div>
       </div>

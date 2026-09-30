@@ -159,7 +159,7 @@ export default async function PoolersPage() {
           const capBarColor = team.capPct > 100 ? 'bg-red-500' : team.capPct > 90 ? 'bg-orange-400' : 'bg-green-500'
           const rankColor   = RANK_COLOR[team.rank - 1] ?? 'text-gray-500'
           const picksSummary = Object.entries(team.picksBySaison)
-            .map(([sn, rounds]) => `${sn.slice(2, 4)}-${sn.slice(5)}: ${rounds.map(r => `R${r}`).join(', ')}`)
+            .map(([sn, rounds]) => `${sn.slice(2, 4)}-${sn.slice(5)} : ${rounds.map(r => `R${r}`).join(', ')}`)
             .join(' · ')
 
           return (

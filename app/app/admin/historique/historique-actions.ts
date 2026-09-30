@@ -305,7 +305,7 @@ export async function submitHistChangeAction(
       .maybeSingle()
     if (!existing) return { error: `Entrée introuvable dans le roster actuel (joueur ${input.playerOutAId})` }
     if (existing.added_at && ts < existing.added_at) {
-      return { error: `Date (${input.date}) antérieure à la date d'ajout au roster (${existing.added_at.slice(0, 10)}) — corrige d'abord added_at (ex: via Changement de type) avant de saisir ce ballotage.` }
+      return { error: `Date (${input.date}) antérieure à la date d'ajout au roster (${existing.added_at.slice(0, 10)}) — corrige d'abord added_at (ex. : via Changement de type) avant de saisir ce ballotage.` }
     }
 
     if (input.ballotageReleasedId) {
@@ -408,7 +408,7 @@ export async function submitHistChangeAction(
         .maybeSingle()
       if (!existing) return { error: `Entrée introuvable dans le roster actuel (joueur ${playerId})` }
       if (existing.added_at && ts < existing.added_at) {
-        return { error: `Date d'échange (${input.date}) antérieure à la date d'ajout au roster (${existing.added_at.slice(0, 10)}) pour le joueur ${playerId} — corrige d'abord added_at (ex: via Changement de type) avant de saisir cet échange.` }
+        return { error: `Date d'échange (${input.date}) antérieure à la date d'ajout au roster (${existing.added_at.slice(0, 10)}) pour le joueur ${playerId} — corrige d'abord added_at (ex. : via Changement de type) avant de saisir cet échange.` }
       }
       const { data: srcRow, error } = await db
         .from('pooler_rosters')
@@ -474,7 +474,7 @@ export async function submitHistChangeAction(
     for (const pickId of pickAIds) {
       const { data: pick } = await db.from('pool_draft_picks').select('current_owner_id, is_used').eq('id', pickId).single()
       if (!pick || pick.is_used || pick.current_owner_id !== input.poolerAId) {
-        return { error: `Choix de repêchage (id: ${pickId}) invalide ou n'appartient plus à ce pooler.` }
+        return { error: `Choix de repêchage (id : ${pickId}) invalide ou n'appartient plus à ce pooler.` }
       }
       const { error } = await db.from('pool_draft_picks').update({ current_owner_id: input.poolerBId }).eq('id', pickId)
       if (error) return { error: `Transfert de pick A→B : ${error.message}` }
@@ -484,7 +484,7 @@ export async function submitHistChangeAction(
     for (const pickId of pickBIds) {
       const { data: pick } = await db.from('pool_draft_picks').select('current_owner_id, is_used').eq('id', pickId).single()
       if (!pick || pick.is_used || pick.current_owner_id !== input.poolerBId) {
-        return { error: `Choix de repêchage (id: ${pickId}) invalide ou n'appartient plus à ce pooler.` }
+        return { error: `Choix de repêchage (id : ${pickId}) invalide ou n'appartient plus à ce pooler.` }
       }
       const { error } = await db.from('pool_draft_picks').update({ current_owner_id: input.poolerAId }).eq('id', pickId)
       if (error) return { error: `Transfert de pick B→A : ${error.message}` }

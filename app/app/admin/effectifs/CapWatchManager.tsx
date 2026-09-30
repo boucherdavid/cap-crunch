@@ -149,7 +149,7 @@ export default function CapWatchManager({
               <input type="number" min={1} max={14} step={1} value={waiverClaimDays}
                 onChange={e => setWaiverClaimDays(e.target.value)}
                 className="w-20 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              <span className="text-xs text-gray-400">jours + 23h59 (ex: 2 → réclamable jusqu&apos;à 23h59 du 2e jour suivant)</span>
+              <span className="text-xs text-gray-400">jours + 23 h 59 (ex. : 2 → réclamable jusqu&apos;à 23 h 59 du 2e jour suivant)</span>
             </div>
           </div>
           <button onClick={handleSaveSettings} disabled={savingSettings}

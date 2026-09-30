@@ -38,7 +38,7 @@ export default async function ClassementMensuelPage({
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold text-gray-800 mb-1">Classement mensuel</h1>
       <p className="text-sm text-gray-500 mb-4">
-        Saison {season.season} &middot; Joueurs actifs, réservistes et LTIR
+        Saison {season.season}{' '}&middot; Joueurs actifs, réservistes et LTIR
       </p>
       <MonthNav month={month} />
       <div className="mt-4">

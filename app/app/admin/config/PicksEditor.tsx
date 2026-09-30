@@ -196,7 +196,7 @@ export default function PicksEditor({
       </div>
 
       <p className="text-xs text-gray-400 mt-4">
-        Les choix en surbrillance amber ont été réassignés. Les choix marqués "Utilisé" ne peuvent plus être modifiés.
+        Les choix en surbrillance ambre ont été réassignés. Les choix marqués « Utilisé » ne peuvent plus être modifiés.
       </p>
     </div>
   )

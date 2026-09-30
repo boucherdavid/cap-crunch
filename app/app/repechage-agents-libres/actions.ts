@@ -202,7 +202,7 @@ export async function setPoolerReadyByAdminAction(saisonId: number, poolerId: st
   // after() : voir le commentaire dans lib/threadNotify.ts.
   after(() => sendPushToUser(poolerId, {
     title: 'Alignement déclaré prêt',
-    body: "L'administrateur a déclaré ton alignement prêt en ton nom — vérifie-le. Tu auras 48h après le début de la saison pour ajuster actif/réserviste si besoin.",
+    body: "L'administrateur a déclaré ton alignement prêt en ton nom — vérifie-le. Tu auras 48 h après le début de la saison pour ajuster actif/réserviste si besoin.",
     url: '/repechage-agents-libres',
   }).catch(() => {}))
 

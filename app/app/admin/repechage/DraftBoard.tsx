@@ -252,7 +252,7 @@ export default function DraftBoard({
                       <td className="px-4 py-3">
                         {isOwn
                           ? <span className="text-xs text-gray-400">Propre</span>
-                          : <span className="text-xs text-amber-600">De: {pick.original_owner.name}</span>
+                          : <span className="text-xs text-amber-600">De : {pick.original_owner.name}</span>
                         }
                       </td>
                       <td className="px-4 py-3 text-gray-700">
@@ -293,7 +293,7 @@ export default function DraftBoard({
                       <td className="px-4 py-3">
                         {isOwn
                           ? <span className="text-xs text-gray-400">Propre</span>
-                          : <span className="text-xs text-amber-600">De: {pick.original_owner.name}</span>
+                          : <span className="text-xs text-amber-600">De : {pick.original_owner.name}</span>
                         }
                       </td>
                       <td className="px-4 py-3">

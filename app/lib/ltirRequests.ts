@@ -214,7 +214,7 @@ export async function decideLtirRequest(
     .eq('player_id', req.ltir_player_id)
     .eq('is_active', true)
     .maybeSingle()
-  if (!entry) return { error: "Ce joueur n'est plus dans l'alignement de ce pooler (probablement libéré ou échangé entretemps) — rejette cette demande." }
+  if (!entry) return { error: "Ce joueur n'est plus dans l'alignement de ce pooler (probablement libéré ou échangé entre-temps) — rejette cette demande." }
 
   // Date effective = la date de soumission, pas celle de l'approbation (David, 2026-09-23).
   const effectiveDate = (req.submitted_at as string).slice(0, 10)

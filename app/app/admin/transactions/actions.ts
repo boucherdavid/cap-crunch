@@ -277,7 +277,7 @@ export async function applyTransactionItems(
     if (alreadyActive && alreadyActive.length > 0) {
       const pid = (alreadyActive[0] as any).player_id
       const sp = signPlayerMap.get(pid)
-      const name = sp ? `${sp.first_name ?? ''} ${sp.last_name ?? ''}`.trim() : `id: ${pid}`
+      const name = sp ? `${sp.first_name ?? ''} ${sp.last_name ?? ''}`.trim() : `id : ${pid}`
       return { error: `${name} est déjà actif dans un roster cette saison.` }
     }
   }
@@ -287,7 +287,7 @@ export async function applyTransactionItems(
 
     if (action_type === 'transfer' && pick_id) {
       const pick = pickMap.get(pick_id)
-      if (!pick) return { error: `Choix introuvable (id: ${pick_id}).` }
+      if (!pick) return { error: `Choix introuvable (id : ${pick_id}).` }
       if (pick.is_used) return { error: `Ce choix a déjà été utilisé.` }
       if (pick.current_owner_id !== from_pooler_id) return { error: `Ce choix n'appartient pas au pooler source.` }
       continue
@@ -296,7 +296,7 @@ export async function applyTransactionItems(
     if (action_type === 'transfer' && player_id) {
       const fromRoster = virtual.get(from_pooler_id!)
       const entry = fromRoster?.find(e => e.player_id === player_id)
-      if (!entry) return { error: `Joueur (id: ${player_id}) introuvable dans le roster source.` }
+      if (!entry) return { error: `Joueur (id : ${player_id}) introuvable dans le roster source.` }
       const destType = new_player_type ?? entry.player_type
       fromRoster!.splice(fromRoster!.indexOf(entry), 1)
       virtual.get(to_pooler_id!)!.push({ roster_id: -1, player_id, player_type: destType, position: entry.position, cap_number: entry.cap_number, nhl_id: entry.nhl_id })
@@ -306,14 +306,14 @@ export async function applyTransactionItems(
     if (action_type === 'promote') {
       const roster = virtual.get(to_pooler_id!)!
       const entry = roster.find(e => e.player_id === player_id && e.player_type === 'recrue')
-      if (!entry) return { error: `Recrue (id: ${player_id}) introuvable dans la banque.` }
+      if (!entry) return { error: `Recrue (id : ${player_id}) introuvable dans la banque.` }
       entry.player_type = new_player_type!
       continue
     }
 
     if (action_type === 'sign') {
       const p = signPlayerMap.get(player_id!)
-      if (!p) return { error: `Joueur (id: ${player_id}) introuvable.` }
+      if (!p) return { error: `Joueur (id : ${player_id}) introuvable.` }
       if (new_player_type === 'recrue') {
         const eligible = !!(p.is_rookie || (p.draft_year != null && p.draft_year >= draftYearCutoff) || p.status === 'ELC')
         if (!eligible) return { error: `${p.last_name}, ${p.first_name} n'est pas admissible à la banque de recrues (protection recrue expirée et pas sur ELC).` }
@@ -326,7 +326,7 @@ export async function applyTransactionItems(
     if (action_type === 'reactivate') {
       const roster = virtual.get(to_pooler_id!)!
       const entry = roster.find(e => e.player_id === player_id && e.player_type === 'ltir')
-      if (!entry) return { error: `Joueur (id: ${player_id}) non trouvé en LTIR.` }
+      if (!entry) return { error: `Joueur (id : ${player_id}) non trouvé en LTIR.` }
       entry.player_type = new_player_type!
       continue
     }
@@ -334,7 +334,7 @@ export async function applyTransactionItems(
     if (action_type === 'release') {
       const roster = virtual.get(from_pooler_id!)!
       const entry = roster.find(e => e.player_id === player_id)
-      if (!entry) return { error: `Joueur (id: ${player_id}) introuvable dans le roster.` }
+      if (!entry) return { error: `Joueur (id : ${player_id}) introuvable dans le roster.` }
       roster.splice(roster.indexOf(entry), 1)
       continue
     }
@@ -342,7 +342,7 @@ export async function applyTransactionItems(
     if (action_type === 'type_change') {
       const roster = virtual.get(from_pooler_id!)!
       const entry = roster.find(e => e.player_id === player_id && e.player_type === old_player_type)
-      if (!entry) return { error: `Joueur (id: ${player_id}) avec type "${old_player_type}" introuvable.` }
+      if (!entry) return { error: `Joueur (id : ${player_id}) avec type "${old_player_type}" introuvable.` }
       entry.player_type = new_player_type!
       continue
     }
@@ -357,7 +357,7 @@ export async function applyTransactionItems(
       )
       if (err) {
         const { data: p } = await supabase.from('poolers').select('name').eq('id', poolerId).single()
-        return { error: `${p?.name ?? poolerId}: ${err}` }
+        return { error: `${p?.name ?? poolerId} : ${err}` }
       }
     }
   }
@@ -520,7 +520,7 @@ export async function applyTransactionItems(
         .eq('player_type', matchType!)
         .eq('is_active', true)
         .maybeSingle()
-      if (!existingRow) return { error: `Joueur (id: ${player_id}) avec type "${matchType}" introuvable.` }
+      if (!existingRow) return { error: `Joueur (id : ${player_id}) avec type "${matchType}" introuvable.` }
       const { addedAtOverride, warning } = computeTypeChangeAddedAt(existingRow.added_at, txTs, minAddedAtTs)
       if (warning) warnings.push(warning)
 

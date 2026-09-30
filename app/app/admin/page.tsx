@@ -61,14 +61,14 @@ export default async function AdminPage() {
     {
       href: '/admin/effectifs',
       label: 'Gestion des effectifs',
-      desc: 'Mouvements actifs/réservistes, transactions inter-pooler, saisie historique, conformité cap',
+      desc: 'Mouvements actifs/réservistes, transactions entre poolers, saisie historique, conformité cap',
       color: 'border-violet-500',
       badge: null,
     },
     {
       href: '/admin/donnees',
       label: 'Mise à jour de données',
-      desc: 'Pipeline PuckPedia/repêchages NHL, classement des prospects',
+      desc: 'Pipeline PuckPedia/repêchages LNH, classement des prospects',
       color: 'border-indigo-500',
       badge: null,
     },

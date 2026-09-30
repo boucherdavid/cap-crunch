@@ -142,7 +142,7 @@ export default async function RepechageAdminPage({
         </div>
         <div className="lg:col-span-2 flex items-start">
           <div className="bg-slate-50 rounded-lg border border-slate-200 px-4 py-3 text-xs text-slate-500 w-full">
-            {"L'ordre de sélection détermine la position de chaque pick. Un pick échangé conserve le rang de son propriétaire d'origine. Sauvegardez l'ordre avant de commencer le repêchage."}
+            {"L'ordre de sélection détermine la position de chaque pick. Un pick échangé conserve le rang de son propriétaire d'origine. Sauvegarde l'ordre avant de commencer le repêchage."}
           </div>
         </div>
       </div>

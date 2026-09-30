@@ -159,7 +159,7 @@ export default function SimulationTool({
 
   const handleDeleteScenario = async () => {
     if (!activeScenarioId) return
-    if (!window.confirm(`Supprimer le scénario "${saveAsName}" ?`)) return
+    if (!window.confirm(`Supprimer le scénario « ${saveAsName} » ?`)) return
     setScenarioBusy(true); setScenarioMsg(null)
     const res = await deleteScenarioAction(activeScenarioId)
     setScenarioBusy(false)
@@ -289,7 +289,7 @@ export default function SimulationTool({
         <div className="bg-white rounded-lg shadow p-5">
           <p className="text-xs text-gray-400 mb-3">
             Choisis un pooler pour simuler une transaction — retire/ajoute des deux côtés, ou envoie un de tes
-            joueurs directement chez lui (→) et vice-versa. Purement en preview, jamais soumis pour de vrai.
+            joueurs directement chez lui (→) et vice-versa. Purement en aperçu, jamais soumis pour de vrai.
           </p>
           <select
             value={otherId}

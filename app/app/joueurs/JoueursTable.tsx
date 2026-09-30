@@ -175,7 +175,7 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
 
       <div className="bg-white rounded-lg shadow p-4 mb-6">
         <div className="flex items-center justify-between gap-3 mb-3">
-          <p className="text-sm text-gray-500">{'Affinez l\u2019affichage par nom, \u00e9quipe, statut ou salaire.'}</p>
+          <p className="text-sm text-gray-500">{'Affine l\u2019affichage par nom, \u00e9quipe, statut ou salaire.'}</p>
           <button
             type="button"
             onClick={clearFilters}
@@ -366,7 +366,7 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
         {filteredPlayers.length === 0 && (
           <div className="text-center py-12 text-gray-400">
             Aucun joueur ne correspond aux filtres.<br />
-            <span className="text-sm">{'Essayez d\u2019\u00e9largir la recherche ou les crit\u00e8res.'}</span>
+            <span className="text-sm">{'Essaie d\u2019\u00e9largir la recherche ou les crit\u00e8res.'}</span>
           </div>
         )}
       </div>

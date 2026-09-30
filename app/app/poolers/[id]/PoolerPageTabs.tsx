@@ -295,7 +295,7 @@ export default function PoolerPageTabs({
           Alignement
         </button>
         <button className={btnClass('masse-salariale')} onClick={() => setTab('masse-salariale')}>
-          Masse Salariale
+          Masse salariale
         </button>
         <button className={btnClass('recrues')} onClick={() => setTab('recrues')}>
           Recrues

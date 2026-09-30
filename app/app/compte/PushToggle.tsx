@@ -42,7 +42,7 @@ export default function PushToggle() {
       setState('subscribed')
       setMsg('Notifications activées.')
     } catch {
-      setMsg("Impossible d'activer les notifications. Vérifiez les permissions du navigateur.")
+      setMsg("Impossible d'activer les notifications. Vérifie les permissions du navigateur.")
     } finally {
       setBusy(false)
     }
@@ -71,15 +71,15 @@ export default function PushToggle() {
 
   if (state === 'unsupported') return (
     <p className="text-sm text-gray-400">
-      Les notifications push ne sont pas supportées sur ce navigateur.
+      Les notifications push ne sont pas prises en charge par ce navigateur.
       Sur iPhone, l&apos;app doit être installée depuis Safari (iOS 16.4+).
     </p>
   )
 
   if (state === 'denied') return (
     <p className="text-sm text-orange-600">
-      Les notifications sont bloquées dans les paramètres de votre navigateur.
-      Autorisez-les manuellement, puis rechargez la page.
+      Les notifications sont bloquées dans les paramètres de ton navigateur.
+      Autorise-les manuellement, puis recharge la page.
     </p>
   )
 
@@ -101,7 +101,7 @@ export default function PushToggle() {
       {state === 'desynced' && (
         <p className="text-xs text-orange-600">
           Le navigateur croyait les notifications actives, mais elles ne sont plus enregistrées côté serveur.
-          Cliquez sur Réactiver pour rétablir la connexion.
+          Clique sur Réactiver pour rétablir la connexion.
         </p>
       )}
       <div className="flex gap-2 flex-wrap">
@@ -131,7 +131,7 @@ export default function PushToggle() {
               setMsg(null)
               const res = await testPushAction()
               setBusy(false)
-              setMsg(res.error ? `Erreur : ${res.error}` : 'Notification test envoyée — vérifiez votre appareil.')
+              setMsg(res.error ? `Erreur : ${res.error}` : 'Notification de test envoyée — vérifie ton appareil.')
             }}
             disabled={busy}
             className="px-4 py-2 rounded text-sm font-medium bg-gray-50 border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50 transition-colors"

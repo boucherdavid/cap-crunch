@@ -38,7 +38,7 @@ export default async function ClassementHebdoPage({
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold text-gray-800 mb-1">Classement hebdomadaire</h1>
       <p className="text-sm text-gray-500 mb-4">
-        Saison {season.season} &middot; Joueurs actifs, réservistes et LTIR
+        Saison {season.season}{' '}&middot; Joueurs actifs, réservistes et LTIR
       </p>
       <WeekNav monday={monday} />
       <div className="mt-4">

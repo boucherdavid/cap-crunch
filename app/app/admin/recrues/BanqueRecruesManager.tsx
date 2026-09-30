@@ -77,7 +77,7 @@ function BankRow({ entry, onRemove, onEdit, onActivate, onRelease, loading, expi
         Repêché du pool {entry.pool_draft_year ?? ''}
       </span>
     : entry.rookie_type === 'agent_libre'
-      ? <span className="inline-block bg-amber-50 text-amber-600 rounded px-1.5 py-0.5 text-xs font-medium" title="Protégé tant que le contrat NHL réel est un ELC">Agent libre (ELC)</span>
+      ? <span className="inline-block bg-amber-50 text-amber-600 rounded px-1.5 py-0.5 text-xs font-medium" title="Protégé tant que le contrat LNH réel est un ELC">Agent libre (ELC)</span>
       : <span className="inline-block bg-red-50 text-red-600 rounded px-1.5 py-0.5 text-xs font-medium" title="Type de protection jamais assigné — cliquer sur ✎ pour le définir">
           Type à définir
         </span>
@@ -94,8 +94,8 @@ function BankRow({ entry, onRemove, onEdit, onActivate, onRelease, loading, expi
         <span className="text-gray-400 text-xs shrink-0">{entry.players.position ?? DASH}</span>
         {typeLabel}
         {draftLabel(entry.players) && (
-          <span className="text-gray-400 text-xs shrink-0" title="Vrai repêchage NHL (indépendant du type de protection dans le pool)">
-            NHL {draftLabel(entry.players)}
+          <span className="text-gray-400 text-xs shrink-0" title="Vrai repêchage LNH (indépendant du type de protection dans le pool)">
+            LNH {draftLabel(entry.players)}
           </span>
         )}
       </div>
@@ -313,7 +313,7 @@ export default function BanqueRecruesManager({
     const poolDraftYear = type === 'repeche' ? (pendingRookie.draft_year ?? undefined) : undefined
     const result = await addPlayerAction(selectedPooler, pendingRookie.id, saison.id, 'recrue', type, poolDraftYear)
     if (result.error || result.id == null) {
-      setMessage(`Erreur: ${result.error ?? 'id manquant'}`)
+      setMessage(`Erreur : ${result.error ?? 'id manquant'}`)
     } else {
       const newEntry: BankEntry = {
         id: result.id,
@@ -324,7 +324,7 @@ export default function BanqueRecruesManager({
       }
       setBank((prev) => [...prev, newEntry])
       setAllTakenIds((prev) => new Set([...prev, pendingRookie.id]))
-      setMessage('Recrue ajoutée!')
+      setMessage('Recrue ajoutée !')
       setPendingRookie(null)
       setSearch('')
     }
@@ -336,7 +336,7 @@ export default function BanqueRecruesManager({
     setLoading(true)
     const result = await updateRookieTypeAction(entryId, type, draftYear ?? undefined)
     if (result.error) {
-      setMessage(`Erreur: ${result.error}`)
+      setMessage(`Erreur : ${result.error}`)
     } else {
       setBank((prev) => prev.map((e) =>
         e.id === entryId
@@ -362,7 +362,7 @@ export default function BanqueRecruesManager({
         setTimeout(() => setMessage(''), 3000)
       }
     } else {
-      setMessage(`Erreur: ${result.error}`)
+      setMessage(`Erreur : ${result.error}`)
       setTimeout(() => setMessage(''), 3000)
     }
     setLoading(false)
@@ -394,7 +394,7 @@ export default function BanqueRecruesManager({
       new_player_type: newType,
     }])
     if (result.error) {
-      setMessage(`Erreur: ${result.error}`)
+      setMessage(`Erreur : ${result.error}`)
     } else {
       setBank((prev) => prev.filter((e) => e.id !== entry.id))
       setAllTakenIds((prev) => { const next = new Set(prev); next.delete(entry.player_id); return next })
@@ -408,7 +408,7 @@ export default function BanqueRecruesManager({
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow p-4 flex items-center gap-4 flex-wrap">
-        <label className="text-sm font-medium text-gray-700">Pooler:</label>
+        <label className="text-sm font-medium text-gray-700">Pooler :</label>
         <select
           value={selectedPooler}
           onChange={(e) => setSelectedPooler(e.target.value)}
@@ -505,7 +505,7 @@ export default function BanqueRecruesManager({
               onChange={(e) => setSelectedTeam(e.target.value)}
               className="w-28 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
-              <option value="">Equipe</option>
+              <option value="">Équipe</option>
               {teamOptions.map((code) => (
                 <option key={code} value={code}>{code}</option>
               ))}
@@ -530,7 +530,7 @@ export default function BanqueRecruesManager({
                     </span>
                     <span className="text-gray-400 text-xs shrink-0">{rookie.position ?? DASH}</span>
                     {draftLabel(rookie) && (
-                      <span className="text-gray-400 text-xs shrink-0">NHL {draftLabel(rookie)}</span>
+                      <span className="text-gray-400 text-xs shrink-0">LNH {draftLabel(rookie)}</span>
                     )}
                     {rookie.status === 'ELC' && !rookie.draft_year && (
                       <span className="text-amber-500 text-xs shrink-0">ELC</span>

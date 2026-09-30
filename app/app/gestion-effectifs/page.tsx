@@ -26,7 +26,7 @@ export default async function GestionEffectifsPage({
   if (!pooler) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <p className="text-gray-500">Votre compte n&apos;est pas lié à un pooler.</p>
+        <p className="text-gray-500">Ton compte n&apos;est pas lié à un pooler.</p>
       </div>
     )
   }
@@ -61,7 +61,7 @@ export default async function GestionEffectifsPage({
       <div className="max-w-3xl mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-gray-800 mb-4">Gestion d&apos;effectifs</h1>
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-5 text-sm text-yellow-800">
-          L&apos;outil de gestion d&apos;effectifs est temporairement fermé. Contactez l&apos;administrateur pour plus d&apos;informations.
+          L&apos;outil de gestion d&apos;effectifs est temporairement fermé. Contacte l&apos;administrateur pour plus d&apos;informations.
         </div>
       </div>
     )
@@ -71,7 +71,7 @@ export default async function GestionEffectifsPage({
     <div className={`${isAdmin ? '' : 'max-w-6xl'} mx-auto px-4 py-8`}>
       <h1 className="text-2xl font-bold text-gray-800 mb-1">Gestion d&apos;effectifs</h1>
       <p className="text-sm text-gray-500 mb-6">
-        Ajoutez une ou plusieurs actions, vérifiez l&apos;état projeté, puis soumettez en une seule opération.
+        Ajoute une ou plusieurs actions, vérifie l&apos;état projeté, puis soumets le tout en une seule opération.
       </p>
       {/* Listes privées d'agents libres (David, 2026-09-27) — repliées par défaut ici. */}
       <WatchlistPanel kinds={['joueurs']} defaultOpen={false} />

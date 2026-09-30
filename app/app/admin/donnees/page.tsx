@@ -81,7 +81,7 @@ export default async function AdminDonneesPage({
             <ol className="list-decimal pl-5 space-y-2 text-sm text-gray-700">
               <li>{'Lancer le scraping PuckPedia pour générer ou rafraîchir les fichiers CSV (salaires, contrats).'}</li>
               <li>{'Importer ensuite ces données vers Supabase.'}</li>
-              <li>{'Importer les repêchages NHL des 5 dernières saisons (recrues, protection).'}</li>
+              <li>{'Importer les repêchages LNH des 5 dernières saisons (recrues, protection).'}</li>
               <li>{'Recharger l’application et valider les changements sur les pages joueurs et alignements.'}</li>
             </ol>
           </div>
@@ -117,7 +117,7 @@ export default async function AdminDonneesPage({
               </p>
               <p>
                 <strong>import_drafts.py</strong>
-                {' importe les repêchages NHL des 5 dernières saisons — alimente les statuts de recrue et la protection recrue des joueurs, indépendamment du classement des prospects ci-dessous (à venir, pas encore repêchés).'}
+                {' importe les repêchages LNH des 5 dernières saisons — alimente les statuts de recrue et la protection recrue des joueurs, indépendamment du classement des prospects ci-dessous (à venir, pas encore repêchés).'}
               </p>
             </div>
           </div>

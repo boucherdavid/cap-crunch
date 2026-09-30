@@ -119,9 +119,9 @@ export default function SeasonConfigForm({ saison }: { saison: Saison }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
 
-      {/* Plafonds salarials */}
+      {/* Plafonds salariaux */}
       <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="font-semibold text-gray-700 mb-4">Plafonds salarials</h3>
+        <h3 className="font-semibold text-gray-700 mb-4">Plafonds salariaux</h3>
         <div className="grid grid-cols-2 gap-4">
           {/* Saison courante */}
           <div className="border rounded-lg overflow-hidden">
@@ -131,7 +131,7 @@ export default function SeasonConfigForm({ saison }: { saison: Saison }) {
             </div>
             <div className="divide-y divide-gray-100">
               <div className="px-3 py-3">
-                <p className="text-xs text-gray-500 mb-1">Plafond NHL</p>
+                <p className="text-xs text-gray-500 mb-1">Plafond LNH</p>
                 <input type="number" min={1000000} step={100000} value={nhlCap}
                   onChange={e => setNhlCap(e.target.value)} className={inputCls} />
               </div>
@@ -140,7 +140,7 @@ export default function SeasonConfigForm({ saison }: { saison: Saison }) {
                 <input type="number" min={1} max={2} step={0.01} value={multiplier}
                   onChange={e => setMultiplier(e.target.value)} className={inputCls} />
                 {multiplierNum > 0 && (
-                  <p className="text-xs text-gray-400 mt-1">{(multiplierNum * 100).toFixed(0)} % du cap NHL</p>
+                  <p className="text-xs text-gray-400 mt-1">{(multiplierNum * 100).toFixed(0)} % du cap LNH</p>
                 )}
               </div>
               <div className="px-3 py-3 bg-blue-50">
@@ -159,7 +159,7 @@ export default function SeasonConfigForm({ saison }: { saison: Saison }) {
             </div>
             <div className="divide-y divide-gray-100">
               <div className="px-3 py-3">
-                <p className="text-xs text-gray-500 mb-1">Plafond NHL <span className="text-gray-400">(optionnel)</span></p>
+                <p className="text-xs text-gray-500 mb-1">Plafond LNH <span className="text-gray-400">(optionnel)</span></p>
                 <input type="number" min={1000000} step={100000} value={nextNhlCap}
                   onChange={e => setNextNhlCap(e.target.value)} placeholder="ex : 104 000 000" className={inputCls} />
               </div>
@@ -169,7 +169,7 @@ export default function SeasonConfigForm({ saison }: { saison: Saison }) {
                   {multiplierNum > 0 ? multiplierNum.toFixed(2) : '—'}
                 </p>
                 {multiplierNum > 0 && (
-                  <p className="text-xs text-gray-400 mt-0.5">{(multiplierNum * 100).toFixed(0)} % du cap NHL</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{(multiplierNum * 100).toFixed(0)} % du cap LNH</p>
                 )}
               </div>
               <div className={`px-3 py-3 ${nextPoolCapPreview > 0 ? 'bg-indigo-50' : 'bg-gray-50'}`}>

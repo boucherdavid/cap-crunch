@@ -69,8 +69,8 @@ export async function createSeasonAction(
   isPlayoff = false,
 ): Promise<{ error?: string }> {
   const validFormat = isPlayoff ? /^\d{4}-PO$/.test(season) : /^\d{4}-\d{2}$/.test(season)
-  if (!validFormat) return { error: isPlayoff ? 'Format invalide. Utiliser ex: 2025-PO' : 'Format invalide. Utiliser ex: 2026-27' }
-  if (nhlCap < 1_000_000) return { error: 'Cap NHL invalide.' }
+  if (!validFormat) return { error: isPlayoff ? 'Format invalide. Exemple : 2025-PO' : 'Format invalide. Exemple : 2026-27' }
+  if (nhlCap < 1_000_000) return { error: 'Cap LNH invalide.' }
   if (capMultiplier <= 0) return { error: 'Facteur invalide.' }
 
   const supabase = await createClient()
@@ -280,7 +280,7 @@ export async function transitionSeasonAction(
   // seul lot, donc un échec ne laisse jamais une copie partielle à compléter.
   const existingCount = await countTargetRosters(supabase, toSaisonId)
   if (existingCount > 0) {
-    return { error: `La saison ${toSaison.season} contient déjà ${existingCount} ligne(s) d'alignement — transition refusée pour ne pas mélanger l'ancien contenu et la copie. Videz d'abord la saison cible.` }
+    return { error: `La saison ${toSaison.season} contient déjà ${existingCount} ligne(s) d'alignement — transition refusée pour ne pas mélanger l'ancien contenu et la copie. Vide d'abord la saison cible.` }
   }
 
   let returned = 0
@@ -577,7 +577,7 @@ export async function updateCapAction(
     saisonEndDate?: string | null
   },
 ): Promise<{ error?: string }> {
-  if (!nhlCap || nhlCap < 1_000_000) return { error: 'Cap NHL invalide.' }
+  if (!nhlCap || nhlCap < 1_000_000) return { error: 'Cap LNH invalide.' }
   if (!capMultiplier || capMultiplier <= 0) return { error: 'Facteur invalide.' }
 
   const supabase = await createClient()

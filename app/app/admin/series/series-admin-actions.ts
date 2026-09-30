@@ -83,7 +83,7 @@ export async function markTeamEliminatedAction(
       uniquePoolerIds.map(poolerId =>
         sendPushToUser(poolerId, {
           title: '⚠️ Équipe éliminée — Pool des séries',
-          body: `${teamLabel} est éliminée. Remplacez votre joueur avant la prochaine ronde.`,
+          body: `${teamLabel} est éliminée. Remplace ton joueur avant la prochaine ronde.`,
           url: '/gestion-series',
         }),
       ),
@@ -121,7 +121,7 @@ export async function sendDeadlineReminderAction(
       .eq('id', poolSeasonId)
       .single()
     if (!saison) return { error: 'Saison introuvable' }
-    if (!saison.playoff_submission_deadline) return { error: 'Aucune deadline configurée' }
+    if (!saison.playoff_submission_deadline) return { error: 'Aucune date limite configurée' }
 
     const deadline = new Date(saison.playoff_submission_deadline)
     const deadlineStr = deadline.toLocaleString('fr-CA', {

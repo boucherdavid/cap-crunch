@@ -29,9 +29,9 @@ export default async function AdminSeriesPage() {
       <div className="space-y-4">
         <h1 className="text-2xl font-bold text-gray-800">Pool des séries</h1>
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-5 text-sm text-yellow-800">
-          Aucune saison de séries active. Créez une saison dans{' '}
+          Aucune saison de séries active. Crée une saison dans{' '}
           <a href="/admin/pool?tab=config" className="underline">Configuration</a>{' '}
-          avec le toggle &ldquo;Saison de type séries&rdquo;.
+          avec l&apos;option « Saison de type séries ».
         </div>
       </div>
     )

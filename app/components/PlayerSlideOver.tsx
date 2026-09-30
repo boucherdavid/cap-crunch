@@ -241,7 +241,7 @@ export default function PlayerSlideOver() {
           {!loading && player && nhlSeasons.length > 0 && (
             <>
               <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                Saisons NHL — Saison régulière
+                Saisons LNH — Saison régulière
               </h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -279,7 +279,7 @@ export default function PlayerSlideOver() {
           )}
 
           {!loading && player && nhlSeasons.length === 0 && (
-            <p className="text-gray-400 text-sm">Aucune saison NHL disponible.</p>
+            <p className="text-gray-400 text-sm">Aucune saison LNH disponible.</p>
           )}
 
           {!loading && !player && nhlId && (

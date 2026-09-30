@@ -32,8 +32,8 @@ export async function submitDraftAction(
 
   for (const sel of selections) {
     const pick = pickMap.get(sel.pick_id)
-    if (!pick) return { error: `Choix introuvable (id: ${sel.pick_id}).` }
-    if (pick.pool_season_id !== saisonId) return { error: `Choix hors saison (id: ${sel.pick_id}).` }
+    if (!pick) return { error: `Choix introuvable (id : ${sel.pick_id}).` }
+    if (pick.pool_season_id !== saisonId) return { error: `Choix hors saison (id : ${sel.pick_id}).` }
     if (pick.is_used) return { error: `Ce choix a déjà été utilisé (ronde ${pick.round}).` }
   }
 
@@ -50,7 +50,7 @@ export async function submitDraftAction(
     const player = playerMap.get(sel.player_id)
     const isEligible = player?.is_rookie || (player?.draft_year != null && player.draft_year >= draftYearCutoff)
     if (!isEligible) {
-      return { error: `Le joueur sélectionné (id: ${sel.player_id}) n'est pas une recrue.` }
+      return { error: `Le joueur sélectionné (id : ${sel.player_id}) n'est pas une recrue.` }
     }
   }
 

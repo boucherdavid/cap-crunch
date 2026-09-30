@@ -80,5 +80,5 @@ export async function demarrerSaisonAction(saisonId: number): Promise<{
   // defaultTarget, admin/nouvelle-saison/page.tsx), donc ce message de succès et la carte
   // "Démarrer la saison" juste au-dessus peuvent afficher deux saisons différentes au même
   // moment — sans le nom explicite ici, ça donnait l'impression d'un résultat incohérent.
-  return { summary: `Saison ${saison.season} démarrée — ${totalPoolers} pooler(s) validés, ${count ?? 0} ligne(s) d'alignement datées au ${saison.saison_start_date}.` }
+  return { summary: `Saison ${saison.season} démarrée — ${totalPoolers} pooler(s) validé(s), ${count ?? 0} ligne(s) d'alignement datée(s) au ${saison.saison_start_date}.` }
 }

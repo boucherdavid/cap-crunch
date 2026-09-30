@@ -11,7 +11,7 @@ export default function DataLoadWarning({ label }: { label: string }) {
     <div className="flex items-center justify-between gap-3 flex-wrap text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
       <span>
         Aucune donnée n&apos;a pu être chargée pour {label}. Il s&apos;agit probablement d&apos;un problème passager
-        avec la source de données — essayez de recharger la page.
+        avec la source de données — essaie de recharger la page.
       </span>
       <button
         type="button"

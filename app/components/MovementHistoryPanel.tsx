@@ -76,7 +76,7 @@ export default function MovementHistoryPanel({
           <p className="text-gray-400 text-xs py-6 text-center">Chargement...</p>
         ) : events.length === 0 ? (
           <p className="text-gray-400 text-xs py-6 text-center px-4">
-            {mode === 'pooler' && !poolerId ? 'Sélectionnez un pooler pour voir son historique.' : 'Aucun mouvement récent.'}
+            {mode === 'pooler' && !poolerId ? 'Sélectionne un pooler pour voir son historique.' : 'Aucun mouvement récent.'}
           </p>
         ) : (
           <ul className="divide-y">

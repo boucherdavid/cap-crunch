@@ -137,7 +137,7 @@ function ComplianceCard({
           {!pooler.isOverLimits && pooler.slotsManquants > 0 && (
             <p className={`text-xs ${pooler.isReadyForDraft ? 'text-emerald-600' : 'text-amber-600'}`}>
               {pooler.slotsManquants} poste{pooler.slotsManquants > 1 ? 's' : ''} à combler — besoin d&apos;au moins{' '}
-              {fmt(pooler.capNeededForReady)} d&apos;espace pour compléter l&apos;alignement au salaire minimum.
+              {fmt(pooler.capNeededForReady)}{' '}d&apos;espace pour compléter l&apos;alignement au salaire minimum.
               {!pooler.isReadyForDraft && ' Pas encore assez d\'espace disponible.'}
             </p>
           )}
@@ -342,7 +342,7 @@ export default function PresaisonManager({
       setOrderMsg(`Erreur : ${result.error}`)
     } else {
       setDraftOrder(result.order ?? [])
-      setOrderMsg(`Ordre initialisé d'après le classement ${result.previousSeason} (inversé). N'oubliez pas de sauvegarder.`)
+      setOrderMsg(`Ordre initialisé d'après le classement ${result.previousSeason} (inversé). N'oublie pas de sauvegarder.`)
     }
     setTimeout(() => setOrderMsg(null), 5000)
   }
@@ -451,7 +451,7 @@ export default function PresaisonManager({
       {surplusCount > 0 && (
         <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
           <p className="text-sm text-blue-800">
-            {surplusCount} joueur{surplusCount > 1 ? 's' : ''} actif{surplusCount > 1 ? 's' : ''} en trop à une position (au-delà de 12A/6D/2G), tous poolers confondus.
+            {surplusCount} joueur{surplusCount > 1 ? 's' : ''} actif{surplusCount > 1 ? 's' : ''}{' '}en trop à une position (au-delà de 12A/6D/2G), tous poolers confondus.
             Un surplus de composition n&apos;affecte pas le cap — les moins chers seraient reclassés en réserviste, chaque pooler pourra ajuster ensuite lui-même en libre-service.
           </p>
           <div className="flex items-center gap-3 ml-4 shrink-0">
@@ -524,7 +524,7 @@ export default function PresaisonManager({
             </p>
           )}
           <p className="text-xs text-gray-400 mb-1">
-            Seuil de participation : {fmt(data.nhlMinimumSalary)} d&apos;espace cap. En dessous, le pooler est retiré automatiquement de la file.
+            Seuil de participation : {fmt(data.nhlMinimumSalary)}{' '}d&apos;espace cap. En dessous, le pooler est retiré automatiquement de la file.
           </p>
           <p className="text-xs text-gray-400 mb-4">
             Sert aussi de priorité au ballotage jusqu&apos;au 1er novembre (avant que le classement réel de la saison ait du sens) — l&apos;ajuster ici l&apos;ajuste partout.
@@ -591,7 +591,7 @@ export default function PresaisonManager({
             )}
             {draftOrder.length > 0 && (
               <p className="text-xs text-gray-400 mt-2">
-                {eligibleIds(data.poolers, draftOrder, data.nhlMinimumSalary).length} pooler{eligibleIds(data.poolers, draftOrder, data.nhlMinimumSalary).length > 1 ? 's' : ''} éligibles (≥ {fmt(data.nhlMinimumSalary)} d'espace) · visible en direct par les poolers sur /repechage-agents-libres
+                {eligibleIds(data.poolers, draftOrder, data.nhlMinimumSalary).length} pooler{eligibleIds(data.poolers, draftOrder, data.nhlMinimumSalary).length > 1 ? 's' : ''} éligible{eligibleIds(data.poolers, draftOrder, data.nhlMinimumSalary).length > 1 ? 's' : ''} (≥ {fmt(data.nhlMinimumSalary)} d'espace) · visible en direct par les poolers sur /repechage-agents-libres
               </p>
             )}
             {startErr && (

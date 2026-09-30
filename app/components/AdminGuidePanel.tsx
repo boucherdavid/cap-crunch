@@ -18,10 +18,10 @@ const STEPS: Step[] = [
     body: (
       <>
         <code>./run_pipeline_staging.ps1</code> pour valider, puis committer/pousser les CSV
-        modifiés sur <code>main</code> pour déclencher l&apos;import automatique en prod (voir
+        modifiés sur <code>main</code>{' '}pour déclencher l&apos;import automatique en prod (voir
         CLAUDE.md section 2). Met à jour les contrats/salaires de la nouvelle saison dans{' '}
         <code>player_contracts</code>. La nouvelle saison doit déjà exister dans{' '}
-        <strong>Configuration → Saisons</strong> (sinon la créer là, avec son plafond NHL).
+        <strong>Configuration → Saisons</strong> (sinon la créer là, avec son plafond LNH).
       </>
     ),
   },
@@ -31,9 +31,9 @@ const STEPS: Step[] = [
     href: '/admin/nouvelle-saison',
     body: (
       <>
-        Transition des rosters → choix de repêchage → repêchage des recrues → banque de
-        recrues → pré-saison (décisions ELC, libérations, repêchage des agents libres) →
-        activation — dans cet ordre, chaque étape se prépare sur la nouvelle saison sans avoir
+        Transition des rosters → activation de la saison → choix de repêchage → repêchage
+        des recrues → pré-saison (recrues de banque, libérations, repêchage des agents libres) →
+        démarrage de la saison — dans cet ordre, chaque étape se prépare sur la nouvelle saison sans avoir
         besoin de l&apos;activer avant la toute dernière étape.
       </>
     ),

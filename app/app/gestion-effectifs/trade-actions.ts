@@ -77,7 +77,7 @@ export async function proposeTradeOfferAction(saisonId: number, input: ProposeTr
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié.' }
-  if (input.myItems.length === 0 && input.theirItems.length === 0) return { error: 'Ajoute au moins un item.' }
+  if (input.myItems.length === 0 && input.theirItems.length === 0) return { error: 'Ajoute au moins un élément.' }
 
   const items: TradeItemInput[] = [
     ...input.myItems.map(i => ({

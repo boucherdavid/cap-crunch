@@ -19,7 +19,7 @@ export async function createPoolerAction(
   name = name.trim()
   email = email.trim()
   if (!name) return { error: 'Le nom est requis.' }
-  if (!email) return { error: "L'email est requis." }
+  if (!email) return { error: "Le courriel est requis." }
   if (password.length < 6) return { error: 'Le mot de passe doit faire au moins 6 caractères.' }
 
   const admin = createAdminClient()

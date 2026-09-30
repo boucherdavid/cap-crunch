@@ -73,7 +73,7 @@ export default function PicksManager({ saisons, poolers, picksBySaison, initialS
           ))}
         </select>
         {saison && (
-          <span className="text-xs text-gray-400">{saison.draft_rounds} ronde(s) configurées</span>
+          <span className="text-xs text-gray-400">{saison.draft_rounds} ronde(s) configurée(s)</span>
         )}
       </div>
 

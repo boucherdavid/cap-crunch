@@ -100,7 +100,7 @@ export default function AdminPanel({
       setOrderMsg(`Erreur : ${result.error}`)
     } else {
       setDraftOrder(result.order ?? [])
-      setOrderMsg(`Ordre initialisé d'après le classement ${result.previousSeason} (inversé). N'oubliez pas de sauvegarder.`)
+      setOrderMsg(`Ordre initialisé d'après le classement ${result.previousSeason} (inversé). N'oublie pas de sauvegarder.`)
     }
     setTimeout(() => setOrderMsg(null), 5000)
   }
@@ -214,7 +214,7 @@ export default function AdminPanel({
                 </p>
               )}
               <p className="text-xs text-gray-400 mb-1">
-                Seuil de participation : {fmt(nhlMinimumSalary)} d&apos;espace cap.
+                Seuil de participation : {fmt(nhlMinimumSalary)}{' '}d&apos;espace cap.
               </p>
               <p className="text-xs text-gray-400 mb-3">
                 Sert aussi de priorité au ballotage jusqu&apos;au 1er novembre (avant que le
@@ -278,7 +278,7 @@ export default function AdminPanel({
                 )}
                 {draftOrder.length > 0 && (
                   <p className="text-xs text-gray-400 mt-2">
-                    {eligibleCount} pooler{eligibleCount > 1 ? 's' : ''} éligibles (≥ {fmt(nhlMinimumSalary)} d&apos;espace)
+                    {eligibleCount} pooler{eligibleCount > 1 ? 's' : ''} éligible{eligibleCount > 1 ? 's' : ''} (≥ {fmt(nhlMinimumSalary)}{' '}d&apos;espace)
                   </p>
                 )}
                 {startErr && <p className="text-sm text-red-600 mt-2">{startErr}</p>}

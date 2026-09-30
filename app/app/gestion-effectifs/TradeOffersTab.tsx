@@ -291,7 +291,7 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap }: { sa
         </div>
         <p className="text-sm text-gray-500 mb-2">
           Propose un échange de joueurs (actif, réserviste ou recrue) et/ou de choix de repêchage à un autre pooler.
-          Il doit accepter, puis l&apos;admin doit approuver avant que rien ne bouge. Une fois approuvé, les deux
+          Il doit accepter, puis l&apos;admin doit approuver avant que quoi que ce soit ne bouge. Une fois approuvé, les deux
           poolers ont un délai pour confirmer que le résultat entre dans leur masse/composition — si l&apos;un des
           deux ne confirme pas à temps, l&apos;échange est annulé pour les deux.
         </p>

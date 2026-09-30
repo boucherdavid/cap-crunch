@@ -460,7 +460,7 @@ export async function submitPlayoffChangeAction(input: {
 
     if (effectiveCap > 0 && capUsed > effectiveCap) {
       return {
-        error: `Cap dépassé: ${(capUsed / 1_000_000).toFixed(2)} M$ / ${(effectiveCap / 1_000_000).toFixed(2)} M$. Ajustez votre sélection avant de soumettre.`,
+        error: `Cap dépassé : ${(capUsed / 1_000_000).toFixed(2)} M$ / ${(effectiveCap / 1_000_000).toFixed(2)} M$. Ajuste ta sélection avant de soumettre.`,
       }
     }
   }

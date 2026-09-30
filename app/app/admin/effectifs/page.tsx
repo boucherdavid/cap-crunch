@@ -190,7 +190,7 @@ export default async function AdminEffectifsPage({
           <h1 className="text-2xl font-bold text-gray-800 mb-1">Conformité cap</h1>
           <p className="text-sm text-gray-500 mb-6 max-w-2xl">
             Un joueur actif sans contrat pour la saison compte un cap simulé (estimé à partir
-            de son salaire précédent) plutôt que 0$. « Vérifier les signatures » détecte les
+            de son salaire précédent) plutôt que 0 $. « Vérifier les signatures » détecte les
             vrais contrats fraîchement importés et notifie le pooler concerné s&apos;il dépasse
             alors le plafond — passé le délai, seul un clic ici peut libérer le joueur.
           </p>

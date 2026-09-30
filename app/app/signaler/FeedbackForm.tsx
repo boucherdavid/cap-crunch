@@ -33,7 +33,7 @@ export default function FeedbackForm() {
   if (success) {
     return (
       <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
-        <p className="text-green-700 font-medium text-lg mb-1">Merci pour votre retour !</p>
+        <p className="text-green-700 font-medium text-lg mb-1">Merci pour ton retour !</p>
         <p className="text-green-600 text-sm mb-4">Il sera pris en compte pour améliorer l&apos;application.</p>
         <button
           onClick={() => setSuccess(false)}
@@ -75,10 +75,10 @@ export default function FeedbackForm() {
           rows={5}
           placeholder={
             type === 'bug'
-              ? 'Décrivez le problème rencontré, la page concernée et ce que vous attendiez...'
+              ? 'Décris le problème rencontré, la page concernée et ce que tu attendais...'
               : type === 'suggestion'
-              ? 'Décrivez votre idée et pourquoi elle serait utile...'
-              : 'Votre message...'
+              ? 'Décris ton idée et pourquoi elle serait utile...'
+              : 'Ton message...'
           }
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pool-navy resize-none"
         />

@@ -35,7 +35,7 @@ export default function DemarrerSaisonCard({
 
   const handleDeclareReady = async (poolerId: string) => {
     if (!window.confirm(
-      "Déclarer cet alignement prêt au nom du pooler ? Il recevra une notification et aura 48h " +
+      "Déclarer cet alignement prêt au nom du pooler ? Il recevra une notification et aura 48 h " +
       'après le démarrage de la saison pour ajuster actif/réserviste si besoin.',
     )) return
     setDeclaringId(poolerId)
