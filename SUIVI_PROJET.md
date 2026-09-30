@@ -21,6 +21,17 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-30
 
+**[Feat] — Classement : un seul lien dans « Le pool », sélecteur de période** (`components/Navbar.tsx`,
+`app/classement/PeriodSelector.tsx`, les 3 pages de classement, `app/aide/AideTabs.tsx`,
+`app/a-propos/page.tsx`) :
+- Demande de David : le groupe de menu « Classement du pool » disparaît ; « Classement » devient le
+  premier lien de « Le pool ». Sur la page, un sélecteur Saison complète (par défaut) / Mensuel /
+  Hebdomadaire, en haut à droite (sous le titre sur téléphone), titre commun « Classement ».
+- Les trois routes restent (`/classement`, `/classement/mensuel`, `/classement/hebdomadaire`) : le
+  sélecteur navigue simplement entre elles, les liens existants et la navigation précédent/suivant
+  continuent de fonctionner ; le lien du menu reste surligné sur les trois (`isActive` couvre les
+  sous-chemins). Aide et À propos mis à jour.
+
 **[Données] — Revalidation de la saisie Mode init en prod** : David a corrigé ses alignements et
 celui de Vincent (19 → 20 actifs, une recrue activée chacun). Vérifié par script (lecture seule) :
 les 8 poolers ont exactement 12 attaquants / 6 défenseurs / 2 gardiens actifs et au moins

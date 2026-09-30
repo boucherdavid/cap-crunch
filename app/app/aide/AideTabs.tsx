@@ -330,7 +330,7 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accède au classement via <strong>Classement du pool → Saison complète</strong>{' '}ou via la page d&apos;accueil.
+          Accède au classement via <strong>Le pool → Classement</strong>{' '}ou via la page d&apos;accueil.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Le tableau affiche le rang, les points totaux et le détail (buts, passes, victoires, défaites prol.).</li>
@@ -338,7 +338,7 @@ const SECTIONS: Section[] = [
           <li>• La page d&apos;accueil affiche un widget <strong>Joueurs en action ce soir</strong> : combien de joueurs de chaque pooler jouent le soir même.</li>
         </ul>
         <p className="text-sm text-gray-600 mt-3">
-          Deux autres fenêtres sont disponibles, mêmes colonnes mais bornées dans le temps : le{' '}
+          Le sélecteur en haut de la page propose, en plus de la <strong>saison complète</strong> (par défaut), deux fenêtres bornées dans le temps avec les mêmes colonnes : le{' '}
           <Link href="/classement/hebdomadaire" className="text-blue-600 hover:underline font-medium">classement hebdomadaire</Link>{' '}
           (lundi à dimanche) et le{' '}
           <Link href="/classement/mensuel" className="text-blue-600 hover:underline font-medium">classement mensuel</Link>{' '}
