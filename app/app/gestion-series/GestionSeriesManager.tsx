@@ -485,7 +485,7 @@ export default function GestionSeriesManager({
           setTimeout(() => setSuccess(false), 3000)
         }
       } catch (e: any) {
-        setError(e?.message ?? 'Erreur lors de la soumission. Veuillez réessayer.')
+        setError(e?.message ?? 'Erreur lors de la soumission. Réessaie.')
       }
     })
   }
@@ -534,7 +534,7 @@ export default function GestionSeriesManager({
         </div>
         {hasEliminatedPlayers && (
           <p className="mt-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded px-3 py-1.5">
-            ⚠ Un ou plusieurs joueurs sont sur une équipe éliminée — cliquez ↺ pour les marquer en sortie.
+            ⚠ Un ou plusieurs joueurs sont sur une équipe éliminée — clique sur ↺ pour les marquer en sortie.
           </p>
         )}
       </div>

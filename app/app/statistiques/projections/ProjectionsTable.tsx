@@ -291,7 +291,7 @@ export default function ProjectionsTable({
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-gray-400 mt-2">{unit === 'pts' ? 'Points' : 'Victoires'} projetés. Cliquez un en-tête pour trier. Moyenne : le petit chiffre indique le nombre de sources quand il en manque.</p>
+      <p className="text-xs text-gray-400 mt-2">{unit === 'pts' ? 'Points' : 'Victoires'} projetés. Clique sur un en-tête pour trier. Moyenne : le petit chiffre indique le nombre de sources quand il en manque.</p>
     </div>
   )
 }

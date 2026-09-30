@@ -16,7 +16,7 @@ export default async function GestionSeriesPage() {
   if (!pooler) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <p className="text-gray-500">Votre compte n&apos;est pas lié à un pooler.</p>
+        <p className="text-gray-500">Ton compte n&apos;est pas lié à un pooler.</p>
       </div>
     )
   }

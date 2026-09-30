@@ -605,7 +605,7 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
             )
           })}
           {roster.length === 0 && (
-            <p className="text-gray-400 text-sm text-center py-4">{`Alignement vide ${DASH} ajoutez des joueurs depuis la liste`}</p>
+            <p className="text-gray-400 text-sm text-center py-4">{`Alignement vide ${DASH} ajoute des joueurs depuis la liste`}</p>
           )}
         </div>
 
@@ -683,7 +683,7 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
               )
             })}
             {filteredPlayers.length === 0 && search.trim() === '' && selectedTeam === '' && (
-              <p className="text-gray-400 text-sm text-center py-4">Choisissez une équipe ou commencez à taper un nom.</p>
+              <p className="text-gray-400 text-sm text-center py-4">Choisis une équipe ou commence à taper un nom.</p>
             )}
             {filteredPlayers.length === 0 && !(search.trim() === '' && selectedTeam === '') && (
               <p className="text-gray-400 text-sm text-center py-4">Aucun joueur disponible</p>

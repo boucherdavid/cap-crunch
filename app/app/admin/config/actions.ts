@@ -280,7 +280,7 @@ export async function transitionSeasonAction(
   // seul lot, donc un échec ne laisse jamais une copie partielle à compléter.
   const existingCount = await countTargetRosters(supabase, toSaisonId)
   if (existingCount > 0) {
-    return { error: `La saison ${toSaison.season} contient déjà ${existingCount} ligne(s) d'alignement — transition refusée pour ne pas mélanger l'ancien contenu et la copie. Videz d'abord la saison cible.` }
+    return { error: `La saison ${toSaison.season} contient déjà ${existingCount} ligne(s) d'alignement — transition refusée pour ne pas mélanger l'ancien contenu et la copie. Vide d'abord la saison cible.` }
   }
 
   let returned = 0

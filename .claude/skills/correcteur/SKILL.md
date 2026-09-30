@@ -24,7 +24,10 @@ les chaînes de texte de l'interface.
    - Pas de point final pour les titres, libellés courts et boutons (« Sauvegarder », pas
      « Sauvegarder. »).
    - Point final uniquement pour les phrases complètes (descriptions, messages d'erreur longs).
-4. **Respect du code** : ne JAMAIS modifier les clés, les noms de variables, les balises HTML/JSX,
+4. **Tutoiement** : toujours « tu » (« Clique », « ton alignement », « tes joueurs », « Réessaie »),
+   jamais « vous » — les utilisateurs sont tous des amis de David. Accorder ton/ta selon le nom
+   (« ta masse salariale », « ton équipe » devant une voyelle).
+5. **Respect du code** : ne JAMAIS modifier les clés, les noms de variables, les balises HTML/JSX,
    ni l'intérieur des expressions injectées (`{username}`, `${n}`, `%s`) — seulement le texte
    autour.
 

@@ -342,7 +342,7 @@ export default function PresaisonManager({
       setOrderMsg(`Erreur : ${result.error}`)
     } else {
       setDraftOrder(result.order ?? [])
-      setOrderMsg(`Ordre initialisé d'après le classement ${result.previousSeason} (inversé). N'oubliez pas de sauvegarder.`)
+      setOrderMsg(`Ordre initialisé d'après le classement ${result.previousSeason} (inversé). N'oublie pas de sauvegarder.`)
     }
     setTimeout(() => setOrderMsg(null), 5000)
   }

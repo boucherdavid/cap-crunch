@@ -22,7 +22,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : espaces supprimées par SWC + skill `correcteur` + passe complète du correcteur (60 fichiers) — à valider (`/aide`, `/a-propos`, aperçu de transition, `/classement`) |
+| `staging` | En avance sur `main` : espaces supprimées par SWC + skill `correcteur` + passe complète du correcteur (60 fichiers) + tutoiement partout — à valider (`/aide`, `/a-propos`, aperçu de transition, `/classement`) |
 | `main` (prod) | À jour — dernière fusion le 2026-09-30 (tri unique des requêtes paginées, scripts Python) |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
@@ -62,8 +62,6 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **Décision David** : tutoiement ou vouvoiement pour toute l'app ? Les deux cohabitent (Aide,
-  Compte, pages anciennes au « vous » ; pages récentes au « tu ») — harmoniser une fois tranché.
 
 0. **Prod — saisie Mode init 2025-26 : terminée et conforme** (vérifié le 2026-09-30) — les
    8 poolers ont 12 attaquants, 6 défenseurs, 2 gardiens actifs et au moins 2 réservistes ;

@@ -83,7 +83,7 @@ export async function markTeamEliminatedAction(
       uniquePoolerIds.map(poolerId =>
         sendPushToUser(poolerId, {
           title: '⚠️ Équipe éliminée — Pool des séries',
-          body: `${teamLabel} est éliminée. Remplacez votre joueur avant la prochaine ronde.`,
+          body: `${teamLabel} est éliminée. Remplace ton joueur avant la prochaine ronde.`,
           url: '/gestion-series',
         }),
       ),

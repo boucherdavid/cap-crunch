@@ -45,7 +45,7 @@ export default async function NouvelleSaisonPage({
     return (
       <div>
         <h1 className="text-2xl font-bold text-gray-800 mb-4">Nouvelle saison</h1>
-        <p className="text-gray-400">Aucune saison disponible. Créez-en une dans Configuration → Saisons.</p>
+        <p className="text-gray-400">Aucune saison disponible. Crées-en une dans Configuration → Saisons.</p>
       </div>
     )
   }

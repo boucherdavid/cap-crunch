@@ -52,7 +52,7 @@ export default function CompteForm({ profile }: { profile: Profile }) {
   async function handleEmail(e: { preventDefault(): void }) {
     e.preventDefault()
     if (email === profile.email) {
-      setEmailMsg({ type: 'err', text: 'Entrez une nouvelle adresse courriel.' })
+      setEmailMsg({ type: 'err', text: 'Entre une nouvelle adresse courriel.' })
       return
     }
     setEmailBusy(true)
@@ -111,7 +111,7 @@ export default function CompteForm({ profile }: { profile: Profile }) {
       <div className="max-w-md mx-auto px-4 py-12">
         <div className="bg-white rounded-lg shadow p-6">
           <h1 className="text-xl font-bold text-gray-800 mb-1">Nouveau mot de passe</h1>
-          <p className="text-sm text-gray-500 mb-6">Choisissez votre nouveau mot de passe.</p>
+          <p className="text-sm text-gray-500 mb-6">Choisis ton nouveau mot de passe.</p>
           <form onSubmit={handlePassword} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nouveau mot de passe</label>
@@ -224,7 +224,7 @@ export default function CompteForm({ profile }: { profile: Profile }) {
                 setEmailTestMsg(
                   res.error
                     ? { type: 'err', text: `Erreur : ${res.error}` }
-                    : { type: 'ok', text: 'Courriel de test envoyé — vérifiez votre boîte de réception (et les indésirables).' },
+                    : { type: 'ok', text: 'Courriel de test envoyé — vérifie ta boîte de réception (et les indésirables).' },
                 )
               }}
               disabled={emailTestBusy}

@@ -18,12 +18,12 @@ export default function LtirRulesContent() {
       <div>
         <p className="font-medium text-gray-800 mb-1.5">Mettre un joueur sur le LTIR</p>
         <ul className="space-y-1.5">
-          <li>• Depuis <strong>Gestion d&apos;effectifs</strong>, choisissez <strong>LTIR</strong> (ou <strong>LTIR + signature</strong> pour signer un remplaçant dans le même geste). Au lieu de s&apos;appliquer tout de suite, votre demande est envoyée à l&apos;administrateur pour approbation.</li>
+          <li>• Depuis <strong>Gestion d&apos;effectifs</strong>, choisis <strong>LTIR</strong> (ou <strong>LTIR + signature</strong> pour signer un remplaçant dans le même geste). Au lieu de s&apos;appliquer tout de suite, ta demande est envoyée à l&apos;administrateur pour approbation.</li>
           <li>• En <strong>pré-saison</strong> (avant le début de la saison), la demande se fait plutôt depuis <strong>Signatures des agents libres</strong> → Mon alignement : bouton <strong>Demander LTIR</strong> à côté d&apos;un joueur actif admissible, même approbation par l&apos;administrateur.</li>
-          <li>• Tant que l&apos;administrateur n&apos;a pas décidé, un bandeau <strong>En attente d&apos;approbation</strong> s&apos;affiche et vous pouvez annuler votre demande.</li>
-          <li>• Si elle est approuvée, la <strong>date effective est celle de votre demande</strong>, pas celle de l&apos;approbation — une approbation tardive ne vous pénalise pas.</li>
-          <li>• Un joueur sur le LTIR ne compte pas dans votre masse salariale et ne rapporte aucun point.</li>
-          <li>• Le <strong>retour du LTIR</strong> vers votre alignement actif se fait par l&apos;administrateur — contactez-le quand votre joueur est rétabli.</li>
+          <li>• Tant que l&apos;administrateur n&apos;a pas décidé, un bandeau <strong>En attente d&apos;approbation</strong> s&apos;affiche et tu peux annuler ta demande.</li>
+          <li>• Si elle est approuvée, la <strong>date effective est celle de ta demande</strong>, pas celle de l&apos;approbation — une approbation tardive ne te pénalise pas.</li>
+          <li>• Un joueur sur le LTIR ne compte pas dans ta masse salariale et ne rapporte aucun point.</li>
+          <li>• Le <strong>retour du LTIR</strong> vers ton alignement actif se fait par l&apos;administrateur — contacte-le quand ton joueur est rétabli.</li>
         </ul>
       </div>
       <div>
@@ -60,7 +60,7 @@ export default function LtirRulesContent() {
           <li>• Le badge <strong>Admissible</strong> est une <strong>aide à la décision</strong>, pas un droit automatique : l&apos;administrateur garde le dernier mot et peut approuver ou refuser selon son jugement (ex. une information plus récente que la dernière mise à jour quotidienne).</li>
           <li>• Les délais ci-dessus peuvent être ajustés par l&apos;administrateur après discussion avec les poolers — cette page affiche toujours les valeurs en vigueur.</li>
           <li>• Les données sont mises à jour une fois par jour — une blessure annoncée ce matin peut n&apos;apparaître qu&apos;au prochain passage.</li>
-          <li>• Les joueurs sont associés par nom et équipe. Si un badge vous semble attribué au mauvais joueur, signalez-le via <strong>Signaler un problème</strong>.</li>
+          <li>• Les joueurs sont associés par nom et équipe. Si un badge te semble attribué au mauvais joueur, signale-le via <strong>Signaler un problème</strong>.</li>
         </ul>
       </div>
     </div>

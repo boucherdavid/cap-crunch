@@ -13,25 +13,25 @@ const CATEGORIES: Category[] = [
       {
         title: 'Mon alignement',
         href: '/dashboard',
-        description: "Votre alignement complet (actifs, réservistes, recrues, LTIR), votre masse salariale, vos choix de repêchage et les prochains matchs de vos joueurs. Un sélecteur permet de voir l'alignement de n'importe quel autre pooler.",
+        description: "Ton alignement complet (actifs, réservistes, recrues, LTIR), ta masse salariale, tes choix de repêchage et les prochains matchs de tes joueurs. Un sélecteur permet de voir l'alignement de n'importe quel autre pooler.",
       },
       {
         title: "Gestion d'effectifs",
         href: '/gestion-effectifs',
         note: 'Libre-service',
-        description: "Votre outil principal une fois la saison démarrée : basculer actif ↔ réserviste, libérer un joueur, gérer vos recrues (onglet Mouvements), réclamer un joueur au ballotage (onglet Ballotage), proposer un échange à un autre pooler (onglet Échanges).",
+        description: "Ton outil principal une fois la saison démarrée : basculer actif ↔ réserviste, libérer un joueur, gérer tes recrues (onglet Mouvements), réclamer un joueur au ballotage (onglet Ballotage), proposer un échange à un autre pooler (onglet Échanges).",
       },
       {
         title: 'Simulation',
         href: '/simulation',
         note: 'Aperçu',
-        description: "Testez un mouvement ou un échange sans rien enregistrer pour de vrai — disponible toute l'année, pas seulement en pré-saison.",
+        description: "Teste un mouvement ou un échange sans rien enregistrer pour de vrai — disponible toute l'année, pas seulement en pré-saison.",
       },
       {
         title: 'Mes listes',
         href: '/listes',
         note: 'Privé',
-        description: "Vos listes de joueurs à surveiller (agents libres, recrues du dernier repêchage LNH), classées par priorité, avec une note par joueur — pratiques le soir du pool.",
+        description: "Tes listes de joueurs à surveiller (agents libres, recrues du dernier repêchage LNH), classées par priorité, avec une note par joueur — pratiques le soir du pool.",
       },
     ],
   },
@@ -58,7 +58,7 @@ const CATEGORIES: Category[] = [
       {
         title: 'Saison complète',
         href: '/classement',
-        description: 'Rang, points totaux et détail (buts, passes, victoires, défaites en prolongation) pour chaque pooler. Cliquez sur un joueur pour voir sa contribution détaillée.',
+        description: 'Rang, points totaux et détail (buts, passes, victoires, défaites en prolongation) pour chaque pooler. Clique sur un joueur pour voir sa contribution détaillée.',
       },
       {
         title: 'Hebdomadaire et mensuel',
@@ -74,7 +74,7 @@ const CATEGORIES: Category[] = [
       {
         title: 'Calendrier LNH',
         href: '/calendrier',
-        description: 'Les matchs de la LNH jour par jour, avec le nombre de matchs impliquant vos joueurs.',
+        description: 'Les matchs de la LNH jour par jour, avec le nombre de matchs impliquant tes joueurs.',
       },
       {
         title: 'Statistiques LNH',
@@ -89,7 +89,7 @@ const CATEGORIES: Category[] = [
       {
         title: 'Statistiques AHL',
         href: '/statistiques/ahl',
-        description: 'Mêmes informations que pour la LNH, mais pour la ligue de développement — utile pour suivre vos prospects en banque de recrues.',
+        description: 'Mêmes informations que pour la LNH, mais pour la ligue de développement — utile pour suivre tes prospects en banque de recrues.',
       },
       {
         title: 'Blessures',
@@ -132,7 +132,7 @@ const CATEGORIES: Category[] = [
         title: 'Signatures des agents libres',
         href: '/repechage-agents-libres',
         note: 'Pré-saison',
-        description: "Tableau de bord partagé entre chaque saison : signature d'agents libres à tour de rôle, ajustement de votre alignement, déclaration « prêt » avant le démarrage officiel de la saison.",
+        description: "Tableau de bord partagé entre chaque saison : signature d'agents libres à tour de rôle, ajustement de ton alignement, déclaration « prêt » avant le démarrage officiel de la saison.",
       },
     ],
   },
@@ -222,8 +222,8 @@ export default function AProposPage() {
       <div className="mt-10 bg-amber-50 border border-amber-200 rounded-lg px-5 py-4 text-sm text-amber-800">
         <p className="font-semibold mb-1">Il manque quelque chose ?</p>
         <p>
-          Une fonctionnalité que vous cherchez souvent et qui n&apos;existe pas encore, une section confuse, un outil
-          pas assez expliqué ? Faites-le savoir via{' '}
+          Une fonctionnalité que tu cherches souvent et qui n&apos;existe pas encore, une section confuse, un outil
+          pas assez expliqué ? Fais-le savoir via{' '}
           <Link href="/signaler" className="underline font-medium">Signaler un problème</Link>.
         </p>
       </div>

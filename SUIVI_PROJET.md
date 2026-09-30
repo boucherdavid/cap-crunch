@@ -72,6 +72,14 @@ des scripts Python, utilisés par les workflows GitHub).
 - Vérifié : `tsc` OK, `check:jsx-spaces` OK, ESLint sans nouvelle erreur (119 préexistantes
   sur les fichiers touchés, contre 122 avant).
 
+**[Style] — Tutoiement partout** (David : « ce sont tous mes amis qui utilisent l'app ») — ~150
+textes passés du « vous » au « tu » dans 25 fichiers : page Aide (la majorité), règles LTIR,
+À propos, Mon compte, Signaler un problème, hors ligne, messages de Gestion d'effectifs, séries,
+et les quelques textes admin encore au « vous » (« Vide d'abord… », « N'oublie pas… »).
+Accords ton/ta/tes vérifiés un par un (« ta masse salariale », « ton écran »). Une espace perdue
+par SWC créée par la conversion (« t&apos;intéressent » sur plusieurs lignes) a été attrapée par
+`check:jsx-spaces` et corrigée. Règle ajoutée dans `CLAUDE.md` §7 et dans la skill `correcteur`.
+
 ### 2026-09-29
 
 **[Fix] — Doublons dans la recherche de joueurs de Mode init (prod)** (`app/app/admin/init/page.tsx`,

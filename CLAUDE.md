@@ -1301,7 +1301,8 @@ corrigée le 2026-09-20 :**
 de projet `correcteur` (`.claude/skills/correcteur/SKILL.md`, adaptée de
 `skill_Claude/skill_correcteur.md`) : orthographe et accords (vérifier le singulier ET le pluriel
 des chaînes dynamiques), espace avant `: ! ? ;`, aucun mot collé ni double espace, pas de point
-final sur boutons/titres/libellés courts. Après toute modification de texte JSX, lancer
+final sur boutons/titres/libellés courts. **Toujours tutoyer** l'utilisateur (« Clique », « ton
+alignement », « tes joueurs ») — pooler comme admin : ce sont tous des amis de David (2026-09-30). Après toute modification de texte JSX, lancer
 `cd app && npm run check:jsx-spaces` : SWC supprime l'espace devant un texte qui contient une
 entité HTML (`&apos;`, `&middot;`...) et un saut de ligne (« ontune protection ») — correctif
 `{' '}`, appliqué automatiquement par `-- --fix`.

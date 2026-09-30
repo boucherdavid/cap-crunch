@@ -796,8 +796,8 @@ export async function submitBatchAction(input: {
       after(() => sendPushToUser(input.poolerId, {
         title: 'Cap Crunch — Mouvements',
         body: n === 1
-          ? "Votre alignement a été modifié par l'admin."
-          : `${n} mouvements ont été appliqués à votre alignement.`,
+          ? "Ton alignement a été modifié par l'admin."
+          : `${n} mouvements ont été appliqués à ton alignement.`,
         url: `/poolers/${input.poolerId}`,
       }).catch(() => {}))
     }

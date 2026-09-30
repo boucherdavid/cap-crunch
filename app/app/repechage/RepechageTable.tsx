@@ -222,7 +222,7 @@ export default function RepechageTable({ picks }: { picks: DraftPick[] }) {
             <div className="bg-slate-600 px-5 py-3">
               <h2 className="text-white font-bold text-lg">ELC — Info de repêchage non importée</h2>
               <p className="text-slate-300 text-xs mt-0.5">
-                Ces joueurs sont sur un ELC mais leurs données de repêchage ne sont pas encore disponibles. Lancez <code>import_drafts.py</code> pour les enrichir.
+                Ces joueurs sont sur un ELC mais leurs données de repêchage ne sont pas encore disponibles. Lance <code>import_drafts.py</code> pour les enrichir.
               </p>
             </div>
             <div className="overflow-x-auto">

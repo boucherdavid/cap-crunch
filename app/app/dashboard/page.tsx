@@ -16,8 +16,8 @@ export default async function DashboardPage() {
   if (!pooler) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">Votre compte n&apos;est pas encore lié à un pooler.</p>
-        <p className="text-gray-400 text-sm mt-2">Contactez l&apos;administrateur du pool.</p>
+        <p className="text-gray-500">Ton compte n&apos;est pas encore lié à un pooler.</p>
+        <p className="text-gray-400 text-sm mt-2">Contacte l&apos;administrateur du pool.</p>
       </div>
     )
   }
