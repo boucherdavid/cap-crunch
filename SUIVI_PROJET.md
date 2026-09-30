@@ -21,6 +21,24 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-30
 
+**[Feat/Fix] — Copie de secours : onglet « Simulation d'échange » + masse salariale corrigée**
+(`python_script/generate_backup_tool.py`) :
+- Demande de David : simuler un échange entre deux poolers dans la copie de secours. Nouvel onglet :
+  deux sélecteurs de pooler, cases à cocher de chaque côté, tableau avant/après (attaquants,
+  défenseurs, gardiens, réservistes, masse salariale avec l'écart, conforme ou non), statut à
+  l'arrivée au choix pour un actif/réserviste (une recrue reste recrue, un LTIR reste LTIR — même
+  règle que l'app). « Appliquer l'échange » modifie les alignements locaux et l'inscrit au journal
+  (nouveau type `echange`) ; rien n'est modifié avant. Choix de repêchage non inclus (ils ne sont
+  pas dans l'état modifiable du fichier).
+- Bogue trouvé en passant (capture de David : 191 M$ / 129 M$) : la masse salariale de la copie
+  comptait les recrues de la banque, alors que la règle (affichée dans l'onglet Paramètres) les
+  exclut. Nouveau `countsInCap()` (actif + réserviste seulement), utilisé partout (Alignements,
+  Paramètres, sélecteur, simulation).
+- Fichier normalisé en fins de ligne LF (mélange CRLF/LF après des modifications) — sans effet
+  pour git, qui stocke du LF.
+- Testé : génération contre staging dans un fichier temporaire, `node --check`, puis exécution
+  avec un faux DOM (sélection, avant/après, statut à l'arrivée, application + journal).
+
 **[Feat] — Copie de secours : un alignement à la fois** (`python_script/generate_backup_tool.py`) :
 - Demande de David : l'onglet Alignements affichait les 8 alignements à la suite (trop chargé).
   Sélecteur « Alignement de : » en haut de l'onglet (⚠ à côté d'un pooler qui dépasse le cap), un
