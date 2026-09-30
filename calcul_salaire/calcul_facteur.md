@@ -313,9 +313,10 @@ La seule vraie question est : **attend-on les renouvellements, ou donne-t-on la 
 | Anticiper toute la transition | 1,24 × 1,067 | 1,32 | 138 M$ (137,28 M$ arrondi) |
 
 **Recommandation : 1,28 pour 2026-27.** C'est défendable chiffres en main : on donne dès
-maintenant la moitié d'une hausse que les renouvellements vont amener de toute façon. On reste
-dans la limite de variation (+0,04), et le pooler qui reconstruit a de l'air pendant la
-transition. Ensuite, recalculer chaque été : le facteur devrait continuer de monter doucement vers
+maintenant la moitié d'une hausse que les renouvellements vont amener de toute façon. La hausse
+(+0,04) respecte la borne de ±0,05 par année de la règle proposée au groupe ; avec la borne plus
+serrée de ±0,03 suggérée plus haut, 2026-27 serait limité à 1,27. Le pooler qui reconstruit a de
+l'air pendant la transition. Ensuite, recalculer chaque été : le facteur devrait continuer de monter doucement vers
 1,32, puis se stabiliser.
 
 ### Suggestions ciblées pour les poolers qui reconstruisent
