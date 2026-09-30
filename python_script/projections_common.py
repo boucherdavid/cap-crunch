@@ -17,7 +17,7 @@ def normalize(s: str) -> str:
 def build_player_lookup(db):
     all_players, offset, page = [], 0, 1000
     while True:
-        r = db.table('players').select('id, first_name, last_name, teams(code)').range(offset, offset + page - 1).execute()
+        r = db.table('players').select('id, first_name, last_name, teams(code)').order('id').range(offset, offset + page - 1).execute()
         all_players.extend(r.data)
         if len(r.data) < page:
             break

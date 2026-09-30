@@ -21,7 +21,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | À jour |
+| `staging` | En avance sur `main` : tri unique (`order('id')`) dans les requêtes paginées des scripts Python — à fusionner (les workflows GitHub tournent depuis `main`) |
 | `main` (prod) | À jour — dernière fusion le 2026-09-29 (`c7b17b7`, correctif doublons recherche Mode init) |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +

@@ -77,6 +77,7 @@ def importer_repechages():
         batch = (
             supabase.table('players')
             .select('id, first_name, last_name, draft_year')
+            .order('id')
             .range(offset, offset + 999)
             .execute()
             .data

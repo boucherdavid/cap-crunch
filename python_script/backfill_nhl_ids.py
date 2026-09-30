@@ -192,6 +192,7 @@ def main():
             .select('player_id')
             .eq('season', season_label)
             .gt('cap_number', 0)
+            .order('id')
             .range(offset_c, offset_c + 999)
             .execute()
             .data
@@ -237,6 +238,7 @@ def main():
             supabase.table('players')
             .select('nhl_id')
             .not_.is_('nhl_id', 'null')
+            .order('id')
             .range(offset_n, offset_n + 999)
             .execute()
             .data
@@ -255,6 +257,7 @@ def main():
             supabase.table('players')
             .select('id, first_name, last_name, team_id, position')
             .is_('nhl_id', 'null')
+            .order('id')
             .range(offset, offset + 999)
             .execute()
             .data

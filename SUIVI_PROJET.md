@@ -41,6 +41,21 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   `DELETE FROM players WHERE nhl_id IS NULL AND last_name ~ '(Wage|Cage|Dage|Gage)[0-9]+cap\$'`.
   Vérifié ensuite : 0 fiche corrompue en prod (2520 joueurs) et en staging (2517).
 
+**[Fix/Données] — Oliver Ekman-Larsson en triple + tri unique dans les scripts Python** :
+- Prod : 3 fiches « Oliver Ekman-Larsson » — 2502 (TOR, `nhl_id` 8475171, la vraie) + 3050 (UTA) et
+  3051 (VAN), créées le 2026-07-08 à partir des lignes de rachat/rétention que PuckPedia affiche sur
+  les pages d'équipe. L'import actuel fusionne déjà correctement ce cas (`fusionner_doublons`, garde
+  le contrat TOR), mais `deduplicate_players` ignore ces restes : le nom apparaît sur 3 équipes dans
+  le CSV du jour → traité comme homonyme probable. Seul doublon de nom dans toute la base.
+  Aucune référence sur 3050/3051 hors leurs propres contrats → suppression manuelle en SQL.
+- Même défaut que côté app : les chargements paginés `.range()` de `players`/`player_contracts`
+  n'avaient pas de tri → `.order('id')` ajouté (`import_supabase.py` ×3, `import_drafts.py`,
+  `projections_common.py`, `generate_backup_tool.py`, `sync_staging_to_prod.py`,
+  `backfill_nhl_ids.py` ×3, `import_regular_stats.py`, `import_playoff_stats.py`,
+  `backfill_regular_game_logs.py`, `backfill_playoff_game_logs.py`). Fonctions génériques
+  (`setup_staging.py`, `reset_saison_staging.py`, `import_mouvements_excel.py`) laissées telles
+  quelles — peuvent viser des tables sans `id`.
+
 ### 2026-09-28
 
 **[Déploiement]** — `staging` fusionné vers `main` (`6d3c801`) à la demande de David : renvoi en

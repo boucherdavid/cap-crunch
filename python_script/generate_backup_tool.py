@@ -93,6 +93,7 @@ def fetch_data(sb):
         batch = (
             sb.table('players')
             .select('id, first_name, last_name, position, teams (code), player_contracts (season, cap_number, contract_status)')
+            .order('id')
             .range(offset, offset + 999)
             .execute()
             .data

@@ -202,7 +202,7 @@ def main() -> None:
     all_players: list[dict] = []
     offset = 0
     while True:
-        chunk_resp = client.table('players').select('id, nhl_id').range(offset, offset + 999).execute()
+        chunk_resp = client.table('players').select('id, nhl_id').order('id').range(offset, offset + 999).execute()
         chunk = chunk_resp.data or []
         all_players.extend(chunk)
         if len(chunk) < 1000:
