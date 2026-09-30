@@ -19,6 +19,13 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-09-30
+
+**[Données] — Revalidation de la saisie Mode init en prod** : David a corrigé ses alignements et
+celui de Vincent (19 → 20 actifs, une recrue activée chacun). Vérifié par script (lecture seule) :
+les 8 poolers ont exactement 12 attaquants / 6 défenseurs / 2 gardiens actifs et au moins
+2 réservistes. Doublons Ekman-Larsson toujours à supprimer (SQL dans `ETAT_PROJET.md`).
+
 ### 2026-09-29
 
 **[Fix] — Doublons dans la recherche de joueurs de Mode init (prod)** (`app/app/admin/init/page.tsx`,

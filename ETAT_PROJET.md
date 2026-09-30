@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-09-29
+**Dernière mise à jour :** 2026-09-30
 
 ---
 
@@ -62,10 +62,9 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-0. **Prod — revalider la saisie Mode init 2025-26** (David, 2026-09-30). Comptes au 2026-09-29 :
-   tous à 20 actifs sauf **David (19) et Vincent (19)** — à confirmer (oubli ou voulu ?).
-   Réservistes : David 2, Jérôme 2, Nicolas 6, Paule 2, Steve 3, Sébastien F. 4, Sébastien S. 3,
-   Vincent 3. LTIR : David 1, Nicolas 2, Paule 1, Steve 1, Sébastien S. 1, Vincent 2.
+0. **Prod — saisie Mode init 2025-26 : alignements conformes** (vérifié le 2026-09-30, après
+   correction par David des alignements de David et Vincent) — les 8 poolers ont 12 attaquants,
+   6 défenseurs, 2 gardiens actifs et au moins 2 réservistes. Reste à faire :
    - **Oliver Ekman-Larsson en triple en prod** — SQL pas encore roulé (fiches 3050 UTA et 3051
      VAN à supprimer, 2502 TOR = la vraie ; + contrat 2029-30 périmé de 2502 à 2 126 667 $) :
      ```sql
