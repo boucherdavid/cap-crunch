@@ -13,8 +13,9 @@
 - Saison active : **2026-27 en staging**, mais **encore 2025-26 en prod** (2026-27 pas encore
   activée là-bas) — les scripts qui prennent « la saison active » ciblent donc 2025-26 en prod
   (ex : imports de projections → toujours passer `--season 2026-27`).
-- **Prod** : vidée volontairement le 2026-09-20 → 0 alignement, ressaisie manuelle des
-  alignements par David en cours. Historique complet reconstruit en **staging** seulement.
+- **Prod** : vidée volontairement le 2026-09-20, puis **alignements 2025-26 ressaisis par David
+  (Mode init) — terminé le 2026-09-29**, 326 lignes pour les 8 poolers. **Revalidation par David
+  le 2026-09-30** (voir section 4). Historique complet reconstruit en **staging** seulement.
 - Backup hors-ligne (`backup/pool_backup.html`) régénéré chaque dimanche depuis la prod.
 
 ## 2. Branches / déploiement
@@ -61,6 +62,20 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
+0. **Prod — revalider la saisie Mode init 2025-26** (David, 2026-09-30). Comptes au 2026-09-29 :
+   tous à 20 actifs sauf **David (19) et Vincent (19)** — à confirmer (oubli ou voulu ?).
+   Réservistes : David 2, Jérôme 2, Nicolas 6, Paule 2, Steve 3, Sébastien F. 4, Sébastien S. 3,
+   Vincent 3. LTIR : David 1, Nicolas 2, Paule 1, Steve 1, Sébastien S. 1, Vincent 2.
+   - **Oliver Ekman-Larsson en triple en prod** — SQL pas encore roulé (fiches 3050 UTA et 3051
+     VAN à supprimer, 2502 TOR = la vraie ; + contrat 2029-30 périmé de 2502 à 2 126 667 $) :
+     ```sql
+     DELETE FROM player_contracts WHERE player_id IN (3050, 3051);
+     DELETE FROM players WHERE id IN (3050, 3051);
+     DELETE FROM player_contracts WHERE player_id = 2502 AND season = '2029-30';
+     ```
+     Avant : vérifier qu'aucun alignement ne pointe vers 3050/3051
+     (`SELECT * FROM pooler_rosters WHERE player_id IN (3050, 3051);` → 0 ligne).
+   - Fusionner `staging` → `main` (tri unique des scripts Python, `900be24`) après le go de David.
 1. **Activer 2026-27** (hub `/admin/nouvelle-saison`, étape 2) là où David prépare la saison —
    sa capture du hub montrait « Actuellement active : 2025-26 ». Tant que ce n'est pas fait,
    `/repechage-agents-libres` lit 2025-26 (déjà démarrée) : panneau admin et libre-service

@@ -56,6 +56,13 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   (`setup_staging.py`, `reset_saison_staging.py`, `import_mouvements_excel.py`) laissées telles
   quelles — peuvent viser des tables sans `id`.
 
+**[Données] — Fin de la ressaisie des alignements en prod (Mode init, saison 2025-26)** :
+- David a terminé la saisie manuelle des 8 alignements en prod (326 lignes `pooler_rosters`
+  actives). Revalidation prévue le 2026-09-30. À confirmer : David et Vincent à 19 actifs (les
+  autres à 20). Suppression des doublons Ekman-Larsson pas encore faite (SQL dans `ETAT_PROJET.md`).
+- Commits de la session : `cf5aae0` (tri unique, app — en prod via `c7b17b7`), `70033ad` (doc),
+  `900be24` (tri unique, scripts Python — staging seulement).
+
 ### 2026-09-28
 
 **[Déploiement]** — `staging` fusionné vers `main` (`6d3c801`) à la demande de David : renvoi en
