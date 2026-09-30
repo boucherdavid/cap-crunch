@@ -21,6 +21,18 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-30
 
+**[Analyse] — Facteur de plafond : historique 2013-14 à 2015-16, recommandation revue**
+(`calcul_salaire/calcul_facteur_historique.py` remplace `calcul_facteur_2013.py`,
+`calcul_salaire/calcul_facteur.md`) :
+- Script générique multi-saisons (.xls via xlrd, .xlsx via openpyxl, deux mises en page de
+  feuilles de pooler), saisons 2014-15 et 2015-16 ajoutées à partir des fichiers de David.
+- Origine du facteur retrouvée dans les fichiers : plafond du pool parti de 80 M$, maintenu en
+  proportion du plafond LNH (80 ÷ 64,9 = 1,2327), arrondi plus tard à 1,24. 2015-16 = 7 poolers.
+- Taux de pression (8 poolers) : 73 % (2013-14, faussé par le lock-out), 78 % (2014-15), 75 %
+  (2015-16) → moyenne ≈ 75-76 % ; 78 % en 2025-26, 76 % en 2026-27 avec 1,24.
+- **Recommandation revue : garder 1,24 pour 2026-27** (niveau historique), et adopter la règle
+  du taux de pression à 76 % ; 1,26 aurait gardé le niveau des années les plus faciles.
+
 **[Analyse] — Facteur de plafond : référence historique 2013-14 + suggestions**
 (`calcul_salaire/calcul_facteur_2013.py`, `calcul_salaire/calcul_facteur.md`, `.gitignore`) :
 - À partir du fichier Excel 2013-14 de David (contrats LNH, alignements des 6 poolers) : le 1,24

@@ -65,9 +65,9 @@ desktop.
 - **Jack Hughes (Devils)** : sa fiche porte le repêchage 2022 R2 d'un homonyme (vrai : 2019) —
   jumelage par nom dans `import_drafts.py` à corriger (jumeler par `nhl_id`), sinon l'import
   hebdomadaire réécrira l'erreur.
-- **Facteur de plafond** : analyse faite (`calcul_salaire/calcul_facteur.md`, 2013-14 inclus) —
-  1,24 et 1,26 défendables ; décision du groupe sur le « taux de pression ». Si le facteur change,
-  le modifier pour 2026-27 dans Configuration → Saisons.
+- **Facteur de plafond** : analyse faite (`calcul_salaire/calcul_facteur.md`, historique 2013-16) —
+  recommandation : garder 1,24 en 2026-27 (niveau historique de difficulté) et adopter la règle du
+  « taux de pression » à 76 %. Décision du groupe à venir.
 
 
 
