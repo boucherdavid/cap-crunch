@@ -269,19 +269,71 @@ Taux de pression = facteur du pool ÷ facteur naturel (8 poolers)
    pas la règle, mais ça dit d'avance combien d'équipes devront couper.
 6. **Annoncer l'arrondi** : arrondir le plafond au million supérieur ajoute jusqu'à 1 M$ (~1 %).
 
+### La période de transition : les contrats « d'avant »
+
+Le calcul ci-dessus utilise les contrats **en vigueur**. Or beaucoup ont été signés quand le
+plafond LNH était bien plus bas (ex. : Cale Makar, 9 M$ signé en 2021 avec un plafond de 81,5 M$,
+soit 11 % du plafond de l'époque et 8,7 % aujourd'hui ; à son renouvellement, il sera payé au prix
+du marché actuel). Tant que ces contrats ne sont pas tous renouvelés, le coût du pool monte plus
+vite que le plafond : c'est la transition actuelle.
+
+Mesure (`calcul_salaire/prix_du_marche.py`) : le « prix du marché » d'un joueur est la médiane, en %
+du plafond LNH, des contrats commençant en 2026-27 des joueurs de même position et de même niveau
+de talent. Si toute l'équipe idéale était payée à ce prix :
+
+| Équipe idéale 2026-27 | Facteur naturel |
+|---|---|
+| Contrats en vigueur | 1,634 |
+| Tous au prix du marché 2026-27 | **1,743 (+6,7 %)** |
+
+Il reste donc **environ 7 % de hausse à venir**, qui arrivera au fil des renouvellements, sur 3 à
+4 ans (durée typique d'un contrat). Estimation prudente : pour les grandes vedettes, le prix du
+marché repose sur peu de contrats récents, et un cas comme Makar le dépassera.
+
+Du côté des jeunes (`calcul_salaire/analyse_jeunes.py`) : un joueur sur son deuxième contrat coûte
+en moyenne 7,5 % du plafond LNH aujourd'hui, contre 6,8 % en 2014-16. Surtout, les jeunes vedettes
+obtiennent leur gros contrat plus tôt et plus cher : 6 jeunes (7 ans ou moins depuis leur
+repêchage) coûtent 10 % du plafond ou plus en 2026-27, contre 2 ou 3 en 2014-16, et le plus cher
+est à 17,3 % (Carlsson) contre 13,0 % (Subban) à l'époque.
+
 ### Options pour 2026-27
 
-| Taux de pression visé | Facteur 2026-27 | Plafond du pool (104 M$) | Ce que ça veut dire |
-|---|---|---|---|
-| 76 % (moyenne historique) | **1,24** (inchangé) | **129 M$** | Garder la difficulté habituelle du pool |
-| 78 % (2014-15, 2025-26) | 1,26 | 132 M$ | Garder la difficulté des années les plus faciles |
-| 73 % (2013-14) | 1,19 | 124 M$ | Plus serré que d'habitude |
+La règle du taux de pression (76 %, la moyenne historique) suit **automatiquement** la transition :
+recalculée chaque été avec les contrats en vigueur, elle fera monter le facteur à mesure que les
+contrats sont renouvelés, vers environ 1,32 une fois la transition terminée. Pas besoin d'inventer
+une courbe (logarithmique ou autre) : la forme de la courbe est dictée par les renouvellements
+réels, mesurés chaque année.
 
-**Recommandation : garder 1,24 pour 2026-27**, et adopter la règle du taux de pression à 76 %
-pour les années suivantes. Les données montrent que la hausse des salaires ne rend pas le pool
-plus difficile qu'à ses débuts : elle efface seulement la facilité relative de 2025-26. La
-difficulté que les poolers ressentiront l'été prochain vient surtout des fins de contrats
-d'entrée de leurs propres jeunes (voir l'indicateur de douleur), pas du marché.
+La seule vraie question est : **attend-on les renouvellements, ou donne-t-on la marge d'avance ?**
+
+| Choix | Calcul | Facteur 2026-27 | Plafond du pool (104 M$) |
+|---|---|---|---|
+| Attendre (règle stricte) | 76 % × contrats en vigueur | 1,24 | 129 M$ |
+| **Anticiper la moitié de la transition** | 1,24 × (1 + 6,7 % ÷ 2) | **1,28** | **134 M$** (133,12 M$ arrondi) |
+| Anticiper toute la transition | 1,24 × 1,067 | 1,32 | 138 M$ (137,28 M$ arrondi) |
+
+**Recommandation : 1,28 pour 2026-27.** C'est défendable chiffres en main : on donne dès
+maintenant la moitié d'une hausse que les renouvellements vont amener de toute façon. On reste
+dans la limite de variation (+0,04), et le pooler qui reconstruit a de l'air pendant la
+transition. Ensuite, recalculer chaque été : le facteur devrait continuer de monter doucement vers
+1,32, puis se stabiliser.
+
+### Suggestions ciblées pour les poolers qui reconstruisent
+
+Le facteur aide tout le monde également. Pour aider précisément celui qui a misé sur des jeunes :
+
+1. **La banque de recrues fait déjà une partie du travail** : un repêché reste protégé 5 saisons,
+   même avec un gros deuxième contrat (Carlsson, Bedard, Fantilli peuvent rester en banque à 0 $
+   en 2026-27). C'est à rappeler aux poolers : ils peuvent choisir le moment d'activer.
+2. **Rabais de développement (option)** : un joueur repêché par le pool, activé pendant sa
+   protection ou dans les deux saisons qui suivent, compte au maximum pour **12 % du plafond
+   LNH** (12,48 M$ en 2026-27). Base
+   tangible : c'était à peu près le coût maximal d'un jeune aux débuts du pool (Subban 13,0 %,
+   Stamkos 10,9 %, Tarasenko 10,5 % ; Dahlin 11,5 % en 2025-26). En 2026-27, ça toucherait
+   Carlsson (18 M$), Bedard (15 M$), Fantilli (13,75 M$) et Gauthier (13,5 M$) s'ils sont activés. Récompense directement le pooler qui a bien repêché, sans
+   changer la règle pour les autres.
+3. **Indicateur de douleur publié chaque été** (voir plus haut) : chaque pooler voit d'avance ce que
+   lui coûtera son alignement la saison suivante, et peut planifier au lieu de subir.
 
 ### Limites à mentionner
 

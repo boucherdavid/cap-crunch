@@ -21,6 +21,18 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-30
 
+**[Analyse] — Facteur de plafond : période de transition et suggestions ciblées**
+(`calcul_salaire/prix_du_marche.py`, `calcul_salaire/analyse_jeunes.py`, `calcul_facteur.md`) :
+- Objectif précisé par David : éviter que les poolers qui reconstruisent décrochent quand les gros
+  deuxièmes contrats arrivent, pendant la transition (plafond LNH et salaires en forte hausse).
+- Prix du marché (médiane des contrats commençant en 2026-27 par position et palier de talent) :
+  équipe idéale 1,634 → 1,743 si tous payés au prix actuel (+6,7 % encore à venir, sur 3-4 ans).
+- Jeunes : 2e contrat 7,5 % du plafond (vs 6,8 % en 2014-16) ; 6 jeunes à ≥ 10 % en 2026-27 (vs 2-3),
+  max 17,3 % (Carlsson) vs 13,0 % (Subban).
+- **Recommandation revue : 1,28 pour 2026-27** (anticiper la moitié de la transition), puis règle
+  du taux de pression à 76 % recalculée chaque été (tend vers ~1,32). Option ciblée : rabais de
+  développement plafonnant à 12 % du plafond LNH un repêché du pool activé.
+
 **[Analyse] — Facteur de plafond : historique 2013-14 à 2015-16, recommandation revue**
 (`calcul_salaire/calcul_facteur_historique.py` remplace `calcul_facteur_2013.py`,
 `calcul_salaire/calcul_facteur.md`) :
