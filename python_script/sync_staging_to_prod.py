@@ -72,7 +72,7 @@ def get_active_season_id(db, label: str) -> int:
 def fetch_all_players(db):
     all_rows, offset, page = [], 0, 1000
     while True:
-        r = db.table('players').select('id, nhl_id, first_name, last_name').range(offset, offset + page - 1).execute()
+        r = db.table('players').select('id, nhl_id, first_name, last_name').order('id').range(offset, offset + page - 1).execute()
         all_rows.extend(r.data)
         if len(r.data) < page:
             break

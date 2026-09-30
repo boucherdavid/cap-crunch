@@ -1057,6 +1057,10 @@ corrigée le 2026-09-20 :**
 **Supabase :**
 - La legacy anon key est plus fiable que `sb_publishable_`
 - La logique RLS autour de `is_admin()` est sensible — modifier avec prudence
+- **Pagination `.range()` : toujours un tri unique** (finir par `.order('id')`, en TypeScript
+  comme en Python). Sans tri, ou avec un tri non unique (ex : `last_name` seul), Postgres peut
+  renvoyer les ex æquo dans un ordre différent d'une page à l'autre → doublons et lignes
+  manquantes (bug de la recherche Mode init, 2026-09-29).
 
 **Python :**
 - `csv_path` doit être relatif à `BASE_DIR` (requis pour GitHub Actions)

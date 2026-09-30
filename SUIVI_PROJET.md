@@ -19,6 +19,15 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-09-30
+
+**[Données] — Revalidation de la saisie Mode init en prod** : David a corrigé ses alignements et
+celui de Vincent (19 → 20 actifs, une recrue activée chacun). Vérifié par script (lecture seule) :
+les 8 poolers ont exactement 12 attaquants / 6 défenseurs / 2 gardiens actifs et au moins
+2 réservistes. Doublons Ekman-Larsson supprimés par David (fiches 3050/3051 + contrat 2029-30
+périmé de 2502) — vérifié : une seule fiche restante. `staging` fusionné sur `main` (tri unique
+des scripts Python, utilisés par les workflows GitHub).
+
 ### 2026-09-29
 
 **[Fix] — Doublons dans la recherche de joueurs de Mode init (prod)** (`app/app/admin/init/page.tsx`,
@@ -33,6 +42,35 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   `.range()` (y compris le game logs de `buildStandings()`, qui n'avait aucun tri — risque
   théorique de points comptés en double/omis).
 - Règle : toute pagination `.range()` doit avoir un tri **unique** (finir par `id`).
+
+**[Données] — Nettoyage de 92 fiches `players` corrompues en prod** (SQL manuel par David) :
+- Noms du type `BathersonRWage28cap$4.98M` (position + âge + cap collés au nom), tous créés le
+  2026-08-10, sans `nhl_id`, ids 3365–3471 — artefact d'un import ponctuel raté ; les CSV actuels
+  sont propres. Aucune référence dans les autres tables. Supprimées via
+  `DELETE FROM players WHERE nhl_id IS NULL AND last_name ~ '(Wage|Cage|Dage|Gage)[0-9]+cap\$'`.
+  Vérifié ensuite : 0 fiche corrompue en prod (2520 joueurs) et en staging (2517).
+
+**[Fix/Données] — Oliver Ekman-Larsson en triple + tri unique dans les scripts Python** :
+- Prod : 3 fiches « Oliver Ekman-Larsson » — 2502 (TOR, `nhl_id` 8475171, la vraie) + 3050 (UTA) et
+  3051 (VAN), créées le 2026-07-08 à partir des lignes de rachat/rétention que PuckPedia affiche sur
+  les pages d'équipe. L'import actuel fusionne déjà correctement ce cas (`fusionner_doublons`, garde
+  le contrat TOR), mais `deduplicate_players` ignore ces restes : le nom apparaît sur 3 équipes dans
+  le CSV du jour → traité comme homonyme probable. Seul doublon de nom dans toute la base.
+  Aucune référence sur 3050/3051 hors leurs propres contrats → suppression manuelle en SQL.
+- Même défaut que côté app : les chargements paginés `.range()` de `players`/`player_contracts`
+  n'avaient pas de tri → `.order('id')` ajouté (`import_supabase.py` ×3, `import_drafts.py`,
+  `projections_common.py`, `generate_backup_tool.py`, `sync_staging_to_prod.py`,
+  `backfill_nhl_ids.py` ×3, `import_regular_stats.py`, `import_playoff_stats.py`,
+  `backfill_regular_game_logs.py`, `backfill_playoff_game_logs.py`). Fonctions génériques
+  (`setup_staging.py`, `reset_saison_staging.py`, `import_mouvements_excel.py`) laissées telles
+  quelles — peuvent viser des tables sans `id`.
+
+**[Données] — Fin de la ressaisie des alignements en prod (Mode init, saison 2025-26)** :
+- David a terminé la saisie manuelle des 8 alignements en prod (326 lignes `pooler_rosters`
+  actives). Revalidation prévue le 2026-09-30. À confirmer : David et Vincent à 19 actifs (les
+  autres à 20). Suppression des doublons Ekman-Larsson pas encore faite (SQL dans `ETAT_PROJET.md`).
+- Commits de la session : `cf5aae0` (tri unique, app — en prod via `c7b17b7`), `70033ad` (doc),
+  `900be24` (tri unique, scripts Python — staging seulement).
 
 ### 2026-09-28
 

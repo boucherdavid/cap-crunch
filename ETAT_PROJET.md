@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-09-29
+**Dernière mise à jour :** 2026-09-30
 
 ---
 
@@ -13,16 +13,17 @@
 - Saison active : **2026-27 en staging**, mais **encore 2025-26 en prod** (2026-27 pas encore
   activée là-bas) — les scripts qui prennent « la saison active » ciblent donc 2025-26 en prod
   (ex : imports de projections → toujours passer `--season 2026-27`).
-- **Prod** : vidée volontairement le 2026-09-20 → 0 alignement, ressaisie manuelle des
-  alignements par David en cours. Historique complet reconstruit en **staging** seulement.
+- **Prod** : vidée volontairement le 2026-09-20, puis **alignements 2025-26 ressaisis par David
+  (Mode init) — terminé le 2026-09-29**, 326 lignes pour les 8 poolers. **Revalidation par David
+  le 2026-09-30** (voir section 4). Historique complet reconstruit en **staging** seulement.
 - Backup hors-ligne (`backup/pool_backup.html`) régénéré chaque dimanche depuis la prod.
 
 ## 2. Branches / déploiement
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : correctif des doublons de la recherche Mode init (pagination sans tri unique) — à fusionner après validation |
-| `main` (prod) | À jour — dernière fusion le 2026-09-28 (`6d3c801`) |
+| `staging` | À jour |
+| `main` (prod) | À jour — dernière fusion le 2026-09-30 (tri unique des requêtes paginées, scripts Python) |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
 détail des sources par blessure, correctif de saut d'écran du repêchage admin, renvoi en banque
@@ -61,6 +62,9 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
+0. **Prod — saisie Mode init 2025-26 : terminée et conforme** (vérifié le 2026-09-30) — les
+   8 poolers ont 12 attaquants, 6 défenseurs, 2 gardiens actifs et au moins 2 réservistes ;
+   doublons Ekman-Larsson supprimés.
 1. **Activer 2026-27** (hub `/admin/nouvelle-saison`, étape 2) là où David prépare la saison —
    sa capture du hub montrait « Actuellement active : 2025-26 ». Tant que ce n'est pas fait,
    `/repechage-agents-libres` lit 2025-26 (déjà démarrée) : panneau admin et libre-service

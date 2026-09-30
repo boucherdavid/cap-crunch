@@ -365,7 +365,7 @@ def deduplicate_players(supabase, roster_ambiguous: set | None = None, roster_by
     all_players = []
     offset = 0
     while True:
-        batch = supabase.table('players').select('id, first_name, last_name, team_id, nhl_id, age').range(offset, offset + 999).execute().data
+        batch = supabase.table('players').select('id, first_name, last_name, team_id, nhl_id, age').order('id').range(offset, offset + 999).execute().data
         all_players.extend(batch)
         if len(batch) < 1000:
             break
@@ -494,7 +494,7 @@ def merge_alias_duplicates(supabase):
     — la fiche gardée reçoit les contrats à jour plus loin dans l'import."""
     all_players, offset = [], 0
     while True:
-        batch = supabase.table('players').select('id, first_name, last_name, team_id, nhl_id').range(offset, offset + 999).execute().data
+        batch = supabase.table('players').select('id, first_name, last_name, team_id, nhl_id').order('id').range(offset, offset + 999).execute().data
         all_players.extend(batch)
         if len(batch) < 1000:
             break
@@ -610,7 +610,7 @@ def upload_vers_supabase(csv_path=None):
 
     offset = 0
     while True:
-        batch = supabase.table('players').select('id, first_name, last_name, team_id, draft_year, age').range(offset, offset + 999).execute().data
+        batch = supabase.table('players').select('id, first_name, last_name, team_id, draft_year, age').order('id').range(offset, offset + 999).execute().data
         for p in batch:
             fn = normaliser_nom(p['first_name'])
             ln = normaliser_nom(p['last_name'])
