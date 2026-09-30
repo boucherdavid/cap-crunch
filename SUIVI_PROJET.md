@@ -79,6 +79,7 @@ et les quelques textes admin encore au « vous » (« Vide d'abord… », « N'o
 Accords ton/ta/tes vérifiés un par un (« ta masse salariale », « ton écran »). Une espace perdue
 par SWC créée par la conversion (« t&apos;intéressent » sur plusieurs lignes) a été attrapée par
 `check:jsx-spaces` et corrigée. Règle ajoutée dans `CLAUDE.md` §7 et dans la skill `correcteur`.
+- Validé par David sur staging, fusionné sur `main` (`ca7a094`).
 
 ### 2026-09-29
 

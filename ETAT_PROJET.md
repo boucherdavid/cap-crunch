@@ -22,8 +22,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : espaces supprimées par SWC + skill `correcteur` + passe complète du correcteur (60 fichiers) + tutoiement partout — à valider (`/aide`, `/a-propos`, aperçu de transition, `/classement`) |
-| `main` (prod) | À jour — dernière fusion le 2026-09-30 (tri unique des requêtes paginées, scripts Python) |
+| `staging` | À jour |
+| `main` (prod) | À jour — dernière fusion le 2026-09-30 (`ca7a094` : espaces SWC, passe du correcteur, tutoiement) |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
 détail des sources par blessure, correctif de saut d'écran du repêchage admin, renvoi en banque
