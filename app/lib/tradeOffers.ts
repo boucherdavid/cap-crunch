@@ -71,17 +71,17 @@ export async function createTradeOffer(
 
   const validPoolers = new Set([proposerPoolerId, targetPoolerId])
   for (const item of items) {
-    if (!validPoolers.has(item.fromPoolerId)) return { error: 'Item invalide (pooler source hors échange).' }
+    if (!validPoolers.has(item.fromPoolerId)) return { error: 'Élément invalide (pooler source hors échange).' }
 
     if (item.itemType === 'player') {
-      if (!item.playerId) return { error: 'Joueur manquant sur un item.' }
+      if (!item.playerId) return { error: 'Joueur manquant sur un élément.' }
       const { data: row } = await admin
         .from('pooler_rosters').select('player_type')
         .eq('pooler_id', item.fromPoolerId).eq('player_id', item.playerId).eq('pool_season_id', saisonId).eq('is_active', true)
         .maybeSingle()
       if (!row) return { error: `Un joueur proposé n'appartient plus à ${await poolerName(admin, item.fromPoolerId)}.` }
     } else {
-      if (!item.pickId) return { error: 'Choix manquant sur un item.' }
+      if (!item.pickId) return { error: 'Choix manquant sur un élément.' }
       const { data: pick } = await admin
         .from('pool_draft_picks').select('current_owner_id, is_used')
         .eq('id', item.pickId).maybeSingle()
@@ -295,7 +295,7 @@ export async function confirmTradeReady(
     .from('trade_offer_items')
     .select('from_pooler_id, to_pooler_id, item_type, player_id')
     .eq('trade_offer_id', tradeOfferId)
-  if (!items) return { error: 'Items introuvables.' }
+  if (!items) return { error: 'Éléments introuvables.' }
 
   // Un ajustement supplémentaire ne peut pas viser un joueur déjà donné dans l'échange lui-même
   // (déjà géré par l'item) — évite un double traitement incohérent.
@@ -390,7 +390,7 @@ async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tr
     .from('trade_offer_items')
     .select('id, from_pooler_id, to_pooler_id, item_type, player_id, pick_id, chosen_type')
     .eq('trade_offer_id', tradeOfferId)
-  if (!items) return { error: 'Items introuvables.' }
+  if (!items) return { error: 'Éléments introuvables.' }
 
   const now = new Date().toISOString()
   const saisonId = offer.pool_season_id
@@ -427,7 +427,7 @@ async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tr
         .from('pooler_rosters').select('id, player_type, rookie_type, pool_draft_year')
         .eq('pooler_id', item.from_pooler_id).eq('player_id', item.player_id).eq('pool_season_id', saisonId).eq('is_active', true)
         .maybeSingle()
-      if (!srcRow) return { error: `Joueur (id: ${item.player_id}) introuvable chez le donneur — l'échange n'a pas pu être complété.` }
+      if (!srcRow) return { error: `Joueur (id : ${item.player_id}) introuvable chez le donneur — l'échange n'a pas pu être complété.` }
 
       const isRecrue = srcRow.player_type === 'recrue'
       const destType = isRecrue ? 'recrue' : (item.chosen_type ?? 'reserviste')
@@ -573,12 +573,12 @@ export async function resolveExpiredTradeOffers(saisonId: number): Promise<void>
     after(() => Promise.all([
       sendPushToUsers([offer.proposer_pooler_id, offer.target_pooler_id], {
         title: 'Cap Crunch — Transaction annulée',
-        body: "Le délai de confirmation est passé — l'échange est annulé, refaites une proposition au besoin.",
+        body: "Le délai de confirmation est passé — l'échange est annulé, refais une proposition au besoin.",
         url: TRADE_TAB_PATH,
       }).catch(() => {}),
       sendEmailToIds([offer.proposer_pooler_id, offer.target_pooler_id], {
         subject: 'Cap Crunch — Transaction annulée',
-        html: `<p>Le délai de confirmation est passé sans que les deux poolers aient confirmé — l'échange est annulé, rien n'a changé de part et d'autre. Refaites une proposition si l'échange tient toujours.</p>${linkHtml(TRADE_TAB_PATH)}`,
+        html: `<p>Le délai de confirmation est passé sans que les deux poolers aient confirmé — l'échange est annulé, rien n'a changé de part et d'autre. Refais une proposition si l'échange tient toujours.</p>${linkHtml(TRADE_TAB_PATH)}`,
       }).catch(() => {}),
     ]))
   }

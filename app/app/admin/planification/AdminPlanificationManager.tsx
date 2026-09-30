@@ -202,7 +202,7 @@ export default function AdminPlanificationManager({
             type="text"
             value={newTitle}
             onChange={e => setNewTitle(e.target.value)}
-            placeholder="Titre (ex: Rencontre annuelle 2026)"
+            placeholder="Titre (ex. : Rencontre annuelle 2026)"
             required
             className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />

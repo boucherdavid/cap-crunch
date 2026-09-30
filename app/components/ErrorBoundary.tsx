@@ -27,7 +27,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             onClick={() => this.setState({ hasError: false, error: undefined })}
             className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
           >
-            Reessayer
+            Réessayer
           </button>
         </div>
       )

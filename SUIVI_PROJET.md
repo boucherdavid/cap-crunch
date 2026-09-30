@@ -44,6 +44,34 @@ des scripts Python, utilisés par les workflows GitHub).
   JSX) + règle dans `CLAUDE.md` §7 : relecture obligatoire de tout texte visible. Au passage,
   aperçu de transition : « comme recrues » accordé au pluriel, virgule superflue retirée.
 
+**[Style] — Passe complète du correcteur sur tous les textes de l'interface** (60 fichiers,
+`app/`, `components/`, `lib/`) :
+- Méthode : extraction de toutes les chaînes visibles avec l'analyseur TypeScript (texte JSX,
+  chaînes et gabarits, ~3 900), relecture complète par lots + vérifications automatiques
+  (espace avant `: ? ! ;`, mots sans accents, « 48h »), corrections par script qui vérifie le
+  nombre exact d'occurrences de chaque texte remplacé. Seul le texte change, jamais la logique.
+- Typographie : espace avant `:`/`?`/`!` (« Erreur : », « Pooler : », « Il manque quelque
+  chose ? », « (id : … ) »), « 48 h », « 23 h 59 », « 0 $ », « ex. : », guillemets « »,
+  décimales à virgule (1,24–1,25) dans l'Aide.
+- Orthographe/accords : « Plafonds salariaux », « Défenseurs », « Équipe », « Réessayer »,
+  « Réservé », « à la banque », « pooler(s) éligible(s) », « validé(s)/datée(s) »,
+  « configurée(s) », « restent actifs/réservistes tels quels » (pluriel), « entre-temps ».
+- Vocabulaire : anglicismes remplacés (deadline → date limite, toggle → sélecteur/option,
+  preview → aperçu, item → élément, amber → ambre, Email → Courriel, slot → poste, « supportées »
+  → « prises en charge ») ; « NHL » → « LNH » dans le texte (NHL.com, NHL API gardés).
+- Contenu périmé corrigé : page Aide — chemins de menu de l'ancien menu horizontal
+  (« Alignements → … », « LNH → … », « Ressources → … ») remplacés par ceux du menu latéral,
+  « Bac à sable » → « Simulation », section Calendrier réécrite (vue jour par jour ; le résumé
+  des 7 prochains jours est devenu l'onglet Prochains matchs de l'alignement) ; page À propos
+  réorganisée selon le menu actuel (+ Mes listes et Blessures, qui manquaient) ; Guide admin
+  (séquence Nouvelle saison à jour) ; « Mes listes » : un joueur pris passe dans « Déjà pris »
+  (et non « masqué ») ; courriel de ballotage remporté (bandeau, pas un bouton « Ballotage »).
+- Non touché, à trancher par David : le tutoiement et le vouvoiement cohabitent (Aide, Compte
+  et pages anciennes au « vous », pages récentes au « tu »). Harmonisation non faite : c'est
+  un choix de ton, pas une faute.
+- Vérifié : `tsc` OK, `check:jsx-spaces` OK, ESLint sans nouvelle erreur (119 préexistantes
+  sur les fichiers touchés, contre 122 avant).
+
 ### 2026-09-29
 
 **[Fix] — Doublons dans la recherche de joueurs de Mode init (prod)** (`app/app/admin/init/page.tsx`,

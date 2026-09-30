@@ -370,7 +370,7 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
     <div className="space-y-6">
       {/* Barre du haut */}
       <div className="bg-white rounded-lg shadow p-4 flex items-center gap-4 flex-wrap">
-        <label className="text-sm font-medium text-gray-700">Pooler:</label>
+        <label className="text-sm font-medium text-gray-700">Pooler :</label>
         <select
           value={selectedPooler}
           onChange={(e) => handlePoolerChange(e.target.value)}
@@ -425,7 +425,7 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
       {initMode && (
         <div className="bg-orange-50 border border-orange-300 rounded-lg px-4 py-3 text-sm text-orange-800 flex items-start justify-between gap-4">
           <span>
-            <span className="font-semibold">Mode init actif</span> — Aucune validation (limites de positions, réservistes, recrues). Les joueurs appartenant à un autre pooler sont affichés et seront automatiquement retirés de leur roster actuel lors de la soumission. Pas de snapshots NHL ni de notifications.
+            <span className="font-semibold">Mode init actif</span> — Aucune validation (limites de positions, réservistes, recrues). Les joueurs appartenant à un autre pooler sont affichés et seront automatiquement retirés de leur roster actuel lors de la soumission. Pas de snapshots LNH ni de notifications.
           </span>
           <button
             onClick={handleViderTous}
@@ -445,7 +445,7 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
             <span>
               <span className={capPct > 100 ? 'text-red-600 font-bold' : 'text-gray-800 font-semibold'}>{formatCap(capUtilise)}</span>
               <span className="text-gray-400"> / {formatCap(saison.pool_cap)}</span>
-              <span className="text-gray-400 ml-2">{`${DASH} Dispo: `}<span className={capUtilise > saison.pool_cap ? 'text-red-600' : 'text-green-600'}>{formatCap(saison.pool_cap - capUtilise)}</span></span>
+              <span className="text-gray-400 ml-2">{`${DASH} Dispo : `}<span className={capUtilise > saison.pool_cap ? 'text-red-600' : 'text-green-600'}>{formatCap(saison.pool_cap - capUtilise)}</span></span>
             </span>
           </div>
           <div className="w-full bg-gray-100 rounded-full h-2.5">
@@ -455,12 +455,12 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
-            <div className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700">Actifs: {actifs.length} / 20</div>
-            <div className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700">Attaquants: {activeCounts.forward} / 12</div>
-            <div className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700">Defenseurs: {activeCounts.defense} / 6</div>
-            <div className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700">Gardiens: {activeCounts.goalie} / 2</div>
+            <div className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700">Actifs : {actifs.length} / 20</div>
+            <div className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700">Attaquants : {activeCounts.forward} / 12</div>
+            <div className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700">Défenseurs : {activeCounts.defense} / 6</div>
+            <div className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700">Gardiens : {activeCounts.goalie} / 2</div>
           </div>
-          <p className="text-xs text-gray-500">La banque de recrues ne compte pas dans la masse salariale. Les joueurs actifs et reservistes comptent toujours dans la masse salariale, meme s'ils sont recrues. Les joueurs LTIR ne comptent pas dans la masse salariale.</p>
+          <p className="text-xs text-gray-500">La banque de recrues ne compte pas dans la masse salariale. Les joueurs actifs et réservistes comptent toujours dans la masse salariale, même s'ils sont recrues. Les joueurs LTIR ne comptent pas dans la masse salariale.</p>
           {conformite.length === 0 ? (
             <div className="mt-3 flex items-center gap-2 text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2">
               <span className="text-green-500 font-bold">✓</span> Alignement conforme
@@ -622,7 +622,7 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
               onChange={(e) => setSelectedTeam(e.target.value)}
               className="w-32 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">Equipe</option>
+              <option value="">Équipe</option>
               {teamOptions.map((teamCode) => (
                 <option key={teamCode} value={teamCode}>{teamCode}</option>
               ))}
@@ -658,7 +658,7 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
                     <span className="text-xs text-gray-500 mr-1">{formatCap(contract)}</span>
                     <button
                       onClick={() => addPlayer(player, 'actif')}
-                      title="Ajouter comme Actif"
+                      title="Ajouter comme actif"
                       className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       Act
@@ -666,14 +666,14 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
                     <button
                       onClick={() => addPlayer(player, 'recrue')}
                       disabled={rookieBankDisabled}
-                      title={rookieBankDisabled ? 'Reserve aux joueurs recrues' : 'Ajouter a la banque de recrues'}
+                      title={rookieBankDisabled ? 'Réservé aux joueurs recrues' : 'Ajouter à la banque de recrues'}
                       className="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-30"
                     >
                       Banq
                     </button>
                     <button
                       onClick={() => addPlayer(player, 'reserviste')}
-                      title="Ajouter comme Reserviste"
+                      title="Ajouter comme réserviste"
                       className="text-xs bg-amber-50 hover:bg-amber-100 text-amber-700 px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       Res
@@ -683,7 +683,7 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
               )
             })}
             {filteredPlayers.length === 0 && search.trim() === '' && selectedTeam === '' && (
-              <p className="text-gray-400 text-sm text-center py-4">Choisissez une equipe ou commencez a taper un nom.</p>
+              <p className="text-gray-400 text-sm text-center py-4">Choisissez une équipe ou commencez à taper un nom.</p>
             )}
             {filteredPlayers.length === 0 && !(search.trim() === '' && selectedTeam === '') && (
               <p className="text-gray-400 text-sm text-center py-4">Aucun joueur disponible</p>

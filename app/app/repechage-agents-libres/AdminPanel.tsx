@@ -278,7 +278,7 @@ export default function AdminPanel({
                 )}
                 {draftOrder.length > 0 && (
                   <p className="text-xs text-gray-400 mt-2">
-                    {eligibleCount} pooler{eligibleCount > 1 ? 's' : ''} éligibles (≥ {fmt(nhlMinimumSalary)}{' '}d&apos;espace)
+                    {eligibleCount} pooler{eligibleCount > 1 ? 's' : ''} éligible{eligibleCount > 1 ? 's' : ''} (≥ {fmt(nhlMinimumSalary)}{' '}d&apos;espace)
                   </p>
                 )}
                 {startErr && <p className="text-sm text-red-600 mt-2">{startErr}</p>}

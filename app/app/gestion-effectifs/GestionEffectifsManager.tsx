@@ -291,7 +291,7 @@ const ACTION_DEFS: { type: ActionType; label: string; description: string; admin
   // risque d'abus à revenir plus tôt que prévu, mais pas demandé, scope inchangé pour l'instant.
   { type: 'ltir',            label: 'LTIR',              description: 'Actif → LTIR' },
   { type: 'return_ltir',     label: 'Retour LTIR',       description: 'LTIR → actif', adminOnly: true },
-  { type: 'ltir_sign',       label: 'LTIR + Signature',  description: 'LTIR et signer' },
+  { type: 'ltir_sign',       label: 'LTIR + signature',  description: 'LTIR et signer' },
 ]
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -846,7 +846,7 @@ export default function GestionEffectifsManager({
           <BudgetPill used={totalAlUsed} max={maxSignaturesAl} label="Standard" />
           <BudgetPill used={totalLtirUsed} max={maxSignaturesLtir} label="LTIR" />
           {!isAdmin && (
-            <span className="text-xs text-gray-400 ml-auto">Délai réactivation : {delaiReactivationJours} j</span>
+            <span className="text-xs text-gray-400 ml-auto">Délai de réactivation : {delaiReactivationJours} j</span>
           )}
         </div>
       )}
@@ -862,7 +862,7 @@ export default function GestionEffectifsManager({
               )}
             </p>
             <p className="text-xs text-amber-700 mt-0.5">
-              Ajoute-le à ton panier et complète au besoin (libération) pour rester conforme — 48h pour agir, sinon l&apos;admin devra intervenir.
+              Ajoute-le à ton panier et complète au besoin (libération) pour rester conforme — 48 h pour agir, sinon l&apos;admin devra intervenir.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">

@@ -327,7 +327,7 @@ export default function WatchlistPanel({
             <p className="text-sm text-gray-500">
               Aucune liste pour l&apos;instant. Crée une liste pour garder une trace des{' '}
               {kinds.includes('recrues') && kinds.includes('joueurs') ? 'joueurs et recrues' : kinds[0] === 'recrues' ? 'recrues' : 'joueurs'}{' '}
-              qui t&apos;intéressent — un joueur pris par un pooler est automatiquement masqué.
+              qui t&apos;intéressent — un joueur pris par un pooler passe automatiquement dans « Déjà pris ».
             </p>
           )}
 

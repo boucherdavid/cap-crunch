@@ -60,7 +60,7 @@ const slotBadge: Record<'F' | 'D' | 'G', string> = {
 }
 
 function deadlineLabel(deadline: string | null): string {
-  if (!deadline) return 'Aucune deadline'
+  if (!deadline) return 'Aucune date limite'
   return new Date(deadline).toLocaleString('fr-CA', {
     day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
     timeZone: 'America/Toronto',
@@ -627,7 +627,7 @@ export default function GestionSeriesManager({
               <p className="text-sm font-semibold text-gray-700">Ajouter un joueur au panier</p>
 
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Slot à remplir</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Poste à remplir</label>
                 <div className="flex gap-2">
                   {(['F', 'D', 'G'] as const).map(s => (
                     <button key={s} onClick={() => { setActiveSlot(s); setAddPlayer(null) }}
@@ -729,7 +729,7 @@ export default function GestionSeriesManager({
               {/* Résumé cap */}
               {hasCart && (
                 <div className="text-xs text-gray-500 bg-gray-50 rounded px-3 py-2">
-                  Cap projetée : <span className={projectedOver ? 'text-red-600 font-semibold' : 'text-gray-800 font-semibold'}>{capFmt(projectedCap)}</span>
+                  Cap projeté : <span className={projectedOver ? 'text-red-600 font-semibold' : 'text-gray-800 font-semibold'}>{capFmt(projectedCap)}</span>
                   {' / '}{capFmt(saison.poolCap)}
                   {projectedOver && <span className="text-red-600 ml-1">⚠ Dépassement</span>}
                 </div>

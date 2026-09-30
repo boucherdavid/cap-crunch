@@ -485,7 +485,7 @@ function Header({
         <p className="text-gray-500 mt-1">
           {saison && (
             <>
-              Saison {saison.season} &middot; Cap pool :{' '}
+              Saison {saison.season} &middot; Cap du pool :{' '}
               <span className="font-semibold text-blue-700">
                 {new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(saison.pool_cap)}
               </span>

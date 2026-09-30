@@ -293,7 +293,7 @@ export default function RookieOverrideManager({
                       type="number"
                       value={poolDraftYear}
                       onChange={e => setPoolDraftYear(e.target.value)}
-                      placeholder="ex: 2022"
+                      placeholder="ex. : 2022"
                       min={2015}
                       max={2030}
                       className="border rounded px-2 py-1 text-sm w-28 text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"

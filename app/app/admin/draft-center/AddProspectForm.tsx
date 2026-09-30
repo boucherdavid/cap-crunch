@@ -48,7 +48,7 @@ export default function AddProspectForm({ draftYear }: { draftYear: number }) {
           className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         <input value={lastName} onChange={e => setLastName(e.target.value)} required placeholder="Nom"
           className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <input value={position} onChange={e => setPosition(e.target.value)} placeholder="Position (ex: LW)"
+        <input value={position} onChange={e => setPosition(e.target.value)} placeholder="Position (ex. : LW)"
           className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         <input value={team} onChange={e => setTeam(e.target.value)} placeholder="Équipe, ligue"
           className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />

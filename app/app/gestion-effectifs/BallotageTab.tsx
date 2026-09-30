@@ -28,7 +28,7 @@ function formatExpiry(iso: string) {
   // recule d'une minute pour l'affichage humain ("23 sept., 23h59", la vraie date limite pour
   // réclamer) plutôt que le début du jour suivant, qui prêterait à confusion.
   const when = new Date(raw.getTime() - 60_000).toLocaleString('fr-CA', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Toronto' })
-  return hours < 48 ? `${when} (dans ${hours}h)` : when
+  return hours < 48 ? `${when} (dans ${hours} h)` : when
 }
 
 export default function BallotageTab({ saisonId }: { saisonId: number }) {

@@ -16,7 +16,7 @@ export default async function ListesPage() {
         saison, recrues du dernier repêchage LNH à cibler au repêchage du pool. Tes listes sont
         privées (personne d&apos;autre, admin compris, ne les voit) et se retrouvent aussi dans
         Signatures des agents libres, Repêchage des recrues, Gestion d&apos;effectifs et
-        Simulation. Un joueur pris par un pooler est automatiquement masqué.
+        Simulation. Un joueur pris par un pooler passe automatiquement dans « Déjà pris ».
       </p>
       {user ? (
         <WatchlistPanel kinds={['joueurs', 'recrues']} />

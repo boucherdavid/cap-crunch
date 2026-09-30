@@ -15,12 +15,12 @@ export default function ChangeLogPanel({
     <div className="bg-white rounded-lg shadow p-5 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-          Changements post-deadline
+          Changements après la date limite
         </h2>
       </div>
 
       {log.length === 0 ? (
-        <p className="text-sm text-gray-400">Aucun changement post-deadline enregistré.</p>
+        <p className="text-sm text-gray-400">Aucun changement enregistré après la date limite.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

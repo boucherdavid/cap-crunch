@@ -591,7 +591,7 @@ export default function PresaisonManager({
             )}
             {draftOrder.length > 0 && (
               <p className="text-xs text-gray-400 mt-2">
-                {eligibleIds(data.poolers, draftOrder, data.nhlMinimumSalary).length} pooler{eligibleIds(data.poolers, draftOrder, data.nhlMinimumSalary).length > 1 ? 's' : ''} éligibles (≥ {fmt(data.nhlMinimumSalary)} d'espace) · visible en direct par les poolers sur /repechage-agents-libres
+                {eligibleIds(data.poolers, draftOrder, data.nhlMinimumSalary).length} pooler{eligibleIds(data.poolers, draftOrder, data.nhlMinimumSalary).length > 1 ? 's' : ''} éligible{eligibleIds(data.poolers, draftOrder, data.nhlMinimumSalary).length > 1 ? 's' : ''} (≥ {fmt(data.nhlMinimumSalary)} d'espace) · visible en direct par les poolers sur /repechage-agents-libres
               </p>
             )}
             {startErr && (

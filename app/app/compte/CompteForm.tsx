@@ -224,7 +224,7 @@ export default function CompteForm({ profile }: { profile: Profile }) {
                 setEmailTestMsg(
                   res.error
                     ? { type: 'err', text: `Erreur : ${res.error}` }
-                    : { type: 'ok', text: 'Courriel test envoyé — vérifiez votre boîte de réception (et les indésirables).' },
+                    : { type: 'ok', text: 'Courriel de test envoyé — vérifiez votre boîte de réception (et les indésirables).' },
                 )
               }}
               disabled={emailTestBusy}

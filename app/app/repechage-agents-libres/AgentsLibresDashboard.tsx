@@ -1521,7 +1521,7 @@ function MonAlignement({
                 type="number"
                 value={filterMaxSalary}
                 onChange={e => setFilterMaxSalary(e.target.value)}
-                placeholder="Salaire max $ (ex: 2000000)"
+                placeholder="Salaire max. en $ (ex. : 2000000)"
                 className="w-40 border rounded-lg px-2 py-1 text-xs focus:outline-none"
               />
               <label className="flex items-center gap-1 text-xs text-gray-600">

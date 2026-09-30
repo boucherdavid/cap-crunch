@@ -77,7 +77,7 @@ export default function PlayoffConfigForm({ saison }: { saison: Saison }) {
             <p className="text-xs text-gray-400 mt-1">Masse salariale maximale par sélection.</p>
           </div>
           <div className="px-4 py-3">
-            <p className="text-xs text-gray-500 mb-1">Deadline de soumission</p>
+            <p className="text-xs text-gray-500 mb-1">Date limite de soumission</p>
             <input type="datetime-local" value={deadline} onChange={e => setDeadline(e.target.value)} className={inputCls} />
             <p className="text-xs text-gray-400 mt-1">Avant cette date : modifications libres. Après : changements limités.</p>
           </div>

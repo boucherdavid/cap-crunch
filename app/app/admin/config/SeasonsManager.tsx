@@ -92,7 +92,7 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
     if (result.error) {
       showMsg('error', result.error)
     } else {
-      showMsg('success', `${result.copied} entrées copiées vers la nouvelle saison.${result.returned ? ` ${result.returned} recrue${result.returned > 1 ? 's' : ''} à protection expirée — statut recrue perdu de façon permanente (reste${result.returned > 1 ? 'nt' : ''} actif/réserviste tel quel).` : ''}${result.backToBank ? ` ${result.backToBank} recrue${result.backToBank > 1 ? 's' : ''} encore protégée${result.backToBank > 1 ? 's' : ''} retournée${result.backToBank > 1 ? 's' : ''} en banque.` : ''}`)
+      showMsg('success', `${result.copied} entrées copiées vers la nouvelle saison.${result.returned ? ` ${result.returned} recrue${result.returned > 1 ? 's' : ''} à protection expirée — statut recrue perdu de façon permanente (reste${result.returned > 1 ? 'nt' : ''} actif${result.returned > 1 ? 's' : ''}/réserviste${result.returned > 1 ? 's' : ''} tel${result.returned > 1 ? 's' : ''} quel${result.returned > 1 ? 's' : ''}).` : ''}${result.backToBank ? ` ${result.backToBank} recrue${result.backToBank > 1 ? 's' : ''} encore protégée${result.backToBank > 1 ? 's' : ''} retournée${result.backToBank > 1 ? 's' : ''} en banque.` : ''}`)
       router.refresh()
     }
   }
@@ -302,7 +302,7 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
           ) : (
             <>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Plafond NHL ($)</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Plafond LNH ($)</label>
                 <input
                   type="number"
                   value={nhlCap}

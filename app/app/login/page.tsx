@@ -44,7 +44,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
-      setError('Email ou mot de passe invalide')
+      setError('Courriel ou mot de passe invalide')
       setLoading(false)
     } else {
       saveAccount(email)
@@ -106,7 +106,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Courriel</label>
             <input
               type="email"
               value={email}

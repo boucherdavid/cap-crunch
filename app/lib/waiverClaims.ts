@@ -130,7 +130,7 @@ export async function createWaiverClaimForRelease(saisonId: number, playerId: nu
   }
 
   const label = await playerLabel(admin, playerId)
-  const deadline = `${new Date(`${deadlineDay}T12:00:00Z`).toLocaleDateString('fr-CA', { dateStyle: 'medium', timeZone: 'America/Toronto' })} 23h59`
+  const deadline = `${new Date(`${deadlineDay}T12:00:00Z`).toLocaleDateString('fr-CA', { dateStyle: 'medium', timeZone: 'America/Toronto' })} 23 h 59`
   await notifyAllPoolersExcept(
     releasedByPoolerId,
     'Cap Crunch — Ballotage',
@@ -246,13 +246,13 @@ export async function resolveExpiredWaiverClaims(saisonId: number) {
     after(() => Promise.all([
       sendPushToUsers([winnerId], {
         title: 'Cap Crunch — Ballotage',
-        body: `Tu as remporté le ballotage pour ${label} — complète ta transaction dans Gestion d'effectifs (48h).`,
+        body: `Tu as remporté le ballotage pour ${label} — complète ta transaction dans Gestion d'effectifs (48 h).`,
         url: MOUVEMENTS_PATH,
       }).catch(() => {}),
       sendEmailToIds([winnerId], {
         subject: 'Cap Crunch — Ballotage remporté',
         html: `<p>Tu as remporté le ballotage pour <strong>${label}</strong>.</p>
-               <p>Rends-toi dans Gestion d'effectifs (onglet Mouvements) pour l'ajouter à ton alignement — un bouton "Ballotage" pré-rempli t'attend. Ajoute au besoin une libération pour rester conforme. Tu as 48h, après quoi l'admin devra intervenir manuellement.</p>${linkHtml(MOUVEMENTS_PATH)}`,
+               <p>Rends-toi dans Gestion d'effectifs (onglet Mouvements) pour l'ajouter à ton alignement — un bandeau t'y attend avec le joueur déjà sélectionné. Ajoute au besoin une libération pour rester conforme. Tu as 48 h, après quoi l'admin devra intervenir manuellement.</p>${linkHtml(MOUVEMENTS_PATH)}`,
       }).catch(() => {}),
     ]))
   }
@@ -276,7 +276,7 @@ export async function resolveExpiredAwardedClaims(saisonId: number) {
 
   await admin.from('waiver_claims').update({
     status: 'blocked',
-    error_message: "Le gagnant n'a pas complété sa transaction dans le délai de 48h — à traiter manuellement.",
+    error_message: "Le gagnant n'a pas complété sa transaction dans le délai de 48 h — à traiter manuellement.",
   }).in('id', stale.map(c => c.id))
 }
 

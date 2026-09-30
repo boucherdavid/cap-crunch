@@ -7,23 +7,13 @@ type Category = { id: string; label: string; items: Item[] }
 
 const CATEGORIES: Category[] = [
   {
-    id: 'alignements',
-    label: 'Alignements',
+    id: 'mon-equipe',
+    label: 'Mon équipe',
     items: [
       {
-        title: 'Mon équipe',
+        title: 'Mon alignement',
         href: '/dashboard',
-        description: "Votre alignement complet (actifs, réservistes, recrues, LTIR), votre masse salariale et vos choix de repêchage. Un sélecteur permet de voir l'alignement de n'importe quel autre pooler.",
-      },
-      {
-        title: 'Équipes',
-        href: '/poolers',
-        description: 'Liste des 8 poolers avec rang au classement et masse salariale utilisée — chaque nom mène à son alignement détaillé.',
-      },
-      {
-        title: 'Journal des transactions',
-        href: '/journal-transactions',
-        description: 'Historique public, en lecture seule, de tous les mouvements du pool (signatures, libérations, changements de statut, échanges).',
+        description: "Votre alignement complet (actifs, réservistes, recrues, LTIR), votre masse salariale, vos choix de repêchage et les prochains matchs de vos joueurs. Un sélecteur permet de voir l'alignement de n'importe quel autre pooler.",
       },
       {
         title: "Gestion d'effectifs",
@@ -34,28 +24,44 @@ const CATEGORIES: Category[] = [
       {
         title: 'Simulation',
         href: '/simulation',
-        note: 'Bac à sable',
+        note: 'Aperçu',
         description: "Testez un mouvement ou un échange sans rien enregistrer pour de vrai — disponible toute l'année, pas seulement en pré-saison.",
       },
       {
-        title: 'Signatures des agents libres',
-        href: '/repechage-agents-libres',
-        note: 'Pré-saison',
-        description: "Tableau de bord partagé entre chaque saison : signature d'agents libres à tour de rôle, ajustement de votre alignement, déclaration « prêt » avant le démarrage officiel de la saison.",
+        title: 'Mes listes',
+        href: '/listes',
+        note: 'Privé',
+        description: "Vos listes de joueurs à surveiller (agents libres, recrues du dernier repêchage LNH), classées par priorité, avec une note par joueur — pratiques le soir du pool.",
+      },
+    ],
+  },
+  {
+    id: 'le-pool',
+    label: 'Le pool',
+    items: [
+      {
+        title: 'Tous les alignements',
+        href: '/poolers',
+        description: 'Liste des 8 poolers avec rang au classement et masse salariale utilisée — chaque nom mène à son alignement détaillé.',
+      },
+      {
+        title: 'Journal des transactions',
+        href: '/journal-transactions',
+        description: 'Historique public, en lecture seule, de tous les mouvements du pool (signatures, libérations, changements de statut, échanges).',
       },
     ],
   },
   {
     id: 'classement',
-    label: 'Classement',
+    label: 'Classement du pool',
     items: [
       {
         title: 'Saison complète',
         href: '/classement',
-        description: 'Rang, points totaux et détail (buts, passes, victoires, défaites prolongation) pour chaque pooler. Cliquez un joueur pour voir sa contribution détaillée.',
+        description: 'Rang, points totaux et détail (buts, passes, victoires, défaites en prolongation) pour chaque pooler. Cliquez sur un joueur pour voir sa contribution détaillée.',
       },
       {
-        title: 'Hebdomadaire & mensuel',
+        title: 'Hebdomadaire et mensuel',
         href: '/classement/hebdomadaire',
         description: 'Mêmes données que le classement complet, bornées à une semaine (lundi à dimanche) ou à un mois civil, avec navigation précédent/suivant.',
       },
@@ -66,12 +72,17 @@ const CATEGORIES: Category[] = [
     label: 'LNH',
     items: [
       {
+        title: 'Calendrier LNH',
+        href: '/calendrier',
+        description: 'Les matchs de la LNH jour par jour, avec le nombre de matchs impliquant vos joueurs.',
+      },
+      {
         title: 'Statistiques LNH',
         href: '/statistiques',
         description: 'Stats des patineurs et des gardiens, saison régulière ou séries. Point vert = déjà pris par un pooler. Filtres et recherche par nom.',
       },
       {
-        title: 'LNH – Projections Pts',
+        title: 'Projections',
         href: '/statistiques/projections',
         description: 'Quatre sources de projections externes comparées côte à côte, plus une tendance calculée sur les 3 dernières saisons réelles.',
       },
@@ -81,9 +92,9 @@ const CATEGORIES: Category[] = [
         description: 'Mêmes informations que pour la LNH, mais pour la ligue de développement — utile pour suivre vos prospects en banque de recrues.',
       },
       {
-        title: 'Calendrier',
-        href: '/calendrier',
-        description: "Matchs par semaine ou par mois, filtrables par équipe, plus un résumé des matchs des 7 prochains jours pour vos joueurs actifs.",
+        title: 'Blessures',
+        href: '/statistiques/blessures',
+        description: 'Les joueurs blessés de la LNH (CBS Sports, recoupé avec ESPN), mis à jour chaque jour, avec leur admissibilité au LTIR et le pooler qui les possède.',
       },
       {
         title: 'Contrats LNH',
@@ -93,8 +104,8 @@ const CATEGORIES: Category[] = [
     ],
   },
   {
-    id: 'recrues',
-    label: 'Recrues',
+    id: 'prospects',
+    label: 'Prospects LNH',
     items: [
       {
         title: 'Classement pré-repêchage',
@@ -104,18 +115,30 @@ const CATEGORIES: Category[] = [
       {
         title: 'Repêchage LNH',
         href: '/repechage',
-        description: "Résultats réels du repêchage LNH des 5 dernières années, ronde par ronde, avec équipe LNH sélectionneuse et stats junior pour 2026.",
-      },
-      {
-        title: 'Repêchage interne',
-        href: '/repechage-recrues',
-        description: 'Le tableau du repêchage des recrues propre au pool lui-même, par saison.',
+        description: "Résultats réels du repêchage LNH des 5 dernières années, ronde par ronde, avec l'équipe LNH qui a sélectionné chaque joueur et ses stats junior pour 2026.",
       },
     ],
   },
   {
-    id: 'ressources',
-    label: 'Ressources',
+    id: 'repechage-annuel',
+    label: 'Repêchage annuel des poolers',
+    items: [
+      {
+        title: 'Repêchage des recrues',
+        href: '/repechage-recrues',
+        description: 'Le tableau du repêchage des recrues propre au pool, par saison.',
+      },
+      {
+        title: 'Signatures des agents libres',
+        href: '/repechage-agents-libres',
+        note: 'Pré-saison',
+        description: "Tableau de bord partagé entre chaque saison : signature d'agents libres à tour de rôle, ajustement de votre alignement, déclaration « prêt » avant le démarrage officiel de la saison.",
+      },
+    ],
+  },
+  {
+    id: 'communaute',
+    label: 'Communauté',
     items: [
       {
         title: 'Babillard',
@@ -125,8 +148,14 @@ const CATEGORIES: Category[] = [
       {
         title: 'Planification',
         href: '/planification',
-        description: 'Sondage type Doodle pour fixer une date de rencontre du pool, avec résumé des disponibilités de tous.',
+        description: 'Sondage de type Doodle pour fixer une date de rencontre du pool, avec un résumé des disponibilités de tous.',
       },
+    ],
+  },
+  {
+    id: 'aide',
+    label: 'Aide',
+    items: [
       {
         title: 'Aide & Règlements',
         href: '/aide',
@@ -141,12 +170,12 @@ const CATEGORIES: Category[] = [
       {
         title: 'Notifications',
         href: '/compte',
-        description: 'Notifications push (par appareil) et par courriel, activables indépendamment, avec bouton de test pour chacune.',
+        description: 'Notifications push (par appareil) et par courriel, activables indépendamment, avec un bouton de test pour chacune.',
       },
       {
         title: 'Signaler un problème',
         href: '/signaler',
-        description: 'Formulaire direct pour rapporter un bug, une donnée incorrecte ou proposer une amélioration.',
+        description: 'Formulaire direct pour rapporter un bogue, une donnée incorrecte ou proposer une amélioration.',
       },
     ],
   },
@@ -191,10 +220,10 @@ export default function AProposPage() {
       </div>
 
       <div className="mt-10 bg-amber-50 border border-amber-200 rounded-lg px-5 py-4 text-sm text-amber-800">
-        <p className="font-semibold mb-1">Il manque quelque chose?</p>
+        <p className="font-semibold mb-1">Il manque quelque chose ?</p>
         <p>
           Une fonctionnalité que vous cherchez souvent et qui n&apos;existe pas encore, une section confuse, un outil
-          pas assez expliqué? Faites-le savoir via{' '}
+          pas assez expliqué ? Faites-le savoir via{' '}
           <Link href="/signaler" className="underline font-medium">Signaler un problème</Link>.
         </p>
       </div>

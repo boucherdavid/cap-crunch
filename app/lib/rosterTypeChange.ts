@@ -68,7 +68,7 @@ export async function checkFutureRosterConflict(
   if (last && last.new_type !== finalType) {
     const d = new Date(last.changed_at).toLocaleDateString('fr-CA')
     return {
-      error: `Un événement déjà journalisé pour ce joueur est daté du ${d} (postérieur à cette correction) et indique un statut différent ("${last.new_type ?? 'retiré'}") — l'appliquer créerait une période fantôme dans le classement. Supprime cet événement dans Admin → Pool → Suivi s'il s'agit d'un artefact obsolète, ou choisis une date effective postérieure au ${d} si ce statut du ${d} est réel.`,
+      error: `Un événement déjà journalisé pour ce joueur est daté du ${d} (postérieur à cette correction) et indique un statut différent (« ${last.new_type ?? 'retiré'} ») — l'appliquer créerait une période fantôme dans le classement. Supprime cet événement dans Admin → Communauté → Suivi s'il s'agit d'un artefact obsolète, ou choisis une date effective postérieure au ${d} si ce statut du ${d} est réel.`,
     }
   }
   return {}

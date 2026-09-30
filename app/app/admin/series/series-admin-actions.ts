@@ -121,7 +121,7 @@ export async function sendDeadlineReminderAction(
       .eq('id', poolSeasonId)
       .single()
     if (!saison) return { error: 'Saison introuvable' }
-    if (!saison.playoff_submission_deadline) return { error: 'Aucune deadline configurée' }
+    if (!saison.playoff_submission_deadline) return { error: 'Aucune date limite configurée' }
 
     const deadline = new Date(saison.playoff_submission_deadline)
     const deadlineStr = deadline.toLocaleString('fr-CA', {

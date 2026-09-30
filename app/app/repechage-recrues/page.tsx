@@ -134,7 +134,7 @@ export default async function RepechageRecruesPage({
       {totalPicks === 0 ? (
         <div className="bg-gray-50 rounded-lg border border-gray-200 px-6 py-12 text-center">
           <p className="text-gray-500">Aucun choix de repêchage configuré pour cette saison.</p>
-          <p className="text-xs text-gray-400 mt-2">L'admin doit initialiser les picks dans Pré-saison &gt; Choix de repêchage.</p>
+          <p className="text-xs text-gray-400 mt-2">L&apos;admin doit d&apos;abord créer les choix de repêchage (Nouvelle saison → Choix de repêchage).</p>
         </div>
       ) : (
         <>

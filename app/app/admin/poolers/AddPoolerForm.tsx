@@ -53,11 +53,11 @@ export default function AddPoolerForm() {
             onChange={e => setName(e.target.value)}
             required
             className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Ex: Martin Tremblay"
+            placeholder="Ex. : Martin Tremblay"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1">Email</label>
+          <label className="block text-sm font-medium text-gray-600 mb-1">Courriel</label>
           <input
             type="email"
             value={email}
