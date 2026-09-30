@@ -21,6 +21,34 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-09-30
 
+**[Feat/Fix] — Copie de secours : onglet « Simulation d'échange » + masse salariale corrigée**
+(`python_script/generate_backup_tool.py`) :
+- Demande de David : simuler un échange entre deux poolers dans la copie de secours. Nouvel onglet :
+  deux sélecteurs de pooler, cases à cocher de chaque côté, tableau avant/après (attaquants,
+  défenseurs, gardiens, réservistes, masse salariale avec l'écart, conforme ou non), statut à
+  l'arrivée au choix pour un actif/réserviste (une recrue reste recrue, un LTIR reste LTIR — même
+  règle que l'app). « Appliquer l'échange » modifie les alignements locaux et l'inscrit au journal
+  (nouveau type `echange`) ; rien n'est modifié avant. Choix de repêchage non inclus (ils ne sont
+  pas dans l'état modifiable du fichier).
+- Bogue trouvé en passant (capture de David : 191 M$ / 129 M$) : la masse salariale de la copie
+  comptait les recrues de la banque, alors que la règle (affichée dans l'onglet Paramètres) les
+  exclut. Nouveau `countsInCap()` (actif + réserviste seulement), utilisé partout (Alignements,
+  Paramètres, sélecteur, simulation).
+- Fichier normalisé en fins de ligne LF (mélange CRLF/LF après des modifications) — sans effet
+  pour git, qui stocke du LF.
+- Testé : génération contre staging dans un fichier temporaire, `node --check`, puis exécution
+  avec un faux DOM (sélection, avant/après, statut à l'arrivée, application + journal).
+
+**[Feat] — Copie de secours : un alignement à la fois** (`python_script/generate_backup_tool.py`) :
+- Demande de David : l'onglet Alignements affichait les 8 alignements à la suite (trop chargé).
+  Sélecteur « Alignement de : » en haut de l'onglet (⚠ à côté d'un pooler qui dépasse le cap), un
+  seul alignement rendu ; choix mémorisé dans le navigateur (`localStorage`, clé séparée des
+  modifications, donc « Réinitialiser depuis l'export » ne le touche pas).
+- Testé : génération contre staging dans un fichier temporaire (le `backup/pool_backup.html` du
+  dépôt n'est pas modifié), `node --check` du JavaScript produit, puis exécution avec un faux DOM
+  (1 carte rendue, changement de pooler OK, choix mémorisé).
+- Prend effet à la prochaine génération : la tâche GitHub utilise le script de `main`.
+
 **[Feat] — Copie de secours téléchargeable + mise à jour manuelle par l'admin**
 (`app/copie-de-secours/` : `page.tsx`, `telecharger/route.ts`, `actions.ts`, `BackupAdminPanel.tsx` ;
 `lib/backupTool.ts`, `components/Navbar.tsx`, `app/aide/AideTabs.tsx`, `app/a-propos/page.tsx`) :
@@ -37,6 +65,9 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   David) ; sans elle, le bouton est désactivé avec une explication. La génération cible toujours
   la prod, même lancée depuis staging.
 - Page « Copie de secours » dans le menu Aide, + entrées dans le guide de l'Aide et À propos.
+- Jeton `GITHUB_WORKFLOW_TOKEN` créé par David (fine-grained, `cap-crunch` seulement, Actions en
+  lecture/écriture) et ajouté dans les deux projets Vercel ; il a fallu un nouveau déploiement pour
+  qu'il soit pris en compte. Bouton testé avec succès sur staging, fusionné sur `main` (`38b9e96`).
 
 **[Feat] — Blessures : filtre « Mes joueurs seulement »** (`app/statistiques/blessures/page.tsx`,
 `BlessuresTable.tsx`, `app/aide/AideTabs.tsx`) :

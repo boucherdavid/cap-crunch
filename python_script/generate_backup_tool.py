@@ -220,6 +220,10 @@ TEMPLATE = """<!DOCTYPE html>
   .journal-form > div, .toolbar > div { display: flex; flex-direction: column; }
   .journal-form label, .toolbar label { font-size: 11px; color: #6b7280; margin-bottom: 2px; }
   td.bad { color: #dc2626; font-weight: 700; }
+  .trade-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 800px) { .trade-grid { grid-template-columns: 1fr; } }
+  .trade-grid tr.picked td { background: #eff6ff; }
+  .delta-up { color: #dc2626; } .delta-down { color: #16a34a; }
   td.active-col, th.active-col { color: #2563eb; font-weight: 700; }
 </style>
 </head>
@@ -241,6 +245,7 @@ TEMPLATE = """<!DOCTYPE html>
     <button data-tab="parametres">Paramètres</button>
     <button data-tab="contrats">Contrats</button>
     <button data-tab="choix">Choix de repêchage</button>
+    <button data-tab="echanges">Simulation d'échange</button>
     <button data-tab="journal">Journal</button>
   </div>
 
@@ -251,6 +256,7 @@ TEMPLATE = """<!DOCTYPE html>
     <div class="card"><table id="contratsTable"></table></div>
   </div>
   <div id="panel-choix" class="panel"></div>
+  <div id="panel-echanges" class="panel"></div>
   <div id="panel-journal" class="panel">
     <div class="card">
       <h2>Ajouter une entrée au journal</h2>
@@ -309,6 +315,7 @@ const CHANGE_TYPE_LABEL = {
   ltir: 'Mise sur LTIR',
   retour_ltir: 'Retour de LTIR',
   changement_type: 'Changement de type',
+  echange: 'Échange',
 };
 
 function pickChangeType(oldType, newType) {
@@ -521,6 +528,13 @@ function currentCap(p) {
 // que figé à la valeur enregistrée au moment de l'ajout, pour que changer la saison mette à
 // jour tous les alignements déjà en place. Repli sur la valeur enregistrée si le joueur n'est
 // plus trouvable dans BASELINE.players (ne devrait pas arriver).
+// Seuls les actifs et réservistes comptent dans la masse salariale — la banque de recrues et le
+// LTIR en sont exclus (règle du pool). Avant le 2026-09-30, les recrues étaient comptées par
+// erreur (ex : 191 M$ affichés pour un cap de 129 M$).
+function countsInCap(entry) {
+  return entry.playerType === 'actif' || entry.playerType === 'reserviste';
+}
+
 function capForPlayer(entry) {
   const ref = BASELINE.players.find(p => p.playerId === entry.playerId);
   if (!ref) return Number(entry.capNumber) || 0;
@@ -550,6 +564,16 @@ function buildPlayerOptions() {
     </optgroup>`).join('');
 }
 
+const PICKER_KEY = STORAGE_KEY + ':pooler';
+let selectedPoolerId = null;
+try { selectedPoolerId = localStorage.getItem(PICKER_KEY); } catch (e) {}
+
+function selectPooler(id) {
+  selectedPoolerId = id;
+  try { localStorage.setItem(PICKER_KEY, id); } catch (e) {}
+  renderAlignements();
+}
+
 function renderAlignements() {
   const container = document.getElementById('panel-alignements');
   container.innerHTML = '';
@@ -561,10 +585,23 @@ function renderAlignements() {
 
   const playerOptions = buildPlayerOptions();
   const poolCap = getPoolCap();
+  const capUsedFor = id => (byPooler.get(id) || []).filter(countsInCap).reduce((s, e) => s + capForPlayer(e), 0);
 
-  BASELINE.poolers.forEach(p => {
+  // Un seul alignement affiché à la fois (David, 2026-09-30 — la page entière était trop
+  // chargée) : sélecteur de pooler, choix mémorisé dans ce navigateur. ⚠ = dépasse le cap.
+  if (!BASELINE.poolers.some(p => p.id === selectedPoolerId)) selectedPoolerId = BASELINE.poolers[0]?.id ?? null;
+  const picker = document.createElement('div');
+  picker.className = 'toolbar';
+  picker.innerHTML = `
+    <label for="poolerPicker"><strong>Alignement de :</strong></label>
+    <select id="poolerPicker" onchange="selectPooler(this.value)">
+      ${BASELINE.poolers.map(p => `<option value="${p.id}" ${p.id === selectedPoolerId ? 'selected' : ''}>${p.name}${capUsedFor(p.id) > poolCap ? ' ⚠' : ''}</option>`).join('')}
+    </select>`;
+  container.appendChild(picker);
+
+  BASELINE.poolers.filter(p => p.id === selectedPoolerId).forEach(p => {
     const entries = byPooler.get(p.id) || [];
-    const capUsed = entries.filter(e => e.playerType !== 'ltir').reduce((s, e) => s + capForPlayer(e), 0);
+    const capUsed = capUsedFor(p.id);
     const over = capUsed > poolCap;
 
     let lastGroup = null;
@@ -609,6 +646,176 @@ function renderAlignements() {
   });
 }
 
+// ── Simulation d'échange (David, 2026-09-30) ────────────────────────────────────────────────
+// Choisir deux poolers, cocher les joueurs échangés de chaque côté, voir l'impact sur la masse
+// salariale et la composition (12/6/2 + réservistes) des deux alignements. Rien n'est modifié tant
+// qu'on ne clique pas « Appliquer » (qui modifie alors l'alignement local et le journal, comme
+// les autres ajustements). Même règle que l'app : une recrue échangée reste une recrue, un LTIR
+// reste LTIR ; seuls les actifs/réservistes reçus ont un statut à choisir.
+const trade = { a: null, b: null, picked: new Set(), incomingType: {} };
+
+function rosterOf(poolerId) {
+  return state.rosters.map((r, idx) => ({ ...r, idx })).filter(r => r.poolerId === poolerId);
+}
+
+function rosterStats(entries) {
+  const counts = { forward: 0, defense: 0, goalie: 0 };
+  entries.filter(e => e.playerType === 'actif').forEach(e => { counts[getBucket(e.position)]++; });
+  const reservistes = entries.filter(e => e.playerType === 'reserviste').length;
+  const cap = entries.filter(countsInCap).reduce((s, e) => s + capForPlayer(e), 0);
+  const conforme = counts.forward === ACTIVE_LIMITS.forward && counts.defense === ACTIVE_LIMITS.defense &&
+    counts.goalie === ACTIVE_LIMITS.goalie && reservistes >= MIN_RESERVISTES && cap <= getPoolCap();
+  return { counts, reservistes, cap, conforme };
+}
+
+function incomingTypeFor(e) {
+  if (e.playerType === 'recrue' || e.playerType === 'ltir') return e.playerType;
+  return trade.incomingType[e.playerId] || e.playerType;
+}
+
+// Alignement de `poolerId` après l'échange : retire ce qu'il donne, ajoute ce qu'il reçoit.
+function rosterAfterTrade(poolerId, otherId) {
+  const kept = rosterOf(poolerId).filter(e => !trade.picked.has(e.playerId));
+  const received = rosterOf(otherId).filter(e => trade.picked.has(e.playerId))
+    .map(e => ({ ...e, poolerId, playerType: incomingTypeFor(e) }));
+  return kept.concat(received);
+}
+
+function setTradePooler(side, id) {
+  trade[side] = id || null;
+  trade.picked = new Set();
+  trade.incomingType = {};
+  renderEchanges();
+}
+
+function toggleTradePlayer(playerId) {
+  if (trade.picked.has(playerId)) trade.picked.delete(playerId);
+  else trade.picked.add(playerId);
+  renderEchanges();
+}
+
+function setIncomingType(playerId, type) {
+  trade.incomingType[playerId] = type;
+  renderEchanges();
+}
+
+function statCell(before, after, limit, isMin) {
+  const bad = isMin ? after < limit : after !== limit;
+  const changed = before !== after ? ` <span class="muted">(avant : ${before})</span>` : '';
+  return `<td class="${bad ? 'bad' : ''}">${after}${isMin ? ` (min ${limit})` : ` / ${limit}`}${changed}</td>`;
+}
+
+function renderTradeSummary(poolerId, otherId) {
+  const before = rosterStats(rosterOf(poolerId));
+  const after = rosterStats(rosterAfterTrade(poolerId, otherId));
+  const delta = after.cap - before.cap;
+  const deltaTxt = delta === 0 ? '' : ` <span class="${delta > 0 ? 'delta-up' : 'delta-down'}">(${delta > 0 ? '+' : ''}${fmtMoney(delta)})</span>`;
+  return `
+    <tr>
+      <td><strong>${poolerName(poolerId)}</strong></td>
+      ${statCell(before.counts.forward, after.counts.forward, ACTIVE_LIMITS.forward, false)}
+      ${statCell(before.counts.defense, after.counts.defense, ACTIVE_LIMITS.defense, false)}
+      ${statCell(before.counts.goalie, after.counts.goalie, ACTIVE_LIMITS.goalie, false)}
+      ${statCell(before.reservistes, after.reservistes, MIN_RESERVISTES, true)}
+      <td class="${after.cap > getPoolCap() ? 'bad' : ''}">${fmtMoney(after.cap)} / ${fmtMoney(getPoolCap())}${deltaTxt}</td>
+      <td>${after.conforme ? '<span class="badge avail">Conforme</span>' : '<span class="badge nonconforme">Non conforme</span>'}</td>
+    </tr>`;
+}
+
+function renderTradeSide(poolerId, otherId) {
+  let lastGroup = null;
+  const rows = sortRoster(rosterOf(poolerId)).map(e => {
+    const g = groupKeyFor(e);
+    const header = g !== lastGroup ? `<tr class="group-header"><td colspan="4">${GROUP_LABEL[g]}</td></tr>` : '';
+    lastGroup = g;
+    const picked = trade.picked.has(e.playerId);
+    const typeCell = !picked
+      ? `<span class="badge ${e.playerType}">${e.playerType}</span>`
+      : (e.playerType === 'recrue' || e.playerType === 'ltir')
+        ? `<span class="muted">reste ${e.playerType}</span>`
+        : `<select onchange="setIncomingType(${e.playerId}, this.value)">
+             <option value="actif" ${incomingTypeFor(e) === 'actif' ? 'selected' : ''}>actif chez ${poolerName(otherId)}</option>
+             <option value="reserviste" ${incomingTypeFor(e) === 'reserviste' ? 'selected' : ''}>réserviste chez ${poolerName(otherId)}</option>
+           </select>`;
+    return header + `
+      <tr class="${picked ? 'picked' : ''}">
+        <td><input type="checkbox" ${picked ? 'checked' : ''} onchange="toggleTradePlayer(${e.playerId})"></td>
+        <td>${e.playerName} <span class="muted">${e.position || ''}</span></td>
+        <td>${typeCell}</td>
+        <td>${fmtMoney(capForPlayer(e))}</td>
+      </tr>`;
+  }).join('');
+  const given = rosterOf(poolerId).filter(e => trade.picked.has(e.playerId));
+  const givenCap = given.filter(countsInCap).reduce((s, e) => s + capForPlayer(e), 0);
+  return `
+    <div class="card">
+      <h2>${poolerName(poolerId)} donne <span class="cap">${given.length} joueur${given.length > 1 ? 's' : ''} · ${fmtMoney(givenCap)} en masse</span></h2>
+      <table>
+        <thead><tr><th></th><th>Joueur</th><th>Statut</th><th>Cap</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="4" class="muted">Aucun joueur</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+
+function applyTrade() {
+  const moves = state.rosters.filter(r => trade.picked.has(r.playerId) && (r.poolerId === trade.a || r.poolerId === trade.b));
+  if (moves.length === 0) return;
+  const names = moves.map(m => m.playerName).join(', ');
+  if (!confirm(`Appliquer l'échange à tes alignements locaux (${names}) ? Il sera inscrit au journal ; « Réinitialiser depuis l'export » permet toujours de revenir en arrière.`)) return;
+  moves.forEach(r => {
+    const from = r.poolerId;
+    const to = from === trade.a ? trade.b : trade.a;
+    const oldType = r.playerType;
+    const newType = incomingTypeFor(r);
+    r.poolerId = to;
+    r.playerType = newType;
+    logManual({ changeType: 'echange', oldType, newType, playerName: r.playerName, poolerName: `${poolerName(from)} → ${poolerName(to)}` });
+  });
+  trade.picked = new Set();
+  trade.incomingType = {};
+  saveState();
+  renderAlignements();
+  renderParametres();
+  renderJournal();
+  renderEchanges();
+}
+
+function renderEchanges() {
+  const container = document.getElementById('panel-echanges');
+  const ids = BASELINE.poolers.map(p => p.id);
+  if (!ids.includes(trade.a)) trade.a = ids[0] ?? null;
+  if (!ids.includes(trade.b) || trade.b === trade.a) trade.b = ids.find(id => id !== trade.a) ?? null;
+  if (!trade.a || !trade.b) {
+    container.innerHTML = '<div class="card"><p class="muted">Il faut au moins deux poolers.</p></div>';
+    return;
+  }
+  const options = side => BASELINE.poolers
+    .filter(p => p.id !== (side === 'a' ? trade.b : trade.a))
+    .map(p => `<option value="${p.id}" ${p.id === trade[side] ? 'selected' : ''}>${p.name}</option>`).join('');
+  container.innerHTML = `
+    <div class="card">
+      <h2>Simulation d'échange</h2>
+      <p class="muted">Coche les joueurs échangés de chaque côté pour voir l'impact sur la masse salariale et la composition des deux alignements. Rien n'est modifié tant que tu ne cliques pas « Appliquer l'échange ». Une recrue reste une recrue et un joueur LTIR reste LTIR chez l'autre pooler ; pour un actif ou un réserviste, choisis son statut à l'arrivée.</p>
+      <div class="add-row">
+        <select onchange="setTradePooler('a', this.value)">${options('a')}</select>
+        <span>⇄</span>
+        <select onchange="setTradePooler('b', this.value)">${options('b')}</select>
+      </div>
+      <table>
+        <thead><tr><th>Après l'échange</th><th>Attaquants</th><th>Défenseurs</th><th>Gardiens</th><th>Réservistes</th><th>Masse salariale</th><th></th></tr></thead>
+        <tbody>${renderTradeSummary(trade.a, trade.b)}${renderTradeSummary(trade.b, trade.a)}</tbody>
+      </table>
+      <div class="add-row" style="margin-top:10px">
+        <button onclick="applyTrade()" ${trade.picked.size === 0 ? 'disabled' : ''}>Appliquer l'échange</button>
+        <button class="small" onclick="setTradePooler('a', trade.a)" ${trade.picked.size === 0 ? 'disabled' : ''}>Tout décocher</button>
+      </div>
+    </div>
+    <div class="trade-grid">
+      ${renderTradeSide(trade.a, trade.b)}
+      ${renderTradeSide(trade.b, trade.a)}
+    </div>`;
+}
+
 function renderParametres() {
   const container = document.getElementById('panel-parametres');
   const poolCap = getPoolCap();
@@ -624,7 +831,7 @@ function renderParametres() {
     const counts = { forward: 0, defense: 0, goalie: 0 };
     entries.filter(e => e.playerType === 'actif').forEach(e => { counts[getBucket(e.position)]++; });
     const reservistes = entries.filter(e => e.playerType === 'reserviste').length;
-    const capUsed = entries.filter(e => e.playerType !== 'ltir').reduce((s, e) => s + capForPlayer(e), 0);
+    const capUsed = entries.filter(countsInCap).reduce((s, e) => s + capForPlayer(e), 0);
     const conforme = counts.forward === ACTIVE_LIMITS.forward && counts.defense === ACTIVE_LIMITS.defense &&
       counts.goalie === ACTIVE_LIMITS.goalie && reservistes >= MIN_RESERVISTES && capUsed <= poolCap;
     return `
@@ -776,6 +983,7 @@ document.querySelectorAll('.tabs button').forEach(btn => {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'echanges') renderEchanges();
   });
 });
 document.getElementById('contratsSearch').addEventListener('input', e => renderContrats(e.target.value));
@@ -787,6 +995,7 @@ renderAlignements();
 renderParametres();
 renderContrats('');
 renderPicks();
+renderEchanges();
 renderJournal();
 </script>
 </body>
