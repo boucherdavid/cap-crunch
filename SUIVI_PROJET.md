@@ -21,6 +21,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-01
 
+**[Déploiement] — Recherche de joueurs, fiche enrichie et Analyse en prod** : validés par David
+en staging, fusionnés sur `main`. Dernier ajustement : sur `/admin/analyse`, l'accordéon unique
+est scindé en « Comment lire ce graphique » et « Définitions des mesures » (sigles peu connus).
+
+
 **[Feat] — Fiche joueur : « Ajouter à une liste » ; recherche mise en évidence**
 (`app/components/AddToWatchlist.tsx`, `app/components/PlayerSlideOver.tsx`,
 `app/components/PlayerSearch.tsx`, `app/app/listes/actions.ts`) :

@@ -248,15 +248,17 @@ export default function AnalyseTool({
         {preset && <p className="text-sm text-gray-600">{preset.question}</p>}
       </div>
 
-      <div className="mb-4">
-        <CollapsibleLegend title="Comment lire ce graphique et définitions des mesures">
-          <ul className="space-y-1 text-xs text-gray-500 mb-3">
+      <div className="mb-4 space-y-2">
+        <CollapsibleLegend title="Comment lire ce graphique">
+          <ul className="space-y-1 text-xs text-gray-500">
             <li>• Chaque point est un joueur. La ligne grise est la <strong>tendance</strong> : la valeur verticale « attendue » pour une valeur horizontale donnée, calculée sur les joueurs affichés.</li>
             <li>• L&apos;<strong>écart</strong> est la distance verticale entre le joueur et cette ligne. Au-dessus : il fait mieux que la tendance ; en dessous : moins bien.</li>
             <li>• La <strong>corrélation</strong> (de −1 à 1) dit à quel point les deux mesures vont ensemble. Proche de 0 : la tendance ne veut pas dire grand-chose.</li>
             <li>• Les salaires sont ceux de la saison active du pool, les stats celles de la saison choisie : un joueur qui vient de signer un gros contrat paraîtra « cher » par rapport à ses points de l&apos;an dernier.</li>
             <li>• Clique un point ou un nom pour ouvrir la fiche du joueur.</li>
           </ul>
+        </CollapsibleLegend>
+        <CollapsibleLegend title="Définitions des mesures">
           <dl className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-1.5">
             {METRICS.map(m => (
               <div key={m.key} className="flex items-baseline gap-2 text-xs">
