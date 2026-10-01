@@ -16,6 +16,12 @@ Contrairement à l'ancien scraper (delete + reinsert complet), celui-ci fait un 
 pour pouvoir calculer "day-to-day depuis plus de 14 jours" (règle LTIR de David) — seul un
 remplacement complet aurait perdu cette information au run suivant.
 
+MoneyPuck (moneypuck.com/injuries.htm, David 2026-10-01) — troisième source, CSV public dont
+l'identifiant est le `nhl_id` (aucun jumelage par nom) : statut officiel de la liste des blessés
+de l'équipe (IR, IR-LT = LTIR LNH, IR-NR, DTD, O), date de retour, matchs manqués/à manquer.
+Comme ESPN, enrichit seulement les joueurs déjà trouvés via CBS. Son statut IR compte comme
+« sur la liste des blessés LNH » pour l'admissibilité LTIR (voir app/lib/ltirEligibility.ts).
+
 Nécessite les colonnes ajoutées à player_injuries le 2026-09-23 (suite) — voir schema.sql.
 
 Usage:
@@ -24,6 +30,8 @@ Usage:
 """
 
 import argparse
+import csv
+import io
 import os
 import re
 import sys
@@ -53,6 +61,8 @@ ESPN_API_URLS = [
     'https://site.web.api.espn.com/apis/site/v2/sports/hockey/nhl/injuries',
     'https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/injuries',
 ]
+
+MONEYPUCK_URL = 'https://moneypuck.com/moneypuck/playerData/playerNews/current_injuries.csv'
 
 # Garde-fous (David, 2026-09-25) — voir main().
 MIN_EXISTING_FOR_RATIO_CHECK = 10
@@ -164,6 +174,34 @@ def scrape_cbs():
                 'updated': updated, 'injury': injury, 'status': status,
             })
     return records
+
+
+def scrape_moneypuck():
+    """Retourne {nhl_id: {status, return_date, games_missed, games_to_miss, description}}."""
+    res = requests.get(MONEYPUCK_URL, headers=HEADERS, timeout=30)
+    res.raise_for_status()
+    if not res.text.startswith('playerId'):
+        raise RuntimeError('Format MoneyPuck inattendu (page HTML au lieu du CSV ?)')
+
+    def to_int(v):
+        try:
+            return int(float(v))
+        except (TypeError, ValueError):
+            return None
+
+    out = {}
+    for r in csv.DictReader(io.StringIO(res.text)):
+        nhl_id = to_int(r.get('playerId'))
+        if not nhl_id:
+            continue
+        out[nhl_id] = {
+            'status': (r.get('playerInjuryStatus') or '').strip() or None,
+            'return_date': (r.get('dateOfReturn') or '').strip() or None,
+            'games_missed': to_int(r.get('gamesMissedSoFar')),
+            'games_to_miss': to_int(r.get('gamesStillToMiss')),
+            'description': (r.get('yahooInjuryDescription') or '').strip() or None,
+        }
+    return out
 
 
 def _find_injuries_blob(obj):
@@ -286,7 +324,23 @@ def main():
         print(f'[ATTENTION] Échec du scrape ESPN ({e}) — on continue avec CBS seulement.')
         espn_records = []
 
+    print('[INFO] Récupération des blessures MoneyPuck (recoupement par nhl_id)...')
+    try:
+        mp_by_nhl = scrape_moneypuck()
+        print(f'[INFO] MoneyPuck : {len(mp_by_nhl)} entrée(s).')
+    except Exception as e:
+        print(f'[ATTENTION] Échec MoneyPuck ({e}) — on continue sans.')
+        mp_by_nhl = {}
+
     db = create_client(SUPABASE_URL, SUPABASE_KEY)
+    nhl_by_pid = {}
+    offset = 0
+    while True:
+        batch = db.table('players').select('id, nhl_id').not_.is_('nhl_id', 'null')             .order('id').range(offset, offset + 999).execute().data
+        nhl_by_pid.update({p['id']: p['nhl_id'] for p in batch})
+        if len(batch) < 1000:
+            break
+        offset += 1000
     by_name_team, by_name, by_lastname_team = build_player_lookup(db)
 
     def resolve(records):
@@ -314,6 +368,12 @@ def main():
     cbs_pids = {pid for _, pid, _ in cbs_matched}
     overlap = cbs_pids & set(espn_by_pid)
     print(f'[ESPN] {len(overlap)}/{len(cbs_pids)} joueur(s) de CBS recoupé(s) avec ESPN.')
+    mp_by_pid = {pid: mp_by_nhl[nhl_by_pid[pid]] for pid in cbs_pids
+                 if nhl_by_pid.get(pid) in mp_by_nhl}
+    print(f'[MONEYPUCK] {len(mp_by_pid)}/{len(cbs_pids)} joueur(s) de CBS recoupé(s) avec MoneyPuck.')
+    mp_only = len(set(mp_by_nhl) - {nhl_by_pid.get(pid) for pid in cbs_pids})
+    if mp_only:
+        print(f'[MONEYPUCK] {mp_only} blessé(s) MoneyPuck absent(s) de CBS (non importés).')
 
     if not args.apply:
         print('\n[DRY-RUN] Aucune écriture. Relancez avec --apply pour importer.')
@@ -345,7 +405,9 @@ def main():
         # Date ESPN conservée séparément (David, 2026-09-24) pour signaler un désaccord avec CBS
         # côté app — est_return_date garde son rôle : CBS d'abord, ESPN seulement en repli.
         espn_return = parse_est_return(espn['est_return'], today) if espn else None
-        est_return = parse_est_return(rec['status'], today) or espn_return
+        mp = mp_by_pid.get(pid)
+        mp_return = parse_est_return(mp['return_date'], today) if mp and mp['return_date'] else None
+        est_return = parse_est_return(rec['status'], today) or espn_return or mp_return
         rows.append({
             'player_id': pid,
             'position': rec['position'],
@@ -356,6 +418,11 @@ def main():
             'espn_note': espn['note'] if espn else None,
             'est_return_date': est_return.isoformat() if est_return else None,
             'espn_est_return_date': espn_return.isoformat() if espn_return else None,
+            'mp_status': mp['status'] if mp else None,
+            'mp_return_date': mp_return.isoformat() if mp_return else None,
+            'mp_games_missed': mp['games_missed'] if mp else None,
+            'mp_games_to_miss': mp['games_to_miss'] if mp else None,
+            'mp_description': mp['description'] if mp else None,
             'first_seen_at': first_seen_by_pid.get(pid, now_iso),
             'last_seen_at': now_iso,
         })

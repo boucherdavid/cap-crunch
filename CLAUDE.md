@@ -153,6 +153,17 @@ python scrape_injuries.py            # dry-run — aucune écriture, affiche le 
 python scrape_injuries.py --apply    # exécution réelle, sans confirmation (voir section 4)
 ```
 
+```bash
+# Importe les stats avancées MoneyPuck dans player_advanced_stats (David, 2026-10-01) — page
+# /admin/stats-avancees. Remplacement complet par saison (saison = année de début, 2025 =
+# 2025-26). Cible prod comme les autres scripts. Quotidien : .github/workflows/advanced_stats.yml
+# (11h UTC). Mention « MoneyPuck.com » obligatoire là où les données sont affichées.
+cd python_script
+python import_advanced_stats.py                      # saison courante + précédente
+python import_advanced_stats.py --seasons 2023 2024  # saisons précises
+python import_advanced_stats.py --dry-run            # aucune écriture
+```
+
 ---
 
 ## 3. Structure du projet
@@ -175,7 +186,8 @@ Hockey_Pool_App/
 │       ├── import.yml             ← Pipeline auto (lundi 6h UTC + manuel)
 │       ├── keepalive_staging.yml  ← Ping staging (jeudi 6h UTC) pour éviter pause Supabase
 │       ├── backup_tool.yml        ← Régénère backup/pool_backup.html (dimanche 12h UTC + manuel)
-│       └── injuries.yml           ← Scrape blessures CBS Sports (quotidien 16h UTC (midi ET) + manuel)
+│       ├── injuries.yml           ← Scrape blessures CBS + ESPN + MoneyPuck (quotidien 16h UTC (midi ET) + manuel)
+│       └── advanced_stats.yml     ← Stats avancées MoneyPuck (quotidien 11h UTC + manuel)
 ├── app/                       ← Application Next.js
 │   ├── CLAUDE.md              ← Règles spécifiques Next.js/TypeScript
 │   ├── AGENTS.md
@@ -191,7 +203,8 @@ Hockey_Pool_App/
 │   ├── import_supabase.py
 │   ├── import_drafts.py
 │   ├── generate_backup_tool.py ← Génère backup/pool_backup.html (voir section 2)
-│   ├── scrape_injuries.py      ← Scrape les blessures LNH, CBS + ESPN (voir section 2)
+│   ├── scrape_injuries.py      ← Scrape les blessures LNH, CBS + ESPN + MoneyPuck (voir section 2)
+│   ├── import_advanced_stats.py ← Stats avancées MoneyPuck (voir section 2)
 │   ├── source/                ← CSV générés par le scraping
 │   ├── teams_offline/
 │   ├── diagnostics/
@@ -219,6 +232,8 @@ Hockey_Pool_App/
 - `cap_signing_watch` (conformité cap continue, voir section 6)
 - `player_injuries` (suivi des blessures LNH, CBS Sports + ESPN en recoupement — voir section 6,
   une ligne par joueur blessé, upsert quotidien par `python_script/scrape_injuries.py`)
+- `player_advanced_stats` (stats avancées MoneyPuck par saison/situation/joueur, clé `nhl_id` —
+  `/admin/stats-avancees`, importée par `python_script/import_advanced_stats.py`)
 - `ltir_requests` (demandes de mise sur LTIR en attente d'approbation admin — voir section 6)
 - `meeting_polls`, `meeting_poll_dates`, `meeting_poll_responses`, `meeting_poll_comments`
   (sondage de planification, `/planification` — le babillard `meeting_poll_comments` est
@@ -281,6 +296,10 @@ directement sur GitHub via l'API contents car le dépôt est public (`lib/backup
 par `workflow_dispatch` et suit l'exécution — exige `GITHUB_WORKFLOW_TOKEN` dans Vercel, jeton
 « fine-grained » limité au dépôt, permission Actions lecture/écriture ; sans lui, bouton désactivé)
 `/offline`
+
+**Admin — `/admin/stats-avancees`** (David, 2026-10-01) : stats avancées MoneyPuck
+(`player_advanced_stats`), admin seulement pour l'instant — pour l'ouvrir aux poolers, déplacer la
+route hors de `/admin` et retirer la vérification `is_admin`. Lien dans Admin > Opérations courantes.
 `/planification` (sondage type Doodle pour une rencontre — vue pooler : ses disponibilités,
 le résumé, le babillard propre au sondage ; notifie les admins par push à chaque
 soumission/commentaire). Gestion (créer le sondage, ajouter/retirer des dates) sur
@@ -1192,6 +1211,11 @@ corrigée le 2026-09-20 :**
 
 **Suivi des blessures LNH + demandes de LTIR (`player_injuries`, `ltir_requests`) — David,
 2026-09-23 :**
+- **MoneyPuck (3e source, David 2026-10-01)** : CSV `moneypuck.com/moneypuck/playerData/
+  playerNews/current_injuries.csv`, jumelé par `nhl_id` (pas de nom). Comme ESPN, enrichit
+  seulement les joueurs CBS (colonnes `mp_*`). `mp_status` = statut officiel (IR, IR-LT = LTIR
+  LNH, IR-NR, DTD, O, DD) ; IR* → admissible LTIR d'office (`isOnNhlIr`, 3e paramètre). Date de
+  retour : CBS, puis ESPN, puis MoneyPuck.
 - **Sources** : CBS Sports (`cbssports.com/nhl/injuries`, principale — détermine qui apparaît
   dans `player_injuries`) recoupée avec ESPN (`espn.com/nhl/injuries`, secondaire — enrichit
   seulement les joueurs déjà trouvés via CBS, ne détermine jamais seule qui est "blessé").

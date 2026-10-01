@@ -23,6 +23,7 @@ type InjuryRowLike = {
   est_return_date: string | null
   espn_est_return_date: string | null
   espn_status_desc: string | null
+  mp_status: string | null
   first_seen_at: string
 }
 
@@ -33,7 +34,7 @@ function toInjuryInfo(row: InjuryRowLike, settings: LtirSettings): InjuryInfo {
     eligible: computeLtirEligible({
       estReturnDate: row.est_return_date,
       firstSeenAt: row.first_seen_at,
-      onNhlIr: isOnNhlIr(row.status, row.espn_status_desc),
+      onNhlIr: isOnNhlIr(row.status, row.espn_status_desc, row.mp_status),
     }, settings),
     estReturnDate: row.est_return_date,
     espnEstReturnDate: row.espn_est_return_date,
@@ -65,7 +66,7 @@ export async function fetchInjuriesByPlayerId(supabase: SupabaseLike): Promise<M
   const [{ data }, settings] = await Promise.all([
     supabase
       .from('player_injuries')
-      .select('player_id, injury_type, status, est_return_date, espn_est_return_date, espn_status_desc, first_seen_at'),
+      .select('player_id, injury_type, status, est_return_date, espn_est_return_date, espn_status_desc, mp_status, first_seen_at'),
     fetchLtirSettings(supabase),
   ])
 
@@ -82,7 +83,7 @@ export async function fetchInjuriesByNhlId(supabase: SupabaseLike): Promise<Map<
   const [{ data }, settings] = await Promise.all([
     supabase
       .from('player_injuries')
-      .select('injury_type, status, est_return_date, espn_est_return_date, espn_status_desc, first_seen_at, players (nhl_id)'),
+      .select('injury_type, status, est_return_date, espn_est_return_date, espn_status_desc, mp_status, first_seen_at, players (nhl_id)'),
     fetchLtirSettings(supabase),
   ])
 

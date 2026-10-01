@@ -26,9 +26,19 @@ function fmtTs(iso: string | null): string {
   return new Date(iso).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short' })
 }
 
+/** Statuts officiels MoneyPuck (liste des blessés de l'équipe LNH). */
+const MP_STATUS_LABEL: Record<string, string> = {
+  'IR-LT': 'LTIR (liste des blessés à long terme)',
+  'IR': 'Liste des blessés',
+  'IR-NR': 'Liste des blessés (hors effectif)',
+  'DTD': 'Au jour le jour',
+  'O': 'Absent',
+  'DD': 'Décision le jour du match',
+}
+
 /** Pastilles des sources qui rapportent la blessure — cliquables pour déplier le détail. CBS est
- * toujours présente (source principale, détermine qui est dans la liste) ; ESPN grisée si le
- * joueur n'a pas été recoupé. */
+ * toujours présente (source principale, détermine qui est dans la liste) ; ESPN et MoneyPuck
+ * grisées si le joueur n'a pas été recoupé. */
 function SourceToggle({ r, open, onToggle }: { r: InjuryRow; open: boolean; onToggle: () => void }) {
   const hasEspn = !!(r.espnStatusDesc || r.espnEstReturnDate || r.espnNote)
   return (
@@ -41,6 +51,7 @@ function SourceToggle({ r, open, onToggle }: { r: InjuryRow; open: boolean; onTo
     >
       <span className="rounded px-1 py-0.5 bg-blue-50 text-blue-700">CBS</span>
       <span className={`rounded px-1 py-0.5 ${hasEspn ? 'bg-rose-50 text-rose-700' : 'bg-gray-100 text-gray-400 line-through'}`}>ESPN</span>
+      <span className={`rounded px-1 py-0.5 ${r.mp ? 'bg-teal-50 text-teal-700' : 'bg-gray-100 text-gray-400 line-through'}`}>MoneyPuck</span>
       <span className="text-gray-400">{open ? '▴' : '▾'}</span>
     </button>
   )
@@ -49,7 +60,7 @@ function SourceToggle({ r, open, onToggle }: { r: InjuryRow; open: boolean; onTo
 function SourcesDetail({ r }: { r: InjuryRow }) {
   const hasEspn = !!(r.espnStatusDesc || r.espnEstReturnDate || r.espnNote)
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
       <div className="rounded border border-blue-100 bg-blue-50/40 p-2">
         <p className="font-semibold text-blue-700 mb-1">CBS Sports <span className="font-normal text-gray-400">(principale)</span></p>
         <p className="text-gray-700">{r.status || '—'}</p>
@@ -66,7 +77,25 @@ function SourcesDetail({ r }: { r: InjuryRow }) {
           <p className="text-gray-400">Joueur absent de la liste ESPN.</p>
         )}
       </div>
-      <p className="sm:col-span-2 text-[11px] text-gray-400">Suivi depuis le {fmtTs(r.firstSeenAt)} — l&apos;admissibilité LTIR se base sur CBS (ESPN seulement si CBS n&apos;a pas de date).</p>
+      <div className="rounded border border-teal-100 bg-teal-50/40 p-2">
+        <p className="font-semibold text-teal-700 mb-1">MoneyPuck <span className="font-normal text-gray-400">(statut officiel)</span></p>
+        {r.mp ? (
+          <>
+            <p className="text-gray-700">
+              {r.mp.status ? (MP_STATUS_LABEL[r.mp.status] ?? r.mp.status) : '—'}
+              {r.mp.description && <> — {r.mp.description}</>}
+            </p>
+            <p className="text-gray-500 mt-1">
+              Retour estimé : {fmtDate(r.mp.returnDate)}
+              {r.mp.gamesToMiss != null && <> · Matchs à manquer : {r.mp.gamesToMiss}</>}
+              {r.mp.gamesMissed != null && <> · Manqués : {r.mp.gamesMissed}</>}
+            </p>
+          </>
+        ) : (
+          <p className="text-gray-400">Joueur absent de la liste MoneyPuck.</p>
+        )}
+      </div>
+      <p className="sm:col-span-3 text-[11px] text-gray-400">Suivi depuis le {fmtTs(r.firstSeenAt)} — l&apos;admissibilité LTIR se base sur la date CBS (sinon ESPN, sinon MoneyPuck) ; un joueur sur la liste des blessés de son équipe (CBS, ESPN ou MoneyPuck) est toujours admissible.</p>
     </div>
   )
 }
@@ -106,7 +135,7 @@ export default function BlessuresTable({ rows, myPoolerId }: { rows: InjuryRow[]
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Blessures LNH</h1>
-          <p className="text-xs text-gray-400 mt-1">Source : CBS Sports (recoupé avec ESPN) — mise à jour quotidienne</p>
+          <p className="text-xs text-gray-400 mt-1">Source : CBS Sports (recoupé avec ESPN et MoneyPuck.com) — mise à jour quotidienne</p>
         </div>
         <span className="text-sm text-gray-500">{filtered.length} joueur{filtered.length > 1 ? 's' : ''}</span>
       </div>

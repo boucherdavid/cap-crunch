@@ -21,6 +21,42 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-01
 
+**[Feat] — MoneyPuck : 3e source de blessures + page admin de stats avancées** (`python_script/scrape_injuries.py`, `python_script/import_advanced_stats.py`,
+`app/lib/ltirEligibility.ts`, `app/lib/injuries.ts`, `app/app/statistiques/blessures/*`,
+`app/app/admin/stats-avancees/*`, `app/components/Navbar.tsx`, `app/app/aide/LtirRulesContent.tsx`,
+`app/app/a-propos/page.tsx`, `.github/workflows/advanced_stats.yml`, `.github/workflows/injuries.yml`,
+`supabase_migrations/moneypuck.sql`, `schema.sql`) :
+- Source trouvée par David : moneypuck.com. Données gratuites pour usage non commercial, mention
+  « MoneyPuck.com » obligatoire (affichée sur la page). Identifiant `playerId` = `players.nhl_id`
+  partout → aucun jumelage par nom.
+- Sources évaluées pour les stats avancées : MoneyPuck (retenue, CSV par saison depuis 2008,
+  ~150 colonnes par situation), NHL EDGE (`api-web.nhle.com/v1/edge/...`, vitesse/tirs, bon
+  complément futur), API stats LNH (déjà utilisée) ; écartées : Natural Stat Trick (403 aux
+  scripts), Evolving-Hockey/HockeyViz/AllThreeZones (payants), Hockey-Reference (conditions).
+- **Blessures** : CSV `moneypuck.com/moneypuck/playerData/playerNews/current_injuries.csv`
+  (statut officiel IR / IR-LT = LTIR LNH / IR-NR / DTD / O / DD, date de retour, matchs
+  manqués/à manquer, description Yahoo). Recoupement des joueurs CBS seulement (CBS reste la
+  liste de référence) : 77/106 au test, 19 blessés MoneyPuck absents de CBS non importés.
+  Colonnes `mp_status`, `mp_return_date`, `mp_games_missed`, `mp_games_to_miss`,
+  `mp_description`. `isOnNhlIr()` reçoit `mpStatus` (IR* → admissible LTIR d'office) ; date de
+  retour = CBS, puis ESPN, puis MoneyPuck. 3e pastille + bloc de détail sur
+  `/statistiques/blessures`. Règlements LTIR (`/aide`) et `/a-propos` mis à jour.
+- **Stats avancées** : table `player_advanced_stats` (PK saison/situation/nhl_id, `stats` JSONB
+  = sous-ensemble choisi de colonnes MoneyPuck, situations all/5on5/5on4/4on5), remplacement
+  complet par saison (garde-fou : refuse si < 50 % des lignes en base), saison courante +
+  précédente par défaut (`--seasons`, `--dry-run`). Workflow quotidien `advanced_stats.yml`
+  (11h UTC). Page `/admin/stats-avancees` (admin seulement, menu Admin > Opérations courantes) :
+  patineurs/gardiens, saison, situation, position, PJ min., recherche, disponibles seulement,
+  tri par colonne, définition au survol, propriétaire dans le pool. Taux calculés côté client
+  (Pts/60, B−xB, xB %, xB % rel, CF %, PDO, DZO %, GS/PJ ; gardiens : % arrêts, BSxB, BSxB/60,
+  BSxB danger élevé). Saison par défaut = la plus récente où un gardien a 10 PJ (MoneyPuck
+  publie déjà quelques matchs 2026-27).
+- Migration `supabase_migrations/moneypuck.sql` exécutée par David en staging ET en prod.
+  Staging rempli : 2025-26 (4152 lignes) et 2026-27 (1148), 77 blessures avec `mp_status`.
+  Vérifié : données cohérentes (McDavid 138 pts, Thompson +29,3 BSxB), `next build`, `tsc`,
+  ESLint, `check:jsx-spaces`. Pas encore vu à l'écran par David.
+
+
 **[Fix] — Repêchages : jumelage par `nhl_id`, homonymes corrigés** (`python_script/import_drafts.py`) :
 - Jack Hughes (NJD, repêché 2019) portait le choix 2022 R2 #51 de son homonyme (Jack Hughes, LAK,
   Northeastern) : l'import jumelait les choix de l'API NHL aux fiches par nom seulement.

@@ -21,6 +21,7 @@ export type InjuryRow = {
   espnEstReturnDate: string | null
   espnStatusDesc: string | null
   espnNote: string | null
+  mp: { status: string | null; returnDate: string | null; gamesMissed: number | null; gamesToMiss: number | null; description: string | null } | null
   firstSeenAt: string | null
   datesDisagree: boolean
   owner: { poolerId: string; poolerName: string; playerType: 'actif' | 'reserviste' | 'recrue' | 'ltir' } | null
@@ -66,7 +67,7 @@ export default async function BlessuresPage() {
   const [{ data: injuriesData }, ownerByPlayerId, ltirSettings, { data: { user } }] = await Promise.all([
     supabase
       .from('player_injuries')
-      .select('player_id, injury_type, status, updated_label, est_return_date, espn_est_return_date, espn_status_desc, espn_note, first_seen_at, players (id, nhl_id, first_name, last_name, position, teams (code))')
+      .select('player_id, injury_type, status, updated_label, est_return_date, espn_est_return_date, espn_status_desc, espn_note, mp_status, mp_return_date, mp_games_missed, mp_games_to_miss, mp_description, first_seen_at, players (id, nhl_id, first_name, last_name, position, teams (code))')
       .order('player_id'),
     fetchOwnerByPlayerId(),
     fetchLtirSettings(supabase),
@@ -91,12 +92,15 @@ export default async function BlessuresPage() {
         eligible: computeLtirEligible({
           estReturnDate: row.est_return_date,
           firstSeenAt: row.first_seen_at,
-          onNhlIr: isOnNhlIr(row.status, row.espn_status_desc),
+          onNhlIr: isOnNhlIr(row.status, row.espn_status_desc, row.mp_status),
         }, ltirSettings),
         estReturnDate: row.est_return_date,
         espnEstReturnDate: row.espn_est_return_date,
         espnStatusDesc: row.espn_status_desc,
         espnNote: row.espn_note,
+        mp: row.mp_status || row.mp_return_date
+          ? { status: row.mp_status, returnDate: row.mp_return_date, gamesMissed: row.mp_games_missed, gamesToMiss: row.mp_games_to_miss, description: row.mp_description }
+          : null,
         firstSeenAt: row.first_seen_at,
         datesDisagree: computeDatesDisagree(row.est_return_date, row.espn_est_return_date, ltirSettings),
         owner: ownerByPlayerId.get(player.id) ?? null,

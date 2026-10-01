@@ -41,6 +41,7 @@ export default function LtirRulesContent() {
         <ul className="space-y-1.5">
           <li>• <strong>CBS Sports</strong> est la source principale : c&apos;est elle qui décide qui est blessé, et sa date de retour a priorité.</li>
           <li>• <strong>ESPN</strong> sert de recoupement : elle confirme aussi une mise sur IR par l&apos;équipe, et sa date de retour ne sert que lorsque CBS n&apos;en donne aucune. Un joueur absent de la liste CBS n&apos;est jamais considéré blessé, même s&apos;il apparaît chez ESPN.</li>
+          <li>• <strong>MoneyPuck</strong> sert aussi de recoupement : elle donne le statut officiel de la liste des blessés de l&apos;équipe (IR, ou IR-LT pour la LTIR de la LNH), qui confirme une mise sur IR, et sa date de retour ne sert qu&apos;en dernier recours (ni CBS ni ESPN n&apos;en donnent).</li>
           <li>• Si les deux sources donnent des dates de retour à {jours(t.disagreementDays)} d&apos;écart ou plus, le marqueur <strong>⚠ CBS≠ESPN</strong> le signale, mais le calcul reste basé sur CBS.</li>
           <li>• Les dates sont lues dans le texte de la source (ex. « until at least Oct 2 »). Un statut sans date précise (ex. « Day-to-Day ») compte comme « aucune date de retour ».</li>
         </ul>

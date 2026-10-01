@@ -140,6 +140,7 @@ const ADMIN_GROUP: NavGroup = {
         { label: 'Communauté', href: '/admin/communaute' },
         { label: 'Gestion du pool', href: '/admin/pool' },
         { label: 'Mise à jour de données', href: '/admin/donnees' },
+        { label: 'Stats avancées', href: '/admin/stats-avancees' },
       ],
     },
     {
