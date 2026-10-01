@@ -21,6 +21,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-01
 
+**[Déploiement] — MoneyPuck en prod** : validé par David en staging, fusionné sur `main`
+(`3a05a1a`). Workflows lancés à la main : `advanced_stats.yml` (2025-26 : 4152 lignes, 2026-27 :
+1148) et `injuries.yml` (128 joueurs : 73 dans 3 sources, 32 dans 2, 23 à confirmer).
+
+
 **[Style] — Légendes repliées par défaut** (`app/components/CollapsibleLegend.tsx`,
 `app/components/StreakLegend.tsx`, `app/app/draft-center/DraftCenterTable.tsx`,
 `app/app/admin/stats-avancees/StatsAvanceesTable.tsx`) :
