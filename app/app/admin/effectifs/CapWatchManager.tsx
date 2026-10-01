@@ -44,7 +44,7 @@ function EntryCard({ entry, onReleased }: { entry: CapWatchEntry; onReleased: (i
         <div>
           <p className="text-sm font-medium text-gray-800">{entry.playerName} <span className="text-gray-400 font-normal">— {entry.poolerName}</span></p>
           <p className="text-xs text-gray-500 mt-0.5">
-            Estimé {fmt(entry.estimatedCap)}
+            {(entry.estimatedCap ?? 0) > 0 ? <>RFA — estimé {fmt(entry.estimatedCap)}</> : 'UFA sans contrat — 0 $'}
             {entry.realCap != null && <> · Réel {fmt(entry.realCap)}</>}
           </p>
         </div>

@@ -148,12 +148,14 @@ export async function checkSigningsAction(saisonId: number): Promise<{
   let newlyFlagged = 0
   let resolved = 0
 
-  // 1. Nouveaux cas à surveiller (roster actif, toujours sans contrat, pas déjà suivi)
+  // 1. Nouveaux cas à surveiller (roster actif, toujours sans contrat, pas déjà suivi) — un RFA
+  // au salaire estimé, mais aussi un UFA sans contrat à 0 $ (David, 2026-10-01) : dans les deux
+  // cas le pooler doit savoir quand son joueur signe (`unsignedStatus`, voir getEffectiveCap).
   const toInsert: { pooler_id: string; player_id: number; pool_season_id: number; estimated_cap: number }[] = []
   for (const r of roster) {
     const contracts = r.players?.player_contracts ?? []
-    const { cap, isEstimated } = getEffectiveCap(contracts, saison.season, unsignedMultiplier)
-    if (!isEstimated) continue
+    const { cap, unsignedStatus } = getEffectiveCap(contracts, saison.season, unsignedMultiplier)
+    if (!unsignedStatus) continue
     const key = `${r.pooler_id}:${r.player_id}`
     if (watchByKey.has(key)) continue
     toInsert.push({ pooler_id: r.pooler_id, player_id: r.player_id, pool_season_id: saisonId, estimated_cap: cap })
@@ -170,7 +172,7 @@ export async function checkSigningsAction(saisonId: number): Promise<{
   // 2. Cas déjà surveillés : le joueur a-t-il maintenant un vrai contrat ?
   const stillEstimatedKeys = new Set(
     roster
-      .filter(r => getEffectiveCap(r.players?.player_contracts ?? [], saison.season, unsignedMultiplier).isEstimated)
+      .filter(r => getEffectiveCap(r.players?.player_contracts ?? [], saison.season, unsignedMultiplier).unsignedStatus !== null)
       .map(r => `${r.pooler_id}:${r.player_id}`),
   )
 
@@ -181,6 +183,13 @@ export async function checkSigningsAction(saisonId: number): Promise<{
     if (w.status === 'watching' && !stillEstimatedKeys.has(key)) {
       // Contrat réel maintenant connu
       const rosterRow = roster.find(r => r.pooler_id === w.pooler_id && r.player_id === w.player_id)
+      // Le joueur n'est plus dans l'alignement (libéré, échangé, mis sur LTIR ou en banque) : il
+      // n'a pas signé, il n'y a simplement plus rien à surveiller — pas de notification.
+      if (!rosterRow) {
+        await supabase.from('cap_signing_watch').update({ status: 'resolved', resolved_at: new Date().toISOString() }).eq('id', w.id)
+        resolved++
+        continue
+      }
       const realCapPlayer = rosterRow?.players?.player_contracts?.find(
         (c: { season: string; cap_number: number | null }) => c.season === saison.season,
       )?.cap_number ?? 0

@@ -35,7 +35,12 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   `UnsignedBadge` : « RFA (estimé) » ou « UFA (sans contrat) » (remplace « ≈ » / « ≈ estimé »),
   ajouté aussi dans le hub des agents libres où rien n'était indiqué.
 - Effet aujourd'hui : Toews 2,4 M$ → 0 $ (Paule) ; Nikishin et Edvinsson (RFA) inchangés.
-  Le suivi de conformité (`cap_signing_watch`) ne surveille donc plus que les RFA.
+- **Suivi de conformité étendu aux UFA sans contrat** (`cap-watch-actions.ts`, demande de David —
+  rare en début de saison, mais le pooler doit savoir si son joueur signe) : « Vérifier les
+  signatures » surveille tout actif/réserviste sans contrat (`unsignedStatus` non nul), RFA
+  estimé ou UFA à 0 $ ; même notification quand le vrai contrat arrive. Corrigé au passage : un
+  joueur surveillé qui quitte l'alignement (libéré, échangé, LTIR) est simplement retiré du
+  suivi, sans la fausse notification « contrat réel (0 $) » qu'il déclenchait avant.
 
 
 **[Déploiement] — Approbations et LTIR pour réserviste en prod** : validés par David en staging

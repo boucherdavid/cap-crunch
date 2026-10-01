@@ -63,7 +63,8 @@ desktop.
 ### ▶ Prochaine session — commencer ici
 
 - **Cap simulé pour les RFA seulement** : en staging, à valider par David (Toews chez Paule :
-  0 $ et « UFA (sans contrat) » ; Nikishin, Edvinsson : « RFA (estimé) »), puis fusion sur `main`.
+  0 $ et « UFA (sans contrat) » ; Nikishin, Edvinsson : « RFA (estimé) » ; Conformité cap →
+  « Vérifier les signatures » doit ajouter Toews au suivi), puis fusion sur `main`.
 
 - **Outil d'analyse** : suites possibles — pointage du pool plutôt que points LNH, mémoriser le
   graphique masqué.
