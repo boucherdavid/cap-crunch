@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-09-30
+**Dernière mise à jour :** 2026-10-01
 
 ---
 
@@ -22,7 +22,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : analyse du facteur de plafond (`calcul_salaire/`, docs seulement, aucun code de l'app) — fusion non urgente |
+| `staging` | En avance sur `main` : correctif homonymes de `import_drafts.py` (jumelage par `nhl_id`) + analyse du facteur de plafond (docs) — **à fusionner** pour que l'import du lundi corrige Jack Hughes en prod |
 | `main` (prod) | À jour — dernière fusion le 2026-09-30 (`1ac5f9b` : copie de secours — sélecteur d'alignement, simulation d'échange, masse salariale sans les recrues) |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
@@ -62,9 +62,9 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **Jack Hughes (Devils)** : sa fiche porte le repêchage 2022 R2 d'un homonyme (vrai : 2019) —
-  jumelage par nom dans `import_drafts.py` à corriger (jumeler par `nhl_id`), sinon l'import
-  hebdomadaire réécrira l'erreur.
+- **Jack Hughes (Devils)** : corrigé en staging le 2026-10-01 (jumelage par `nhl_id` +
+  auto-correction des homonymes). Fusionner `staging` → `main` ; l'import du lundi corrigera la
+  prod (ou lancer le workflow `import.yml` à la main).
 - **Facteur de plafond** : analyse faite (`calcul_salaire/calcul_facteur.md`, résumé
   `calcul_salaire/resume_facteur.md`, page partageable
   https://claude.ai/artifact/VNqLbSxDLySgAg8zSbyLht). Recommandation : 1,28 pour 2026-27

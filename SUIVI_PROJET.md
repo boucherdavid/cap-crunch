@@ -19,6 +19,20 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-01
+
+**[Fix] — Repêchages : jumelage par `nhl_id`, homonymes corrigés** (`python_script/import_drafts.py`) :
+- Jack Hughes (NJD, repêché 2019) portait le choix 2022 R2 #51 de son homonyme (Jack Hughes, LAK,
+  Northeastern) : l'import jumelait les choix de l'API NHL aux fiches par nom seulement.
+- Jumelage d'abord par `playerId` de l'API (= `players.nhl_id`), puis par nom ; une fiche dont le
+  `nhl_id` diffère de celui du choix n'est jamais retenue (y compris dans le filet `ilike` et le
+  repli d'alias). Le joueur repêché absent de la base est créé avec son `nhl_id`.
+- Auto-correction : une fiche dont le choix `(draft_year, draft_overall)` appartient, selon l'API,
+  à un autre `nhl_id` voit ses infos de repêchage effacées (journal `[CORRECTION]`).
+- Staging : 1 seul homonyme dans toute la base (Hughes) — corrigé, fiche LAK créée ; second
+  passage sans aucun changement. Prod : corrigé au prochain import hebdomadaire après fusion
+  sur `main` (`import.yml` lance `import_drafts.py`).
+
 ### 2026-09-30
 
 **[Docs] — Résumé du facteur de plafond pour un pooler actuaire** (`calcul_salaire/resume_facteur.md`,
