@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import TeamBadge from '@/components/TeamBadge'
 import PlayerLink from '@/components/PlayerLink'
+import CollapsibleLegend from '@/components/CollapsibleLegend'
 import { normalizeSearch } from '@/lib/normalizeSearch'
 
 export type Kind = 'skater' | 'goalie'
@@ -141,7 +142,7 @@ export default function StatsAvanceesTable({
           <p className="text-xs text-gray-400 mt-1">
             Données :{' '}
             <a href="https://moneypuck.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">MoneyPuck.com</a>
-            {' '}— mise à jour quotidienne · Survole un en-tête pour sa définition · Visible par l&apos;admin seulement
+            {' '}— mise à jour quotidienne · Visible par l&apos;admin seulement
           </p>
         </div>
         <span className="text-sm text-gray-500">{filtered.length} joueur{filtered.length > 1 ? 's' : ''}</span>
@@ -200,6 +201,22 @@ export default function StatsAvanceesTable({
           <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
           Disponibles seulement
         </button>
+      </div>
+
+      <div className="mb-4">
+        <CollapsibleLegend title="Définitions des colonnes">
+          <dl className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-1.5">
+            {columns.map(c => (
+              <div key={c.key} className="flex items-baseline gap-2 text-xs">
+                <dt className="font-semibold text-gray-700 shrink-0 w-16">{c.label}</dt>
+                <dd className="text-gray-500">{c.help}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-2 text-[11px] text-gray-400">
+            Les valeurs dépendent de la situation choisie (toutes, 5 contre 5, avantage ou désavantage numérique). Clique un en-tête pour trier.
+          </p>
+        </CollapsibleLegend>
       </div>
 
       {season === null ? (

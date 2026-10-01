@@ -1387,7 +1387,10 @@ téléphone : tout ce qui est masqué en portrait revient automatiquement en pay
 - Colonne latérale fixe (ex : `MovementHistoryPanel`, `w-80`) : dessous sous `lg`
   (`flex flex-col lg:flex-row`, `w-full lg:w-80`) — sinon elle écrase le contenu principal
   même en paysage.
-- Légendes longues (`StreakLegend`) : repliées dans un `<details>` en portrait.
+- Légendes et définitions de plus d'une ligne : repliées par défaut sur **tous** les écrans via
+  `app/components/CollapsibleLegend.tsx` (David, 2026-10-01 — `StreakLegend`, sources du Draft
+  Center, définitions des stats avancées). Ne pas compter sur une infobulle seule pour expliquer
+  une colonne.
 
 Pages adaptées selon ces conventions : `/poolers/[id]` (tous les onglets), `/classement` (+
 hebdo, mensuel), `/statistiques`, `/joueurs`, `/gestion-effectifs`, `/statistiques/blessures`,

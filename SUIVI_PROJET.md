@@ -21,6 +21,18 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-01
 
+**[Style] — Légendes repliées par défaut** (`app/components/CollapsibleLegend.tsx`,
+`app/components/StreakLegend.tsx`, `app/app/draft-center/DraftCenterTable.tsx`,
+`app/app/admin/stats-avancees/StatsAvanceesTable.tsx`) :
+- Demande de David : voir les définitions des stats avancées sur la page (pas seulement au
+  survol), dans un accordéon pour ne pas charger l'écran — et faire pareil partout où ça allège.
+- Nouveau composant partagé `CollapsibleLegend` (`<details>`, replié par défaut). Utilisé par :
+  « Définitions des colonnes » de `/admin/stats-avancees` (générée à partir des colonnes
+  affichées, patineurs ou gardiens) ; `StreakLegend` (repliée sur tous les écrans, plus
+  seulement sur téléphone — `/poolers/[id]` onglet Alignement, `/statistiques`,
+  `/classement-series`) ; légende des sources de `/draft-center`.
+
+
 **[Feat] — Blessures : union des trois sources, confirmation à 2 sur 3, trois dates de retour**
 (`python_script/scrape_injuries.py`, `app/lib/ltirEligibility.ts`, `app/lib/injuries.ts`,
 `app/app/statistiques/blessures/*`, `app/app/admin/effectifs/LtirApprovalManager.tsx`,

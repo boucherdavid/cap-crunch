@@ -1,3 +1,5 @@
+import CollapsibleLegend from './CollapsibleLegend'
+
 const LEGEND = [
   { emoji: '🔥', label: 'En feu',    desc: '3+ matchs consécutifs avec au moins 1 point' },
   { emoji: '✅', label: 'En forme',  desc: '2 matchs consécutifs avec au moins 1 point'   },
@@ -13,19 +15,13 @@ const GOALIE_LEGEND = [
   { emoji: '🎯', label: 'GAA basse',  desc: 'GAA ≤ 2,50 sur les 5 derniers départs' },
 ]
 
-// Sur téléphone, la légende complète prenait tout l'écran avant le tableau — repliée derrière
-// un bouton (David, 2026-09-28) ; toujours dépliée à partir de sm (paysage/desktop).
+// Repliée par défaut sur tous les écrans (David, 2026-10-01 — d'abord seulement sur téléphone,
+// 2026-09-28) : la légende complète prenait trop de place avant le tableau.
 export default function StreakLegend() {
   return (
-    <>
-      <details className="sm:hidden rounded-lg border border-gray-100 bg-gray-50 px-4 py-2">
-        <summary className="text-xs font-semibold text-gray-500 cursor-pointer">Légende des indicateurs 🔥 ✅ 🧊</summary>
-        <div className="pt-2"><LegendContent /></div>
-      </details>
-      <div className="hidden sm:block rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
-        <LegendContent />
-      </div>
-    </>
+    <CollapsibleLegend title="Légende des indicateurs 🔥 ✅ 🧊">
+      <LegendContent />
+    </CollapsibleLegend>
   )
 }
 
