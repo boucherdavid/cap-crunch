@@ -235,7 +235,7 @@ export async function loadOwnRecrueBankAction(saisonId: number): Promise<{
 
   const { data } = await supabase
     .from('pooler_rosters')
-    .select('id, player_id, players (first_name, last_name, position, player_contracts (season, cap_number))')
+    .select('id, player_id, players (first_name, last_name, position, player_contracts (season, cap_number, contract_status))')
     .eq('pooler_id', user.id)
     .eq('pool_season_id', saisonId)
     .eq('player_type', 'recrue')
@@ -302,7 +302,7 @@ export async function searchSandboxFreeAgentsAction(
   // salaire (auparavant affichés avec un montant vide) sont maintenant exclus d'office.
   // teams!inner seulement si un filtre d'équipe est demandé (une équipe manquante serait un
   // vrai problème de données, pas juste "rien à montrer").
-  const contractsSelect = 'player_contracts!inner (season, cap_number, is_elc)'
+  const contractsSelect = 'player_contracts!inner (season, cap_number, contract_status, is_elc)'
   const teamsSelect = opts.teamCode ? 'teams!inner (code)' : 'teams (code)'
   const selectStr = `id, first_name, last_name, position, ${teamsSelect}, ${contractsSelect}`
 

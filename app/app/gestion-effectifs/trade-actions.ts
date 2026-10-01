@@ -25,7 +25,7 @@ export async function listTradeableAssetsAction(poolerId: string, saisonId: numb
     supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
     supabase
       .from('pooler_rosters')
-      .select('player_id, player_type, players (first_name, last_name, position, is_rookie, draft_year, status, teams (code), player_contracts (season, cap_number))')
+      .select('player_id, player_type, players (first_name, last_name, position, is_rookie, draft_year, status, teams (code), player_contracts (season, cap_number, contract_status))')
       .eq('pooler_id', poolerId).eq('pool_season_id', saisonId).eq('is_active', true)
       .in('player_type', ['actif', 'reserviste', 'recrue']),
     supabase
@@ -161,7 +161,7 @@ async function resolveItemLabels(
   const positions = new Map<string, string | null>()
 
   if (playerIds.length > 0) {
-    const { data } = await db.from('players').select('id, first_name, last_name, position, player_contracts (season, cap_number)').in('id', playerIds)
+    const { data } = await db.from('players').select('id, first_name, last_name, position, player_contracts (season, cap_number, contract_status)').in('id', playerIds)
     for (const p of data ?? []) {
       labels.set(`player-${p.id}`, `${p.last_name}, ${p.first_name}${p.position ? ` (${p.position})` : ''}`)
       caps.set(`player-${p.id}`, getEffectiveCap(p.player_contracts, season, unsignedMultiplier).cap)

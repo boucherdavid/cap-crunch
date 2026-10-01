@@ -22,7 +22,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | Identique à `main` |
+| `staging` | En avance sur `main` : cap simulé pour les RFA seulement (UFA sans contrat = 0 $) — à valider |
 | `main` (prod) | À jour — fusion du 2026-10-01 : bouton « Approbations » (admin), LTIR pour un réserviste et retour de LTIR au statut choisi, outil d'analyse (gardiens, évolution), stats avancées depuis 2020-21, menu « Analytique », recherche globale, MoneyPuck (blessures à 3 sources) |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
@@ -61,6 +61,9 @@ desktop.
 ## 4. À faire / à vérifier
 
 ### ▶ Prochaine session — commencer ici
+
+- **Cap simulé pour les RFA seulement** : en staging, à valider par David (Toews chez Paule :
+  0 $ et « UFA (sans contrat) » ; Nikishin, Edvinsson : « RFA (estimé) »), puis fusion sur `main`.
 
 - **Outil d'analyse** : suites possibles — pointage du pool plutôt que points LNH, mémoriser le
   graphique masqué.

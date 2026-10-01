@@ -182,7 +182,7 @@ export async function previewTransitionAction(
     supabase.from('pool_seasons').select('season').eq('id', toSaisonId).single(),
     supabase
       .from('pooler_rosters')
-      .select(`pooler_id, player_id, player_type, rookie_type, pool_draft_year, poolers (name), players (first_name, last_name, player_contracts (season, cap_number, is_elc))`)
+      .select(`pooler_id, player_id, player_type, rookie_type, pool_draft_year, poolers (name), players (first_name, last_name, player_contracts (season, cap_number, contract_status, is_elc))`)
       .eq('pool_season_id', fromSaisonId)
       .eq('is_active', true),
     countTargetRosters(supabase, toSaisonId),

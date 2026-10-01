@@ -57,7 +57,7 @@ export async function searchSimulationPlayersAction(
     ownerByPlayer.set(r.player_id, r.poolers?.name ?? '?')
   }
 
-  const contractsSelect = 'player_contracts!inner (season, cap_number, is_elc)'
+  const contractsSelect = 'player_contracts!inner (season, cap_number, contract_status, is_elc)'
   const teamsSelect = opts.teamCode ? 'teams!inner (code)' : 'teams (code)'
   const selectStr = `id, first_name, last_name, position, ${teamsSelect}, ${contractsSelect}`
 
@@ -120,7 +120,7 @@ export async function loadPlayerByIdAction(saisonId: number, playerId: number): 
 
   const { data: p } = await supabase
     .from('players')
-    .select('id, first_name, last_name, position, teams (code), player_contracts (season, cap_number, is_elc)')
+    .select('id, first_name, last_name, position, teams (code), player_contracts (season, cap_number, contract_status, is_elc)')
     .eq('id', playerId)
     .maybeSingle()
   if (!p) return { player: null }
@@ -180,7 +180,7 @@ export async function loadRosterForSimulationAction(saisonId: number, poolerId: 
 
   const { data: rows } = await supabase
     .from('pooler_rosters')
-    .select('id, player_id, player_type, players (first_name, last_name, position, player_contracts (season, cap_number, is_elc))')
+    .select('id, player_id, player_type, players (first_name, last_name, position, player_contracts (season, cap_number, contract_status, is_elc))')
     .eq('pooler_id', poolerId)
     .eq('pool_season_id', saisonId)
     .eq('is_active', true)
@@ -230,7 +230,7 @@ export async function loadRecrueBankForPoolerAction(saisonId: number, poolerId: 
 
   const { data } = await supabase
     .from('pooler_rosters')
-    .select('id, player_id, players (first_name, last_name, position, player_contracts (season, cap_number))')
+    .select('id, player_id, players (first_name, last_name, position, player_contracts (season, cap_number, contract_status))')
     .eq('pooler_id', poolerId)
     .eq('pool_season_id', saisonId)
     .eq('player_type', 'recrue')

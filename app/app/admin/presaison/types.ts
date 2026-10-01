@@ -14,6 +14,7 @@ export type RosterEntry = {
   position: string | null
   cap_number: number
   isEstimatedCap: boolean
+  unsignedStatus: 'RFA' | 'UFA' | null  // sans contrat pour la saison — voir getEffectiveCap
   // Non-null seulement si le joueur est encore sous protection recrue (ELC actif, ou plafond
   // 5 saisons pour un repêché) malgré son player_type actif/réserviste — condition pour être
   // remis en banque par l'admin (voir "Remettre en banque" dans PoolerCard). Une recrue à

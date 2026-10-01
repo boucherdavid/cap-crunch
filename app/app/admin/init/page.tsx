@@ -90,7 +90,7 @@ export default async function AdminInitPage({
       fetchAllPages(async (from, to) =>
         supabase
           .from('players')
-          .select('id, first_name, last_name, position, status, is_available, is_rookie, draft_year, draft_round, draft_overall, teams(code), player_contracts(season, cap_number)')
+          .select('id, first_name, last_name, position, status, is_available, is_rookie, draft_year, draft_round, draft_overall, teams(code), player_contracts(season, cap_number, contract_status)')
           .order('last_name')
           .order('id')
           .range(from, to),

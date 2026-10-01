@@ -142,7 +142,7 @@ export async function getPoolerRosterAction(
         players (
           first_name, last_name, position, nhl_id, is_rookie, draft_year, status,
           teams (code),
-          player_contracts (season, cap_number)
+          player_contracts (season, cap_number, contract_status)
         )
       `)
       .eq('pooler_id', poolerId)
@@ -212,7 +212,7 @@ export async function searchPlayersAction(
 
   let q = supabase
     .from('players')
-    .select('id, first_name, last_name, position, nhl_id, teams (code), player_contracts (season, cap_number)')
+    .select('id, first_name, last_name, position, nhl_id, teams (code), player_contracts (season, cap_number, contract_status)')
     .or(`last_name.ilike.%${query}%,first_name.ilike.%${query}%`)
     .eq('is_available', true)
   if (lockedIds.length > 0) q = q.not('id', 'in', `(${lockedIds.join(',')})`)
@@ -271,7 +271,7 @@ export async function getAwardedWaiverClaimsAction(saisonId: number, poolerId: s
   const db = createAdminClient()
   const { data } = await db
     .from('waiver_claims')
-    .select('id, player_id, awarded_at, players (first_name, last_name, position, teams (code), player_contracts (season, cap_number))')
+    .select('id, player_id, awarded_at, players (first_name, last_name, position, teams (code), player_contracts (season, cap_number, contract_status))')
     .eq('pool_season_id', saisonId)
     .eq('status', 'awarded')
     .eq('awarded_to_pooler_id', poolerId)
@@ -640,7 +640,7 @@ export async function submitBatchAction(input: {
     const [{ data: currentRows }, { data: settingsRow }] = await Promise.all([
       db
         .from('pooler_rosters')
-        .select('id, player_type, players (position, player_contracts (season, cap_number))')
+        .select('id, player_type, players (position, player_contracts (season, cap_number, contract_status))')
         .eq('pooler_id', input.poolerId)
         .eq('pool_season_id', input.saisonId)
         .eq('is_active', true),
@@ -663,7 +663,7 @@ export async function submitBatchAction(input: {
     const newPlayerIds = input.actions.filter(a => a.newPlayerId).map(a => a.newPlayerId!)
     const newPlayerMap = new Map<number, any>()
     if (newPlayerIds.length > 0) {
-      const { data: newPlayers } = await db.from('players').select('id, position, player_contracts (season, cap_number)').in('id', newPlayerIds)
+      const { data: newPlayers } = await db.from('players').select('id, position, player_contracts (season, cap_number, contract_status)').in('id', newPlayerIds)
       for (const p of (newPlayers ?? [])) newPlayerMap.set(p.id, p)
     }
 

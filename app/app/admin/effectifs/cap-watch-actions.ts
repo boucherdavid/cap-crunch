@@ -117,7 +117,7 @@ export async function checkSigningsAction(saisonId: number): Promise<{
 
   const { data: rosterRows } = await supabase
     .from('pooler_rosters')
-    .select(`pooler_id, player_id, player_type, players (player_contracts (season, cap_number))`)
+    .select(`pooler_id, player_id, player_type, players (player_contracts (season, cap_number, contract_status))`)
     .eq('pool_season_id', saisonId)
     .eq('is_active', true)
     .in('player_type', ['actif', 'reserviste'])
@@ -314,7 +314,7 @@ export async function getPendingTradeOffersForAdminAction(saisonId: number): Pro
   const playerIds = (itemRows ?? []).filter(i => i.item_type === 'player').map(i => i.player_id!)
   const pickIds = (itemRows ?? []).filter(i => i.item_type === 'pick').map(i => i.pick_id!)
   const [{ data: players }, { data: picks }] = await Promise.all([
-    playerIds.length > 0 ? db.from('players').select('id, first_name, last_name, position, player_contracts (season, cap_number)').in('id', playerIds) : Promise.resolve({ data: [] }),
+    playerIds.length > 0 ? db.from('players').select('id, first_name, last_name, position, player_contracts (season, cap_number, contract_status)').in('id', playerIds) : Promise.resolve({ data: [] }),
     pickIds.length > 0 ? db.from('pool_draft_picks').select('id, round, pool_seasons (season)').in('id', pickIds) : Promise.resolve({ data: [] }),
   ])
   const playerLabel = new Map((players ?? []).map(p => [p.id, `${p.last_name}, ${p.first_name}${p.position ? ` (${p.position})` : ''}`]))

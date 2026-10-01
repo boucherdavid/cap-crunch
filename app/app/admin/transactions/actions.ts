@@ -57,7 +57,7 @@ export async function loadRosterAction(poolerId: string, saisonId: number) {
   const [{ data: rosterData }, { data: picksData }] = await Promise.all([
     supabase
       .from('pooler_rosters')
-      .select(`id, player_id, player_type, rookie_type, pool_draft_year, players (id, first_name, last_name, position, status, is_rookie, teams (code), player_contracts (season, cap_number, is_elc))`)
+      .select(`id, player_id, player_type, rookie_type, pool_draft_year, players (id, first_name, last_name, position, status, is_rookie, teams (code), player_contracts (season, cap_number, contract_status, is_elc))`)
       .eq('pooler_id', poolerId)
       .eq('pool_season_id', saisonId)
       .eq('is_active', true)
@@ -124,7 +124,7 @@ export async function searchFreeAgentsAction(
   if (q.length >= 2) {
     let dbQuery = supabase
       .rpc('search_players_unaccent', { search_term: q })
-      .select(`id, first_name, last_name, position, status, teams (code), player_contracts (season, cap_number)`)
+      .select(`id, first_name, last_name, position, status, teams (code), player_contracts (season, cap_number, contract_status)`)
       .limit(50)
     if (takenIds.length > 0) dbQuery = dbQuery.not('id', 'in', `(${takenIds.join(',')})`)
     const { data } = await dbQuery
@@ -140,7 +140,7 @@ export async function searchFreeAgentsAction(
     // relation (voir searchSandboxFreeAgentsAction pour le même besoin).
     let dbQuery = supabase
       .from('players')
-      .select(`id, first_name, last_name, position, status, teams!inner (code), player_contracts (season, cap_number)`)
+      .select(`id, first_name, last_name, position, status, teams!inner (code), player_contracts (season, cap_number, contract_status)`)
     if (opts.teamCode) dbQuery = dbQuery.eq('teams.code', opts.teamCode)
     if (takenIds.length > 0) dbQuery = dbQuery.not('id', 'in', `(${takenIds.join(',')})`)
     const { data } = await dbQuery.limit(opts.teamCode ? 60 : 200)
@@ -226,7 +226,7 @@ export async function applyTransactionItems(
   // Charger les rosters
   const { data: allRosters } = await supabase
     .from('pooler_rosters')
-    .select(`id, pooler_id, player_id, player_type, players (id, position, nhl_id, player_contracts (season, cap_number))`)
+    .select(`id, pooler_id, player_id, player_type, players (id, position, nhl_id, player_contracts (season, cap_number, contract_status))`)
     .in('pooler_id', Array.from(affectedIds))
     .eq('pool_season_id', saisonId)
     .eq('is_active', true)
@@ -261,7 +261,7 @@ export async function applyTransactionItems(
   if (signPlayerIds.length > 0) {
     const { data: sPlayers } = await supabase
       .from('players')
-      .select(`id, first_name, last_name, position, nhl_id, is_rookie, draft_year, status, player_contracts (season, cap_number)`)
+      .select(`id, first_name, last_name, position, nhl_id, is_rookie, draft_year, status, player_contracts (season, cap_number, contract_status)`)
       .in('id', signPlayerIds)
     for (const p of (sPlayers ?? [])) signPlayerMap.set(p.id, p)
   }

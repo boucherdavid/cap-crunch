@@ -1009,8 +1009,8 @@ export default function GestionEffectifsManager({
           {capOver        && <p className="text-xs text-red-600">La masse salariale dépasse le cap du pool ({capFmt(poolCap)}).</p>}
           {estimatedCapEntries.length > 0 && (
             <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1.5">
-              ≈ Masse salariale estimée pour {estimatedCapEntries.length} joueur{estimatedCapEntries.length > 1 ? 's' : ''}
-              {' '}sans contrat connu ({estimatedCapEntries.map(e => `${e.lastName}, ${e.firstName}`).join(' · ')}) —
+              Masse salariale estimée pour {estimatedCapEntries.length} joueur{estimatedCapEntries.length > 1 ? 's' : ''}
+              {' '}RFA sans contrat ({estimatedCapEntries.map(e => `${e.lastName}, ${e.firstName}`).join(' · ')}) —
               le vrai montant peut différer une fois le contrat signé.
             </p>
           )}

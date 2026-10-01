@@ -161,7 +161,7 @@ export async function getWatchlistItemsAction(listId: number): Promise<{ error?:
 
   const { data } = await admin
     .from('watchlist_items')
-    .select('id, player_id, note, rank, players(first_name, last_name, position, draft_overall, teams(code), player_contracts(season, cap_number))')
+    .select('id, player_id, note, rank, players(first_name, last_name, position, draft_overall, teams(code), player_contracts(season, cap_number, contract_status))')
     .eq('watchlist_id', listId)
     .order('rank')
     .order('id')
@@ -301,7 +301,7 @@ export async function searchWatchlistPlayersAction(
   }
 
   const needContract = kind === 'joueurs' && season && (!ids || opts.maxSalary != null || opts.elcOnly)
-  const contractsSelect = needContract ? 'player_contracts!inner(season, cap_number, is_elc)' : 'player_contracts(season, cap_number, is_elc)'
+  const contractsSelect = needContract ? 'player_contracts!inner(season, cap_number, contract_status, is_elc)' : 'player_contracts(season, cap_number, contract_status, is_elc)'
   const teamsSelect = opts.teamCode ? 'teams!inner(code)' : 'teams(code)'
   const buildQuery = () => {
     let dbQuery = admin.from('players').select(`id, first_name, last_name, position, draft_overall, ${teamsSelect}, ${contractsSelect}`)

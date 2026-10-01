@@ -395,7 +395,7 @@ export async function submitRosterAction(
     // Récupérer le roster courant pour validation et détection des types
     supabase
       .from('pooler_rosters')
-      .select('id, player_id, player_type, players(position, is_rookie, draft_year, nhl_id, player_contracts(season, cap_number))')
+      .select('id, player_id, player_type, players(position, is_rookie, draft_year, nhl_id, player_contracts(season, cap_number, contract_status))')
       .eq('pooler_id', poolerId)
       .eq('pool_season_id', saisonId)
       .eq('is_active', true),
@@ -435,7 +435,7 @@ export async function submitRosterAction(
   }
 
   for (const entry of toAdd) {
-    const { data: player } = await supabase.from('players').select('position, is_rookie, draft_year, player_contracts(season, cap_number)').eq('id', entry.player_id).single()
+    const { data: player } = await supabase.from('players').select('position, is_rookie, draft_year, player_contracts(season, cap_number, contract_status)').eq('id', entry.player_id).single()
     const isEligible = player?.is_rookie || (player?.draft_year != null && player.draft_year >= draftYearCutoff)
     if (entry.player_type === 'recrue' && !isEligible) {
       return { error: `Seuls les joueurs recrues peuvent aller dans la banque de recrues.` }

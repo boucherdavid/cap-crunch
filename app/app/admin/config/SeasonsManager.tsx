@@ -393,7 +393,7 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-amber-600 mt-1">Ces joueurs seront quand même copiés — cap simulé (≈ estimé) en pré-saison tant que leur vrai contrat n&apos;est pas connu. Suivi via l&apos;onglet Conformité.</p>
+                <p className="text-xs text-amber-600 mt-1">Ces joueurs seront quand même copiés — salaire estimé pour un RFA tant que son vrai contrat n&apos;est pas connu, 0 $ pour un UFA sans contrat. Suivi via l&apos;onglet Conformité.</p>
               </div>
             )}
 

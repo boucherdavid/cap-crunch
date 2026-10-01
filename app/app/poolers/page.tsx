@@ -73,7 +73,7 @@ export default async function PoolersPage() {
       .from('pooler_rosters')
       .select(`
         pooler_id, player_type, rookie_type, pool_draft_year,
-        players (last_name, status, position, player_contracts (season, cap_number))
+        players (last_name, status, position, player_contracts (season, cap_number, contract_status))
       `)
       .eq('pool_season_id', season.id)
       .eq('is_active', true),

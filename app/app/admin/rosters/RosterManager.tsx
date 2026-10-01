@@ -138,7 +138,7 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
     const fetchRoster = async () => {
       const { data } = await supabase
         .from('pooler_rosters')
-        .select('id, player_id, player_type, rookie_type, pool_draft_year, players(id, first_name, last_name, position, status, is_rookie, draft_year, draft_round, draft_overall, teams(code), player_contracts(season, cap_number))')
+        .select('id, player_id, player_type, rookie_type, pool_draft_year, players(id, first_name, last_name, position, status, is_rookie, draft_year, draft_round, draft_overall, teams(code), player_contracts(season, cap_number, contract_status))')
         .eq('pooler_id', selectedPooler)
         .eq('pool_season_id', saison.id)
         .eq('is_active', true)
@@ -338,7 +338,7 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
       // Recharger depuis la BD pour avoir les vrais IDs
       const { data, error: fetchErr } = await supabase
         .from('pooler_rosters')
-        .select('id, player_id, player_type, rookie_type, pool_draft_year, players(id, first_name, last_name, position, status, is_rookie, draft_year, draft_round, draft_overall, teams(code), player_contracts(season, cap_number))')
+        .select('id, player_id, player_type, rookie_type, pool_draft_year, players(id, first_name, last_name, position, status, is_rookie, draft_year, draft_round, draft_overall, teams(code), player_contracts(season, cap_number, contract_status))')
         .eq('pooler_id', selectedPooler)
         .eq('pool_season_id', saison.id)
         .eq('is_active', true)

@@ -1,3 +1,4 @@
+import UnsignedBadge from '@/components/UnsignedBadge'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import TeamBadge from '@/components/TeamBadge'
@@ -172,7 +173,7 @@ function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft,
       ? getEffectiveCap(player?.player_contracts, season, unsignedMultiplier ?? 1.20)
       : null
     const capNumber = effective?.cap ?? null
-    const isEstimated = effective?.isEstimated ?? false
+    const unsignedStatus = effective?.unsignedStatus ?? null
     const nextCap = getNextCap(player, nextSeason)
     const currentRaw = getCurrentCap(player, season)
     const trend = getTrend(currentRaw, nextCap)
@@ -228,14 +229,7 @@ function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft,
           : <>
               <td className="px-2 sm:px-3 py-2 text-right text-gray-700 w-28 tabular-nums">
                 {formatCap(capNumber)}
-                {isEstimated && (
-                  <span
-                    className="ml-1 text-amber-600 bg-amber-50 rounded px-1 py-0.5 text-[10px] font-medium align-middle"
-                    title="Cap simulé — sans contrat pour cette saison, en attente du vrai contrat."
-                  >
-                    ≈
-                  </span>
-                )}
+                <UnsignedBadge status={unsignedStatus} />
               </td>
               <td className="px-3 py-2 text-right text-gray-400 w-28 tabular-nums hidden sm:table-cell">{nextCap !== null ? formatCap(nextCap) : DASH}</td>
               <td className="px-3 py-2 text-center w-8 hidden sm:table-cell">
@@ -424,7 +418,7 @@ export default async function PoolerPage({
         id, nhl_id, first_name, last_name, position, status, is_rookie,
         draft_year, draft_round, draft_overall,
         teams (code),
-        player_contracts (season, cap_number)
+        player_contracts (season, cap_number, contract_status)
       )
     `)
     .eq('pooler_id', id)
@@ -500,8 +494,8 @@ export default async function PoolerPage({
         </p>
         {estimatedCapCount > 0 && (
           <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1.5">
-            ≈ Inclut {estimatedCapCount} joueur{estimatedCapCount > 1 ? 's' : ''} sans contrat
-            connu pour cette saison — cap simulé, à ajuster une fois le vrai contrat signé.
+            Inclut {estimatedCapCount} joueur{estimatedCapCount > 1 ? 's' : ''} RFA sans contrat
+            pour cette saison — salaire estimé, à ajuster une fois le vrai contrat signé.
           </p>
         )}
         {nextPoolCap !== null && (

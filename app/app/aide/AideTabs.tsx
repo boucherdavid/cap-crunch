@@ -704,7 +704,7 @@ const SECTIONS: Section[] = [
         <li>• Le facteur et le plafond LNH peuvent être ajustés par l&apos;administrateur avant ou pendant une saison.</li>
         <li>• Seuls les joueurs <strong>actifs</strong> et <strong>réservistes</strong> comptent dans la masse salariale.</li>
         <li>• Les joueurs en <strong>LTIR</strong> et dans la <strong>banque de recrues</strong> ne comptent <em>pas</em> dans la masse.</li>
-        <li>• Un joueur sans contrat réel compte une masse <strong>simulée</strong> (dernier contrat connu × un facteur, généralement 1,20) pour éviter qu&apos;il compte 0 $ — si ce joueur signe ensuite un vrai contrat qui te fait dépasser le cap, tu as un délai (par défaut 7 jours) pour t&apos;ajuster toi-même avant que l&apos;administrateur ne doive intervenir.</li>
+        <li>• Un joueur <strong>RFA</strong> sans contrat pour la saison compte une masse <strong>estimée</strong> (dernier contrat connu × un facteur, généralement 1,20), affichée « RFA (estimé) », pour éviter qu&apos;il compte 0 $ en attendant sa signature. Un joueur <strong>UFA</strong> sans contrat ne compte pas dans la masse (« UFA (sans contrat) ») — si ce joueur signe ensuite un vrai contrat qui te fait dépasser le cap, tu as un délai (par défaut 7 jours) pour t&apos;ajuster toi-même avant que l&apos;administrateur ne doive intervenir.</li>
       </ul>
     ),
   },

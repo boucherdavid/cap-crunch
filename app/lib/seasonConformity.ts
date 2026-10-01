@@ -22,7 +22,7 @@ export async function checkSeasonConformity(
     supabase
       .from('pooler_rosters')
       .select(`id, pooler_id, player_id, player_type, rookie_type, pool_draft_year,
-        players (position, player_contracts (season, cap_number, is_elc))`)
+        players (position, player_contracts (season, cap_number, contract_status, is_elc))`)
       .eq('pool_season_id', saisonId)
       .eq('is_active', true),
     supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),

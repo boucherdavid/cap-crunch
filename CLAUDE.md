@@ -873,6 +873,11 @@ revue le 2026-09-14 :**
   garder-actif/remettre-en-banque, `resolveElcDecisionAction`) reste retiré (2026-09-03).
 
 **Cap simulé pour joueur sans contrat (`app/lib/capUtils.ts`) :**
+- **RFA seulement (David, 2026-10-01)** : l'estimé ne s'applique qu'à un joueur dont la ligne
+  `player_contracts` de la saison a `contract_status='RFA'` ; un UFA sans contrat compte 0 $.
+  `getEffectiveCap()` retourne aussi `unsignedStatus` (badge `UnsignedBadge` : « RFA (estimé) » /
+  « UFA (sans contrat) »). Toute requête qui alimente la fonction doit ramener
+  `season, cap_number, contract_status`.
 - `getEffectiveCap(contracts, season, unsignedMultiplier)` : sans contrat réel pour la
   saison, simule un cap = contrat de la saison précédente × `app_settings.
   unsigned_player_cap_multiplier` (défaut 1.20) — évite qu'un joueur non signé compte 0$

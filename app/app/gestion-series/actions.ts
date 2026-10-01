@@ -162,7 +162,7 @@ export async function getPoolerPlayoffRosterAction(
         players (
           first_name, last_name, position, nhl_id,
           teams (id, code),
-          player_contracts (season, cap_number)
+          player_contracts (season, cap_number, contract_status)
         )
       `)
       .eq('pooler_id', poolerId)
@@ -207,7 +207,7 @@ export async function getAllPoolersRostersAction(
         players (
           first_name, last_name, position, nhl_id,
           teams (id, code),
-          player_contracts (season, cap_number)
+          player_contracts (season, cap_number, contract_status)
         )
       `)
       .eq('round_id', roundId)
@@ -253,7 +253,7 @@ export async function searchPlayoffPlayersAction(
   const [{ data: players }, { data: elims }, { data: roundTeams }] = await Promise.all([
     supabase
       .from('players')
-      .select('id, first_name, last_name, position, nhl_id, teams (id, code), player_contracts (season, cap_number)')
+      .select('id, first_name, last_name, position, nhl_id, teams (id, code), player_contracts (season, cap_number, contract_status)')
       .or(`last_name.ilike.%${query}%,first_name.ilike.%${query}%`)
       .eq('is_available', true)
       .order('last_name')
@@ -403,14 +403,14 @@ export async function submitPlayoffChangeAction(input: {
         .from('series_round_rosters')
         .select(`
           id, player_id, position_slot,
-          players (player_contracts (season, cap_number))
+          players (player_contracts (season, cap_number, contract_status))
         `)
         .eq('round_id', input.roundId)
         .eq('pooler_id', input.poolerId)
         .eq('is_active', true),
       db
         .from('players')
-        .select('id, player_contracts (season, cap_number)')
+        .select('id, player_contracts (season, cap_number, contract_status)')
         .eq('id', input.addPlayerId)
         .single(),
     ])

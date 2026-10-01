@@ -128,7 +128,7 @@ export async function getPlayoffPoolRosterAction(
   const [{ data: entries }, { data: elims }, { data: participating }] = await Promise.all([
     supabase
       .from('playoff_pool_rosters')
-      .select('id, player_id, position_slot, added_at, players(first_name, last_name, position, nhl_id, teams(id, code), player_contracts(season, cap_number))')
+      .select('id, player_id, position_slot, added_at, players(first_name, last_name, position, nhl_id, teams(id, code), player_contracts(season, cap_number, contract_status))')
       .eq('pooler_id', poolerId)
       .eq('pool_season_id', poolSeasonId)
       .eq('is_active', true),
@@ -230,7 +230,7 @@ export async function getAvailablePlayoffPlayersAction(
   // sinon retourner tous les joueurs disponibles (is_available comme garde-fou)
   let query = supabase
     .from('players')
-    .select('id, first_name, last_name, position, nhl_id, teams(id, code), player_contracts(season, cap_number)')
+    .select('id, first_name, last_name, position, nhl_id, teams(id, code), player_contracts(season, cap_number, contract_status)')
   if (teamIds.length > 0) {
     query = query.in('team_id', teamIds)
   } else {
@@ -272,7 +272,7 @@ export async function searchPlayoffPoolPlayersAction(
   const [{ data: players }, { data: elims }] = await Promise.all([
     supabase
       .from('players')
-      .select('id, first_name, last_name, position, nhl_id, teams(id, code), player_contracts(season, cap_number)')
+      .select('id, first_name, last_name, position, nhl_id, teams(id, code), player_contracts(season, cap_number, contract_status)')
       .or(`last_name.ilike.%${query}%,first_name.ilike.%${query}%`)
       .eq('is_available', true)
       .limit(30),
@@ -311,7 +311,7 @@ export async function getAllPlayoffPoolRostersAction(
   const [{ data: entries }, { data: elims }, { data: poolers }] = await Promise.all([
     supabase
       .from('playoff_pool_rosters')
-      .select('pooler_id, player_id, position_slot, added_at, players(first_name, last_name, position, nhl_id, teams(id, code), player_contracts(season, cap_number))')
+      .select('pooler_id, player_id, position_slot, added_at, players(first_name, last_name, position, nhl_id, teams(id, code), player_contracts(season, cap_number, contract_status))')
       .eq('pool_season_id', poolSeasonId)
       .eq('is_active', true),
     supabase.from('playoff_eliminations').select('team_id').eq('pool_season_id', poolSeasonId),
@@ -551,7 +551,7 @@ export async function submitSeriesBatchAction(input: {
   if (poolCap > 0) {
     const { data: currentRoster } = await db
       .from('playoff_pool_rosters')
-      .select('player_id, players(player_contracts(season, cap_number))')
+      .select('player_id, players(player_contracts(season, cap_number, contract_status))')
       .eq('pooler_id', input.poolerId)
       .eq('pool_season_id', input.poolSeasonId)
       .eq('is_active', true)
@@ -564,7 +564,7 @@ export async function submitSeriesBatchAction(input: {
       projectedCap += c?.cap_number ?? 0
     }
     for (const a of input.additions) {
-      const { data: p } = await db.from('players').select('player_contracts(season, cap_number)').eq('id', a.playerId).single()
+      const { data: p } = await db.from('players').select('player_contracts(season, cap_number, contract_status)').eq('id', a.playerId).single()
       const c = ((p as any)?.player_contracts ?? []).find((c: any) => c.season === toNhlSeason(input.season))
       projectedCap += c?.cap_number ?? 0
     }

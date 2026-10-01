@@ -21,6 +21,23 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-01
 
+**[Fix] — Cap simulé : seulement pour un RFA sans contrat** (`app/lib/capUtils.ts`,
+`app/components/UnsignedBadge.tsx`, 49 requêtes de contrats, `app/app/poolers/[id]/page.tsx`,
+`app/app/admin/presaison/*`, `app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`,
+`app/app/aide/AideTabs.tsx`) :
+- Trouvé par David : Jonathan Toews (UFA, sans contrat en 2026-27) comptait 2,4 M$ chez Paule
+  (2,0 M$ × 1,20). L'ancienne règle simulait un cap pour tout joueur sans contrat.
+- **Règle (David)** : l'estimé ne vaut que pour un **RFA** sans contrat (comme dans la vraie vie,
+  peu importe qu'il sorte d'un ELC ou non) ; un **UFA** sans contrat compte 0 $. Le statut vient
+  de `player_contracts.contract_status` de la ligne de la saison — toutes les requêtes qui
+  ramènent `season, cap_number` ramènent maintenant aussi `contract_status`.
+- `getEffectiveCap()` retourne `unsignedStatus` (`RFA` / `UFA` / `null`) ; badge partagé
+  `UnsignedBadge` : « RFA (estimé) » ou « UFA (sans contrat) » (remplace « ≈ » / « ≈ estimé »),
+  ajouté aussi dans le hub des agents libres où rien n'était indiqué.
+- Effet aujourd'hui : Toews 2,4 M$ → 0 $ (Paule) ; Nikishin et Edvinsson (RFA) inchangés.
+  Le suivi de conformité (`cap_signing_watch`) ne surveille donc plus que les RFA.
+
+
 **[Déploiement] — Approbations et LTIR pour réserviste en prod** : validés par David en staging
 (Mailloux, réserviste : demande, approbation depuis le panneau, retour en réserve), fusionnés
 sur `main`.

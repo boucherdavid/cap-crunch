@@ -1,5 +1,6 @@
 'use client'
 
+import UnsignedBadge from '@/components/UnsignedBadge'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import AutoReload from '@/components/AutoReload'
 import WatchlistPanel from '@/components/WatchlistPanel'
@@ -17,6 +18,7 @@ type Me = { id: string; name: string; isAdmin: boolean }
 type RosterEntry = {
   roster_id: number; player_id: number; player_type: string; playerName: string
   position: string | null; cap_number: number; isEstimatedCap: boolean
+  unsignedStatus: 'RFA' | 'UFA' | null
   rookieType: string | null
   injury: InjuryInfo | null
 }
@@ -653,7 +655,7 @@ function PoolerCard({
                         {e.injury && <span className="ml-1"><InjuryBadge injury={e.injury} /></span>}
                         {banqueMode && banqueEligible && <span className="ml-1 text-amber-500" title="Encore sous protection recrue — éligible">★</span>}
                       </span>
-                      <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
+                      <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}<UnsignedBadge status={e.unsignedStatus} /></span>
                       {isAdmin && !releaseMode && !banqueMode && (e.player_type === 'actif' || e.player_type === 'reserviste') && e.injury?.eligible && (
                         <button
                           onClick={() => handleAdminSetType(e.player_id, e.player_type, 'ltir')}
@@ -1247,7 +1249,7 @@ function MonAlignement({
                             {e.injury && <span className="ml-1"><InjuryBadge injury={e.injury} /></span>}
                             {banqueMode && banqueEligible && <span className="ml-1 text-amber-500" title="Encore sous protection recrue — éligible">★</span>}
                           </span>
-                          <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
+                          <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}<UnsignedBadge status={e.unsignedStatus} /></span>
                           {!seasonStarted && !releaseMode && !banqueMode && (e.player_type === 'actif' || e.player_type === 'reserviste') && e.injury?.eligible && (() => {
                             const pending = pendingLtir.find(r => r.ltirPlayerId === e.player_id)
                             return pending ? (

@@ -226,7 +226,7 @@ async function simulatePostTradeRoster(
 ): Promise<RosterLimitEntry[]> {
   const { data: currentRows } = await admin
     .from('pooler_rosters')
-    .select('player_id, player_type, players (position, player_contracts (season, cap_number))')
+    .select('player_id, player_type, players (position, player_contracts (season, cap_number, contract_status))')
     .eq('pooler_id', poolerId).eq('pool_season_id', saisonId).eq('is_active', true)
 
   const entries = new Map<number, RosterLimitEntry>()
@@ -260,7 +260,7 @@ async function simulatePostTradeRoster(
   const receivedPlayerIds = items.filter(i => i.item_type === 'player' && i.to_pooler_id === poolerId).map(i => i.player_id!)
   if (receivedPlayerIds.length > 0) {
     const { data: incoming } = await admin
-      .from('players').select('id, position, player_contracts (season, cap_number)')
+      .from('players').select('id, position, player_contracts (season, cap_number, contract_status)')
       .in('id', receivedPlayerIds)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const p of (incoming ?? []) as any[]) {

@@ -43,7 +43,7 @@ export default async function AdminPoolPage({
       supabase.from('poolers').select(`
         id, name, is_admin,
         pooler_rosters(id, player_type, is_active, pool_season_id,
-          players(player_contracts(season, cap_number))
+          players(player_contracts(season, cap_number, contract_status))
         )
       `).order('name'),
       supabase.from('pool_seasons').select('*').eq('is_active', true).eq('is_playoff', false).single(),

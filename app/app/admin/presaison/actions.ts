@@ -117,7 +117,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
       .from('pooler_rosters')
       .select(`id, pooler_id, player_id, player_type, rookie_type, pool_draft_year,
         players (first_name, last_name, position,
-          player_contracts (season, cap_number, is_elc))`)
+          player_contracts (season, cap_number, contract_status, is_elc))`)
       .eq('pool_season_id', saisonId)
       .eq('is_active', true),
     supabase.from('app_settings').select('unsigned_player_cap_multiplier, nhl_minimum_salary').eq('id', 1).maybeSingle(),
@@ -155,7 +155,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
     if (!info) continue
 
     const contracts: any[] = entry.players?.player_contracts ?? []
-    const { cap: capNum, isEstimated: capIsEstimated } = getEffectiveCap(contracts, saison.season, unsignedMultiplier)
+    const { cap: capNum, isEstimated: capIsEstimated, unsignedStatus } = getEffectiveCap(contracts, saison.season, unsignedMultiplier)
     const pos: string | null = entry.players?.position ?? null
     let type: string = entry.player_type
 
@@ -182,6 +182,7 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
       position: pos,
       cap_number: capNum,
       isEstimatedCap: capIsEstimated,
+      unsignedStatus,
       rookieType: entry.rookie_type ?? null,
       injury: injuriesByPlayerId.get(entry.player_id) ?? null,
     })
@@ -284,7 +285,7 @@ export async function demoteSurplusToReserveAction(
   // 2026-09-06 : Räty, une recrue, avait été "démis" au lieu d'un vrai actif moins cher).
   const { data: rows } = await supabase
     .from('pooler_rosters')
-    .select('id, pooler_id, players (position, player_contracts (season, cap_number))')
+    .select('id, pooler_id, players (position, player_contracts (season, cap_number, contract_status))')
     .eq('pool_season_id', saisonId)
     .eq('is_active', true)
     .eq('player_type', 'actif')
