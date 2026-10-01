@@ -21,6 +21,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-01
 
+**[Déploiement] — Approbations et LTIR pour réserviste en prod** : validés par David en staging
+(Mailloux, réserviste : demande, approbation depuis le panneau, retour en réserve), fusionnés
+sur `main`.
+
+
 **[Feat] — LTIR pour un réserviste ; retour de LTIR au statut choisi** (`app/lib/ltirRequests.ts`,
 `app/app/gestion-effectifs/actions.ts`, `GestionEffectifsManager.tsx`,
 `app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`, `app/app/admin/transactions/actions.ts`,
