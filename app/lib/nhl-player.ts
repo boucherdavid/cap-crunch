@@ -34,14 +34,18 @@ export type NhlPlayerLanding = {
 }
 
 export async function fetchPlayerLanding(nhlId: number): Promise<NhlPlayerLanding | null> {
-  try {
-    const res = await fetch(
-      `https://api-web.nhle.com/v1/player/${nhlId}/landing`,
-      { next: { revalidate: 3600 } },
-    )
-    if (!res.ok) return null
-    return res.json()
-  } catch {
-    return null
+  const url = `https://api-web.nhle.com/v1/player/${nhlId}/landing`
+  // Deux essais : d'abord avec le cache d'une heure, puis sans cache — une réponse en erreur de
+  // la LNH (limite de débit, panne passagère) ne doit pas rester servie pendant une heure
+  // (fiche « Impossible de charger les données de ce joueur », David, 2026-10-01).
+  for (const init of [{ next: { revalidate: 3600 } }, { cache: 'no-store' as const }]) {
+    try {
+      const res = await fetch(url, init)
+      if (res.ok) return await res.json()
+      console.error(`[fetchPlayerLanding] ${nhlId} : HTTP ${res.status}`)
+    } catch (e) {
+      console.error(`[fetchPlayerLanding] ${nhlId} :`, e)
+    }
   }
+  return null
 }
