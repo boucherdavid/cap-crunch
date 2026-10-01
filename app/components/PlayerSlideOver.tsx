@@ -189,28 +189,35 @@ export default function PlayerSlideOver() {
     return () => { cancelled = true }
   }, [summaryKey, nhlId, ficheId])
 
-  const [player, setPlayer] = useState<NhlPlayerLanding | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [projections, setProjections] = useState<Projection[]>([])
+  // Même principe pour les stats LNH et les projections : étiquetées par nhl_id, donc rien à
+  // remettre à zéro dans l'effet quand on change de joueur.
+  const [loadedPlayer, setLoadedPlayer] = useState<{ nhlId: number; data: NhlPlayerLanding | null } | null>(null)
+  const [loadedProjections, setLoadedProjections] = useState<{ nhlId: number; data: Projection[] } | null>(null)
+  const player = nhlId !== null && loadedPlayer?.nhlId === nhlId ? loadedPlayer.data : null
+  const loading = nhlId !== null && loadedPlayer?.nhlId !== nhlId
+  const projections = nhlId !== null && loadedProjections?.nhlId === nhlId ? loadedProjections.data : []
 
   useEffect(() => {
-    if (!nhlId) { setPlayer(null); return }
-    setLoading(true)
-    setPlayer(null)
+    if (!nhlId) return
+    let cancelled = false
     fetchPlayerLanding(nhlId).then(data => {
-      setPlayer(data)
-      setLoading(false)
+      if (!cancelled) setLoadedPlayer({ nhlId, data })
     })
+    return () => { cancelled = true }
   }, [nhlId])
 
   useEffect(() => {
-    if (!nhlId) { setProjections([]); return }
+    if (!nhlId) return
+    let cancelled = false
     const supabase = createClient()
     supabase
       .from('player_projections')
       .select('source, season, projected_points, projected_wins, players!inner(nhl_id)')
       .eq('players.nhl_id', nhlId)
-      .then(({ data }) => setProjections((data as unknown as Projection[]) ?? []))
+      .then(({ data }) => {
+        if (!cancelled) setLoadedProjections({ nhlId, data: (data as unknown as Projection[]) ?? [] })
+      })
+    return () => { cancelled = true }
   }, [nhlId])
 
   const close = () => {
