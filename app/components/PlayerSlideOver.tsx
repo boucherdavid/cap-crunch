@@ -7,6 +7,47 @@ import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import InjuryBadge from './InjuryBadge'
 import AddToWatchlist from './AddToWatchlist'
+import { formatMetric, metricsFor, seasonLabel, type Metric } from '@/lib/advancedMetrics'
+
+// Colonnes de l'historique des stats avancées dans la fiche (clés de lib/advancedMetrics.ts).
+const ADVANCED_COLUMNS = {
+  skater: ['gp', 'pts60', 'xg', 'gax', 'xgPct', 'pdo', 'gsGp'],
+  goalie: ['gp', 'wins', 'svPct', 'gsax', 'gsax60'],
+}
+
+/** Évolution d'un joueur d'une saison à l'autre (David, 2026-10-01) — stats avancées MoneyPuck,
+ * toutes situations, une ligne par saison importée. */
+function AdvancedHistory({ advanced, onNavigate }: { advanced: NonNullable<PlayerPoolSummary['advanced']>; onNavigate: () => void }) {
+  const byKey = Object.fromEntries(metricsFor(advanced.kind).map(m => [m.key, m])) as Record<string, Metric>
+  const cols = ADVANCED_COLUMNS[advanced.kind].map(k => byKey[k])
+  return (
+    <div className="mt-6">
+      <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Stats avancées par saison</h3>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50 border-b text-xs text-gray-400 uppercase tracking-wide">
+              <th className="px-3 py-1.5 text-left">Saison</th>
+              {cols.map(c => <th key={c.key} title={`${c.label} — ${c.help}`} className="px-2 py-1.5 text-right whitespace-nowrap">{c.short}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {advanced.seasons.map(s => (
+              <tr key={s.season} className="border-b hover:bg-gray-50">
+                <td className="px-3 py-1.5 text-gray-500 whitespace-nowrap">{seasonLabel(s.season)}</td>
+                {cols.map(c => <td key={c.key} className="px-2 py-1.5 text-right tabular-nums text-gray-600 whitespace-nowrap">{formatMetric(c, s.m[c.key])}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-2 text-[11px] text-gray-400">
+        Données MoneyPuck.com.{' '}
+        <Link href="/analytique/stats-avancees" onClick={onNavigate} className="underline hover:text-gray-600">Définitions des sigles</Link>
+      </p>
+    </div>
+  )
+}
 import { getPlayerPoolSummaryAction, type PlayerPoolSummary } from './player-search-actions'
 
 const TYPE_LABEL: Record<string, string> = { actif: 'Actif', reserviste: 'Réserviste', recrue: 'Recrue', ltir: 'LTIR' }
@@ -378,6 +419,8 @@ export default function PlayerSlideOver() {
           {!loading && player && nhlSeasons.length === 0 && (
             <p className="text-gray-400 text-sm">Aucune saison LNH disponible.</p>
           )}
+
+          {summary?.advanced && <AdvancedHistory advanced={summary.advanced} onNavigate={close} />}
 
           {ficheId && summary && (
             <p className="text-gray-400 text-sm">Aucune statistique LNH pour ce joueur.</p>

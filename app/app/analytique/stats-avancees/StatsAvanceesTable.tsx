@@ -69,6 +69,8 @@ const SKATER_COLUMNS: Column[] = [
 const GOALIE_COLUMNS: Column[] = [
   { key: 'gp', label: 'PJ', help: 'Parties jouées', value: r => r.games_played, format: int },
   { key: 'toi', label: 'Min', help: 'Minutes jouées', value: r => r.icetime / 60, format: int },
+  { key: 'wins', label: 'V', help: 'Victoires (source : LNH) — affichées en « Toutes situations » seulement', value: r => r.stats.wins ?? null, format: int },
+  { key: 'so', label: 'BL', help: 'Blanchissages (source : LNH) — affichés en « Toutes situations » seulement', value: r => r.stats.shutouts ?? null, format: int },
   { key: 'sa', label: 'Tirs', help: 'Tirs au but reçus', value: r => s(r, 'sa'), format: int },
   { key: 'ga', label: 'BA', help: 'Buts alloués', value: r => s(r, 'ga'), format: int },
   { key: 'svpct', label: '% arr.', help: "Pourcentage d'arrêts", value: r => { const v = ratio(s(r, 'ga'), s(r, 'sa')); return v === null ? null : 1 - v }, format: v => v.toFixed(3) },

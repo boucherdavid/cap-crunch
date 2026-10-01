@@ -21,6 +21,31 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-01
 
+**[Feat] — Outil d'analyse : gardiens, évolution, saisons depuis 2020-21**
+(`python_script/import_advanced_stats.py`, `.github/workflows/advanced_stats.yml`,
+`app/lib/advancedMetrics.ts`, `app/app/analytique/analyse/*`, `app/app/analytique/stats-avancees/*`,
+`app/components/PlayerSlideOver.tsx`, `app/components/player-search-actions.ts`, `app/app/aide/AideTabs.tsx`) :
+- **Victoires des gardiens stockées à l'import** (question de David : pourquoi les charger à
+  chaque visite ?) : MoneyPuck ne les fournit pas ; l'import va les chercher à l'API stats de la
+  LNH (`goalie/summary`, même `playerId`) et les range dans le JSONB de la ligne « toutes
+  situations » (`wins`, `losses`, `ot_losses`, `shutouts`, `starts`). Aucune migration. Une panne
+  de la LNH n'empêche pas l'import.
+- **Saisons 2020-21 à 2026-27** importées (staging). Le workflow accepte une entrée `seasons`
+  pour importer des saisons précises à la main ; le cron reste sur saison courante + précédente
+  (une saison terminée ne change plus).
+- **Mode Gardiens** dans l'outil d'analyse (`?type=gardiens`) : mesures, questions prêtes
+  (Rendement, Mérite, Charge, Âge, Évolution) et « Rendement par pooler » (victoires par M$,
+  affiché — David ne voyait pas de raison de le cacher). Colonnes V et BL ajoutées aux gardiens
+  de Statistiques avancées.
+- **Évolution A** (outil) : axe horizontal « Même mesure, saison précédente » ; la référence
+  devient la diagonale et l'écart devient la variation d'une saison à l'autre ; il faut assez de
+  matchs dans les deux saisons.
+- **Évolution B** (fiche joueur) : tableau « Stats avancées par saison », chargé avec le
+  sommaire du pool.
+- `lib/advancedMetrics.ts` : calcul des mesures et registre (libellés, définitions) partagés par
+  l'outil et la fiche.
+
+
 **[Déploiement] — Menu « Analytique » en prod** : validé par David sur téléphone (recherche et
 ajout à une liste aussi), fusionné sur `main`.
 

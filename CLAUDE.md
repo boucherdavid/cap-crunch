@@ -157,7 +157,9 @@ python scrape_injuries.py --apply    # exécution réelle, sans confirmation (vo
 # Importe les stats avancées MoneyPuck dans player_advanced_stats (David, 2026-10-01) — pages
 # /analytique/stats-avancees et /analytique/analyse. Remplacement complet par saison (saison = année de début, 2025 =
 # 2025-26). Cible prod comme les autres scripts. Quotidien : .github/workflows/advanced_stats.yml
-# (11h UTC). Mention « MoneyPuck.com » obligatoire là où les données sont affichées.
+# (11h UTC, saison courante + précédente ; entrée `seasons` pour importer d'autres saisons à la
+# main — en base : 2020-21 et suivantes). Victoires/blanchissages des gardiens ajoutés depuis
+# l'API stats de la LNH. Mention « MoneyPuck.com » obligatoire là où les données sont affichées.
 cd python_script
 python import_advanced_stats.py                      # saison courante + précédente
 python import_advanced_stats.py --seasons 2023 2024  # saisons précises
@@ -309,7 +311,9 @@ correspondant au joueur (voir « Mes listes », section 6).
 `/analytique/stats-avancees` (stats avancées MoneyPuck, `player_advanced_stats`, patineurs et
 gardiens par saison et situation) et `/analytique/analyse` (outil d'analyse croisée : stats
 MoneyPuck × salaire/âge/propriétaire, nuage de points à deux mesures au choix + écart à la
-tendance, patineurs seulement). `/admin/stats-avancees` et `/admin/analyse` sont des redirections.
+tendance ; patineurs ou gardiens, `?type=gardiens` ; vue « Évolution » = même mesure à la
+saison précédente). Calcul des mesures partagé avec la fiche joueur (tableau « Stats avancées par
+saison ») dans `app/lib/advancedMetrics.ts` — y ajouter toute nouvelle mesure, jamais dans une page. `/admin/stats-avancees` et `/admin/analyse` sont des redirections.
 `/planification` (sondage type Doodle pour une rencontre — vue pooler : ses disponibilités,
 le résumé, le babillard propre au sondage ; notifie les admins par push à chaque
 soumission/commentaire). Gestion (créer le sondage, ajouter/retirer des dates) sur

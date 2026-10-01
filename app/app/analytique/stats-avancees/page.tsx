@@ -44,13 +44,22 @@ export default async function StatsAvanceesPage({
   const situation: Situation = SITUATIONS.includes(params.situation as Situation) ? params.situation as Situation : 'all'
 
   // Saisons disponibles (les gardiens suffisent : ~100 lignes par saison) + max de matchs joués.
-  const { data: seasonRows } = await supabase
-    .from('player_advanced_stats')
-    .select('season, games_played')
-    .eq('kind', 'goalie')
-    .eq('situation', 'all')
+  // Paginé : ~100 gardiens par saison, la limite de 1000 lignes serait atteinte vers 10 saisons.
+  const seasonRows: { season: number; games_played: number }[] = []
+  for (let from = 0; ; from += 1000) {
+    const { data } = await supabase
+      .from('player_advanced_stats')
+      .select('season, games_played, nhl_id')
+      .eq('kind', 'goalie')
+      .eq('situation', 'all')
+      .order('season')
+      .order('nhl_id')
+      .range(from, from + 999)
+    seasonRows.push(...(data ?? []))
+    if (!data || data.length < 1000) break
+  }
   const maxGp = new Map<number, number>()
-  for (const r of seasonRows ?? []) maxGp.set(r.season, Math.max(maxGp.get(r.season) ?? 0, r.games_played ?? 0))
+  for (const r of seasonRows) maxGp.set(r.season, Math.max(maxGp.get(r.season) ?? 0, r.games_played ?? 0))
   const seasons = [...maxGp.keys()].sort((a, b) => b - a)
   const defaultSeason = seasons.find(s => (maxGp.get(s) ?? 0) >= MIN_GP_FOR_DEFAULT) ?? seasons[0] ?? null
   const requested = Number(params.saison)

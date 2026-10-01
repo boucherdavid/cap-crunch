@@ -12,12 +12,18 @@ Chaque CSV donne une ligne par joueur ET par situation (all, 5on5, 5on4, 4on5, o
 colonnes (STATS_PATINEURS / STATS_GARDIENS) stocké en JSONB — les taux (par 60 min, %, PDO,
 GSAx) sont calculés côté app. Saison = année de début (2025 = 2025-26), convention MoneyPuck.
 
+Gardiens : MoneyPuck ne donne ni les victoires ni les blanchissages (ce qui compte dans le
+pool) — complétés à partir de l'API stats de la LNH (`goalie/summary`, même `playerId`) et
+rangés dans le même JSONB (`wins`, `losses`, `ot_losses`, `shutouts`, `starts`), pour que l'app
+lise tout depuis la base sans appeler la LNH à chaque affichage (David, 2026-10-01).
+
 Remplacement complet par saison (delete + insert) : MoneyPuck recalcule toute la saison à
 chaque mise à jour, il n'y a pas d'historique à préserver.
 
 Usage :
     python import_advanced_stats.py                     # saison courante + précédente
-    python import_advanced_stats.py --seasons 2023 2024 # saisons précises
+    python import_advanced_stats.py --seasons 2023 2024 # saisons précises (une saison
+                                                        # terminée ne change plus : une fois suffit)
     python import_advanced_stats.py --dry-run           # aucune écriture
 """
 import argparse
@@ -39,6 +45,8 @@ SUPABASE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
 
 BASE_URL = 'https://moneypuck.com/moneypuck/playerData/seasonSummary/{season}/regular/{kind}.csv'
 HEADERS = {'User-Agent': 'Mozilla/5.0 (Cap Crunch pool prive; credit MoneyPuck.com)'}
+NHL_GOALIES_URL = ('https://api.nhle.com/stats/rest/en/goalie/summary?limit=-1'
+                   '&cayenneExp=seasonId={nhl_season}%20and%20gameTypeId=2')
 SITUATIONS = {'all', '5on5', '5on4', '4on5'}
 BATCH_SIZE = 500
 
@@ -121,6 +129,23 @@ def fetch_rows(season: int, kind: str) -> list[dict] | None:
     return list(csv.DictReader(io.StringIO(res.text)))
 
 
+def fetch_nhl_goalie_results(season: int) -> dict[int, dict]:
+    """{nhl_id: {wins, losses, ot_losses, shutouts, starts}} pour la saison régulière."""
+    url = NHL_GOALIES_URL.format(nhl_season=f'{season}{season + 1}')
+    res = requests.get(url, headers=HEADERS, timeout=60)
+    res.raise_for_status()
+    return {
+        g['playerId']: {
+            'wins': g.get('wins'),
+            'losses': g.get('losses'),
+            'ot_losses': g.get('otLosses'),
+            'shutouts': g.get('shutouts'),
+            'starts': g.get('gamesStarted'),
+        }
+        for g in res.json().get('data', []) if g.get('playerId')
+    }
+
+
 def build_records(season: int, kind: str, rows: list[dict]) -> list[dict]:
     mapping = STATS_PATINEURS if kind == 'skaters' else STATS_GARDIENS
     records = []
@@ -163,6 +188,18 @@ def main():
                 print(f'[INFO] {season}-{(season + 1) % 100:02d} {kind} : pas encore publié par MoneyPuck.')
                 continue
             recs = build_records(season, kind, rows)
+            if kind == 'goalies':
+                # Victoires / blanchissages de la LNH — sur la ligne « toutes situations » seulement
+                # (ce ne sont pas des stats par situation). Une panne de la LNH n'empêche pas l'import.
+                try:
+                    results = fetch_nhl_goalie_results(season)
+                    for rec in recs:
+                        if rec['situation'] == 'all' and rec['nhl_id'] in results:
+                            rec['stats'].update(results[rec['nhl_id']])
+                    print(f'[INFO] {season}-{(season + 1) % 100:02d} gardiens : victoires LNH ajoutées '
+                          f'({len(results)} gardiens).')
+                except Exception as e:
+                    print(f'[ATTENTION] Victoires LNH indisponibles pour {season} ({e}) — import sans elles.')
             print(f'[INFO] {season}-{(season + 1) % 100:02d} {kind} : {len(recs)} ligne(s) '
                   f'({len({r["nhl_id"] for r in recs})} joueurs).')
             records.extend(recs)

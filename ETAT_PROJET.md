@@ -22,7 +22,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | Identique à `main` |
+| `staging` | En avance sur `main` : outil d'analyse (gardiens, évolution), saisons 2020-21+, historique dans la fiche — à valider |
 | `main` (prod) | À jour — fusion du 2026-10-01 : menu « Analytique » (stats avancées + outil d'analyse ouverts aux poolers), recherche globale de joueurs, fiche joueur enrichie, MoneyPuck (blessures à 3 sources), légendes repliées, correctif homonymes |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
@@ -62,8 +62,10 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **Outil d'analyse** : suites possibles — gardiens, pointage du pool plutôt que points LNH,
-  mémoriser le graphique masqué.
+- **Outil d'analyse — gardiens, évolution, saisons 2020-21+** : en staging, à valider par David.
+  Après validation : fusion sur `main`, puis lancer `advanced_stats.yml` à la main avec
+  `seasons = 2020 2021 2022 2023 2024 2025 2026` pour remplir la prod (victoires comprises).
+  Suite possible : pointage du pool plutôt que points LNH, mémoriser le graphique masqué.
 
 - **Facteur de plafond** : analyse faite (`calcul_salaire/calcul_facteur.md`, résumé
   `calcul_salaire/resume_facteur.md`, page partageable

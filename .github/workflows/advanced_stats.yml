@@ -5,6 +5,11 @@ env:
 
 on:
   workflow_dispatch:
+    inputs:
+      seasons:
+        description: 'Années de début à importer, séparées par des espaces (ex: 2020 2021). Vide = saison courante + précédente.'
+        required: false
+        default: ''
 
   # Tous les jours à 11h UTC (7h ET) — MoneyPuck met ses CSV à jour après les matchs de la veille.
   schedule:
@@ -33,4 +38,9 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python python_script/import_advanced_stats.py
+        run: |
+          if [ -n "${{ inputs.seasons }}" ]; then
+            python python_script/import_advanced_stats.py --seasons ${{ inputs.seasons }}
+          else
+            python python_script/import_advanced_stats.py
+          fi
