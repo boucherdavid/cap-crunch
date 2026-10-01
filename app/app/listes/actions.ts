@@ -366,3 +366,19 @@ export async function searchWatchlistPlayersAction(
   players = players.slice(0, limit)
   return { players, truncated }
 }
+
+/** Listes du pooler connecté où ce joueur peut aller (David, 2026-10-01 — bouton « Ajouter à une
+ * liste » de la fiche joueur) : listes « recrues » pour un joueur du dernier repêchage LNH,
+ * listes « joueurs » pour tous les autres. `loggedIn=false` → le bouton n'est pas affiché. */
+export async function listWatchlistsForPlayerAction(playerId: number): Promise<{ loggedIn: boolean; kind: WatchlistKind; lists: Watchlist[] }> {
+  const userId = await currentUserId()
+  if (!userId) return { loggedIn: false, kind: 'joueurs', lists: [] }
+  const admin = createAdminClient()
+  const [{ data: player }, draftYear] = await Promise.all([
+    admin.from('players').select('draft_year').eq('id', playerId).maybeSingle(),
+    latestDraftYear(admin),
+  ])
+  const kind: WatchlistKind = draftYear !== null && player?.draft_year === draftYear ? 'recrues' : 'joueurs'
+  const { lists } = await listWatchlistsAction([kind])
+  return { loggedIn: true, kind, lists }
+}

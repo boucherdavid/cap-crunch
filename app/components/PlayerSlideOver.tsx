@@ -4,6 +4,67 @@ import { useEffect, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { fetchPlayerLanding, type NhlPlayerLanding, type NhlSeasonTotal } from '@/lib/nhl-player'
 import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
+import InjuryBadge from './InjuryBadge'
+import AddToWatchlist from './AddToWatchlist'
+import { getPlayerPoolSummaryAction, type PlayerPoolSummary } from './player-search-actions'
+
+const TYPE_LABEL: Record<string, string> = { actif: 'Actif', reserviste: 'Réserviste', recrue: 'Recrue', ltir: 'LTIR' }
+
+function fmtCap(n: number | null): string {
+  if (n == null) return '—'
+  return `${(n / 1_000_000).toLocaleString('fr-CA', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} M$`
+}
+
+/** Sommaire propre au pool (David, 2026-10-01) : qui possède le joueur, blessure, contrat. */
+function PoolSummary({ summary, onNavigate }: { summary: PlayerPoolSummary; onNavigate: () => void }) {
+  return (
+    <div className="mb-5 space-y-3">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        {summary.owner ? (
+          <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-slate-700">
+            {TYPE_LABEL[summary.owner.playerType] ?? summary.owner.playerType} chez{' '}
+            <Link href={`/poolers/${summary.owner.poolerId}`} onClick={onNavigate} className="font-semibold underline hover:text-blue-700">
+              {summary.owner.poolerName}
+            </Link>
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-green-50 px-2.5 py-1 text-green-700 font-medium">
+            <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+            Disponible
+          </span>
+        )}
+        {summary.injury && <InjuryBadge injury={summary.injury} />}
+      </div>
+      {summary.injury && (
+        <p className="text-xs text-gray-500">{[summary.injury.injuryType, summary.injury.status].filter(Boolean).join(' — ')}</p>
+      )}
+      <p className="text-xs text-gray-500">
+        {[
+          summary.age != null ? `${Math.floor(summary.age)} ans` : null,
+          summary.status ? `Statut ${summary.status}` : null,
+          summary.draft ? `Repêché en ${summary.draft.year}${summary.draft.round ? `, ronde ${summary.draft.round}` : ''}${summary.draft.overall ? ` (${summary.draft.overall}ᵉ au total)` : ''}` : null,
+        ].filter(Boolean).join(' · ')}
+      </p>
+      <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Contrat</p>
+        {summary.contracts.length === 0 ? (
+          <p className="text-sm text-gray-400">Aucun contrat en vigueur{summary.season ? ` pour ${summary.season} ou après` : ''}</p>
+        ) : (
+          <div className="flex flex-wrap gap-x-5 gap-y-1">
+            {summary.contracts.map(c => (
+              <p key={c.season} className="text-sm text-gray-700 whitespace-nowrap">
+                <span className="text-gray-400">{c.season} :</span>{' '}
+                <span className="font-semibold">{fmtCap(c.capNumber)}</span>
+                {c.status && <span className="text-gray-400 text-xs"> {c.status}</span>}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 const SOURCE_LABEL: Record<string, string> = { nhl_com: 'NHL.com' }
 
@@ -109,46 +170,73 @@ export default function PlayerSlideOver() {
 
   const nhlIdStr = searchParams.get('joueur')
   const nhlId = nhlIdStr ? parseInt(nhlIdStr, 10) : null
-
-  const [player, setPlayer] = useState<NhlPlayerLanding | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [projections, setProjections] = useState<Projection[]>([])
+  // `?fiche=<id interne>` : joueur sans nhl_id (prospect) ouvert depuis la recherche globale —
+  // pas de stats LNH à charger, seulement le sommaire du pool.
+  const ficheStr = searchParams.get('fiche')
+  const ficheId = !nhlId && ficheStr ? parseInt(ficheStr, 10) : null
+  // Le sommaire chargé est étiqueté par le joueur demandé : celui d'un joueur précédent n'est
+  // jamais affiché pendant que le suivant charge, sans remise à zéro dans l'effet.
+  const summaryKey = nhlId ? `n${nhlId}` : ficheId ? `f${ficheId}` : null
+  const [loadedSummary, setLoadedSummary] = useState<{ key: string; data: PlayerPoolSummary | null } | null>(null)
+  const summary = loadedSummary?.key === summaryKey ? loadedSummary.data : null
+  const summaryLoading = summaryKey !== null && loadedSummary?.key !== summaryKey
 
   useEffect(() => {
-    if (!nhlId) { setPlayer(null); return }
-    setLoading(true)
-    setPlayer(null)
-    fetchPlayerLanding(nhlId).then(data => {
-      setPlayer(data)
-      setLoading(false)
+    if (!summaryKey) return
+    let cancelled = false
+    getPlayerPoolSummaryAction({ nhlId, playerId: ficheId }).then(data => {
+      if (!cancelled) setLoadedSummary({ key: summaryKey, data })
     })
+    return () => { cancelled = true }
+  }, [summaryKey, nhlId, ficheId])
+
+  // Même principe pour les stats LNH et les projections : étiquetées par nhl_id, donc rien à
+  // remettre à zéro dans l'effet quand on change de joueur.
+  const [loadedPlayer, setLoadedPlayer] = useState<{ nhlId: number; data: NhlPlayerLanding | null } | null>(null)
+  const [loadedProjections, setLoadedProjections] = useState<{ nhlId: number; data: Projection[] } | null>(null)
+  const player = nhlId !== null && loadedPlayer?.nhlId === nhlId ? loadedPlayer.data : null
+  const loading = nhlId !== null && loadedPlayer?.nhlId !== nhlId
+  const projections = nhlId !== null && loadedProjections?.nhlId === nhlId ? loadedProjections.data : []
+
+  useEffect(() => {
+    if (!nhlId) return
+    let cancelled = false
+    fetchPlayerLanding(nhlId).then(data => {
+      if (!cancelled) setLoadedPlayer({ nhlId, data })
+    })
+    return () => { cancelled = true }
   }, [nhlId])
 
   useEffect(() => {
-    if (!nhlId) { setProjections([]); return }
+    if (!nhlId) return
+    let cancelled = false
     const supabase = createClient()
     supabase
       .from('player_projections')
       .select('source, season, projected_points, projected_wins, players!inner(nhl_id)')
       .eq('players.nhl_id', nhlId)
-      .then(({ data }) => setProjections((data as unknown as Projection[]) ?? []))
+      .then(({ data }) => {
+        if (!cancelled) setLoadedProjections({ nhlId, data: (data as unknown as Projection[]) ?? [] })
+      })
+    return () => { cancelled = true }
   }, [nhlId])
 
   const close = () => {
     const params = new URLSearchParams(searchParams.toString())
     params.delete('joueur')
+    params.delete('fiche')
     const url = params.size > 0 ? `${pathname}?${params.toString()}` : pathname
     router.replace(url, { scroll: false })
   }
 
   useEffect(() => {
-    if (!nhlId) return
+    if (!nhlId && !ficheId) return
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   })
 
-  if (!nhlId) return null
+  if (!nhlId && !ficheId) return null
 
   const isGoalie = player?.position === 'G'
   const nhlSeasons = (player?.seasonTotals ?? [])
@@ -181,7 +269,13 @@ export default function PlayerSlideOver() {
                 </p>
               </div>
             )}
-            {!loading && !player && (
+            {!loading && !player && summary && (
+              <div className="min-w-0">
+                <p className="font-bold text-gray-900 text-lg leading-tight truncate">{summary.name}</p>
+                <p className="text-sm text-gray-500">{[summary.teamCode, summary.position].filter(Boolean).join(' · ') || '—'}</p>
+              </div>
+            )}
+            {!loading && !player && !summary && !summaryLoading && (
               <p className="text-gray-400 text-sm">Joueur introuvable</p>
             )}
           </div>
@@ -202,6 +296,9 @@ export default function PlayerSlideOver() {
               ))}
             </div>
           )}
+
+          {summary && <PoolSummary summary={summary} onNavigate={close} />}
+          {summary && <AddToWatchlist playerId={summary.id} onNavigate={close} />}
 
           {!loading && player && projections.length > 0 && (
             <div className="mb-5 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
@@ -280,6 +377,10 @@ export default function PlayerSlideOver() {
 
           {!loading && player && nhlSeasons.length === 0 && (
             <p className="text-gray-400 text-sm">Aucune saison LNH disponible.</p>
+          )}
+
+          {ficheId && summary && (
+            <p className="text-gray-400 text-sm">Aucune statistique LNH pour ce joueur.</p>
           )}
 
           {!loading && !player && nhlId && (

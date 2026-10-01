@@ -1,9 +1,10 @@
 'use client'
 
+import PlayerSearch from './PlayerSearch'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 function HamburgerIcon() {
@@ -141,6 +142,7 @@ const ADMIN_GROUP: NavGroup = {
         { label: 'Gestion du pool', href: '/admin/pool' },
         { label: 'Mise à jour de données', href: '/admin/donnees' },
         { label: 'Stats avancées', href: '/admin/stats-avancees' },
+        { label: 'Analyse', href: '/admin/analyse' },
       ],
     },
     {
@@ -460,6 +462,8 @@ export default function Navbar({
                 <span className="hidden sm:inline">Cap Crunch</span>
               </Link>
             </div>
+
+            <Suspense fallback={<div className="flex-1" />}><PlayerSearch /></Suspense>
 
             <div className="flex items-center gap-2 shrink-0">
               {installPrompt && (
