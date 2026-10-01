@@ -22,7 +22,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | Identique à `main` |
+| `staging` | En avance sur `main` : menu « Analytique » (stats avancées + outil d'analyse ouverts aux poolers, adaptés au mobile) — à valider |
 | `main` (prod) | À jour — fusion du 2026-10-01 : recherche globale de joueurs, fiche joueur enrichie (sommaire du pool, ajout à une liste), `/admin/analyse` ; plus tôt le même jour : MoneyPuck (blessures à 3 sources, `/admin/stats-avancees`), légendes repliées, correctif homonymes |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
@@ -62,8 +62,9 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **Analyse (`/admin/analyse`)** : suites possibles si David veut l'ouvrir aux poolers —
-  gardiens, pointage du pool plutôt que points LNH.
+- **Menu « Analytique »** : en staging, à valider par David (surtout sur téléphone), puis fusion
+  sur `main`. Suites possibles de l'outil d'analyse : gardiens, pointage du pool plutôt que
+  points LNH.
 
 - **Facteur de plafond** : analyse faite (`calcul_salaire/calcul_facteur.md`, résumé
   `calcul_salaire/resume_facteur.md`, page partageable

@@ -79,6 +79,10 @@ const GOALIE_COLUMNS: Column[] = [
   { key: 'hdsa', label: 'Tirs DÉ', help: 'Tentatives de danger élevé reçues', value: r => s(r, 'hd_sa'), format: int },
 ]
 
+// Portrait (téléphone) : seules ces colonnes restent, plus celle qui sert au tri ; tout revient
+// à partir de sm (paysage/desktop) — conventions mobiles du projet (CLAUDE.md, section 8).
+const ESSENTIAL = new Set(['gp', 'pts', 'p60', 'gax', 'xgpct', 'svpct', 'gsax', 'gsax60'])
+
 const OWNER_TYPE_LABEL: Record<string, string> = { actif: 'A', reserviste: 'R', recrue: 'Rc', ltir: 'LTIR' }
 
 export default function StatsAvanceesTable({
@@ -106,7 +110,7 @@ export default function StatsAvanceesTable({
     if (sa !== null) p.set('saison', String(sa))
     p.set('situation', next.situation ?? situation)
     p.set('type', (next.type ?? kind) === 'goalie' ? 'gardiens' : 'patineurs')
-    router.push(`/admin/stats-avancees?${p.toString()}`)
+    router.push(`/analytique/stats-avancees?${p.toString()}`)
   }
 
   const sortCol = columns.find(c => c.key === sortKey) ?? columns[0]
@@ -126,6 +130,8 @@ export default function StatsAvanceesTable({
       .map(x => x.r)
   }, [rows, minGp, availOnly, pos, search, sortCol, sortDesc])
 
+  const colCls = (key: string) => (ESSENTIAL.has(key) || key === sortKey ? '' : 'hidden sm:table-cell')
+
   const onSort = (key: string) => {
     if (key === sortKey) setSortDesc(d => !d)
     else { setSortKey(key); setSortDesc(true) }
@@ -138,11 +144,11 @@ export default function StatsAvanceesTable({
     <div>
       <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Stats avancées</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Statistiques avancées</h1>
           <p className="text-xs text-gray-400 mt-1">
             Données :{' '}
             <a href="https://moneypuck.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">MoneyPuck.com</a>
-            {' '}— mise à jour quotidienne · Visible par l&apos;admin seulement
+            {' '}— mise à jour quotidienne
           </p>
         </div>
         <span className="text-sm text-gray-500">{filtered.length} joueur{filtered.length > 1 ? 's' : ''}</span>
@@ -214,7 +220,7 @@ export default function StatsAvanceesTable({
             ))}
           </dl>
           <p className="mt-2 text-[11px] text-gray-400">
-            Les valeurs dépendent de la situation choisie (toutes, 5 contre 5, avantage ou désavantage numérique). Clique un en-tête pour trier.
+            Les valeurs dépendent de la situation choisie (toutes, 5 contre 5, avantage ou désavantage numérique). Clique un en-tête pour trier. Sur téléphone, tourne l&apos;écran pour voir toutes les colonnes.
           </p>
         </CollapsibleLegend>
       </div>
@@ -229,41 +235,44 @@ export default function StatsAvanceesTable({
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b text-left">
-                  <th className="sticky top-0 left-0 z-20 bg-gray-50 px-3 py-2.5 font-medium text-gray-600">Joueur</th>
-                  <th className="sticky top-0 z-10 bg-gray-50 px-3 py-2.5 font-medium text-gray-600">Éq.</th>
-                  {kind === 'skater' && <th className="sticky top-0 z-10 bg-gray-50 px-3 py-2.5 font-medium text-gray-600">Pos</th>}
+                  <th className="sticky top-0 left-0 z-20 bg-gray-50 px-2 sm:px-3 py-2.5 font-medium text-gray-600">Joueur</th>
+                  <th className="hidden sm:table-cell sticky top-0 z-10 bg-gray-50 px-3 py-2.5 font-medium text-gray-600">Éq.</th>
+                  {kind === 'skater' && <th className="hidden sm:table-cell sticky top-0 z-10 bg-gray-50 px-3 py-2.5 font-medium text-gray-600">Pos</th>}
                   {columns.map(c => (
                     <th
                       key={c.key}
                       title={c.help}
                       onClick={() => onSort(c.key)}
-                      className={`sticky top-0 z-10 bg-gray-50 px-3 py-2.5 font-medium text-right whitespace-nowrap cursor-pointer select-none ${
+                      className={`${colCls(c.key)} sticky top-0 z-10 bg-gray-50 px-2 sm:px-3 py-2.5 font-medium text-right whitespace-nowrap cursor-pointer select-none ${
                         c.key === sortKey ? 'text-blue-700' : 'text-gray-600 hover:text-gray-900'
                       }`}
                     >
                       {c.label}{c.key === sortKey && (sortDesc ? ' ▾' : ' ▴')}
                     </th>
                   ))}
-                  <th className="sticky top-0 z-10 bg-gray-50 px-3 py-2.5 font-medium text-gray-600">Pool</th>
+                  <th className="hidden sm:table-cell sticky top-0 z-10 bg-gray-50 px-3 py-2.5 font-medium text-gray-600">Pool</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(r => (
                   <tr key={r.nhl_id} className="border-b last:border-0 hover:bg-gray-50">
-                    <td className="sticky left-0 z-10 bg-white px-3 py-2 font-medium text-gray-800 whitespace-nowrap">
+                    <td className="sticky left-0 z-10 bg-white px-2 sm:px-3 py-2 font-medium text-gray-800 sm:whitespace-nowrap">
                       <PlayerLink nhlId={r.nhl_id}>{r.name}</PlayerLink>
+                      <span className="sm:hidden block text-[11px] font-normal text-gray-400">
+                        {[r.team, kind === 'skater' ? r.position : null, r.owner ? r.owner.poolerName : 'Disponible'].filter(Boolean).join(' · ')}
+                      </span>
                     </td>
-                    <td className="px-3 py-2"><TeamBadge code={r.team} size="sm" /></td>
-                    {kind === 'skater' && <td className="px-3 py-2 text-gray-500">{r.position}</td>}
+                    <td className="hidden sm:table-cell px-3 py-2"><TeamBadge code={r.team} size="sm" /></td>
+                    {kind === 'skater' && <td className="hidden sm:table-cell px-3 py-2 text-gray-500">{r.position}</td>}
                     {columns.map(c => {
                       const v = c.value(r)
                       return (
-                        <td key={c.key} className={`px-3 py-2 text-right tabular-nums whitespace-nowrap ${c.key === sortKey ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+                        <td key={c.key} className={`${colCls(c.key)} px-2 sm:px-3 py-2 text-right tabular-nums whitespace-nowrap ${c.key === sortKey ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
                           {v === null ? '—' : c.format(v)}
                         </td>
                       )
                     })}
-                    <td className="px-3 py-2 whitespace-nowrap text-xs">
+                    <td className="hidden sm:table-cell px-3 py-2 whitespace-nowrap text-xs">
                       {r.owner
                         ? <span className="text-gray-500">{r.owner.poolerName} <span className="text-gray-400">({OWNER_TYPE_LABEL[r.owner.playerType] ?? r.owner.playerType})</span></span>
                         : <span className="inline-flex items-center gap-1.5 text-green-600 font-medium"><span className="inline-block w-2 h-2 rounded-full bg-green-500" />Disponible</span>}

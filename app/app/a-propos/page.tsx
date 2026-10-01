@@ -81,6 +81,16 @@ const CATEGORIES: Category[] = [
         description: 'Mêmes informations que pour la LNH, mais pour la ligue de développement — utile pour suivre tes prospects en banque de recrues.',
       },
       {
+        title: 'Statistiques avancées',
+        href: '/analytique/stats-avancees',
+        description: 'Au-delà des buts et des passes : buts attendus, possession, chance (PDO), buts sauvés par les gardiens. Chaque mesure est expliquée sur la page. Données MoneyPuck.com.',
+      },
+      {
+        title: "Outil d'analyse",
+        href: '/analytique/analyse',
+        description: 'Croise deux mesures au choix (salaire, points, âge, temps de glace…) sur un graphique pour repérer qui fait mieux ou moins bien que la tendance, par exemple le rendement par rapport au salaire.',
+      },
+      {
         title: 'Blessures',
         href: '/statistiques/blessures',
         description: 'Les joueurs blessés de la LNH (CBS Sports, ESPN et MoneyPuck, confirmés par au moins 2 sources), mis à jour chaque jour, avec leur admissibilité au LTIR et le pooler qui les possède.',

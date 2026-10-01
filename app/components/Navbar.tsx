@@ -93,6 +93,14 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'AHL', href: '/statistiques/ahl' },
     ],
   },
+  {
+    id: 'analytique',
+    label: 'Analytique',
+    items: [
+      { label: 'Statistiques avancées', href: '/analytique/stats-avancees' },
+      { label: "Outil d'analyse", href: '/analytique/analyse' },
+    ],
+  },
   { id: 'blessures', label: 'Blessures', href: '/statistiques/blessures' },
   { id: 'contrats', label: 'Contrats LNH', href: '/joueurs' },
   {
@@ -141,8 +149,6 @@ const ADMIN_GROUP: NavGroup = {
         { label: 'Communauté', href: '/admin/communaute' },
         { label: 'Gestion du pool', href: '/admin/pool' },
         { label: 'Mise à jour de données', href: '/admin/donnees' },
-        { label: 'Stats avancées', href: '/admin/stats-avancees' },
-        { label: 'Analyse', href: '/admin/analyse' },
       ],
     },
     {

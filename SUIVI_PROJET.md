@@ -21,6 +21,23 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-01
 
+**[Feat] — Menu « Analytique » : stats avancées et outil d'analyse ouverts aux poolers**
+(`app/app/analytique/stats-avancees/*`, `app/app/analytique/analyse/*`, `app/components/Navbar.tsx`,
+`app/app/admin/stats-avancees/page.tsx`, `app/app/admin/analyse/page.tsx`, `app/app/aide/AideTabs.tsx`,
+`app/app/a-propos/page.tsx`) :
+- Décision de David : rendre les deux pages visibles à tous (« si c'est utilisé, tant mieux »),
+  dans un nouveau groupe de menu **Analytique** (titre choisi par David), placé après Statistiques :
+  « Statistiques avancées » et « Outil d'analyse ».
+- Routes déplacées de `/admin/...` vers `/analytique/stats-avancees` et `/analytique/analyse`
+  (pas sous `/statistiques/`, sinon le lien « LNH » du menu s'allumerait aussi) ; vérification
+  `is_admin` retirée ; anciennes adresses admin = redirections ; liens retirés du menu Admin.
+- Adaptation mobile (obligatoire pour une page de consultation) : équipe/position/propriétaire
+  sous le nom en portrait, colonnes secondaires masquées (`ESSENTIAL` + la colonne triée reste
+  visible), marges réduites ; tout revient en paysage.
+- `/aide` (Guide → Analytique) et `/a-propos` complétés.
+- Limites inchangées de l'outil d'analyse : patineurs seulement, points LNH.
+
+
 **[Déploiement] — Recherche de joueurs, fiche enrichie et Analyse en prod** : validés par David
 en staging, fusionnés sur `main`. Dernier ajustement : sur `/admin/analyse`, l'accordéon unique
 est scindé en « Comment lire ce graphique » et « Définitions des mesures » (sigles peu connus).

@@ -154,8 +154,8 @@ python scrape_injuries.py --apply    # exécution réelle, sans confirmation (vo
 ```
 
 ```bash
-# Importe les stats avancées MoneyPuck dans player_advanced_stats (David, 2026-10-01) — page
-# /admin/stats-avancees. Remplacement complet par saison (saison = année de début, 2025 =
+# Importe les stats avancées MoneyPuck dans player_advanced_stats (David, 2026-10-01) — pages
+# /analytique/stats-avancees et /analytique/analyse. Remplacement complet par saison (saison = année de début, 2025 =
 # 2025-26). Cible prod comme les autres scripts. Quotidien : .github/workflows/advanced_stats.yml
 # (11h UTC). Mention « MoneyPuck.com » obligatoire là où les données sont affichées.
 cd python_script
@@ -233,7 +233,8 @@ Hockey_Pool_App/
 - `player_injuries` (suivi des blessures LNH, CBS Sports + ESPN en recoupement — voir section 6,
   une ligne par joueur blessé, upsert quotidien par `python_script/scrape_injuries.py`)
 - `player_advanced_stats` (stats avancées MoneyPuck par saison/situation/joueur, clé `nhl_id` —
-  `/admin/stats-avancees`, importée par `python_script/import_advanced_stats.py`)
+  `/analytique/stats-avancees` et `/analytique/analyse`, importée par
+  `python_script/import_advanced_stats.py`)
 - `ltir_requests` (demandes de mise sur LTIR en attente d'approbation admin — voir section 6)
 - `meeting_polls`, `meeting_poll_dates`, `meeting_poll_responses`, `meeting_poll_comments`
   (sondage de planification, `/planification` — le babillard `meeting_poll_comments` est
@@ -304,13 +305,11 @@ fiche affiche un sommaire du pool (propriétaire, blessure, contrat) en plus des
 Bouton « Ajouter à une liste » (`AddToWatchlist.tsx`) : listes du pooler connecté, du type
 correspondant au joueur (voir « Mes listes », section 6).
 
-**Admin — `/admin/analyse`** (David, 2026-10-01) : outil d'analyse croisée (stats MoneyPuck ×
-salaire/âge/propriétaire), nuage de points à deux mesures au choix + écart à la tendance. Admin
-seulement pour l'instant, patineurs seulement. Lien dans Admin > Opérations courantes.
-
-**Admin — `/admin/stats-avancees`** (David, 2026-10-01) : stats avancées MoneyPuck
-(`player_advanced_stats`), admin seulement pour l'instant — pour l'ouvrir aux poolers, déplacer la
-route hors de `/admin` et retirer la vérification `is_admin`. Lien dans Admin > Opérations courantes.
+**Analytique** (David, 2026-10-01 — d'abord admin seulement, ouvert à tous le même jour) :
+`/analytique/stats-avancees` (stats avancées MoneyPuck, `player_advanced_stats`, patineurs et
+gardiens par saison et situation) et `/analytique/analyse` (outil d'analyse croisée : stats
+MoneyPuck × salaire/âge/propriétaire, nuage de points à deux mesures au choix + écart à la
+tendance, patineurs seulement). `/admin/stats-avancees` et `/admin/analyse` sont des redirections.
 `/planification` (sondage type Doodle pour une rencontre — vue pooler : ses disponibilités,
 le résumé, le babillard propre au sondage ; notifie les admins par push à chaque
 soumission/commentaire). Gestion (créer le sondage, ajouter/retirer des dates) sur
@@ -496,6 +495,7 @@ sont deux natures de contenu différentes.**
 | Le pool | Classement · Tous les alignements (ex-"Équipes") · Journal des transactions — "ce qui concerne les autres poolers". Le groupe "Classement du pool" a été retiré le 2026-09-30 (David) : un seul lien Classement, avec un sélecteur Saison complète (défaut) / Mensuel / Hebdomadaire en haut de la page (`app/classement/PeriodSelector.tsx`, routes `/classement`, `/classement/mensuel`, `/classement/hebdomadaire` inchangées) |
 | Calendrier LNH (lien autonome, ex-sous-item de "Statistiques", sorti le 2026-09-23 (suite) — entre Le pool et Statistiques) | Le résumé personnel "mes joueurs cette semaine" a été extrait dans un onglet séparé sur `/poolers/[id]`, voir ci-dessous — cette page ne garde que la navigation jour par jour |
 | Statistiques (ex-partie de "LNH") | LNH · Projections · AHL |
+| Analytique (ajouté le 2026-10-01) | Statistiques avancées · Outil d'analyse |
 | Blessures | Lien autonome (plus regroupé sous "LNH", qui cachait la page selon le retour du pooler) |
 | Contrats LNH | Lien autonome (ex-sous-item de "LNH") |
 | Prospects LNH (ex-"Recrues", réduit) | Classement pré-repêchage · Repêchage LNH — référence sur le vrai repêchage LNH, rien de propre au pool |
@@ -1405,7 +1405,8 @@ téléphone : tout ce qui est masqué en portrait revient automatiquement en pay
 
 Pages adaptées selon ces conventions : `/poolers/[id]` (tous les onglets), `/classement` (+
 hebdo, mensuel), `/statistiques`, `/joueurs`, `/gestion-effectifs`, `/statistiques/blessures`,
-`/statistiques/projections`, `/journal-transactions`, `/poolers`, panneau « Mes listes ». Pas
+`/statistiques/projections`, `/journal-transactions`, `/poolers`, panneau « Mes listes »,
+`/analytique/stats-avancees`, `/analytique/analyse`. Pas
 encore : `/statistiques/ahl`, `/calendrier`, `/repechage-agents-libres`, `/repechage-recrues`,
 `/simulation`.
 

@@ -176,11 +176,11 @@ export default function AnalyseTool({
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Analyse</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Outil d&apos;analyse</h1>
         <p className="text-xs text-gray-400 mt-1">
           Stats :{' '}
           <a href="https://moneypuck.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">MoneyPuck.com</a>
-          {' '}(patineurs, toutes situations){poolSeason && <> · Salaires et alignements : saison {poolSeason} du pool</>}{' '}· Visible par l&apos;admin seulement
+          {' '}(patineurs, toutes situations){poolSeason && <> · Salaires et alignements : saison {poolSeason} du pool</>}
         </p>
       </div>
 
@@ -215,7 +215,7 @@ export default function AnalyseTool({
           </label>
           <select
             value={season ?? ''}
-            onChange={e => router.push(`/admin/analyse?saison=${e.target.value}`)}
+            onChange={e => router.push(`/analytique/analyse?saison=${e.target.value}`)}
             className={selectCls}
             aria-label="Saison des statistiques"
           >
@@ -255,7 +255,7 @@ export default function AnalyseTool({
             <li>• L&apos;<strong>écart</strong> est la distance verticale entre le joueur et cette ligne. Au-dessus : il fait mieux que la tendance ; en dessous : moins bien.</li>
             <li>• La <strong>corrélation</strong> (de −1 à 1) dit à quel point les deux mesures vont ensemble. Proche de 0 : la tendance ne veut pas dire grand-chose.</li>
             <li>• Les salaires sont ceux de la saison active du pool, les stats celles de la saison choisie : un joueur qui vient de signer un gros contrat paraîtra « cher » par rapport à ses points de l&apos;an dernier.</li>
-            <li>• Clique un point ou un nom pour ouvrir la fiche du joueur.</li>
+            <li>• Clique un point ou un nom pour ouvrir la fiche du joueur. Sur téléphone, tourne l&apos;écran pour agrandir le graphique.</li>
           </ul>
         </CollapsibleLegend>
         <CollapsibleLegend title="Définitions des mesures">
@@ -351,36 +351,41 @@ export default function AnalyseTool({
             <div className="flex-1 min-w-0 w-full bg-white rounded-lg shadow overflow-hidden">
               <div className="flex items-center justify-between gap-3 px-4 py-3 border-b">
                 <p className="text-sm font-semibold text-gray-700">Joueurs affichés</p>
-                <input type="text" placeholder="Nom ou équipe" value={search} onChange={e => setSearch(e.target.value)} className={`${selectCls} w-48`} />
+                <input type="text" placeholder="Nom ou équipe" value={search} onChange={e => setSearch(e.target.value)} className={`${selectCls} w-36 sm:w-48`} />
               </div>
               <div className="overflow-x-auto max-h-[70vh]">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left">
-                      <th className="sticky top-0 left-0 z-20 bg-gray-50 px-3 py-2.5 font-medium text-gray-600">Joueur</th>
-                      <th className="sticky top-0 z-10 bg-gray-50 px-3 py-2.5 font-medium text-gray-600">Éq.</th>
-                      <th className="sticky top-0 z-10 bg-gray-50 px-3 py-2.5 font-medium text-gray-600">Pos</th>
+                      <th className="sticky top-0 left-0 z-20 bg-gray-50 px-2 sm:px-3 py-2.5 font-medium text-gray-600">Joueur</th>
+                      <th className="hidden sm:table-cell sticky top-0 z-10 bg-gray-50 px-3 py-2.5 font-medium text-gray-600">Éq.</th>
+                      <th className="hidden sm:table-cell sticky top-0 z-10 bg-gray-50 px-3 py-2.5 font-medium text-gray-600">Pos</th>
                       {([['x', mx.label], ['y', my.label], ['res', 'Écart à la tendance'], ['ptsPerM', 'Pts par M$']] as const).map(([k, label]) => (
                         <th key={k} onClick={() => onSort(k)}
-                          className={`sticky top-0 z-10 bg-gray-50 px-3 py-2.5 font-medium text-right whitespace-nowrap cursor-pointer select-none ${sort.key === k ? 'text-blue-700' : 'text-gray-600 hover:text-gray-900'}`}>
+                          className={`${k === 'ptsPerM' && sort.key !== 'ptsPerM' ? 'hidden sm:table-cell ' : ''}sticky top-0 z-10 bg-gray-50 px-2 sm:px-3 py-2.5 font-medium text-right sm:whitespace-nowrap cursor-pointer select-none ${sort.key === k ? 'text-blue-700' : 'text-gray-600 hover:text-gray-900'}`}>
                           {label}{arrow(k)}
                         </th>
                       ))}
-                      <th className="sticky top-0 z-10 bg-gray-50 px-3 py-2.5 font-medium text-gray-600">Pool</th>
+                      <th className="hidden sm:table-cell sticky top-0 z-10 bg-gray-50 px-3 py-2.5 font-medium text-gray-600">Pool</th>
                     </tr>
                   </thead>
                   <tbody>
                     {tableRows.map(p => (
                       <tr key={p.r.nhlId} className={`border-b last:border-0 ${hover === p.r.nhlId ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
                         onMouseEnter={() => setHover(p.r.nhlId)} onMouseLeave={() => setHover(null)}>
-                        <td className="sticky left-0 z-10 bg-white px-3 py-2 font-medium text-gray-800 whitespace-nowrap"><PlayerLink nhlId={p.r.nhlId}>{p.r.name}</PlayerLink></td>
-                        <td className="px-3 py-2"><TeamBadge code={p.r.team} size="sm" /></td>
-                        <td className="px-3 py-2 text-gray-500">{p.r.position}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-gray-700">{fmt(mx, p.x)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-gray-700">{fmt(my, p.y)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums font-semibold text-gray-900">{fmt({ ...my, signed: true }, p.res)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-gray-700">{fmt(METRIC.ptsPerM, p.r.m.ptsPerM)}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-xs">
+                        <td className="sticky left-0 z-10 bg-white px-2 sm:px-3 py-2 font-medium text-gray-800 sm:whitespace-nowrap">
+                          <PlayerLink nhlId={p.r.nhlId}>{p.r.name}</PlayerLink>
+                          <span className="sm:hidden block text-[11px] font-normal text-gray-400">
+                            {[p.r.team, p.r.position, p.r.owner ? p.r.owner.poolerName : 'Disponible'].filter(Boolean).join(' · ')}
+                          </span>
+                        </td>
+                        <td className="hidden sm:table-cell px-3 py-2"><TeamBadge code={p.r.team} size="sm" /></td>
+                        <td className="hidden sm:table-cell px-3 py-2 text-gray-500">{p.r.position}</td>
+                        <td className="px-2 sm:px-3 py-2 text-right tabular-nums text-gray-700">{fmt(mx, p.x)}</td>
+                        <td className="px-2 sm:px-3 py-2 text-right tabular-nums text-gray-700">{fmt(my, p.y)}</td>
+                        <td className="px-2 sm:px-3 py-2 text-right tabular-nums font-semibold text-gray-900">{fmt({ ...my, signed: true }, p.res)}</td>
+                        <td className={`${sort.key !== 'ptsPerM' ? 'hidden sm:table-cell ' : ''}px-2 sm:px-3 py-2 text-right tabular-nums text-gray-700`}>{fmt(METRIC.ptsPerM, p.r.m.ptsPerM)}</td>
+                        <td className="hidden sm:table-cell px-3 py-2 whitespace-nowrap text-xs">
                           {p.r.owner
                             ? <span className="text-gray-500">{p.r.owner.poolerName}</span>
                             : <span className="inline-flex items-center gap-1.5 text-green-600 font-medium"><span className="inline-block w-2 h-2 rounded-full bg-green-500" />Disponible</span>}
