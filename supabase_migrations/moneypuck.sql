@@ -31,3 +31,12 @@ CREATE INDEX IF NOT EXISTS player_advanced_stats_kind_idx ON player_advanced_sta
 ALTER TABLE player_advanced_stats ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Lecture publique player_advanced_stats" ON player_advanced_stats;
 CREATE POLICY "Lecture publique player_advanced_stats" ON player_advanced_stats FOR SELECT USING (true);
+
+-- 3. Recoupement 2 sources sur 3 (David, 2026-10-01, suite) : player_injuries contient désormais
+--    l'union de CBS, ESPN et MoneyPuck ; in_cbs indique si CBS liste le joueur (les présences
+--    ESPN et MoneyPuck se déduisent des colonnes espn_* / mp_*). L'app ne considère un joueur
+--    blessé que si au moins 2 sources le listent (app/lib/ltirEligibility.ts).
+ALTER TABLE player_injuries ADD COLUMN IF NOT EXISTS in_cbs BOOLEAN NOT NULL DEFAULT true;
+--    cbs_return_date : date de retour selon CBS seul, pour afficher les trois dates côte à côte
+--    (est_return_date reste la date retenue pour le calcul : CBS, sinon ESPN, sinon MoneyPuck).
+ALTER TABLE player_injuries ADD COLUMN IF NOT EXISTS cbs_return_date DATE;

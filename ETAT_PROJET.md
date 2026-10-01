@@ -63,8 +63,9 @@ desktop.
 ### ▶ Prochaine session — commencer ici
 
 - **MoneyPuck (blessures + `/admin/stats-avancees`)** : en **staging**, à valider par David —
-  `/admin/stats-avancees` (menu Admin > Opérations courantes) et la pastille MoneyPuck de
-  `/statistiques/blessures`. Migration déjà faite en staging et en prod. Après validation :
+  `/admin/stats-avancees` (menu Admin > Opérations courantes) et `/statistiques/blessures`
+  (union des 3 sources, blessure confirmée à 2 sur 3, « À confirmer » sinon, colonne des trois
+  dates de retour). Migration déjà faite en staging et en prod. Après validation :
   fusion sur `main`, puis lancer une fois à la main les workflows `advanced_stats.yml` et
   `injuries.yml` pour remplir la prod.
 

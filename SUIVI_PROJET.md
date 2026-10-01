@@ -21,6 +21,28 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-01
 
+**[Feat] — Blessures : union des trois sources, confirmation à 2 sur 3, trois dates de retour**
+(`python_script/scrape_injuries.py`, `app/lib/ltirEligibility.ts`, `app/lib/injuries.ts`,
+`app/app/statistiques/blessures/*`, `app/app/admin/effectifs/LtirApprovalManager.tsx`,
+`app/app/aide/LtirRulesContent.tsx`, `supabase_migrations/moneypuck.sql`) :
+- Demande de David : ne plus dépendre de CBS seul pour décider qui est blessé. `player_injuries`
+  contient maintenant l'union de CBS, ESPN et MoneyPuck ; un joueur n'est considéré blessé
+  (badge, admissibilité LTIR, partout via `lib/injuries.ts`) que si au moins 2 sources sur 3 le
+  listent (`MIN_INJURY_SOURCES`, `countInjurySources()`). Une seule source : visible seulement
+  sur `/statistiques/blessures` avec « À confirmer ». Staging : 127 joueurs, 72 dans 3 sources,
+  32 dans 2, 23 dans une seule.
+- Colonnes `in_cbs` (présence CBS ; ESPN et MoneyPuck se déduisent de `espn_*`/`mp_*`) et
+  `cbs_return_date` — migration exécutée par David en staging et en prod.
+- Compteur de durée (`first_seen_at`) : démarre dès la première source, même avant confirmation
+  (confirmé par David) ; retrait seulement quand le joueur a disparu des trois sources.
+- Les trois dates de retour sont affichées côte à côte (colonne « Retour estimé » de la page
+  Blessures, et sous la blessure dans l'approbation des demandes LTIR) — transparence voulue par
+  David, l'admin approuvant chaque mise sur LTIR. Le calcul garde CBS, sinon ESPN, sinon MoneyPuck.
+- Libellés « (principale) »/« (recoupement) » retirés, pastille CBS grisée si absente, filtre
+  « Confirmées seulement », règlements LTIR de `/aide` réécrits.
+- Limite : un blessé MoneyPuck sans fiche avec `nhl_id` en base ne compte pas comme source (14 cas).
+
+
 **[Feat] — MoneyPuck : 3e source de blessures + page admin de stats avancées** (`python_script/scrape_injuries.py`, `python_script/import_advanced_stats.py`,
 `app/lib/ltirEligibility.ts`, `app/lib/injuries.ts`, `app/app/statistiques/blessures/*`,
 `app/app/admin/stats-avancees/*`, `app/components/Navbar.tsx`, `app/app/aide/LtirRulesContent.tsx`,

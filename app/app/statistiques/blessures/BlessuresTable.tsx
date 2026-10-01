@@ -36,9 +36,46 @@ const MP_STATUS_LABEL: Record<string, string> = {
   'DD': 'Décision le jour du match',
 }
 
-/** Pastilles des sources qui rapportent la blessure — cliquables pour déplier le détail. CBS est
- * toujours présente (source principale, détermine qui est dans la liste) ; ESPN et MoneyPuck
- * grisées si le joueur n'a pas été recoupé. */
+/** Statut affiché : texte CBS, sinon celui d'ESPN, sinon le statut MoneyPuck. */
+function displayStatus(r: InjuryRow): string {
+  return r.status || r.espnStatusDesc || (r.mp?.status ? (MP_STATUS_LABEL[r.mp.status] ?? r.mp.status) : '') || '—'
+}
+
+/** Dates de retour annoncées par chaque source, côte à côte (David, 2026-10-01) — par
+ * transparence : la date retenue pour le calcul reste CBS, sinon ESPN, sinon MoneyPuck, mais
+ * l'admin approuve de toute façon chaque mise sur LTIR. */
+function ReturnDates({ r }: { r: InjuryRow }) {
+  const dates = [
+    { label: 'CBS', date: r.cbsReturnDate, cls: 'text-blue-700' },
+    { label: 'ESPN', date: r.espnEstReturnDate, cls: 'text-rose-700' },
+    { label: 'MoneyPuck', date: r.mp?.returnDate ?? null, cls: 'text-teal-700' },
+  ].filter(d => d.date)
+  if (dates.length === 0) return <span className="text-gray-300">—</span>
+  return (
+    <span className="inline-flex flex-wrap gap-x-2 gap-y-0.5">
+      {dates.map(d => (
+        <span key={d.label} className="whitespace-nowrap">
+          <span className={`text-[10px] font-semibold ${d.cls}`}>{d.label}</span> {fmtDate(d.date)}
+        </span>
+      ))}
+    </span>
+  )
+}
+
+function UnconfirmedBadge() {
+  return (
+    <span
+      className="ml-1.5 inline-block text-[10px] font-bold bg-gray-100 text-gray-500 rounded px-1 py-0.5 cursor-help"
+      title="Une seule source rapporte cette blessure : le joueur n'est pas encore considéré blessé (ni badge ni admissibilité LTIR) tant qu'une deuxième source ne le confirme pas."
+    >
+      À confirmer
+    </span>
+  )
+}
+
+/** Pastilles des sources qui rapportent la blessure — cliquables pour déplier le détail ; une
+ * source grisée ne liste pas le joueur. Il faut au moins 2 sources sur 3 pour que la blessure
+ * soit considérée confirmée. */
 function SourceToggle({ r, open, onToggle }: { r: InjuryRow; open: boolean; onToggle: () => void }) {
   const hasEspn = !!(r.espnStatusDesc || r.espnEstReturnDate || r.espnNote)
   return (
@@ -49,7 +86,7 @@ function SourceToggle({ r, open, onToggle }: { r: InjuryRow; open: boolean; onTo
       title="Voir le détail par source"
       className="inline-flex items-center gap-1 text-[10px] font-semibold align-middle"
     >
-      <span className="rounded px-1 py-0.5 bg-blue-50 text-blue-700">CBS</span>
+      <span className={`rounded px-1 py-0.5 ${r.inCbs ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-400 line-through'}`}>CBS</span>
       <span className={`rounded px-1 py-0.5 ${hasEspn ? 'bg-rose-50 text-rose-700' : 'bg-gray-100 text-gray-400 line-through'}`}>ESPN</span>
       <span className={`rounded px-1 py-0.5 ${r.mp ? 'bg-teal-50 text-teal-700' : 'bg-gray-100 text-gray-400 line-through'}`}>MoneyPuck</span>
       <span className="text-gray-400">{open ? '▴' : '▾'}</span>
@@ -62,12 +99,18 @@ function SourcesDetail({ r }: { r: InjuryRow }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
       <div className="rounded border border-blue-100 bg-blue-50/40 p-2">
-        <p className="font-semibold text-blue-700 mb-1">CBS Sports <span className="font-normal text-gray-400">(principale)</span></p>
-        <p className="text-gray-700">{r.status || '—'}</p>
-        <p className="text-gray-500 mt-1">Retour estimé : {fmtDate(r.estReturnDate)}{r.updatedLabel && <> · Mis à jour : {r.updatedLabel}</>}</p>
+        <p className="font-semibold text-blue-700 mb-1">CBS Sports</p>
+        {r.inCbs ? (
+          <>
+            <p className="text-gray-700">{r.status || '—'}</p>
+            <p className="text-gray-500 mt-1">Retour estimé : {fmtDate(r.cbsReturnDate)}{r.updatedLabel && <> · Mis à jour : {r.updatedLabel}</>}</p>
+          </>
+        ) : (
+          <p className="text-gray-400">Joueur absent de la liste CBS.</p>
+        )}
       </div>
       <div className="rounded border border-rose-100 bg-rose-50/40 p-2">
-        <p className="font-semibold text-rose-700 mb-1">ESPN <span className="font-normal text-gray-400">(recoupement)</span></p>
+        <p className="font-semibold text-rose-700 mb-1">ESPN</p>
         {hasEspn ? (
           <>
             <p className="text-gray-700">{r.espnStatusDesc || '—'}{r.espnNote && r.espnNote.toLowerCase() !== (r.espnStatusDesc ?? '').toLowerCase() && <> — {r.espnNote}</>}</p>
@@ -78,7 +121,7 @@ function SourcesDetail({ r }: { r: InjuryRow }) {
         )}
       </div>
       <div className="rounded border border-teal-100 bg-teal-50/40 p-2">
-        <p className="font-semibold text-teal-700 mb-1">MoneyPuck <span className="font-normal text-gray-400">(recoupement)</span></p>
+        <p className="font-semibold text-teal-700 mb-1">MoneyPuck</p>
         {r.mp ? (
           <>
             <p className="text-gray-700">
@@ -95,7 +138,7 @@ function SourcesDetail({ r }: { r: InjuryRow }) {
           <p className="text-gray-400">Joueur absent de la liste MoneyPuck.</p>
         )}
       </div>
-      <p className="sm:col-span-3 text-[11px] text-gray-400">Suivi depuis le {fmtTs(r.firstSeenAt)} — l&apos;admissibilité LTIR se base sur la date CBS (sinon ESPN, sinon MoneyPuck) ; un joueur sur la liste des blessés de son équipe (CBS, ESPN ou MoneyPuck) est toujours admissible.</p>
+      <p className="sm:col-span-3 text-[11px] text-gray-400">Suivi depuis le {fmtTs(r.firstSeenAt)} — une blessure est confirmée quand au moins 2 sources sur 3 la rapportent. Le calcul d&apos;admissibilité LTIR retient la date CBS (sinon ESPN, sinon MoneyPuck), et l&apos;admin approuve chaque mise sur LTIR ; un joueur confirmé sur la liste des blessés de son équipe est toujours admissible.</p>
     </div>
   )
 }
@@ -105,6 +148,7 @@ export default function BlessuresTable({ rows, myPoolerId }: { rows: InjuryRow[]
   const [availOnly, setAvailOnly] = useState(false)
   const [mineOnly, setMineOnly] = useState(false)
   const [eligibleOnly, setEligibleOnly] = useState(false)
+  const [confirmedOnly, setConfirmedOnly] = useState(false)
   const [openIds, setOpenIds] = useState<Set<number>>(new Set())
   const toggle = (id: number) => setOpenIds(prev => {
     const next = new Set(prev)
@@ -120,6 +164,7 @@ export default function BlessuresTable({ rows, myPoolerId }: { rows: InjuryRow[]
         if (availOnly && r.owner) return false
         if (mineOnly && r.owner?.poolerId !== myPoolerId) return false
         if (eligibleOnly && !r.eligible) return false
+        if (confirmedOnly && !r.confirmed) return false
         if (q) {
           const name = normalizeSearch(`${r.firstName} ${r.lastName}`)
           const rev = normalizeSearch(`${r.lastName} ${r.firstName}`)
@@ -128,14 +173,14 @@ export default function BlessuresTable({ rows, myPoolerId }: { rows: InjuryRow[]
         return true
       })
       .sort((a, b) => (a.teamCode ?? '').localeCompare(b.teamCode ?? '') || a.lastName.localeCompare(b.lastName))
-  }, [rows, search, availOnly, mineOnly, myPoolerId, eligibleOnly])
+  }, [rows, search, availOnly, mineOnly, myPoolerId, eligibleOnly, confirmedOnly])
 
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Blessures LNH</h1>
-          <p className="text-xs text-gray-400 mt-1">Source : CBS Sports (recoupé avec ESPN et MoneyPuck.com) — mise à jour quotidienne</p>
+          <p className="text-xs text-gray-400 mt-1">Sources : CBS Sports, ESPN et MoneyPuck.com (blessure confirmée par au moins 2 sources sur 3) — mise à jour quotidienne</p>
         </div>
         <span className="text-sm text-gray-500">{filtered.length} joueur{filtered.length > 1 ? 's' : ''}</span>
       </div>
@@ -185,6 +230,17 @@ export default function BlessuresTable({ rows, myPoolerId }: { rows: InjuryRow[]
         >
           Admissibles LTIR seulement
         </button>
+        <button
+          type="button"
+          onClick={() => setConfirmedOnly(v => !v)}
+          className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+            confirmedOnly
+              ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
+              : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          Confirmées seulement
+        </button>
       </div>
 
       {/* Portrait : une fiche par joueur plutôt qu'un tableau de 7 colonnes au statut en texte
@@ -201,9 +257,11 @@ export default function BlessuresTable({ rows, myPoolerId }: { rows: InjuryRow[]
             </div>
             <p className="text-red-600 text-xs mt-0.5">{r.injuryType}</p>
             <p className="text-gray-600 text-xs mt-0.5">
-              {r.status}
+              {displayStatus(r)}
+              {!r.confirmed && <UnconfirmedBadge />}
               {r.datesDisagree && <span className="ml-1 text-[10px] font-bold text-amber-700">⚠ ESPN : {fmtDate(r.espnEstReturnDate)}</span>}
             </p>
+            <p className="text-gray-600 text-xs mt-0.5">Retour : <ReturnDates r={r} /></p>
             <div className="mt-1"><SourceToggle r={r} open={openIds.has(r.playerId)} onToggle={() => toggle(r.playerId)} /></div>
             {openIds.has(r.playerId) && <div className="mt-1.5"><SourcesDetail r={r} /></div>}
             <p className="mt-1 text-xs">
@@ -226,6 +284,7 @@ export default function BlessuresTable({ rows, myPoolerId }: { rows: InjuryRow[]
                 <th className="px-4 py-2.5 font-medium text-gray-600 w-14">Pos</th>
                 <th className="px-4 py-2.5 font-medium text-gray-600 w-32">Blessure</th>
                 <th className="px-4 py-2.5 font-medium text-gray-600">Statut</th>
+                <th className="px-4 py-2.5 font-medium text-gray-600 w-44">Retour estimé</th>
                 <th className="px-4 py-2.5 font-medium text-gray-600 w-28">LTIR</th>
                 <th className="px-4 py-2.5 font-medium text-gray-600 w-32">Dans le pool</th>
               </tr>
@@ -241,7 +300,8 @@ export default function BlessuresTable({ rows, myPoolerId }: { rows: InjuryRow[]
                   <td className="px-4 py-2.5 text-gray-500">{r.position ?? '—'}</td>
                   <td className="px-4 py-2.5 text-red-600">{r.injuryType}</td>
                   <td className="px-4 py-2.5 text-gray-600 text-xs">
-                    {r.status}
+                    {displayStatus(r)}
+                    {!r.confirmed && <UnconfirmedBadge />}
                     {r.datesDisagree && (
                       <span
                         className="ml-1.5 inline-block text-[10px] font-bold bg-amber-100 text-amber-700 rounded px-1 py-0.5 cursor-help"
@@ -252,6 +312,7 @@ export default function BlessuresTable({ rows, myPoolerId }: { rows: InjuryRow[]
                     )}
                     <div className="mt-1"><SourceToggle r={r} open={openIds.has(r.playerId)} onToggle={() => toggle(r.playerId)} /></div>
                   </td>
+                  <td className="px-4 py-2.5 text-gray-600 text-xs"><ReturnDates r={r} /></td>
                   <td className="px-4 py-2.5">
                     {r.eligible
                       ? <span className="text-xs font-bold bg-emerald-100 text-emerald-700 rounded px-1.5 py-0.5">Admissible</span>
@@ -275,14 +336,14 @@ export default function BlessuresTable({ rows, myPoolerId }: { rows: InjuryRow[]
                 </tr>
                 {openIds.has(r.playerId) && (
                   <tr className="border-b last:border-0 bg-gray-50/60">
-                    <td colSpan={7} className="px-4 pb-3 pt-1"><SourcesDetail r={r} /></td>
+                    <td colSpan={8} className="px-4 pb-3 pt-1"><SourcesDetail r={r} /></td>
                   </tr>
                 )}
                 </Fragment>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="text-center py-10 text-gray-400 text-sm">
+                  <td colSpan={8} className="text-center py-10 text-gray-400 text-sm">
                     Aucun joueur ne correspond aux filtres.
                   </td>
                 </tr>

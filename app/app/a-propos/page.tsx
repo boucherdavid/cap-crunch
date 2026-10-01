@@ -83,7 +83,7 @@ const CATEGORIES: Category[] = [
       {
         title: 'Blessures',
         href: '/statistiques/blessures',
-        description: 'Les joueurs blessés de la LNH (CBS Sports, recoupé avec ESPN et MoneyPuck), mis à jour chaque jour, avec leur admissibilité au LTIR et le pooler qui les possède.',
+        description: 'Les joueurs blessés de la LNH (CBS Sports, ESPN et MoneyPuck, confirmés par au moins 2 sources), mis à jour chaque jour, avec leur admissibilité au LTIR et le pooler qui les possède.',
       },
       {
         title: 'Contrats LNH',

@@ -1211,9 +1211,18 @@ corrigée le 2026-09-20 :**
 
 **Suivi des blessures LNH + demandes de LTIR (`player_injuries`, `ltir_requests`) — David,
 2026-09-23 :**
+- **Recoupement 2 sources sur 3 (David, 2026-10-01) — remplace « CBS décide qui est blessé »
+  dans les points ci-dessous, gardés pour l'historique** : `player_injuries` contient l'UNION de
+  CBS, ESPN et MoneyPuck (`in_cbs` + présence des colonnes `espn_*`/`mp_*`). Un joueur n'est
+  considéré blessé (badge, admissibilité LTIR) que si au moins 2 sources le listent
+  (`MIN_INJURY_SOURCES`/`countInjurySources()`, `ltirEligibility.ts` ; filtré dans
+  `fetchInjuriesByPlayerId`/`ByNhlId`). Une seule source : affiché « À confirmer » sur
+  `/statistiques/blessures` seulement. `first_seen_at` démarre dès la première source ; retrait
+  quand le joueur a disparu des trois. Les trois dates de retour (`cbs_return_date`,
+  `espn_est_return_date`, `mp_return_date`) sont affichées côte à côte (page Blessures,
+  approbation LTIR) ; le calcul retient `est_return_date` (CBS, sinon ESPN, sinon MoneyPuck).
 - **MoneyPuck (3e source, David 2026-10-01)** : CSV `moneypuck.com/moneypuck/playerData/
-  playerNews/current_injuries.csv`, jumelé par `nhl_id` (pas de nom). Comme ESPN, enrichit
-  seulement les joueurs CBS (colonnes `mp_*`). `mp_status` = statut officiel (IR, IR-LT = LTIR
+  playerNews/current_injuries.csv`, jumelé par `nhl_id` (pas de nom), colonnes `mp_*`. `mp_status` = statut officiel (IR, IR-LT = LTIR
   LNH, IR-NR, DTD, O, DD) ; IR* → admissible LTIR d'office (`isOnNhlIr`, 3e paramètre). Date de
   retour : CBS, puis ESPN, puis MoneyPuck.
 - **Sources** : CBS Sports (`cbssports.com/nhl/injuries`, principale — détermine qui apparaît

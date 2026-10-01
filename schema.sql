@@ -1298,3 +1298,5 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 -- ALTER TABLE player_advanced_stats ENABLE ROW LEVEL SECURITY;
 -- DROP POLICY IF EXISTS "Lecture publique player_advanced_stats" ON player_advanced_stats;
 -- CREATE POLICY "Lecture publique player_advanced_stats" ON player_advanced_stats FOR SELECT USING (true);
+-- ALTER TABLE player_injuries ADD COLUMN IF NOT EXISTS in_cbs BOOLEAN NOT NULL DEFAULT true;  -- recoupement 2 sources sur 3
+-- ALTER TABLE player_injuries ADD COLUMN IF NOT EXISTS cbs_return_date DATE;  -- date de retour selon CBS seul

@@ -39,19 +39,19 @@ export default function LtirRulesContent() {
       <div>
         <p className="font-medium text-gray-800 mb-1.5">D&apos;où viennent les données et comment on les recoupe</p>
         <ul className="space-y-1.5">
-          <li>• <strong>CBS Sports</strong> est la source principale : c&apos;est elle qui décide qui est blessé, et sa date de retour a priorité.</li>
-          <li>• <strong>ESPN</strong> sert de recoupement : elle confirme aussi une mise sur IR par l&apos;équipe, et sa date de retour ne sert que lorsque CBS n&apos;en donne aucune. Un joueur absent de la liste CBS n&apos;est jamais considéré blessé, même s&apos;il apparaît chez ESPN.</li>
-          <li>• <strong>MoneyPuck</strong> sert aussi de recoupement : elle donne le statut officiel de la liste des blessés de l&apos;équipe (IR, ou IR-LT pour la LTIR de la LNH), qui confirme une mise sur IR, et sa date de retour ne sert qu&apos;en dernier recours (ni CBS ni ESPN n&apos;en donnent).</li>
-          <li>• Si les deux sources donnent des dates de retour à {jours(t.disagreementDays)} d&apos;écart ou plus, le marqueur <strong>⚠ CBS≠ESPN</strong> le signale, mais le calcul reste basé sur CBS.</li>
+          <li>• Trois sources sont consultées chaque jour : <strong>CBS Sports</strong>, <strong>ESPN</strong> et <strong>MoneyPuck</strong>. Un joueur est considéré blessé seulement si <strong>au moins 2 sources sur 3</strong> le rapportent. S&apos;il n&apos;apparaît que dans une seule, il est affiché « À confirmer » sur la page Blessures, sans badge ni admissibilité au LTIR.</li>
+          <li>• Une mise sur la liste des blessés (IR) par l&apos;équipe LNH compte dès qu&apos;une des sources la rapporte, pourvu que la blessure soit confirmée.</li>
+          <li>• Pour la date de retour, celle de CBS a priorité, puis celle d&apos;ESPN, puis celle de MoneyPuck.</li>
+          <li>• Si CBS et ESPN donnent des dates de retour à {jours(t.disagreementDays)} d&apos;écart ou plus, le marqueur <strong>⚠ CBS≠ESPN</strong> le signale, mais le calcul reste basé sur CBS.</li>
           <li>• Les dates sont lues dans le texte de la source (ex. « until at least Oct 2 »). Un statut sans date précise (ex. « Day-to-Day ») compte comme « aucune date de retour ».</li>
         </ul>
       </div>
       <div>
         <p className="font-medium text-gray-800 mb-1.5">Le compteur de durée de la blessure</p>
         <ul className="space-y-1.5">
-          <li>• Il démarre le premier jour où le joueur apparaît dans la liste de CBS, et continue tant qu&apos;il y reste.</li>
-          <li>• Quand le joueur disparaît de la liste (rétabli), le compteur est remis à zéro. S&apos;il se blesse de nouveau, un nouveau compteur repart de zéro.</li>
-          <li>• Pour éviter qu&apos;un simple oubli de CBS efface une blessure de plusieurs semaines, un joueur n&apos;est retiré qu&apos;après <strong>{jours(t.removalAbsenceDays)} d&apos;absence consécutifs</strong> de la liste. Un joueur tout juste rétabli peut donc rester affiché blessé un peu plus longtemps.</li>
+          <li>• Il démarre le premier jour où le joueur apparaît dans l&apos;une des trois sources, et continue tant qu&apos;au moins une le liste.</li>
+          <li>• Quand le joueur disparaît de toutes les sources (rétabli), le compteur est remis à zéro. S&apos;il se blesse de nouveau, un nouveau compteur repart de zéro.</li>
+          <li>• Pour éviter qu&apos;un simple oubli des sources efface une blessure de plusieurs semaines, un joueur n&apos;est retiré qu&apos;après <strong>{jours(t.removalAbsenceDays)} d&apos;absence consécutifs</strong> de toutes les sources. Un joueur tout juste rétabli peut donc rester affiché blessé un peu plus longtemps.</li>
           <li>• Le suivi a commencé fin septembre 2026 : pour un joueur déjà blessé avant, le compteur part de ce moment-là, pas de sa vraie date de blessure.</li>
         </ul>
       </div>

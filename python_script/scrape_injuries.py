@@ -19,8 +19,13 @@ remplacement complet aurait perdu cette information au run suivant.
 MoneyPuck (moneypuck.com/injuries.htm, David 2026-10-01) — troisième source, CSV public dont
 l'identifiant est le `nhl_id` (aucun jumelage par nom) : statut officiel de la liste des blessés
 de l'équipe (IR, IR-LT = LTIR LNH, IR-NR, DTD, O), date de retour, matchs manqués/à manquer.
-Comme ESPN, enrichit seulement les joueurs déjà trouvés via CBS. Son statut IR compte comme
-« sur la liste des blessés LNH » pour l'admissibilité LTIR (voir app/lib/ltirEligibility.ts).
+Son statut IR compte comme « sur la liste des blessés LNH » pour l'admissibilité LTIR (voir
+app/lib/ltirEligibility.ts).
+
+Recoupement (David, 2026-10-01) : `player_injuries` contient l'UNION des trois sources ; l'app
+ne considère un joueur blessé que si au moins 2 sources sur 3 le listent (colonne `in_cbs` +
+présence des champs espn_*/mp_*). Les mentions « CBS reste la liste de référence » plus haut
+sont historiques.
 
 Nécessite les colonnes ajoutées à player_injuries le 2026-09-23 (suite) — voir schema.sql.
 
@@ -354,8 +359,11 @@ def main():
         return matched, unmatched
 
     cbs_matched, cbs_unmatched = resolve(cbs_records)
-    espn_matched, _ = resolve(espn_records)  # non trouvés côté ESPN : ignorés, CBS reste la liste de référence
+    espn_matched, _ = resolve(espn_records)  # non trouvés côté ESPN : ignorés (jumelage par nom)
+    cbs_by_pid = {pid: rec for rec, pid, _ in cbs_matched}
     espn_by_pid = {pid: rec for rec, pid, _ in espn_matched}
+    pid_by_nhl = {nhl: pid for pid, nhl in nhl_by_pid.items()}
+    mp_by_pid = {pid_by_nhl[nhl]: rec for nhl, rec in mp_by_nhl.items() if nhl in pid_by_nhl}
 
     print(f'\n[CBS] {len(cbs_matched)} jumelé(s), {len(cbs_unmatched)} non trouvé(s).')
     for rec, note in cbs_unmatched:
@@ -365,15 +373,21 @@ def main():
         print(f'  {len(approx)} jumelage(s) approximatif(s) (à vérifier) :')
         for rec, note in approx:
             print(f'    [~] {rec["name"]} ({rec["team"]}) — {note}')
-    cbs_pids = {pid for _, pid, _ in cbs_matched}
-    overlap = cbs_pids & set(espn_by_pid)
-    print(f'[ESPN] {len(overlap)}/{len(cbs_pids)} joueur(s) de CBS recoupé(s) avec ESPN.')
-    mp_by_pid = {pid: mp_by_nhl[nhl_by_pid[pid]] for pid in cbs_pids
-                 if nhl_by_pid.get(pid) in mp_by_nhl}
-    print(f'[MONEYPUCK] {len(mp_by_pid)}/{len(cbs_pids)} joueur(s) de CBS recoupé(s) avec MoneyPuck.')
-    mp_only = len(set(mp_by_nhl) - {nhl_by_pid.get(pid) for pid in cbs_pids})
-    if mp_only:
-        print(f'[MONEYPUCK] {mp_only} blessé(s) MoneyPuck absent(s) de CBS (non importés).')
+
+    # Recoupement (David, 2026-10-01) : la liste est l'UNION des trois sources ; un joueur n'est
+    # considéré blessé côté app (badge, admissibilité LTIR) que si au moins 2 sources sur 3 le
+    # listent — voir sourceCount dans app/lib/injuries.ts. Ceux vus par une seule source sont
+    # importés quand même (affichés « à confirmer » sur /statistiques/blessures).
+    all_pids = set(cbs_by_pid) | set(espn_by_pid) | set(mp_by_pid)
+
+    def source_count(pid):
+        return (pid in cbs_by_pid) + (pid in espn_by_pid) + (pid in mp_by_pid)
+
+    by_count = {n: sum(1 for pid in all_pids if source_count(pid) == n) for n in (1, 2, 3)}
+    print(f'[ESPN] {len(espn_by_pid)} jumelé(s) — [MONEYPUCK] {len(mp_by_pid)} jumelé(s) '
+          f'({len(mp_by_nhl) - len(mp_by_pid)} sans fiche avec nhl_id en base).')
+    print(f'[RECOUPEMENT] {len(all_pids)} joueur(s) : {by_count[3]} dans 3 sources, '
+          f'{by_count[2]} dans 2, {by_count[1]} dans une seule (à confirmer).')
 
     if not args.apply:
         print('\n[DRY-RUN] Aucune écriture. Relancez avec --apply pour importer.')
@@ -384,39 +398,43 @@ def main():
     existing = db.table('player_injuries').select('player_id, first_seen_at, last_seen_at').execute()
     first_seen_by_pid = {r['player_id']: r['first_seen_at'] for r in existing.data}
 
-    # Garde-fou (David, 2026-09-25) : une page CBS changée ou mal chargée donnerait 0 blessé (ou
+    # Garde-fou (David, 2026-09-25) : des pages changées ou mal chargées donneraient 0 blessé (ou
     # presque) — sans ce contrôle, le script conclurait que tout le monde est guéri et remettrait
     # tous les compteurs first_seen_at à zéro. On échoue bruyamment (code de sortie non nul, donc
     # workflow GitHub en rouge) plutôt que d'écrire quoi que ce soit.
-    if len(existing.data) >= MIN_EXISTING_FOR_RATIO_CHECK and len(cbs_matched) < len(existing.data) * MIN_KEPT_RATIO:
-        print(f'[ERREUR] CBS ne renvoie que {len(cbs_matched)} blessé(s) jumelé(s) contre '
-              f'{len(existing.data)} en base — page CBS probablement changée. Aucune écriture.')
+    if len(existing.data) >= MIN_EXISTING_FOR_RATIO_CHECK and len(all_pids) < len(existing.data) * MIN_KEPT_RATIO:
+        print(f'[ERREUR] Les sources ne renvoient que {len(all_pids)} blessé(s) jumelé(s) contre '
+              f'{len(existing.data)} en base — pages probablement changées. Aucune écriture.')
         sys.exit(1)
     if not cbs_matched:
-        print('[ERREUR] Aucun blessé jumelé côté CBS — aucune écriture.')
+        print('[ERREUR] Aucun blessé jumelé côté CBS — page CBS probablement changée. Aucune écriture.')
         sys.exit(1)
 
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
 
     rows = []
-    for rec, pid, _ in cbs_matched:
+    for pid in all_pids:
+        cbs = cbs_by_pid.get(pid)
         espn = espn_by_pid.get(pid)
-        # Date ESPN conservée séparément (David, 2026-09-24) pour signaler un désaccord avec CBS
-        # côté app — est_return_date garde son rôle : CBS d'abord, ESPN seulement en repli.
-        espn_return = parse_est_return(espn['est_return'], today) if espn else None
         mp = mp_by_pid.get(pid)
+        # Date ESPN conservée séparément (David, 2026-09-24) pour signaler un désaccord avec CBS
+        # côté app — est_return_date : CBS d'abord, puis ESPN, puis MoneyPuck.
+        espn_return = parse_est_return(espn['est_return'], today) if espn else None
         mp_return = parse_est_return(mp['return_date'], today) if mp and mp['return_date'] else None
-        est_return = parse_est_return(rec['status'], today) or espn_return or mp_return
+        cbs_return = parse_est_return(cbs['status'], today) if cbs else None
+        est_return = cbs_return or espn_return or mp_return
         rows.append({
             'player_id': pid,
-            'position': rec['position'],
-            'injury_type': rec['injury'],
-            'status': rec['status'],
-            'updated_label': rec['updated'],
+            'in_cbs': cbs is not None,
+            'position': cbs['position'] if cbs else (espn['position'] if espn else None),
+            'injury_type': cbs['injury'] if cbs else (mp['description'] if mp else None),
+            'status': cbs['status'] if cbs else None,
+            'updated_label': cbs['updated'] if cbs else None,
             'espn_status_desc': espn['status_desc'] if espn else None,
             'espn_note': espn['note'] if espn else None,
             'est_return_date': est_return.isoformat() if est_return else None,
+            'cbs_return_date': cbs_return.isoformat() if cbs_return else None,
             'espn_est_return_date': espn_return.isoformat() if espn_return else None,
             'mp_status': mp['status'] if mp else None,
             'mp_return_date': mp_return.isoformat() if mp_return else None,
@@ -427,28 +445,27 @@ def main():
             'last_seen_at': now_iso,
         })
 
-    # Un joueur absent de la liste CBS n'est retiré (compteur remis à zéro) qu'après
-    # `injury_removal_absence_days` d'absence continue (David, 2026-09-25) — un oubli ponctuel de CBS
+    # Un joueur absent de TOUTES les sources n'est retiré (compteur remis à zéro) qu'après
+    # `injury_removal_absence_days` d'absence continue (David, 2026-09-25) — un oubli ponctuel
     # une seule journée ne doit pas effacer une blessure qui dure depuis des semaines. Une ligne
     # sans last_seen_at (antérieure à la colonne, seulement au tout premier run après la
     # migration) garde l'ancien comportement : retirée dès la première absence.
     removal_delay = absence_before_removal(db)
     recovered_pids = set()
     for r in existing.data:
-        if r['player_id'] in cbs_pids:
+        if r['player_id'] in all_pids:
             continue
         last_seen = r.get('last_seen_at')
         if not last_seen or now - datetime.fromisoformat(last_seen.replace('Z', '+00:00')) >= removal_delay:
             recovered_pids.add(r['player_id'])
-    pending = len(set(first_seen_by_pid) - cbs_pids - recovered_pids)
+    pending = len(set(first_seen_by_pid) - all_pids - recovered_pids)
     if pending:
-        print(f"[INFO] {pending} joueur(s) absent(s) de CBS aujourd'hui, gardé(s) en attendant confirmation.")
+        print(f"[INFO] {pending} joueur(s) absent(s) des sources aujourd'hui, gardé(s) en attendant confirmation.")
     if recovered_pids:
         db.table('player_injuries').delete().in_('player_id', list(recovered_pids)).execute()
     if rows:
         db.table('player_injuries').upsert(rows, on_conflict='player_id').execute()
     print(f'[OK] {len(rows)} blessure(s) à jour, {len(recovered_pids)} joueur(s) retiré(s) (guéris).')
-
 
 if __name__ == '__main__':
     main()

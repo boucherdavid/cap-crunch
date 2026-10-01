@@ -5,6 +5,10 @@ import { adminDecideLtirRequestAction } from './cap-watch-actions'
 import type { LtirRequestView } from '@/lib/ltirRequests'
 import InjuryBadge from '@/components/InjuryBadge'
 
+function fmtReturn(iso: string | null): string {
+  return iso ? new Date(iso + 'T12:00:00').toLocaleDateString('fr-CA', { day: 'numeric', month: 'short' }) : '—'
+}
+
 export default function LtirApprovalManager({ initialRequests }: { initialRequests: LtirRequestView[] }) {
   const [requests, setRequests] = useState(initialRequests)
   const [pending, startTransition] = useTransition()
@@ -38,7 +42,12 @@ export default function LtirApprovalManager({ initialRequests }: { initialReques
                 <p className="text-xs text-gray-600 mt-0.5">+ signature de {r.newPlayerName}</p>
               )}
               {r.injury && (
-                <p className="text-xs text-gray-400 mt-0.5">{r.injury.injuryType} — {r.injury.status}</p>
+                <>
+                  <p className="text-xs text-gray-400 mt-0.5">{r.injury.injuryType} — {r.injury.status}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Retour estimé — CBS : {fmtReturn(r.injury.cbsReturnDate)} · ESPN : {fmtReturn(r.injury.espnEstReturnDate)} · MoneyPuck : {fmtReturn(r.injury.mpReturnDate)}
+                  </p>
+                </>
               )}
             </div>
             <span className="text-xs text-gray-400 shrink-0">
