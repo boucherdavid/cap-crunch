@@ -63,7 +63,8 @@ desktop.
 ### ▶ Prochaine session — commencer ici
 
 - **Recherche de joueurs + `/admin/analyse`** : en staging, à valider par David (champ de
-  recherche de la barre du haut, sommaire du pool dans la fiche joueur, outil d'analyse). Pas
+  recherche de la barre du haut, sommaire du pool et bouton « Ajouter à une liste » dans la
+  fiche joueur, outil d'analyse). Pas
   encore testé dans un navigateur par Claude. Après validation : fusion sur `main`. Suites
   possibles de l'analyse : gardiens, pointage du pool plutôt que points LNH.
 

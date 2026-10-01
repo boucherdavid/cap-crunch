@@ -6,6 +6,7 @@ import { fetchPlayerLanding, type NhlPlayerLanding, type NhlSeasonTotal } from '
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import InjuryBadge from './InjuryBadge'
+import AddToWatchlist from './AddToWatchlist'
 import { getPlayerPoolSummaryAction, type PlayerPoolSummary } from './player-search-actions'
 
 const TYPE_LABEL: Record<string, string> = { actif: 'Actif', reserviste: 'Réserviste', recrue: 'Recrue', ltir: 'LTIR' }
@@ -297,6 +298,7 @@ export default function PlayerSlideOver() {
           )}
 
           {summary && <PoolSummary summary={summary} onNavigate={close} />}
+          {summary && <AddToWatchlist playerId={summary.id} onNavigate={close} />}
 
           {!loading && player && projections.length > 0 && (
             <div className="mb-5 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">

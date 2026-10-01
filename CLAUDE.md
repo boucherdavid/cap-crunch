@@ -301,6 +301,8 @@ par `workflow_dispatch` et suit l'exécution — exige `GITHUB_WORKFLOW_TOKEN` d
 (`app/components/PlayerSearch.tsx`, actions dans `player-search-actions.ts`), ouvre la fiche
 `PlayerSlideOver` par `?joueur=<nhl_id>` ou `?fiche=<id interne>` (prospect sans nhl_id). La
 fiche affiche un sommaire du pool (propriétaire, blessure, contrat) en plus des stats LNH.
+Bouton « Ajouter à une liste » (`AddToWatchlist.tsx`) : listes du pooler connecté, du type
+correspondant au joueur (voir « Mes listes », section 6).
 
 **Admin — `/admin/analyse`** (David, 2026-10-01) : outil d'analyse croisée (stats MoneyPuck ×
 salaire/âge/propriétaire), nuage de points à deux mesures au choix + écart à la tendance. Admin

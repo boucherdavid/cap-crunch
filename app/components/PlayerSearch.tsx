@@ -72,17 +72,28 @@ export default function PlayerSearch() {
   const showPanel = open && query.trim().length >= 2
 
   return (
-    <div ref={boxRef} className="relative flex-1 max-w-md mx-3">
+    <div ref={boxRef} className="relative flex-1 max-w-md mx-3 flex items-center gap-2">
+      <label htmlFor="player-search" className="hidden md:block text-sm font-semibold text-white shrink-0">Recherche</label>
+      <div className="relative flex-1">
+      <svg
+        className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+        viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true"
+      >
+        <circle cx="9" cy="9" r="6" />
+        <path d="M13.5 13.5 18 18" />
+      </svg>
       <input
+        id="player-search"
         type="search"
         value={query}
         onChange={e => onChange(e.target.value)}
         onFocus={() => setOpen(true)}
         onKeyDown={onKeyDown}
-        placeholder="Chercher un joueur"
+        placeholder="Chercher un joueur (nom)"
         aria-label="Chercher un joueur"
-        className="w-full rounded-lg bg-white/10 text-white placeholder-white/60 text-sm px-3 py-1.5 border border-white/20 focus:outline-none focus:bg-white focus:text-gray-900 focus:placeholder-gray-400"
+        className="w-full rounded-lg bg-white text-gray-900 placeholder-gray-500 text-sm pl-8 pr-3 py-1.5 border border-white focus:outline-none focus:ring-2 focus:ring-blue-400"
       />
+      </div>
       {showPanel && (
         <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-50">
           {loading && <p className="px-3 py-2.5 text-sm text-gray-400">Recherche…</p>}

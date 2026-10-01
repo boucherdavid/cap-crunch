@@ -21,6 +21,19 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-01
 
+**[Feat] — Fiche joueur : « Ajouter à une liste » ; recherche mise en évidence**
+(`app/components/AddToWatchlist.tsx`, `app/components/PlayerSlideOver.tsx`,
+`app/components/PlayerSearch.tsx`, `app/app/listes/actions.ts`) :
+- Recherche : reste dans la barre du haut (décision de David — la barre de gauche est un tiroir
+  fermé sur téléphone), mise en évidence : champ blanc, loupe, libellé « Recherche » sur
+  ordinateur, texte « Chercher un joueur (nom) ».
+- Bouton « + Ajouter à une liste » dans la fiche, sous le sommaire du pool : propose les listes
+  du pooler connecté du bon type (`listWatchlistsForPlayerAction` — « recrues » pour un joueur du
+  dernier repêchage LNH, « joueurs » sinon), ajoute via `addWatchlistItemAction` existant.
+  Joueur déjà pris : ajout permis. Aucune liste du bon type : lien vers `/listes`. Caché si
+  personne n'est connecté.
+
+
 **[Feat] — Recherche globale de joueurs + outil d'analyse admin** (`app/components/PlayerSearch.tsx`,
 `app/components/player-search-actions.ts`, `app/components/PlayerSlideOver.tsx`,
 `app/components/Navbar.tsx`, `app/app/admin/analyse/*`) :
