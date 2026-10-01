@@ -22,7 +22,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | Identique à `main` |
+| `staging` | En avance sur `main` : MoneyPuck (3e source de blessures + `/admin/stats-avancees`) — à valider |
 | `main` (prod) | À jour — fusion du 2026-10-01 (`ceef794` : correctif homonymes de `import_drafts.py` + analyse du facteur de plafond) |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
@@ -61,6 +61,13 @@ desktop.
 ## 4. À faire / à vérifier
 
 ### ▶ Prochaine session — commencer ici
+
+- **MoneyPuck (blessures + `/admin/stats-avancees`)** : en **staging**, à valider par David —
+  `/admin/stats-avancees` (menu Admin > Opérations courantes) et `/statistiques/blessures`
+  (union des 3 sources, blessure confirmée à 2 sur 3, « À confirmer » sinon, colonne des trois
+  dates de retour). Migration déjà faite en staging et en prod. Après validation :
+  fusion sur `main`, puis lancer une fois à la main les workflows `advanced_stats.yml` et
+  `injuries.yml` pour remplir la prod.
 
 - **Facteur de plafond** : analyse faite (`calcul_salaire/calcul_facteur.md`, résumé
   `calcul_salaire/resume_facteur.md`, page partageable

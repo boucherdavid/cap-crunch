@@ -21,6 +21,76 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-01
 
+**[Style] — Légendes repliées par défaut** (`app/components/CollapsibleLegend.tsx`,
+`app/components/StreakLegend.tsx`, `app/app/draft-center/DraftCenterTable.tsx`,
+`app/app/admin/stats-avancees/StatsAvanceesTable.tsx`) :
+- Demande de David : voir les définitions des stats avancées sur la page (pas seulement au
+  survol), dans un accordéon pour ne pas charger l'écran — et faire pareil partout où ça allège.
+- Nouveau composant partagé `CollapsibleLegend` (`<details>`, replié par défaut). Utilisé par :
+  « Définitions des colonnes » de `/admin/stats-avancees` (générée à partir des colonnes
+  affichées, patineurs ou gardiens) ; `StreakLegend` (repliée sur tous les écrans, plus
+  seulement sur téléphone — `/poolers/[id]` onglet Alignement, `/statistiques`,
+  `/classement-series`) ; légende des sources de `/draft-center`.
+
+
+**[Feat] — Blessures : union des trois sources, confirmation à 2 sur 3, trois dates de retour**
+(`python_script/scrape_injuries.py`, `app/lib/ltirEligibility.ts`, `app/lib/injuries.ts`,
+`app/app/statistiques/blessures/*`, `app/app/admin/effectifs/LtirApprovalManager.tsx`,
+`app/app/aide/LtirRulesContent.tsx`, `supabase_migrations/moneypuck.sql`) :
+- Demande de David : ne plus dépendre de CBS seul pour décider qui est blessé. `player_injuries`
+  contient maintenant l'union de CBS, ESPN et MoneyPuck ; un joueur n'est considéré blessé
+  (badge, admissibilité LTIR, partout via `lib/injuries.ts`) que si au moins 2 sources sur 3 le
+  listent (`MIN_INJURY_SOURCES`, `countInjurySources()`). Une seule source : visible seulement
+  sur `/statistiques/blessures` avec « À confirmer ». Staging : 127 joueurs, 72 dans 3 sources,
+  32 dans 2, 23 dans une seule.
+- Colonnes `in_cbs` (présence CBS ; ESPN et MoneyPuck se déduisent de `espn_*`/`mp_*`) et
+  `cbs_return_date` — migration exécutée par David en staging et en prod.
+- Compteur de durée (`first_seen_at`) : démarre dès la première source, même avant confirmation
+  (confirmé par David) ; retrait seulement quand le joueur a disparu des trois sources.
+- Les trois dates de retour sont affichées côte à côte (colonne « Retour estimé » de la page
+  Blessures, et sous la blessure dans l'approbation des demandes LTIR) — transparence voulue par
+  David, l'admin approuvant chaque mise sur LTIR. Le calcul garde CBS, sinon ESPN, sinon MoneyPuck.
+- Libellés « (principale) »/« (recoupement) » retirés, pastille CBS grisée si absente, filtre
+  « Confirmées seulement », règlements LTIR de `/aide` réécrits.
+- Limite : un blessé MoneyPuck sans fiche avec `nhl_id` en base ne compte pas comme source (14 cas).
+
+
+**[Feat] — MoneyPuck : 3e source de blessures + page admin de stats avancées** (`python_script/scrape_injuries.py`, `python_script/import_advanced_stats.py`,
+`app/lib/ltirEligibility.ts`, `app/lib/injuries.ts`, `app/app/statistiques/blessures/*`,
+`app/app/admin/stats-avancees/*`, `app/components/Navbar.tsx`, `app/app/aide/LtirRulesContent.tsx`,
+`app/app/a-propos/page.tsx`, `.github/workflows/advanced_stats.yml`, `.github/workflows/injuries.yml`,
+`supabase_migrations/moneypuck.sql`, `schema.sql`) :
+- Source trouvée par David : moneypuck.com. Données gratuites pour usage non commercial, mention
+  « MoneyPuck.com » obligatoire (affichée sur la page). Identifiant `playerId` = `players.nhl_id`
+  partout → aucun jumelage par nom.
+- Sources évaluées pour les stats avancées : MoneyPuck (retenue, CSV par saison depuis 2008,
+  ~150 colonnes par situation), NHL EDGE (`api-web.nhle.com/v1/edge/...`, vitesse/tirs, bon
+  complément futur), API stats LNH (déjà utilisée) ; écartées : Natural Stat Trick (403 aux
+  scripts), Evolving-Hockey/HockeyViz/AllThreeZones (payants), Hockey-Reference (conditions).
+- **Blessures** : CSV `moneypuck.com/moneypuck/playerData/playerNews/current_injuries.csv`
+  (statut officiel IR / IR-LT = LTIR LNH / IR-NR / DTD / O / DD, date de retour, matchs
+  manqués/à manquer, description Yahoo). Recoupement des joueurs CBS seulement (CBS reste la
+  liste de référence) : 77/106 au test, 19 blessés MoneyPuck absents de CBS non importés.
+  Colonnes `mp_status`, `mp_return_date`, `mp_games_missed`, `mp_games_to_miss`,
+  `mp_description`. `isOnNhlIr()` reçoit `mpStatus` (IR* → admissible LTIR d'office) ; date de
+  retour = CBS, puis ESPN, puis MoneyPuck. 3e pastille + bloc de détail sur
+  `/statistiques/blessures`. Règlements LTIR (`/aide`) et `/a-propos` mis à jour.
+- **Stats avancées** : table `player_advanced_stats` (PK saison/situation/nhl_id, `stats` JSONB
+  = sous-ensemble choisi de colonnes MoneyPuck, situations all/5on5/5on4/4on5), remplacement
+  complet par saison (garde-fou : refuse si < 50 % des lignes en base), saison courante +
+  précédente par défaut (`--seasons`, `--dry-run`). Workflow quotidien `advanced_stats.yml`
+  (11h UTC). Page `/admin/stats-avancees` (admin seulement, menu Admin > Opérations courantes) :
+  patineurs/gardiens, saison, situation, position, PJ min., recherche, disponibles seulement,
+  tri par colonne, définition au survol, propriétaire dans le pool. Taux calculés côté client
+  (Pts/60, B−xB, xB %, xB % rel, CF %, PDO, DZO %, GS/PJ ; gardiens : % arrêts, BSxB, BSxB/60,
+  BSxB danger élevé). Saison par défaut = la plus récente où un gardien a 10 PJ (MoneyPuck
+  publie déjà quelques matchs 2026-27).
+- Migration `supabase_migrations/moneypuck.sql` exécutée par David en staging ET en prod.
+  Staging rempli : 2025-26 (4152 lignes) et 2026-27 (1148), 77 blessures avec `mp_status`.
+  Vérifié : données cohérentes (McDavid 138 pts, Thompson +29,3 BSxB), `next build`, `tsc`,
+  ESLint, `check:jsx-spaces`. Pas encore vu à l'écran par David.
+
+
 **[Fix] — Repêchages : jumelage par `nhl_id`, homonymes corrigés** (`python_script/import_drafts.py`) :
 - Jack Hughes (NJD, repêché 2019) portait le choix 2022 R2 #51 de son homonyme (Jack Hughes, LAK,
   Northeastern) : l'import jumelait les choix de l'API NHL aux fiches par nom seulement.

@@ -5,7 +5,7 @@
  * (voir app/lib/ltirRequests.ts). Ce fichier calcule le signal "admissible" affiché comme aide
  * à la décision (pooler ET admin), dans cet ordre :
  * 1. Mis sur la liste des blessés par son équipe LNH (CBS préfixe "IR." / ESPN "Injured
- *    Reserve") → toujours admissible, pour coller à la réalité.
+ *    Reserve" / MoneyPuck IR, IR-LT, IR-NR) → toujours admissible, pour coller à la réalité.
  * 2. Retour estimé (`est_return_date`) à `returnMinDays` jours ou plus → admissible.
  * 3. Retour estimé proche (moins de `returnMinDays`, ou dépassé depuis moins de `graceDays`)
  *    → PAS admissible, même blessé depuis longtemps : période tampon anti-abus — un joueur
@@ -48,10 +48,33 @@ function daysBetween(a: Date, b: Date): number {
 }
 
 /** Placé sur la liste des blessés par son équipe LNH — CBS : statut commençant par "IR." ou
- * "LTIR" ; ESPN : statut canonique "Injured Reserve" (ou mention LTIR). */
-export function isOnNhlIr(cbsStatus: string | null, espnStatusDesc: string | null): boolean {
+ * "LTIR" ; ESPN : statut canonique "Injured Reserve" (ou mention LTIR) ; MoneyPuck : statut
+ * officiel IR, IR-LT (LTIR LNH) ou IR-NR (David, 2026-10-01). */
+export function isOnNhlIr(cbsStatus: string | null, espnStatusDesc: string | null, mpStatus: string | null = null): boolean {
   if (/^\s*(LT)?IR\b/i.test(cbsStatus ?? '')) return true
+  if (/^IR\b/i.test(mpStatus ?? '')) return true
   return /injured reserve|\bLTIR\b|long[- ]term/i.test(espnStatusDesc ?? '')
+}
+
+/** Recoupement (David, 2026-10-01) : `player_injuries` contient l'union des trois sources ; un
+ * joueur n'est considéré blessé (badge, admissibilité LTIR) que si au moins
+ * `MIN_INJURY_SOURCES` sources le listent. Une seule source = « à confirmer », affiché
+ * seulement sur /statistiques/blessures. */
+export const MIN_INJURY_SOURCES = 2
+
+export type InjurySourcesRow = {
+  in_cbs: boolean | null
+  espn_status_desc: string | null
+  espn_est_return_date: string | null
+  mp_status: string | null
+  mp_return_date?: string | null
+}
+
+export function countInjurySources(row: InjurySourcesRow): number {
+  const cbs = row.in_cbs !== false  // null = ligne antérieure à la colonne, forcément issue de CBS
+  const espn = !!(row.espn_status_desc || row.espn_est_return_date)
+  const mp = !!(row.mp_status || row.mp_return_date)
+  return Number(cbs) + Number(espn) + Number(mp)
 }
 
 export function daysSinceFirstSeen(injury: InjuryEligibilityInput, today: Date = new Date()): number {

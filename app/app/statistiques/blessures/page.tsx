@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import BlessuresTable from './BlessuresTable'
-import { computeDatesDisagree, computeLtirEligible, isOnNhlIr } from '@/lib/ltirEligibility'
+import { computeDatesDisagree, computeLtirEligible, countInjurySources, isOnNhlIr, MIN_INJURY_SOURCES } from '@/lib/ltirEligibility'
 import { fetchLtirSettings } from '@/lib/injuries'
 
 export const metadata = { title: 'Blessures LNH' }
@@ -13,14 +13,18 @@ export type InjuryRow = {
   lastName: string
   position: string | null
   teamCode: string | null
+  inCbs: boolean
+  confirmed: boolean  // au moins 2 sources sur 3 (voir MIN_INJURY_SOURCES)
   injuryType: string
   status: string
   updatedLabel: string
   eligible: boolean
   estReturnDate: string | null
+  cbsReturnDate: string | null
   espnEstReturnDate: string | null
   espnStatusDesc: string | null
   espnNote: string | null
+  mp: { status: string | null; returnDate: string | null; gamesMissed: number | null; gamesToMiss: number | null; description: string | null } | null
   firstSeenAt: string | null
   datesDisagree: boolean
   owner: { poolerId: string; poolerName: string; playerType: 'actif' | 'reserviste' | 'recrue' | 'ltir' } | null
@@ -66,7 +70,7 @@ export default async function BlessuresPage() {
   const [{ data: injuriesData }, ownerByPlayerId, ltirSettings, { data: { user } }] = await Promise.all([
     supabase
       .from('player_injuries')
-      .select('player_id, injury_type, status, updated_label, est_return_date, espn_est_return_date, espn_status_desc, espn_note, first_seen_at, players (id, nhl_id, first_name, last_name, position, teams (code))')
+      .select('player_id, in_cbs, cbs_return_date, injury_type, status, updated_label, est_return_date, espn_est_return_date, espn_status_desc, espn_note, mp_status, mp_return_date, mp_games_missed, mp_games_to_miss, mp_description, first_seen_at, players (id, nhl_id, first_name, last_name, position, teams (code))')
       .order('player_id'),
     fetchOwnerByPlayerId(),
     fetchLtirSettings(supabase),
@@ -78,6 +82,7 @@ export default async function BlessuresPage() {
     .map((row: any) => {
       const player = row.players
       if (!player) return null
+      const confirmed = countInjurySources(row) >= MIN_INJURY_SOURCES
       return {
         playerId: player.id,
         nhlId: player.nhl_id,
@@ -85,18 +90,24 @@ export default async function BlessuresPage() {
         lastName: player.last_name,
         position: player.position,
         teamCode: player.teams?.code ?? null,
-        injuryType: row.injury_type,
-        status: row.status,
-        updatedLabel: row.updated_label,
-        eligible: computeLtirEligible({
+        inCbs: row.in_cbs !== false,
+        confirmed,
+        injuryType: row.injury_type ?? '',
+        status: row.status ?? '',
+        updatedLabel: row.updated_label ?? '',
+        eligible: confirmed && computeLtirEligible({
           estReturnDate: row.est_return_date,
           firstSeenAt: row.first_seen_at,
-          onNhlIr: isOnNhlIr(row.status, row.espn_status_desc),
+          onNhlIr: isOnNhlIr(row.status, row.espn_status_desc, row.mp_status),
         }, ltirSettings),
         estReturnDate: row.est_return_date,
+        cbsReturnDate: row.cbs_return_date,
         espnEstReturnDate: row.espn_est_return_date,
         espnStatusDesc: row.espn_status_desc,
         espnNote: row.espn_note,
+        mp: row.mp_status || row.mp_return_date
+          ? { status: row.mp_status, returnDate: row.mp_return_date, gamesMissed: row.mp_games_missed, gamesToMiss: row.mp_games_to_miss, description: row.mp_description }
+          : null,
         firstSeenAt: row.first_seen_at,
         datesDisagree: computeDatesDisagree(row.est_return_date, row.espn_est_return_date, ltirSettings),
         owner: ownerByPlayerId.get(player.id) ?? null,

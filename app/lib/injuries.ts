@@ -6,7 +6,7 @@
  */
 
 import type { createClient } from '@/lib/supabase/server'
-import { computeDatesDisagree, computeLtirEligible, isOnNhlIr, DEFAULT_LTIR_SETTINGS, type LtirSettings } from './ltirEligibility'
+import { computeDatesDisagree, computeLtirEligible, countInjurySources, isOnNhlIr, DEFAULT_LTIR_SETTINGS, MIN_INJURY_SOURCES, type LtirSettings } from './ltirEligibility'
 
 export type InjuryInfo = {
   injuryType: string
@@ -14,6 +14,8 @@ export type InjuryInfo = {
   eligible: boolean
   estReturnDate: string | null      // CBS d'abord, ESPN en repli — base du calcul LTIR
   espnEstReturnDate: string | null  // ESPN seul, pour signaler un désaccord (voir computeDatesDisagree)
+  cbsReturnDate: string | null      // les trois dates sont affichées côte à côte par transparence
+  mpReturnDate: string | null
   datesDisagree: boolean
 }
 
@@ -23,20 +25,26 @@ type InjuryRowLike = {
   est_return_date: string | null
   espn_est_return_date: string | null
   espn_status_desc: string | null
+  mp_status: string | null
+  mp_return_date: string | null
+  in_cbs: boolean | null
+  cbs_return_date: string | null
   first_seen_at: string
 }
 
 function toInjuryInfo(row: InjuryRowLike, settings: LtirSettings): InjuryInfo {
   return {
     injuryType: row.injury_type ?? '',
-    status: row.status ?? '',
+    status: row.status ?? row.espn_status_desc ?? '',
     eligible: computeLtirEligible({
       estReturnDate: row.est_return_date,
       firstSeenAt: row.first_seen_at,
-      onNhlIr: isOnNhlIr(row.status, row.espn_status_desc),
+      onNhlIr: isOnNhlIr(row.status, row.espn_status_desc, row.mp_status),
     }, settings),
     estReturnDate: row.est_return_date,
     espnEstReturnDate: row.espn_est_return_date,
+    cbsReturnDate: row.cbs_return_date,
+    mpReturnDate: row.mp_return_date,
     datesDisagree: computeDatesDisagree(row.est_return_date, row.espn_est_return_date, settings),
   }
 }
@@ -65,12 +73,14 @@ export async function fetchInjuriesByPlayerId(supabase: SupabaseLike): Promise<M
   const [{ data }, settings] = await Promise.all([
     supabase
       .from('player_injuries')
-      .select('player_id, injury_type, status, est_return_date, espn_est_return_date, espn_status_desc, first_seen_at'),
+      .select('player_id, injury_type, status, est_return_date, espn_est_return_date, espn_status_desc, mp_status, mp_return_date, in_cbs, cbs_return_date, first_seen_at'),
     fetchLtirSettings(supabase),
   ])
 
   const map = new Map<number, InjuryInfo>()
   for (const row of data ?? []) {
+    // Une seule source : pas encore considéré blessé (voir MIN_INJURY_SOURCES).
+    if (countInjurySources(row) < MIN_INJURY_SOURCES) continue
     map.set(row.player_id, toInjuryInfo(row as InjuryRowLike, settings))
   }
   return map
@@ -82,7 +92,7 @@ export async function fetchInjuriesByNhlId(supabase: SupabaseLike): Promise<Map<
   const [{ data }, settings] = await Promise.all([
     supabase
       .from('player_injuries')
-      .select('injury_type, status, est_return_date, espn_est_return_date, espn_status_desc, first_seen_at, players (nhl_id)'),
+      .select('injury_type, status, est_return_date, espn_est_return_date, espn_status_desc, mp_status, mp_return_date, in_cbs, cbs_return_date, first_seen_at, players (nhl_id)'),
     fetchLtirSettings(supabase),
   ])
 
@@ -90,6 +100,7 @@ export async function fetchInjuriesByNhlId(supabase: SupabaseLike): Promise<Map<
   for (const row of data ?? []) {
     const nhlId = (row.players as unknown as { nhl_id: number | null } | null)?.nhl_id
     if (!nhlId) continue
+    if (countInjurySources(row) < MIN_INJURY_SOURCES) continue
     map.set(nhlId, toInjuryInfo(row as unknown as InjuryRowLike, settings))
   }
   return map

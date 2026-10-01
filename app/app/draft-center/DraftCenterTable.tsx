@@ -1,5 +1,6 @@
 'use client'
 
+import CollapsibleLegend from '@/components/CollapsibleLegend'
 import { Fragment, useState } from 'react'
 import { DRAFT_SOURCES, DRAFT_SOURCES_RANKED, DRAFT_SOURCES_INFOONLY } from '@/lib/draft-sources'
 
@@ -29,9 +30,9 @@ export default function DraftCenterTable({ prospects, draftYear }: { prospects: 
 
   return (
     <div>
-      {/* Légende */}
-      <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Légende des sources</p>
+      {/* Légende — repliée par défaut (David, 2026-10-01) */}
+      <div className="mb-4">
+      <CollapsibleLegend title="Légende des sources et des couleurs de rang">
         <div className="flex flex-wrap gap-x-5 gap-y-1 mb-3 text-xs text-gray-600">
           <span><span className="font-bold text-blue-700">1</span> Rang 1–5</span>
           <span><span className="font-bold text-gray-700">6</span> Rang 6–15</span>
@@ -49,6 +50,7 @@ export default function DraftCenterTable({ prospects, draftYear }: { prospects: 
             </span>
           ))}
         </div>
+      </CollapsibleLegend>
       </div>
 
       <p className="text-sm text-gray-500 mb-3">
