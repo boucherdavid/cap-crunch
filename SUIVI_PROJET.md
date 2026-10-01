@@ -21,6 +21,10 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-01
 
+**[Déploiement] — Menu « Analytique » en prod** : validé par David sur téléphone (recherche et
+ajout à une liste aussi), fusionné sur `main`.
+
+
 **[Feat] — Menu « Analytique » : stats avancées et outil d'analyse ouverts aux poolers**
 (`app/app/analytique/stats-avancees/*`, `app/app/analytique/analyse/*`, `app/components/Navbar.tsx`,
 `app/app/admin/stats-avancees/page.tsx`, `app/app/admin/analyse/page.tsx`, `app/app/aide/AideTabs.tsx`,
@@ -32,8 +36,9 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   (pas sous `/statistiques/`, sinon le lien « LNH » du menu s'allumerait aussi) ; vérification
   `is_admin` retirée ; anciennes adresses admin = redirections ; liens retirés du menu Admin.
 - Adaptation mobile (obligatoire pour une page de consultation) : équipe/position/propriétaire
-  sous le nom en portrait, colonnes secondaires masquées (`ESSENTIAL` + la colonne triée reste
-  visible), marges réduites ; tout revient en paysage.
+  sous le nom en portrait, nom figé à gauche, marges réduites. Toutes les colonnes de mesures
+  restent affichées et défilent horizontalement (corrigé après test de David : une première
+  version masquait les colonnes secondaires en portrait, sans moyen de les voir).
 - `/aide` (Guide → Analytique) et `/a-propos` complétés.
 - Limites inchangées de l'outil d'analyse : patineurs seulement, points LNH.
 - Bouton « Masquer le graphique » / « Afficher le graphique » dans l'outil d'analyse (demande de

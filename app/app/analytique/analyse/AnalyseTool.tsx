@@ -369,7 +369,7 @@ export default function AnalyseTool({
                       <th className="hidden sm:table-cell sticky top-0 z-10 bg-gray-50 px-3 py-2.5 font-medium text-gray-600">Pos</th>
                       {([['x', mx.label], ['y', my.label], ['res', 'Écart à la tendance'], ['ptsPerM', 'Pts par M$']] as const).map(([k, label]) => (
                         <th key={k} onClick={() => onSort(k)}
-                          className={`${k === 'ptsPerM' && sort.key !== 'ptsPerM' ? 'hidden sm:table-cell ' : ''}sticky top-0 z-10 bg-gray-50 px-2 sm:px-3 py-2.5 font-medium text-right sm:whitespace-nowrap cursor-pointer select-none ${sort.key === k ? 'text-blue-700' : 'text-gray-600 hover:text-gray-900'}`}>
+                          className={`sticky top-0 z-10 bg-gray-50 px-2 sm:px-3 py-2.5 font-medium text-right sm:whitespace-nowrap cursor-pointer select-none ${sort.key === k ? 'text-blue-700' : 'text-gray-600 hover:text-gray-900'}`}>
                           {label}{arrow(k)}
                         </th>
                       ))}
@@ -380,7 +380,7 @@ export default function AnalyseTool({
                     {tableRows.map(p => (
                       <tr key={p.r.nhlId} className={`border-b last:border-0 ${hover === p.r.nhlId ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
                         onMouseEnter={() => setHover(p.r.nhlId)} onMouseLeave={() => setHover(null)}>
-                        <td className="sticky left-0 z-10 bg-white px-2 sm:px-3 py-2 font-medium text-gray-800 sm:whitespace-nowrap">
+                        <td className="sticky left-0 z-10 bg-white px-2 sm:px-3 py-2 font-medium text-gray-800 max-sm:max-w-[9rem] sm:whitespace-nowrap">
                           <PlayerLink nhlId={p.r.nhlId}>{p.r.name}</PlayerLink>
                           <span className="sm:hidden block text-[11px] font-normal text-gray-400">
                             {[p.r.team, p.r.position, p.r.owner ? p.r.owner.poolerName : 'Disponible'].filter(Boolean).join(' · ')}
@@ -391,7 +391,7 @@ export default function AnalyseTool({
                         <td className="px-2 sm:px-3 py-2 text-right tabular-nums text-gray-700">{fmt(mx, p.x)}</td>
                         <td className="px-2 sm:px-3 py-2 text-right tabular-nums text-gray-700">{fmt(my, p.y)}</td>
                         <td className="px-2 sm:px-3 py-2 text-right tabular-nums font-semibold text-gray-900">{fmt({ ...my, signed: true }, p.res)}</td>
-                        <td className={`${sort.key !== 'ptsPerM' ? 'hidden sm:table-cell ' : ''}px-2 sm:px-3 py-2 text-right tabular-nums text-gray-700`}>{fmt(METRIC.ptsPerM, p.r.m.ptsPerM)}</td>
+                        <td className="px-2 sm:px-3 py-2 text-right tabular-nums text-gray-700">{fmt(METRIC.ptsPerM, p.r.m.ptsPerM)}</td>
                         <td className="hidden sm:table-cell px-3 py-2 whitespace-nowrap text-xs">
                           {p.r.owner
                             ? <span className="text-gray-500">{p.r.owner.poolerName}</span>

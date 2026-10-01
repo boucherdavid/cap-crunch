@@ -79,10 +79,6 @@ const GOALIE_COLUMNS: Column[] = [
   { key: 'hdsa', label: 'Tirs DÉ', help: 'Tentatives de danger élevé reçues', value: r => s(r, 'hd_sa'), format: int },
 ]
 
-// Portrait (téléphone) : seules ces colonnes restent, plus celle qui sert au tri ; tout revient
-// à partir de sm (paysage/desktop) — conventions mobiles du projet (CLAUDE.md, section 8).
-const ESSENTIAL = new Set(['gp', 'pts', 'p60', 'gax', 'xgpct', 'svpct', 'gsax', 'gsax60'])
-
 const OWNER_TYPE_LABEL: Record<string, string> = { actif: 'A', reserviste: 'R', recrue: 'Rc', ltir: 'LTIR' }
 
 export default function StatsAvanceesTable({
@@ -129,8 +125,6 @@ export default function StatsAvanceesTable({
       })
       .map(x => x.r)
   }, [rows, minGp, availOnly, pos, search, sortCol, sortDesc])
-
-  const colCls = (key: string) => (ESSENTIAL.has(key) || key === sortKey ? '' : 'hidden sm:table-cell')
 
   const onSort = (key: string) => {
     if (key === sortKey) setSortDesc(d => !d)
@@ -220,7 +214,7 @@ export default function StatsAvanceesTable({
             ))}
           </dl>
           <p className="mt-2 text-[11px] text-gray-400">
-            Les valeurs dépendent de la situation choisie (toutes, 5 contre 5, avantage ou désavantage numérique). Clique un en-tête pour trier. Sur téléphone, tourne l&apos;écran pour voir toutes les colonnes.
+            Les valeurs dépendent de la situation choisie (toutes, 5 contre 5, avantage ou désavantage numérique). Clique un en-tête pour trier. Sur téléphone, fais défiler le tableau vers la droite pour voir toutes les colonnes.
           </p>
         </CollapsibleLegend>
       </div>
@@ -243,7 +237,7 @@ export default function StatsAvanceesTable({
                       key={c.key}
                       title={c.help}
                       onClick={() => onSort(c.key)}
-                      className={`${colCls(c.key)} sticky top-0 z-10 bg-gray-50 px-2 sm:px-3 py-2.5 font-medium text-right whitespace-nowrap cursor-pointer select-none ${
+                      className={`sticky top-0 z-10 bg-gray-50 px-2 sm:px-3 py-2.5 font-medium text-right whitespace-nowrap cursor-pointer select-none ${
                         c.key === sortKey ? 'text-blue-700' : 'text-gray-600 hover:text-gray-900'
                       }`}
                     >
@@ -256,7 +250,7 @@ export default function StatsAvanceesTable({
               <tbody>
                 {filtered.map(r => (
                   <tr key={r.nhl_id} className="border-b last:border-0 hover:bg-gray-50">
-                    <td className="sticky left-0 z-10 bg-white px-2 sm:px-3 py-2 font-medium text-gray-800 sm:whitespace-nowrap">
+                    <td className="sticky left-0 z-10 bg-white px-2 sm:px-3 py-2 font-medium text-gray-800 max-sm:max-w-[9rem] sm:whitespace-nowrap">
                       <PlayerLink nhlId={r.nhl_id}>{r.name}</PlayerLink>
                       <span className="sm:hidden block text-[11px] font-normal text-gray-400">
                         {[r.team, kind === 'skater' ? r.position : null, r.owner ? r.owner.poolerName : 'Disponible'].filter(Boolean).join(' · ')}
@@ -267,7 +261,7 @@ export default function StatsAvanceesTable({
                     {columns.map(c => {
                       const v = c.value(r)
                       return (
-                        <td key={c.key} className={`${colCls(c.key)} px-2 sm:px-3 py-2 text-right tabular-nums whitespace-nowrap ${c.key === sortKey ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+                        <td key={c.key} className={`px-2 sm:px-3 py-2 text-right tabular-nums whitespace-nowrap ${c.key === sortKey ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
                           {v === null ? '—' : c.format(v)}
                         </td>
                       )
