@@ -62,9 +62,6 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **Jack Hughes (Devils)** : correctif en prod (2026-10-01). Vérifier après l'import du lundi
-  (ou un lancement manuel de `import.yml`) : log `[CORRECTION] Jack Hughes`, fiche NJD sans
-  repêchage 2022.
 - **Facteur de plafond** : analyse faite (`calcul_salaire/calcul_facteur.md`, résumé
   `calcul_salaire/resume_facteur.md`, page partageable
   https://claude.ai/artifact/VNqLbSxDLySgAg8zSbyLht). Recommandation : 1,28 pour 2026-27

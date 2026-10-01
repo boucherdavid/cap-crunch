@@ -32,6 +32,8 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Staging : 1 seul homonyme dans toute la base (Hughes) — corrigé, fiche LAK créée ; second
   passage sans aucun changement. Prod : corrigé au prochain import hebdomadaire après fusion
   sur `main` (`import.yml` lance `import_drafts.py`).
+- Prod : fusionné (`ceef794`), `import.yml` lancé à la main le même jour — `[CORRECTION] Jack
+  Hughes` au log, fiche NJD sans repêchage, fiche LAK (2022 #51) créée.
 
 ### 2026-09-30
 
