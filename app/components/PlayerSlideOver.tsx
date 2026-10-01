@@ -233,7 +233,7 @@ export default function PlayerSlideOver() {
 
   // Même principe pour les stats LNH et les projections : étiquetées par nhl_id, donc rien à
   // remettre à zéro dans l'effet quand on change de joueur.
-  const [loadedPlayer, setLoadedPlayer] = useState<{ nhlId: number; data: NhlPlayerLanding | null } | null>(null)
+  const [loadedPlayer, setLoadedPlayer] = useState<{ nhlId: number; data: NhlPlayerLanding | null; error: string | null } | null>(null)
   const [loadedProjections, setLoadedProjections] = useState<{ nhlId: number; data: Projection[] } | null>(null)
   const player = nhlId !== null && loadedPlayer?.nhlId === nhlId ? loadedPlayer.data : null
   const loading = nhlId !== null && loadedPlayer?.nhlId !== nhlId
@@ -242,9 +242,10 @@ export default function PlayerSlideOver() {
   useEffect(() => {
     if (!nhlId) return
     let cancelled = false
-    fetchPlayerLanding(nhlId).then(data => {
-      if (!cancelled) setLoadedPlayer({ nhlId, data })
-    })
+    fetchPlayerLanding(nhlId)
+      .then(res => { if (!cancelled) setLoadedPlayer({ nhlId, ...res }) })
+      // L'appel au serveur lui-même a échoué (action introuvable après un déploiement, réseau).
+      .catch(e => { if (!cancelled) setLoadedPlayer({ nhlId, data: null, error: `appel au serveur : ${e instanceof Error ? e.message : 'échec'}` }) })
     return () => { cancelled = true }
   }, [nhlId])
 
@@ -427,7 +428,9 @@ export default function PlayerSlideOver() {
           )}
 
           {!loading && !player && nhlId && (
-            <p className="text-gray-400 text-sm">Impossible de charger les données de ce joueur.</p>
+            <p className="mt-4 text-gray-400 text-sm">
+              Les saisons LNH de ce joueur n&apos;ont pas pu être chargées{loadedPlayer?.error ? ` (${loadedPlayer.error})` : ''}. Ferme la fiche et rouvre-la pour réessayer.
+            </p>
           )}
         </div>
       </div>

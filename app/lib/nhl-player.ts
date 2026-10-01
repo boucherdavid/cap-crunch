@@ -33,19 +33,26 @@ export type NhlPlayerLanding = {
   seasonTotals: NhlSeasonTotal[]
 }
 
-export async function fetchPlayerLanding(nhlId: number): Promise<NhlPlayerLanding | null> {
+export type NhlPlayerLandingResult = { data: NhlPlayerLanding | null; error: string | null }
+
+// La LNH est derrière Cloudflare, qui refuse parfois les requêtes sans navigateur identifiable.
+const NHL_HEADERS = { 'User-Agent': 'Mozilla/5.0 (compatible; CapCrunch/1.0)', Accept: 'application/json' }
+
+/** Fiche LNH d'un joueur, avec le motif de l'échec s'il y en a un (affiché dans la fiche pour
+ * pouvoir diagnostiquer sans les journaux du serveur — David, 2026-10-01). Deux essais : avec
+ * le cache d'une heure, puis sans cache, pour qu'une erreur passagère ne reste pas servie. */
+export async function fetchPlayerLanding(nhlId: number): Promise<NhlPlayerLandingResult> {
   const url = `https://api-web.nhle.com/v1/player/${nhlId}/landing`
-  // Deux essais : d'abord avec le cache d'une heure, puis sans cache — une réponse en erreur de
-  // la LNH (limite de débit, panne passagère) ne doit pas rester servie pendant une heure
-  // (fiche « Impossible de charger les données de ce joueur », David, 2026-10-01).
+  let error = 'aucune réponse'
   for (const init of [{ next: { revalidate: 3600 } }, { cache: 'no-store' as const }]) {
     try {
-      const res = await fetch(url, init)
-      if (res.ok) return await res.json()
-      console.error(`[fetchPlayerLanding] ${nhlId} : HTTP ${res.status}`)
+      const res = await fetch(url, { ...init, headers: NHL_HEADERS })
+      if (res.ok) return { data: await res.json(), error: null }
+      error = `la LNH a répondu ${res.status}`
     } catch (e) {
-      console.error(`[fetchPlayerLanding] ${nhlId} :`, e)
+      error = e instanceof Error ? e.message : 'erreur réseau'
     }
+    console.error(`[fetchPlayerLanding] ${nhlId} : ${error}`)
   }
-  return null
+  return { data: null, error }
 }
