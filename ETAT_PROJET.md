@@ -22,8 +22,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : outil d'analyse (gardiens, évolution), saisons 2020-21+, historique dans la fiche — à valider |
-| `main` (prod) | À jour — fusion du 2026-10-01 : menu « Analytique » (stats avancées + outil d'analyse ouverts aux poolers), recherche globale de joueurs, fiche joueur enrichie, MoneyPuck (blessures à 3 sources), légendes repliées, correctif homonymes |
+| `staging` | Identique à `main` |
+| `main` (prod) | À jour — fusion du 2026-10-01 : outil d'analyse (gardiens, évolution), stats avancées depuis 2020-21, historique dans la fiche joueur, menu « Analytique », recherche globale, MoneyPuck (blessures à 3 sources), correctif homonymes |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
 détail des sources par blessure, correctif de saut d'écran du repêchage admin, renvoi en banque
@@ -62,10 +62,10 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **Outil d'analyse — gardiens, évolution, saisons 2020-21+** : en staging, à valider par David.
-  Après validation : fusion sur `main`, puis lancer `advanced_stats.yml` à la main avec
-  `seasons = 2020 2021 2022 2023 2024 2025 2026` pour remplir la prod (victoires comprises).
-  Suite possible : pointage du pool plutôt que points LNH, mémoriser le graphique masqué.
+- **Outil d'analyse** : suites possibles — pointage du pool plutôt que points LNH, mémoriser le
+  graphique masqué.
+- **Fiche joueur / API LNH** : si « saisons LNH pas pu être chargées » revient, le motif est
+  affiché entre parenthèses dans la fiche (ex : « la LNH a répondu 403 »).
 
 - **Facteur de plafond** : analyse faite (`calcul_salaire/calcul_facteur.md`, résumé
   `calcul_salaire/resume_facteur.md`, page partageable

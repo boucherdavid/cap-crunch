@@ -21,6 +21,21 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-01
 
+**[Fix + déploiement] — Fiche joueur : saisons LNH introuvables pour certains joueurs ; analyse
+(gardiens, évolution) en prod** (`app/lib/nhl-player.ts`, `app/components/PlayerSlideOver.tsx`) :
+- Symptôme (David) : « Impossible de charger les données de ce joueur » pour MacKinnon et
+  Bouchard, mais pas McDavid. La LNH répondait normalement depuis le poste local ; l'échec venait
+  de l'appel fait par le serveur Vercel (journaux Vercel non accessibles à Claude).
+- Correctif : en-tête `User-Agent` sur l'appel à `api-web.nhle.com` (derrière Cloudflare),
+  second essai sans cache si le premier échoue, et motif de l'échec renvoyé puis affiché dans la
+  fiche (`fetchPlayerLanding` retourne `{ data, error }`). Réglé selon David après ce changement ;
+  cause exacte non prouvée (hypothèse : refus Cloudflare des requêtes sans navigateur identifiable).
+- Vercel n'avait pas déployé le commit `8e8d2c4` (aucun statut) ; le commit suivant a été déployé
+  normalement — cause inconnue.
+- Fusion sur `main` et import des saisons 2020-21 à 2026-27 en prod (`advanced_stats.yml`,
+  entrée `seasons`).
+
+
 **[Feat] — Outil d'analyse : gardiens, évolution, saisons depuis 2020-21**
 (`python_script/import_advanced_stats.py`, `.github/workflows/advanced_stats.yml`,
 `app/lib/advancedMetrics.ts`, `app/app/analytique/analyse/*`, `app/app/analytique/stats-avancees/*`,
