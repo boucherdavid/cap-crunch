@@ -90,6 +90,7 @@ export default function AnalyseTool({
   const [maxCap, setMaxCap] = useState('')
   const [search, setSearch] = useState('')
   const [hover, setHover] = useState<number | null>(null)
+  const [showChart, setShowChart] = useState(true)
   const [sort, setSort] = useState<{ key: 'x' | 'y' | 'res' | 'ptsPerM'; desc: boolean }>({ key: 'res', desc: true })
 
   const mx = METRIC[xKey], my = METRIC[yKey]
@@ -277,18 +278,23 @@ export default function AnalyseTool({
       ) : (
         <>
           <div className="bg-white rounded-lg shadow p-4 mb-6">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm font-semibold text-gray-700">{my.label} selon {mx.label.toLowerCase()}</p>
-              <div className="flex items-center gap-4 text-xs text-gray-600">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-600">
                 <span className="inline-flex items-center gap-1.5"><span className="inline-block w-2.5 h-2.5 rounded-full bg-[#2a78d6]" />Dans un alignement</span>
                 <span className="inline-flex items-center gap-1.5"><span className="inline-block w-2.5 h-2.5 rounded-full bg-[#1baf7a]" />Disponible</span>
                 <span className="text-gray-400">
                   {points.length} joueur{points.length > 1 ? 's' : ''}
                   {corr !== null && <> · corrélation {corr.toLocaleString('fr-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
                 </span>
+                <button type="button" onClick={() => setShowChart(v => !v)} aria-expanded={showChart}
+                  className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-50">
+                  {showChart ? 'Masquer le graphique' : 'Afficher le graphique'}
+                </button>
               </div>
             </div>
-            <div className="relative">
+            {showChart && (
+            <div className="relative mt-2">
               <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label={`${my.label} selon ${mx.label}`} onMouseLeave={() => setHover(null)}>
                 {niceTicks(y0, y1).map(t => (
                   <g key={`y${t}`}>
@@ -345,6 +351,7 @@ export default function AnalyseTool({
                 </div>
               )}
             </div>
+            )}
           </div>
 
           <div className="flex flex-col xl:flex-row gap-6 items-start">

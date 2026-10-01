@@ -36,6 +36,9 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   visible), marges réduites ; tout revient en paysage.
 - `/aide` (Guide → Analytique) et `/a-propos` complétés.
 - Limites inchangées de l'outil d'analyse : patineurs seulement, points LNH.
+- Bouton « Masquer le graphique » / « Afficher le graphique » dans l'outil d'analyse (demande de
+  David : le graphique prend de la place pour qui veut seulement le tableau). Non mémorisé d'une
+  visite à l'autre.
 
 
 **[Déploiement] — Recherche de joueurs, fiche enrichie et Analyse en prod** : validés par David
