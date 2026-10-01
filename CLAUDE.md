@@ -307,6 +307,11 @@ fiche affiche un sommaire du pool (propriétaire, blessure, contrat) en plus des
 Bouton « Ajouter à une liste » (`AddToWatchlist.tsx`) : listes du pooler connecté, du type
 correspondant au joueur (voir « Mes listes », section 6).
 
+**Bouton « Approbations »** (David, 2026-10-01) : barre du haut, admin seulement
+(`app/components/AdminApprovalsPanel.tsx`) — compteur + panneau latéral pour approuver les
+transactions entre poolers et les demandes de LTIR depuis n'importe quelle page, et voir les
+ballotages bloqués. Réutilise les composants de `/admin/effectifs?tab=approbation`, qui reste en place.
+
 **Analytique** (David, 2026-10-01 — d'abord admin seulement, ouvert à tous le même jour) :
 `/analytique/stats-avancees` (stats avancées MoneyPuck, `player_advanced_stats`, patineurs et
 gardiens par saison et situation) et `/analytique/analyse` (outil d'analyse croisée : stats

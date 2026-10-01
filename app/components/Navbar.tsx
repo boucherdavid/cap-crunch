@@ -1,6 +1,7 @@
 'use client'
 
 import PlayerSearch from './PlayerSearch'
+import AdminApprovalsPanel from './AdminApprovalsPanel'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
@@ -472,6 +473,7 @@ export default function Navbar({
             <Suspense fallback={<div className="flex-1" />}><PlayerSearch /></Suspense>
 
             <div className="flex items-center gap-2 shrink-0">
+              {effectiveIsAdmin && <AdminApprovalsPanel />}
               {installPrompt && (
                 <button onClick={handleInstall}
                   className="text-pool-silver hover:text-white text-sm border border-pool-silver rounded px-2 py-1 transition-colors">

@@ -6,7 +6,9 @@ import { adminDecideTradeOfferAction, type AdminTradeOfferView } from './cap-wat
 const fmtCap = (n: number) =>
   new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 
-export default function TradeApprovalManager({ initialOffers }: { initialOffers: AdminTradeOfferView[] }) {
+// `onDecided` : prévenir le parent après une décision (panneau Approbations de la barre du haut,
+// pour rafraîchir son compteur).
+export default function TradeApprovalManager({ initialOffers, onDecided }: { initialOffers: AdminTradeOfferView[]; onDecided?: () => void }) {
   const [offers, setOffers] = useState(initialOffers)
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -17,6 +19,7 @@ export default function TradeApprovalManager({ initialOffers }: { initialOffers:
       const result = await adminDecideTradeOfferAction(id, approve)
       if (result.error) { setError(result.error); return }
       setOffers(prev => prev.filter(o => o.id !== id))
+      onDecided?.()
     })
   }
 

@@ -9,7 +9,7 @@ function fmtReturn(iso: string | null): string {
   return iso ? new Date(iso + 'T12:00:00').toLocaleDateString('fr-CA', { day: 'numeric', month: 'short' }) : '—'
 }
 
-export default function LtirApprovalManager({ initialRequests }: { initialRequests: LtirRequestView[] }) {
+export default function LtirApprovalManager({ initialRequests, onDecided }: { initialRequests: LtirRequestView[]; onDecided?: () => void }) {
   const [requests, setRequests] = useState(initialRequests)
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -20,6 +20,7 @@ export default function LtirApprovalManager({ initialRequests }: { initialReques
       const result = await adminDecideLtirRequestAction(id, approve)
       if (result.error) { setError(result.error); return }
       setRequests(prev => prev.filter(r => r.id !== id))
+      onDecided?.()
     })
   }
 

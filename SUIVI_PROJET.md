@@ -21,6 +21,20 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-01
 
+**[Feat] — Bouton « Approbations » dans la barre du haut (admin)** (`app/components/AdminApprovalsPanel.tsx`,
+`app/components/admin-approvals-actions.ts`, `app/components/Navbar.tsx`,
+`app/app/admin/effectifs/TradeApprovalManager.tsx`, `LtirApprovalManager.tsx`) :
+- Demande de David : pendant le repêchage, devoir changer de menu pour approuver une demande est
+  pénible. Bouton toujours visible pour l'admin (masqué en « vue pooler »), avec le nombre de
+  demandes en attente ; ouvre un panneau à droite par-dessus la page en cours.
+- Barre du haut plutôt que barre de gauche (tiroir fermé sur téléphone). Le panneau réutilise
+  `TradeApprovalManager` et `LtirApprovalManager` (nouvelle prop optionnelle `onDecided`) ;
+  l'onglet `/admin/effectifs?tab=approbation` reste en place (liens des notifications, seuils LTIR).
+- Compte aussi les **ballotages bloqués** (`waiver_claims.status='blocked'` : gagnant qui n'a pas
+  complété dans les 48 h), jusque-là signalés nulle part ; lien vers Transactions pour les traiter.
+- Rafraîchi toutes les 30 secondes, sauf pendant que le panneau est ouvert.
+
+
 **[Fix + déploiement] — Fiche joueur : saisons LNH introuvables pour certains joueurs ; analyse
 (gardiens, évolution) en prod** (`app/lib/nhl-player.ts`, `app/components/PlayerSlideOver.tsx`) :
 - Symptôme (David) : « Impossible de charger les données de ce joueur » pour MacKinnon et
