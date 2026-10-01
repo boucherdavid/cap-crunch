@@ -21,6 +21,10 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-01
 
+**[Déploiement] — Cap simulé RFA seulement + suivi des UFA en prod** : validés par David en
+staging, fusionnés sur `main`.
+
+
 **[Fix] — Cap simulé : seulement pour un RFA sans contrat** (`app/lib/capUtils.ts`,
 `app/components/UnsignedBadge.tsx`, 49 requêtes de contrats, `app/app/poolers/[id]/page.tsx`,
 `app/app/admin/presaison/*`, `app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`,
