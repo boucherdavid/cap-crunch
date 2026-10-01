@@ -78,7 +78,7 @@ function SourcesDetail({ r }: { r: InjuryRow }) {
         )}
       </div>
       <div className="rounded border border-teal-100 bg-teal-50/40 p-2">
-        <p className="font-semibold text-teal-700 mb-1">MoneyPuck <span className="font-normal text-gray-400">(statut officiel)</span></p>
+        <p className="font-semibold text-teal-700 mb-1">MoneyPuck <span className="font-normal text-gray-400">(recoupement)</span></p>
         {r.mp ? (
           <>
             <p className="text-gray-700">
