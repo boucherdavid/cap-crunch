@@ -21,6 +21,29 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-01
 
+**[Feat] — Recherche globale de joueurs + outil d'analyse admin** (`app/components/PlayerSearch.tsx`,
+`app/components/player-search-actions.ts`, `app/components/PlayerSlideOver.tsx`,
+`app/components/Navbar.tsx`, `app/app/admin/analyse/*`) :
+- **Recherche** : champ « Chercher un joueur » dans la barre du haut (toutes les pages), résultats
+  pendant la frappe via le RPC `search_players_unaccent` (mot le plus long, puis tous les mots
+  exigés dans le nom complet), 8 résultats, avec le propriétaire ou « Disponible ». Ouvre la fiche
+  existante (`PlayerSlideOver`) : `?joueur=<nhl_id>`, ou `?fiche=<id interne>` pour un prospect
+  sans nhl_id. La fiche gagne un sommaire du pool : propriétaire (lien vers son alignement),
+  badge de blessure, âge, statut, repêchage, contrat par saison (saison active et suivantes).
+  Question de David sur un LLM gratuit : écarté — une recherche par nom est une requête en base
+  (exacte, instantanée, gratuite) ; un LLM n'apporterait que des questions en langage naturel.
+- **Analyse** (`/admin/analyse`, admin seulement, menu Admin > Opérations courantes) : croise
+  les stats MoneyPuck d'une saison (patineurs, toutes situations) avec le salaire de la saison
+  active du pool, l'âge et le propriétaire. Deux mesures au choix (20), nuage de points SVG,
+  ligne de tendance (moindres carrés), corrélation, écart de chaque joueur à la tendance ;
+  5 questions prêtes (Rendement, Chance, Finition, Âge, Utilisation) ; filtres position /
+  propriétaire / PJ min. / salaire max. ; tableau triable ; rendement par pooler (points par M$).
+  Limites v1 : pas de gardiens, points LNH (pas le pointage du pool), salaires de la saison
+  active contre stats de la saison choisie. Couleurs validées avec la skill dataviz.
+- David a demandé de toujours voir le plan avant de commencer (les deux fonctionnalités avaient
+  été codées sans plan) — consigne enregistrée en mémoire.
+
+
 **[Déploiement] — MoneyPuck en prod** : validé par David en staging, fusionné sur `main`
 (`3a05a1a`). Workflows lancés à la main : `advanced_stats.yml` (2025-26 : 4152 lignes, 2026-27 :
 1148) et `injuries.yml` (128 joueurs : 73 dans 3 sources, 32 dans 2, 23 à confirmer).

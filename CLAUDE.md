@@ -297,6 +297,15 @@ par `workflow_dispatch` et suit l'exécution — exige `GITHUB_WORKFLOW_TOKEN` d
 « fine-grained » limité au dépôt, permission Actions lecture/écriture ; sans lui, bouton désactivé)
 `/offline`
 
+**Recherche globale de joueurs** (David, 2026-10-01) : champ dans la barre du haut
+(`app/components/PlayerSearch.tsx`, actions dans `player-search-actions.ts`), ouvre la fiche
+`PlayerSlideOver` par `?joueur=<nhl_id>` ou `?fiche=<id interne>` (prospect sans nhl_id). La
+fiche affiche un sommaire du pool (propriétaire, blessure, contrat) en plus des stats LNH.
+
+**Admin — `/admin/analyse`** (David, 2026-10-01) : outil d'analyse croisée (stats MoneyPuck ×
+salaire/âge/propriétaire), nuage de points à deux mesures au choix + écart à la tendance. Admin
+seulement pour l'instant, patineurs seulement. Lien dans Admin > Opérations courantes.
+
 **Admin — `/admin/stats-avancees`** (David, 2026-10-01) : stats avancées MoneyPuck
 (`player_advanced_stats`), admin seulement pour l'instant — pour l'ouvrir aux poolers, déplacer la
 route hors de `/admin` et retirer la vérification `is_admin`. Lien dans Admin > Opérations courantes.

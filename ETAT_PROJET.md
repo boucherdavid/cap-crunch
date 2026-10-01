@@ -22,7 +22,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | Identique à `main` |
+| `staging` | En avance sur `main` : recherche globale de joueurs + `/admin/analyse` — à valider |
 | `main` (prod) | À jour — fusion du 2026-10-01 (`3a05a1a` : MoneyPuck — blessures à 3 sources avec confirmation 2 sur 3, `/admin/stats-avancees`, légendes repliées ; correctif homonymes de `import_drafts.py`) |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
@@ -61,6 +61,11 @@ desktop.
 ## 4. À faire / à vérifier
 
 ### ▶ Prochaine session — commencer ici
+
+- **Recherche de joueurs + `/admin/analyse`** : en staging, à valider par David (champ de
+  recherche de la barre du haut, sommaire du pool dans la fiche joueur, outil d'analyse). Pas
+  encore testé dans un navigateur par Claude. Après validation : fusion sur `main`. Suites
+  possibles de l'analyse : gardiens, pointage du pool plutôt que points LNH.
 
 - **Facteur de plafond** : analyse faite (`calcul_salaire/calcul_facteur.md`, résumé
   `calcul_salaire/resume_facteur.md`, page partageable
