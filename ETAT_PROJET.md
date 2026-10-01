@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-09-30
+**Dernière mise à jour :** 2026-10-01
 
 ---
 
@@ -22,8 +22,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : copie de secours : sélecteur d'alignement, onglet Simulation d'échange, masse salariale sans les recrues — à fusionner puis régénérer la copie |
-| `main` (prod) | À jour — dernière fusion le 2026-09-30 (`38b9e96` : Classement dans « Le pool » + sélecteur, filtre « Mes joueurs » sur Blessures, Copie de secours) |
+| `staging` | En avance sur `main` : correctif homonymes de `import_drafts.py` (jumelage par `nhl_id`) + analyse du facteur de plafond (docs) — **à fusionner** pour que l'import du lundi corrige Jack Hughes en prod |
+| `main` (prod) | À jour — dernière fusion le 2026-09-30 (`1ac5f9b` : copie de secours — sélecteur d'alignement, simulation d'échange, masse salariale sans les recrues) |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
 détail des sources par blessure, correctif de saut d'écran du repêchage admin, renvoi en banque
@@ -61,6 +61,17 @@ desktop.
 ## 4. À faire / à vérifier
 
 ### ▶ Prochaine session — commencer ici
+
+- **Jack Hughes (Devils)** : corrigé en staging le 2026-10-01 (jumelage par `nhl_id` +
+  auto-correction des homonymes). Fusionner `staging` → `main` ; l'import du lundi corrigera la
+  prod (ou lancer le workflow `import.yml` à la main).
+- **Facteur de plafond** : analyse faite (`calcul_salaire/calcul_facteur.md`, résumé
+  `calcul_salaire/resume_facteur.md`, page partageable
+  https://claude.ai/artifact/VNqLbSxDLySgAg8zSbyLht). Recommandation : 1,28 pour 2026-27
+  (P̄ = 0,76, λ = ½), règle recalculée chaque été ; option « rabais de développement » (12 % du
+  plafond LNH). **En attente** : avis du pooler actuaire, puis décision du groupe ; si le facteur
+  change, le modifier pour 2026-27 dans Configuration → Saisons. Pour relancer les scripts
+  historiques : `pip install xlrd openpyxl` (fichiers Excel de David hors git).
 
 
 

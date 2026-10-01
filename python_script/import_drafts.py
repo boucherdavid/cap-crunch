@@ -68,7 +68,11 @@ def importer_repechages():
 
     # Charger les joueurs existants avec leurs infos de repêchage
     print('[INFO] Chargement des joueurs existants...')
-    existing_map = {}  # (prenom_norm, nom_norm) -> {id, draft_year}
+    existing_map = {}  # (prenom_norm, nom_norm) -> {id, draft_year, nhl_id}
+    # nhl_id -> fiche : jumelage prioritaire, le playerId de l'API NHL étant fiable alors que
+    # le nom ne l'est pas (homonymes — ex: Jack Hughes NJD 2019 vs Jack Hughes LAK 2022).
+    nhl_map: dict[int, dict] = {}
+    all_players: list[dict] = []
     # (prénom canonique, nom_norm) -> [{id, draft_year}, ...] — repli pour les surnoms
     # ("Matt" dans l'API vs "Matthew" en base), voir name_aliases.py.
     alias_map: dict[tuple[str, str], list[dict]] = {}
@@ -76,7 +80,7 @@ def importer_repechages():
     while True:
         batch = (
             supabase.table('players')
-            .select('id, first_name, last_name, draft_year')
+            .select('id, first_name, last_name, draft_year, draft_overall, nhl_id')
             .order('id')
             .range(offset, offset + 999)
             .execute()
@@ -84,7 +88,11 @@ def importer_repechages():
         )
         for p in batch:
             key = (normaliser_nom(p['first_name']), normaliser_nom(p['last_name']))
-            existing_map[key] = {'id': p['id'], 'draft_year': p.get('draft_year')}
+            entry = {'id': p['id'], 'draft_year': p.get('draft_year'), 'nhl_id': p.get('nhl_id')}
+            existing_map[key] = entry
+            if p.get('nhl_id'):
+                nhl_map[p['nhl_id']] = entry
+            all_players.append(p)
             alias_map.setdefault((canonical_first(p['first_name']), key[1]), []).append(existing_map[key])
         if len(batch) < 1000:
             break
@@ -103,6 +111,30 @@ def importer_repechages():
             print(f'  [ERREUR] Draft {annee}: {e}')
 
     print(f'[INFO] {len(tous_les_choix)} choix au total')
+
+    # Auto-correction des jumelages erronés d'imports précédents : un joueur dont le choix
+    # (draft_year, draft_overall) appartient, selon l'API, à un autre nhl_id a reçu le
+    # repêchage d'un homonyme — on efface ses infos de repêchage.
+    choix_par_rang = {
+        (c.get('draftYear'), c.get('overallPickNumber')): c.get('playerId')
+        for c in tous_les_choix if c.get('playerId')
+    }
+    nb_corriges = 0
+    for p in all_players:
+        vrai_id = choix_par_rang.get((p.get('draft_year'), p.get('draft_overall')))
+        if p.get('nhl_id') and vrai_id and vrai_id != p['nhl_id']:
+            print(f"  [CORRECTION] {p['first_name']} {p['last_name']} (nhl_id={p['nhl_id']}) portait le "
+                  f"choix {p['draft_year']} #{p['draft_overall']} d'un homonyme (nhl_id={vrai_id}) — effacé")
+            try:
+                supabase.table('players').update({
+                    'draft_year': None, 'draft_round': None, 'draft_overall': None,
+                }).eq('id', p['id']).execute()
+                entree = nhl_map.get(p['nhl_id'])
+                if entree:
+                    entree['draft_year'] = None
+                nb_corriges += 1
+            except Exception as e:
+                print(f"  [ERREUR CORRECTION] id={p['id']}: {e}")
 
     # Classifier: mise à jour vs insertion
     a_inserer = []
@@ -123,6 +155,11 @@ def importer_repechages():
         draft_overall = pick.get('overallPickNumber')
         position = (pick.get('position') or '').strip() or None
         tri_code = (pick.get('triCode') or '').strip().upper()
+        pick_nhl_id = pick.get('playerId')
+
+        def meme_joueur(fiche):
+            # Une fiche avec un autre nhl_id est un homonyme, jamais le joueur repêché.
+            return not (pick_nhl_id and fiche.get('nhl_id') and fiche['nhl_id'] != pick_nhl_id)
 
         key_full  = (normaliser_nom(prenom_raw), normaliser_nom(nom))
         key_short = (normaliser_nom(prenom_premier), normaliser_nom(nom))
@@ -131,12 +168,19 @@ def importer_repechages():
         key_full  = NAME_ALIASES.get(key_full,  key_full)
         key_short = NAME_ALIASES.get(key_short, key_short)
 
-        # Recherche: prénom complet d'abord, puis premier prénom seulement
-        existant = existing_map.get(key_full) or existing_map.get(key_short)
+        # Recherche: nhl_id d'abord, puis prénom complet, puis premier prénom seulement
+        existant = nhl_map.get(pick_nhl_id) if pick_nhl_id else None
+        if not existant:
+            for key in (key_full, key_short):
+                fiche = existing_map.get(key)
+                if fiche and meme_joueur(fiche):
+                    existant = fiche
+                    break
         if not existant:
             # Repli : alias de prénom, seulement si un seul joueur en base correspond.
             for prenom in (prenom_raw, prenom_premier):
-                candidats = alias_map.get((canonical_first(prenom), normaliser_nom(nom)), [])
+                candidats = [c for c in alias_map.get((canonical_first(prenom), normaliser_nom(nom)), [])
+                             if meme_joueur(c)]
                 if len(candidats) == 1:
                     existant = candidats[0]
                     break
@@ -166,6 +210,7 @@ def importer_repechages():
                 'draft_year': draft_year,
                 'draft_round': draft_round,
                 'draft_overall': draft_overall,
+                'nhl_id': pick_nhl_id if pick_nhl_id not in nhl_map else None,
             })
 
     print(f'[INFO] A inserer (avant vérif BD): {len(a_inserer)} | A mettre a jour: {len(a_mettre_a_jour)}')
@@ -177,13 +222,16 @@ def importer_repechages():
         try:
             result = (
                 supabase.table('players')
-                .select('id, draft_year')
+                .select('id, draft_year, nhl_id')
                 .ilike('first_name', player['first_name'])
                 .ilike('last_name', player['last_name'])
                 .execute()
             )
-            if result.data:
-                existant = result.data[0]
+            # Écarter les homonymes (autre nhl_id que le joueur repêché)
+            matches = [r for r in result.data
+                       if not (player['nhl_id'] and r.get('nhl_id') and r['nhl_id'] != player['nhl_id'])]
+            if matches:
+                existant = matches[0]
                 print(f"  [DOUBLON DETECTE] {player['first_name']} {player['last_name']} deja en base (id={existant['id']})")
                 if not existant.get('draft_year'):
                     a_mettre_a_jour.append({
@@ -251,6 +299,7 @@ def importer_repechages():
     print('\n[OK] Import repechages termine!')
     print(f'     Joueurs inseres   : {nb_inserts}')
     print(f'     Draft info ajoutee: {nb_updates}')
+    print(f'     Homonymes corriges: {nb_corriges}')
     print(f'     is_rookie synchro : {nb_rookie_sync}')
 
 

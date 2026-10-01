@@ -19,7 +19,88 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-01
+
+**[Fix] — Repêchages : jumelage par `nhl_id`, homonymes corrigés** (`python_script/import_drafts.py`) :
+- Jack Hughes (NJD, repêché 2019) portait le choix 2022 R2 #51 de son homonyme (Jack Hughes, LAK,
+  Northeastern) : l'import jumelait les choix de l'API NHL aux fiches par nom seulement.
+- Jumelage d'abord par `playerId` de l'API (= `players.nhl_id`), puis par nom ; une fiche dont le
+  `nhl_id` diffère de celui du choix n'est jamais retenue (y compris dans le filet `ilike` et le
+  repli d'alias). Le joueur repêché absent de la base est créé avec son `nhl_id`.
+- Auto-correction : une fiche dont le choix `(draft_year, draft_overall)` appartient, selon l'API,
+  à un autre `nhl_id` voit ses infos de repêchage effacées (journal `[CORRECTION]`).
+- Staging : 1 seul homonyme dans toute la base (Hughes) — corrigé, fiche LAK créée ; second
+  passage sans aucun changement. Prod : corrigé au prochain import hebdomadaire après fusion
+  sur `main` (`import.yml` lance `import_drafts.py`).
+
 ### 2026-09-30
+
+**[Docs] — Résumé du facteur de plafond pour un pooler actuaire** (`calcul_salaire/resume_facteur.md`,
+page https://claude.ai/artifact/VNqLbSxDLySgAg8zSbyLht, privée — à partager par David) :
+- Une page : contexte, définitions (N, R, P, N*), règle proposée
+  `f = P̄ × N × [1 + λ (N*/N − 1)]` (P̄ = 0,76, λ = ½ → 1,28 en 2026-27), données, résultats
+  2013-2027, options, recommandation et six points à faire valider.
+- Incohérence corrigée dans `calcul_facteur.md` : 1,28 (+0,04) respecte la borne de ±0,05 ; avec
+  la borne de ±0,03 suggérée, 2026-27 serait limité à 1,27.
+
+**[Analyse] — Facteur de plafond : période de transition et suggestions ciblées**
+(`calcul_salaire/prix_du_marche.py`, `calcul_salaire/analyse_jeunes.py`, `calcul_facteur.md`) :
+- Objectif précisé par David : éviter que les poolers qui reconstruisent décrochent quand les gros
+  deuxièmes contrats arrivent, pendant la transition (plafond LNH et salaires en forte hausse).
+- Prix du marché (médiane des contrats commençant en 2026-27 par position et palier de talent) :
+  équipe idéale 1,634 → 1,743 si tous payés au prix actuel (+6,7 % encore à venir, sur 3-4 ans).
+- Jeunes : 2e contrat 7,5 % du plafond (vs 6,8 % en 2014-16) ; 6 jeunes à ≥ 10 % en 2026-27 (vs 2-3),
+  max 17,3 % (Carlsson) vs 13,0 % (Subban).
+- **Recommandation revue : 1,28 pour 2026-27** (anticiper la moitié de la transition), puis règle
+  du taux de pression à 76 % recalculée chaque été (tend vers ~1,32). Option ciblée : rabais de
+  développement plafonnant à 12 % du plafond LNH un repêché du pool activé.
+
+**[Analyse] — Facteur de plafond : historique 2013-14 à 2015-16, recommandation revue**
+(`calcul_salaire/calcul_facteur_historique.py` remplace `calcul_facteur_2013.py`,
+`calcul_salaire/calcul_facteur.md`) :
+- Script générique multi-saisons (.xls via xlrd, .xlsx via openpyxl, deux mises en page de
+  feuilles de pooler), saisons 2014-15 et 2015-16 ajoutées à partir des fichiers de David.
+- Origine du facteur retrouvée dans les fichiers : plafond du pool parti de 80 M$, maintenu en
+  proportion du plafond LNH (80 ÷ 64,9 = 1,2327), arrondi plus tard à 1,24. 2015-16 = 7 poolers.
+- Taux de pression (8 poolers) : 73 % (2013-14, faussé par le lock-out), 78 % (2014-15), 75 %
+  (2015-16) → moyenne ≈ 75-76 % ; 78 % en 2025-26, 76 % en 2026-27 avec 1,24.
+- **Recommandation revue : garder 1,24 pour 2026-27** (niveau historique), et adopter la règle
+  du taux de pression à 76 % ; 1,26 aurait gardé le niveau des années les plus faciles.
+
+**[Analyse] — Facteur de plafond : référence historique 2013-14 + suggestions**
+(`calcul_salaire/calcul_facteur_2013.py`, `calcul_salaire/calcul_facteur.md`, `.gitignore`) :
+- À partir du fichier Excel 2013-14 de David (contrats LNH, alignements des 6 poolers) : le 1,24
+  était déjà en vigueur (80 M$ ≈ 1,244 × 64,3 M$). Facteur naturel 1,786 (6 poolers), 1,714 ramené
+  à 8 poolers ; facteur réalisé 1,198.
+- Nouvelle lecture en « taux de pression » (facteur ÷ naturel à 8 poolers) : 72 % en 2013-14, 78 %
+  en 2025-26, 76 % en 2026-27 avec 1,24. Le pool est un peu moins serré qu'en 2013 : 1,24 et 1,26
+  sont tous deux défendables ; le vrai choix est le taux de pression à garder.
+- Jumelage des noms Excel ↔ stats LNH avec secours nom + initiale (Mike/Michael, P.A./Pierre-
+  Alexandre…). Le fichier Excel n'est pas versionné (dépôt public) : `calcul_salaire/*.xls` ajouté
+  au `.gitignore`. Le script exige `xlrd` (non ajouté aux dépendances du pipeline).
+- Même correction de la protection recrue appliquée à staging : 22 lignes en 2025-26, 9 en 2026-27
+  (règle année pool = année LNH vérifiée à 100 % là aussi).
+
+**[Analyse] — Facteur de plafond du pool appuyé sur des données** (`calcul_salaire/calcul_facteur.py`,
+`calcul_salaire/calcul_facteur.md`) :
+- Méthode du document de David mise en œuvre (Python plutôt que DuckDB : données de l'app en
+  prod + statistiques officielles LNH) : facteur naturel (top 96 A / 48 D / 16 G + 16 réservistes
+  selon le barème du pool, moyenne de 2 saisons) et facteur réalisé (alignements réels).
+- Résultats : naturel 1,597 (2025-26) → 1,628 (2026-27) ; réalisé 2025-26 = 1,208 (97 % du 1,24).
+  Même pression qu'en 2025-26 → **1,26** (plafond 2026-27 de 132 M$ au lieu de 129 M$).
+- **Découvert en passant (prod)** : les recrues repêchées par le pool placées directement en
+  « actif » pendant la saisie Mode init n'ont ni `rookie_type` ni `pool_draft_year` (Carlsson,
+  Bedard, Fantilli, Gauthier, Hutson…) — seules les recrues mises en banque les ont (148 lignes).
+  À la transition vers 2026-27, l'app ne les renverra pas en banque et leur nouveau salaire
+  comptera tout de suite.
+- **Corrigé en prod (même jour, accord de David)** : 20 lignes actif/réserviste 2025-26 complétées
+  en `rookie_type='repeche'`, `pool_draft_year` = année de repêchage LNH. Règle vérifiée sur les
+  138 recrues repêchées déjà renseignées : année du pool = année LNH dans 100 % des cas. Jack
+  Hughes (Sébastien F.) exclu — sa fiche porte à tort le repêchage 2022 R2 d'un homonyme (le vrai,
+  des Devils, a été repêché en 2019) : erreur de jumelage par nom dans `import_drafts.py`, à
+  corriger. Vérifié : à la transition 2026-27, 20 recrues retourneront en banque (dont Carlsson,
+  Bedard, Fantilli, Gauthier), 13 perdront leur statut (5 ans écoulés). Staging a le même manque,
+  non corrigé (environnement de test).
 
 **[Feat/Fix] — Copie de secours : onglet « Simulation d'échange » + masse salariale corrigée**
 (`python_script/generate_backup_tool.py`) :
@@ -38,6 +119,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   pour git, qui stocke du LF.
 - Testé : génération contre staging dans un fichier temporaire, `node --check`, puis exécution
   avec un faux DOM (sélection, avant/après, statut à l'arrivée, application + journal).
+- Fusionné sur `main` (`1ac5f9b`) ; prend effet à la prochaine génération de la copie.
 
 **[Feat] — Copie de secours : un alignement à la fois** (`python_script/generate_backup_tool.py`) :
 - Demande de David : l'onglet Alignements affichait les 8 alignements à la suite (trop chargé).
