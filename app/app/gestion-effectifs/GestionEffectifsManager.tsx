@@ -45,6 +45,7 @@ type CartItem = {
   returnLtirEntry?: RosterEntry
   deactivateActifEntry?: RosterEntry
   deactivateNewType?: 'reserviste' | 'ltir'
+  returnNewType?: 'actif' | 'reserviste'
   releaseEntry?: RosterEntry
   newPlayerEntry?: RosterEntry
   newPlayerType?: 'actif' | 'reserviste' | 'recrue'
@@ -120,7 +121,7 @@ function projectRoster(roster: RosterForPooler, cart: CartItem[]): RosterForPool
         if (item.deactivateActifEntry && map.has(item.deactivateActifEntry.id))
           map.get(item.deactivateActifEntry.id)!.playerType = item.deactivateNewType ?? 'reserviste'
         if (item.returnLtirEntry && map.has(item.returnLtirEntry.id))
-          map.get(item.returnLtirEntry.id)!.playerType = 'actif'
+          map.get(item.returnLtirEntry.id)!.playerType = item.returnNewType ?? 'actif'
         break
       case 'ltir_sign':
         if (item.ltirEntry && map.has(item.ltirEntry.id))
@@ -160,6 +161,7 @@ function cartItemToInput(item: CartItem): BatchActionInput {
     newType2:          item.newType2,
     deactivateActifId: item.deactivateActifEntry?.id,
     deactivateNewType: item.deactivateNewType,
+    returnNewType:     item.returnNewType,
     ltirEntryId:       item.ltirEntry?.id,
     returnLtirEntryId: item.returnLtirEntry?.id,
     releaseEntryId:    item.releaseEntry?.id,
@@ -289,8 +291,8 @@ const ACTION_DEFS: { type: ActionType; label: string; description: string; admin
   // soumission passe par une demande d'approbation (voir handleSubmit, bandeau "En attente
   // d'approbation"), le pooler peut l'initier lui-même. Retour LTIR reste admin-only — aucun
   // risque d'abus à revenir plus tôt que prévu, mais pas demandé, scope inchangé pour l'instant.
-  { type: 'ltir',            label: 'LTIR',              description: 'Actif → LTIR' },
-  { type: 'return_ltir',     label: 'Retour LTIR',       description: 'LTIR → actif', adminOnly: true },
+  { type: 'ltir',            label: 'LTIR',              description: 'Actif ou réserviste → LTIR' },
+  { type: 'return_ltir',     label: 'Retour LTIR',       description: 'LTIR → actif ou réserviste', adminOnly: true },
   { type: 'ltir_sign',       label: 'LTIR + signature',  description: 'LTIR et signer' },
 ]
 
@@ -345,6 +347,7 @@ export default function GestionEffectifsManager({
   const [addNewType2, setAddNewType2]       = useState<RosterStatus | ''>('')
   const [addDeactifId, setAddDeactifId]     = useState(0)
   const [addDeactifNewType, setAddDeactifNewType] = useState<'reserviste' | 'ltir'>('reserviste')
+  const [addReturnNewType, setAddReturnNewType] = useState<'actif' | 'reserviste'>('actif')
   const [addLtirId, setAddLtirId]           = useState(0)
   const [addReturnLtirId, setAddReturnLtirId] = useState(0)
   const [addReleaseId, setAddReleaseId]     = useState(0)
@@ -450,7 +453,7 @@ export default function GestionEffectifsManager({
     setAddType(null)
     setAddEntry1Id(0); setAddNewType1(''); setAddEntry2Id(0); setAddNewType2('')
     setAddDeactifId(0); setAddDeactifNewType('reserviste')
-    setAddLtirId(0); setAddReturnLtirId(0)
+    setAddLtirId(0); setAddReturnLtirId(0); setAddReturnNewType('actif')
     setAddReleaseId(0); setAddNewPlayer(null)
     setAddNewPlayerType('actif')
     setSearchKey(k => k + 1)
@@ -460,7 +463,7 @@ export default function GestionEffectifsManager({
     setAddType(type)
     setAddEntry1Id(0); setAddNewType1(''); setAddEntry2Id(0); setAddNewType2('')
     setAddDeactifId(0); setAddDeactifNewType('reserviste')
-    setAddLtirId(0); setAddReturnLtirId(0)
+    setAddLtirId(0); setAddReturnLtirId(0); setAddReturnNewType('actif')
     setAddReleaseId(0); setAddNewPlayer(null)
     setAddNewPlayerType('actif')
     setSearchKey(k => k + 1)
@@ -482,7 +485,7 @@ export default function GestionEffectifsManager({
       case 'ltir':
         return !!addLtirId
       case 'return_ltir':
-        return !!(addReturnLtirId && addDeactifId && !returnLtirLocked)
+        return !!(addReturnLtirId && !(addReturnNewType === 'actif' && returnLtirLocked))
       case 'ltir_sign':
         return !!(addLtirId && addNewPlayer && canAddLtirSign)
       case 'sign':
@@ -541,18 +544,23 @@ export default function GestionEffectifsManager({
         return { localId, type: 'ltir', label: `LTIR : ${e.lastName}, ${e.firstName}`, ltirEntry: e }
       }
       case 'return_ltir': {
-        const ret = findEntry(addReturnLtirId); const act = findEntry(addDeactifId)
-        if (!ret || !act) return null
+        const ret = findEntry(addReturnLtirId)
+        // L'actif à désactiver en échange est facultatif, et seulement pour un retour comme actif.
+        const act = addReturnNewType === 'actif' ? findEntry(addDeactifId) : undefined
+        if (!ret) return null
         return {
           localId, type: 'return_ltir',
-          label: `Retour LTIR : ${ret.lastName} → ACT / ${act.lastName} → ${addDeactifNewType === 'ltir' ? 'LTIR' : 'RÉS'}`,
-          returnLtirEntry: ret, deactivateActifEntry: act, deactivateNewType: addDeactifNewType,
+          label: `Retour LTIR : ${ret.lastName} → ${addReturnNewType === 'actif' ? 'ACT' : 'RÉS'}${act ? ` / ${act.lastName} → ${addDeactifNewType === 'ltir' ? 'LTIR' : 'RÉS'}` : ''}`,
+          returnLtirEntry: ret, returnNewType: addReturnNewType,
+          deactivateActifEntry: act, deactivateNewType: act ? addDeactifNewType : undefined,
         }
       }
       case 'ltir_sign': {
         const e = findEntry(addLtirId)
         if (!e || !addNewPlayer) return null
-        return { localId, type: 'ltir_sign', label: `LTIR+Sign : ${e.lastName} → LTIR / ${addNewPlayer.lastName} → ACT`, ltirEntry: e, newPlayerEntry: makeNewEntry('actif'), newPlayerId: addNewPlayer.id, newPlayerType: 'actif' }
+        // Le remplaçant prend le statut du joueur mis sur LTIR (actif ou réserviste).
+        const replType = e.playerType === 'reserviste' ? 'reserviste' : 'actif'
+        return { localId, type: 'ltir_sign', label: `LTIR+Sign : ${e.lastName} → LTIR / ${addNewPlayer.lastName} → ${replType === 'actif' ? 'ACT' : 'RÉS'}`, ltirEntry: e, newPlayerEntry: makeNewEntry(replType), newPlayerId: addNewPlayer.id, newPlayerType: replType }
       }
       case 'sign': {
         if (!addNewPlayer) return null
@@ -735,34 +743,50 @@ export default function GestionEffectifsManager({
         )
       }
       case 'ltir':
-        return <EntrySelect label="Actif à mettre sur LTIR" entries={projected.actifs} value={addLtirId} onChange={setAddLtirId} />
+        return <EntrySelect label="Joueur à mettre sur LTIR (actif ou réserviste)" entries={[...projected.actifs, ...projected.reservistes]} value={addLtirId} onChange={setAddLtirId} />
       case 'return_ltir':
         return (
           <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <EntrySelect label="Joueur LTIR à réintégrer" entries={projected.ltir}   value={addReturnLtirId} onChange={setAddReturnLtirId} />
-              <EntrySelect label="Actif à désactiver"       entries={projected.actifs} value={addDeactifId}    onChange={setAddDeactifId} />
+              <EntrySelect label="Joueur LTIR à réintégrer" entries={projected.ltir} value={addReturnLtirId} onChange={setAddReturnLtirId} />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Il revient comme</label>
+                <select
+                  value={addReturnNewType}
+                  onChange={e => setAddReturnNewType(e.target.value as 'actif' | 'reserviste')}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+                  <option value="actif">Actif</option>
+                  <option value="reserviste">Réserviste</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ce joueur devient</label>
-              <select
-                value={addDeactifNewType}
-                onChange={e => setAddDeactifNewType(e.target.value as 'reserviste' | 'ltir')}
-                disabled={!addDeactifId}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-400"
-              >
-                <option value="reserviste">Réserviste</option>
-                <option value="ltir">LTIR (coïncide avec une nouvelle blessure)</option>
-              </select>
-            </div>
+            {addReturnNewType === 'actif' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <EntrySelect label="Actif à désactiver en échange (facultatif)" entries={projected.actifs} value={addDeactifId} onChange={setAddDeactifId} />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ce joueur devient</label>
+                  <select
+                    value={addDeactifNewType}
+                    onChange={e => setAddDeactifNewType(e.target.value as 'reserviste' | 'ltir')}
+                    disabled={!addDeactifId}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-400"
+                  >
+                    <option value="reserviste">Réserviste</option>
+                    <option value="ltir">LTIR (coïncide avec une nouvelle blessure)</option>
+                  </select>
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-gray-500">Au besoin, ajoute d&apos;autres mouvements au même lot pour garder un alignement conforme.</p>
             {renderLockWarning(findEntry(addReturnLtirId), 'Ce joueur')}
           </div>
         )
       case 'ltir_sign':
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <EntrySelect label="Actif à mettre sur LTIR" entries={projected.actifs} value={addLtirId} onChange={setAddLtirId} />
-            <PlayerSearch key={searchKey} label="Agent libre à signer (actif)" season={season} saisonId={saisonId} onSelect={setAddNewPlayer} />
+            <EntrySelect label="Joueur à mettre sur LTIR (actif ou réserviste)" entries={[...projected.actifs, ...projected.reservistes]} value={addLtirId} onChange={setAddLtirId} />
+            <PlayerSearch key={searchKey} label="Agent libre à signer (prend sa place)" season={season} saisonId={saisonId} onSelect={setAddNewPlayer} />
           </div>
         )
       case 'sign':

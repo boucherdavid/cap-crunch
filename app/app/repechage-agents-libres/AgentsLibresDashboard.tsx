@@ -654,9 +654,9 @@ function PoolerCard({
                         {banqueMode && banqueEligible && <span className="ml-1 text-amber-500" title="Encore sous protection recrue — éligible">★</span>}
                       </span>
                       <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
-                      {isAdmin && !releaseMode && !banqueMode && e.player_type === 'actif' && e.injury?.eligible && (
+                      {isAdmin && !releaseMode && !banqueMode && (e.player_type === 'actif' || e.player_type === 'reserviste') && e.injury?.eligible && (
                         <button
-                          onClick={() => handleAdminSetType(e.player_id, 'actif', 'ltir')}
+                          onClick={() => handleAdminSetType(e.player_id, e.player_type, 'ltir')}
                           disabled={togglingId === e.player_id}
                           title="Admissible LTIR — mettre sur LTIR (ne compte plus dans la masse ni le 12/6/2)"
                           className="text-[10px] px-1.5 py-0.5 border border-red-200 rounded text-red-600 hover:bg-red-50 shrink-0 disabled:opacity-40"
@@ -664,16 +664,18 @@ function PoolerCard({
                           {togglingId === e.player_id ? '...' : '→ LTIR'}
                         </button>
                       )}
-                      {isAdmin && !releaseMode && !banqueMode && e.player_type === 'ltir' && (
+                      {/* Retour de LTIR : statut au choix (David, 2026-10-01) */}
+                      {isAdmin && !releaseMode && !banqueMode && e.player_type === 'ltir' && (['actif', 'reserviste'] as const).map(to => (
                         <button
-                          onClick={() => handleAdminSetType(e.player_id, 'ltir', 'actif')}
+                          key={to}
+                          onClick={() => handleAdminSetType(e.player_id, 'ltir', to)}
                           disabled={togglingId === e.player_id}
-                          title="Retour de LTIR"
+                          title={to === 'actif' ? 'Retour de LTIR comme actif' : 'Retour de LTIR comme réserviste'}
                           className="text-[10px] px-1.5 py-0.5 border rounded text-gray-500 hover:text-blue-600 hover:border-blue-300 shrink-0 disabled:opacity-40"
                         >
-                          {togglingId === e.player_id ? '...' : '→ Actif'}
+                          {togglingId === e.player_id ? '...' : to === 'actif' ? '→ Actif' : '→ Rés.'}
                         </button>
-                      )}
+                      ))}
                       {isAdmin && !releaseMode && !banqueMode && canToggleType && (
                         <button
                           onClick={() => handleAdminToggleType(e)}
@@ -1246,7 +1248,7 @@ function MonAlignement({
                             {banqueMode && banqueEligible && <span className="ml-1 text-amber-500" title="Encore sous protection recrue — éligible">★</span>}
                           </span>
                           <span className="text-gray-500 shrink-0">{e.cap_number > 0 ? fmt(e.cap_number) : DASH}</span>
-                          {!seasonStarted && !releaseMode && !banqueMode && e.player_type === 'actif' && e.injury?.eligible && (() => {
+                          {!seasonStarted && !releaseMode && !banqueMode && (e.player_type === 'actif' || e.player_type === 'reserviste') && e.injury?.eligible && (() => {
                             const pending = pendingLtir.find(r => r.ltirPlayerId === e.player_id)
                             return pending ? (
                               <span className="inline-flex items-center gap-1 shrink-0">

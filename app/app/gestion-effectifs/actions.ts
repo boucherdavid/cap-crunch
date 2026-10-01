@@ -85,6 +85,10 @@ export type BatchActionInput = {
   returnLtirEntryId?: number
   deactivateActifId?: number
   deactivateNewType?: 'reserviste' | 'ltir'
+  // Retour de LTIR : statut choisi au retour (David, 2026-10-01) — 'actif' par défaut. Le joueur
+  // à désactiver en échange (deactivateActifId) est facultatif : le reste de l'ajustement peut
+  // se faire par d'autres actions du même lot.
+  returnNewType?: 'actif' | 'reserviste'
   newPlayerId?: number
   newPlayerType?: 'actif' | 'reserviste' | 'recrue'
   releaseEntryId?: number
@@ -493,7 +497,11 @@ export async function submitBatchAction(input: {
     await db.from('pooler_rosters')
       .update({ player_type: toType, ...(addedAtOverride ? { added_at: addedAtOverride } : {}), ...rookieFields })
       .eq('id', entryId)
-    await log(e.player_id, toType === 'ltir' ? 'ltir' : toType === 'recrue' ? 'changement_type' : 'deactivation', e.player_type, toType)
+    const changeType = toType === 'ltir' ? 'ltir'
+      : toType === 'recrue' ? 'changement_type'
+      : e.player_type === 'ltir' ? 'retour_ltir'  // retour de LTIR directement en réserve
+      : 'deactivation'
+    await log(e.player_id, changeType, e.player_type, toType)
   }
 
   async function activate(entryId: number, fromType: string, withDelayCheck = false) {
@@ -687,7 +695,7 @@ export async function submitBatchAction(input: {
           }
           if (action.returnLtirEntryId) {
             const e = virtual.get(action.returnLtirEntryId)
-            if (e) e.player_type = 'actif'
+            if (e) e.player_type = action.returnNewType ?? 'actif'
           }
           break
         }
@@ -699,7 +707,7 @@ export async function submitBatchAction(input: {
           if (action.newPlayerId) {
             const p = newPlayerMap.get(action.newPlayerId)
             virtual.set(nextTempId--, {
-              player_type: 'actif',
+              player_type: action.newPlayerType === 'reserviste' ? 'reserviste' : 'actif',
               position: p?.position ?? null,
               capNumber: getEffectiveCap(p?.player_contracts, season, unsignedMultiplier).cap,
             })
@@ -748,15 +756,18 @@ export async function submitBatchAction(input: {
           break
 
         case 'return_ltir':
-          if (!action.returnLtirEntryId || !action.deactivateActifId) throw new Error('Joueurs manquants (retour LTIR)')
-          await deactivate(action.deactivateActifId, action.deactivateNewType ?? 'reserviste')
-          await activate(action.returnLtirEntryId, 'ltir', /* withDelayCheck */ true)
+          if (!action.returnLtirEntryId) throw new Error('Joueur manquant (retour LTIR)')
+          if (action.deactivateActifId) await deactivate(action.deactivateActifId, action.deactivateNewType ?? 'reserviste')
+          if (action.returnNewType === 'reserviste') await deactivate(action.returnLtirEntryId, 'reserviste')
+          else await activate(action.returnLtirEntryId, 'ltir', /* withDelayCheck */ true)
           break
 
         case 'ltir_sign':
           if (!action.ltirEntryId || !action.newPlayerId) throw new Error('Joueurs manquants (LTIR + signature)')
           await deactivate(action.ltirEntryId, 'ltir')
-          await addNewPlayer(action.newPlayerId, 'actif', 'ltir')
+          // Le remplaçant prend la place du joueur mis sur LTIR : actif pour un actif, réserviste
+          // pour un réserviste (David, 2026-10-01).
+          await addNewPlayer(action.newPlayerId, action.newPlayerType === 'reserviste' ? 'reserviste' : 'actif', 'ltir')
           break
 
         case 'sign':

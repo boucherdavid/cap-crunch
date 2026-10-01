@@ -21,6 +21,24 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-01
 
+**[Feat] — LTIR pour un réserviste ; retour de LTIR au statut choisi** (`app/lib/ltirRequests.ts`,
+`app/app/gestion-effectifs/actions.ts`, `GestionEffectifsManager.tsx`,
+`app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`, `app/app/admin/transactions/actions.ts`,
+`app/app/aide/LtirRulesContent.tsx`) :
+- Trouvé par David en pré-saison : Logan Mailloux, réserviste admissible, n'avait aucun bouton
+  LTIR (seule l'étiquette verte, non cliquable). La règle codée partout était « un actif ».
+- **Nouvelle règle (David)** : un actif OU un réserviste peut être mis sur LTIR. Ouvert dans la
+  demande (`createLtirRequest`), les boutons pré-saison (pooler « Demander LTIR », admin
+  « → LTIR »), et les actions LTIR / LTIR + signature de Gestion d'effectifs. Avec LTIR +
+  signature, le remplaçant prend le statut du joueur remplacé (`newPlayerType`).
+- **Retour de LTIR au statut choisi** (David : « on ne peut pas juste choisir le statut ? ») :
+  `returnNewType` (`actif` par défaut, ou `reserviste`) ; l'actif à désactiver en échange devient
+  facultatif (le reste se fait par d'autres mouvements du même lot). Pré-saison : deux boutons
+  « → Actif » / « → Rés. ». Journal : `retour_ltir` aussi pour un retour en réserve.
+- Inchangé : admissibilité, approbation admin, minimum de 2 réservistes en saison.
+- Vérifié : types, compilation, lint (aucun nouveau problème). Pas testé dans un navigateur.
+
+
 **[Feat] — Bouton « Approbations » dans la barre du haut (admin)** (`app/components/AdminApprovalsPanel.tsx`,
 `app/components/admin-approvals-actions.ts`, `app/components/Navbar.tsx`,
 `app/app/admin/effectifs/TradeApprovalManager.tsx`, `LtirApprovalManager.tsx`) :

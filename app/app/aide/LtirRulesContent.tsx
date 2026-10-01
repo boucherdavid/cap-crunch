@@ -18,12 +18,13 @@ export default function LtirRulesContent() {
       <div>
         <p className="font-medium text-gray-800 mb-1.5">Mettre un joueur sur le LTIR</p>
         <ul className="space-y-1.5">
-          <li>• Depuis <strong>Gestion d&apos;effectifs</strong>, choisis <strong>LTIR</strong> (ou <strong>LTIR + signature</strong> pour signer un remplaçant dans le même geste). Au lieu de s&apos;appliquer tout de suite, ta demande est envoyée à l&apos;administrateur pour approbation.</li>
-          <li>• En <strong>pré-saison</strong> (avant le début de la saison), la demande se fait plutôt depuis <strong>Signatures des agents libres</strong> → Mon alignement : bouton <strong>Demander LTIR</strong> à côté d&apos;un joueur actif admissible, même approbation par l&apos;administrateur.</li>
+          <li>• Un joueur <strong>actif ou réserviste</strong> peut être mis sur le LTIR, pourvu qu&apos;il soit admissible (voir plus bas).</li>
+          <li>• Depuis <strong>Gestion d&apos;effectifs</strong>, choisis <strong>LTIR</strong> (ou <strong>LTIR + signature</strong> pour signer un remplaçant dans le même geste ; il prend le statut du joueur remplacé, actif ou réserviste). Au lieu de s&apos;appliquer tout de suite, ta demande est envoyée à l&apos;administrateur pour approbation.</li>
+          <li>• En <strong>pré-saison</strong> (avant le début de la saison), la demande se fait plutôt depuis <strong>Signatures des agents libres</strong> → Mon alignement : bouton <strong>Demander LTIR</strong> à côté d&apos;un joueur actif ou réserviste admissible, même approbation par l&apos;administrateur.</li>
           <li>• Tant que l&apos;administrateur n&apos;a pas décidé, un bandeau <strong>En attente d&apos;approbation</strong> s&apos;affiche et tu peux annuler ta demande.</li>
           <li>• Si elle est approuvée, la <strong>date effective est celle de ta demande</strong>, pas celle de l&apos;approbation — une approbation tardive ne te pénalise pas.</li>
           <li>• Un joueur sur le LTIR ne compte pas dans ta masse salariale et ne rapporte aucun point.</li>
-          <li>• Le <strong>retour du LTIR</strong> vers ton alignement actif se fait par l&apos;administrateur — contacte-le quand ton joueur est rétabli.</li>
+          <li>• Le <strong>retour du LTIR</strong> se fait par l&apos;administrateur, comme actif ou comme réserviste selon ton choix — contacte-le quand ton joueur est rétabli.</li>
         </ul>
       </div>
       <div>

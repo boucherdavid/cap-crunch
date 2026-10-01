@@ -70,8 +70,9 @@ export async function createLtirRequest(
     .eq('player_id', ltirPlayerId)
     .eq('is_active', true)
     .maybeSingle()
-  if (!entry || entry.player_type !== 'actif') {
-    return { error: "Ce joueur n'est pas actif dans cet alignement." }
+  // Actif ou réserviste (David, 2026-10-01) : les deux comptent dans la masse salariale.
+  if (!entry || (entry.player_type !== 'actif' && entry.player_type !== 'reserviste')) {
+    return { error: "Ce joueur n'est ni actif ni réserviste dans cet alignement." }
   }
 
   const { data: existingRequest } = await admin
@@ -208,7 +209,7 @@ export async function decideLtirRequest(
 
   const { data: entry } = await admin
     .from('pooler_rosters')
-    .select('id')
+    .select('id, player_type')
     .eq('pooler_id', req.pooler_id)
     .eq('pool_season_id', req.pool_season_id)
     .eq('player_id', req.ltir_player_id)
@@ -227,7 +228,8 @@ export async function decideLtirRequest(
       type: req.new_player_id ? 'ltir_sign' : 'ltir',
       ltirEntryId: entry.id,
       newPlayerId: req.new_player_id ?? undefined,
-      newPlayerType: req.new_player_id ? 'actif' : undefined,
+      // Le remplaçant prend le statut du joueur mis sur LTIR (actif ou réserviste).
+      newPlayerType: req.new_player_id ? (entry.player_type === 'reserviste' ? 'reserviste' : 'actif') : undefined,
     }],
   })
   if (result.error) return { error: result.error }

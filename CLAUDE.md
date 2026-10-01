@@ -1307,6 +1307,10 @@ corrigée le 2026-09-20 :**
   `/statistiques/blessures` (toute la LNH, colonne "LTIR" + filtre "Admissibles seulement").
 
 **Demandes de mise sur LTIR (`ltir_requests`) — David, 2026-09-23 (suite) :**
+- **Actif ou réserviste (David, 2026-10-01)** — remplace « un actif » dans les points ci-dessous :
+  les deux peuvent être mis sur LTIR (demande, boutons pré-saison, Gestion d'effectifs). Avec
+  LTIR + signature, le remplaçant prend le statut du joueur remplacé. **Retour de LTIR** : statut
+  au choix (`returnNewType` : `actif` ou `reserviste`), actif à désactiver en échange facultatif.
 - Jusqu'ici, `ltir`/`ltir_sign` (mettre un actif sur LTIR, avec ou sans signer un remplaçant)
   étaient marqués `adminOnly` dans `ACTION_DEFS` (`GestionEffectifsManager.tsx`) — un pooler ne
   voyait même pas le bouton, seul l'admin pouvait le faire (en pratique, sur demande hors-app

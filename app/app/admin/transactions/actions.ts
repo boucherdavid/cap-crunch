@@ -40,7 +40,7 @@ type VEntry = {
 // pour que le journal (Suivi) reste cohérent peu importe l'interface d'origine.
 function pickChangeType(oldType: string | null, newType: string | null): string {
   if (!newType) return oldType === 'actif' ? 'deactivation' : 'retrait'
-  if (oldType === 'ltir' && newType === 'actif') return 'retour_ltir'
+  if (oldType === 'ltir' && (newType === 'actif' || newType === 'reserviste')) return 'retour_ltir'
   if (newType === 'actif') return 'activation'
   if (!oldType) {
     if (newType === 'reserviste') return 'ajout_reserviste'

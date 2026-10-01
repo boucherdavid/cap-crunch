@@ -22,7 +22,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : bouton « Approbations » de la barre du haut (admin) — à valider |
+| `staging` | En avance sur `main` : bouton « Approbations », LTIR pour un réserviste, retour de LTIR au statut choisi — à valider |
 | `main` (prod) | À jour — fusion du 2026-10-01 : outil d'analyse (gardiens, évolution), stats avancées depuis 2020-21, historique dans la fiche joueur, menu « Analytique », recherche globale, MoneyPuck (blessures à 3 sources), correctif homonymes |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
@@ -62,8 +62,9 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **Bouton « Approbations »** (barre du haut, admin) : en staging, à valider par David avec une
-  vraie demande (LTIR ou échange) faite par un compte pooler, puis fusion sur `main`.
+- **Bouton « Approbations » + LTIR pour un réserviste + retour de LTIR au statut choisi** : en
+  staging, à valider par David (ex : Demander LTIR sur Mailloux, réserviste, puis approuver depuis
+  le panneau, puis retour « → Rés. »), puis fusion sur `main`.
 
 - **Outil d'analyse** : suites possibles — pointage du pool plutôt que points LNH, mémoriser le
   graphique masqué.
