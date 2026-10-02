@@ -3,6 +3,8 @@ import PlayerLink from '@/components/PlayerLink'
 import TeamSelect from './TeamSelect'
 import { INJURY_STATUS_LABEL, POSITION_LABEL, groupLabel, type LineComboRow } from '@/lib/lineCombos'
 import { teamColor } from '@/lib/nhl-colors'
+import { seasonLabel } from '@/lib/advancedMetrics'
+import CollapsibleLegend from '@/components/CollapsibleLegend'
 
 export const metadata = { title: 'Trios et paires' }
 export const dynamic = 'force-dynamic'
@@ -84,7 +86,70 @@ function Group({ groupId, rows, owners, cols }: { groupId: string; rows: Row[]; 
   )
 }
 
-export default async function TriosPage({ searchParams }: { searchParams: Promise<{ equipe?: string }> }) {
+// ─── Performance des combinaisons (MoneyPuck, 5 contre 5) ───────────────────────
+
+type LineStat = {
+  season: number
+  line_id: string
+  kind: 'line' | 'pairing'
+  name: string | null
+  player_ids: number[]
+  games_played: number
+  icetime: number
+  stats: Record<string, number | null>
+}
+
+const MIN_GP_FOR_DEFAULT = 10
+const MAX_LINES = 12
+const MAX_PAIRS = 8
+
+const pctLabel = (v: number | null | undefined) => (v == null ? '—' : `${(v * 100).toFixed(1)} %`)
+const numLabel = (v: number | null | undefined, d = 0) => (v == null ? '—' : v.toFixed(d))
+
+function LineStatsTable({ title, lines, currentKeys, currentLabel }: { title: string; lines: LineStat[]; currentKeys: Set<string>; currentLabel: string }) {
+  if (lines.length === 0) return null
+  return (
+    <div className="bg-white rounded-lg shadow overflow-hidden">
+      <p className="px-4 py-2.5 text-sm font-semibold text-gray-700 border-b">{title}</p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50 text-left text-xs text-gray-500">
+              <th className="sticky left-0 bg-gray-50 px-3 py-2 font-medium">Combinaison</th>
+              <th className="px-3 py-2 font-medium text-right" title="Parties jouées ensemble">PJ</th>
+              <th className="px-3 py-2 font-medium text-right" title="Minutes jouées ensemble à 5 contre 5">Min</th>
+              <th className="px-3 py-2 font-medium text-right" title="Part des buts attendus en leur faveur quand ils sont sur la glace (50 % = neutre)">xB %</th>
+              <th className="px-3 py-2 font-medium text-right" title="Corsi : part des tentatives de tir en leur faveur">CF %</th>
+              <th className="px-3 py-2 font-medium text-right" title="Buts pour – buts contre, à 5 contre 5">Buts</th>
+              <th className="px-3 py-2 font-medium text-right" title="Buts attendus pour – contre, à 5 contre 5">xB</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map(l => {
+              const isCurrent = currentKeys.has([...l.player_ids].sort((a, b) => a - b).join('-'))
+              return (
+                <tr key={l.line_id} className={`border-t ${isCurrent ? 'bg-amber-50' : ''}`}>
+                  <td className={`sticky left-0 px-3 py-2 text-gray-800 whitespace-nowrap ${isCurrent ? 'bg-amber-50' : 'bg-white'}`}>
+                    {(l.name ?? '').replace(/-/g, ' · ')}
+                    {isCurrent && <span className="ml-2 text-[10px] font-bold text-amber-800 bg-amber-200 rounded px-1.5 py-0.5">{currentLabel}</span>}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-gray-700">{l.games_played}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-gray-700">{Math.round(l.icetime / 60)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums font-semibold text-gray-900">{pctLabel(l.stats.xg_pct)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-gray-700">{pctLabel(l.stats.cf_pct)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-gray-700 whitespace-nowrap">{numLabel(l.stats.gf)} – {numLabel(l.stats.ga)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-gray-700 whitespace-nowrap">{numLabel(l.stats.xgf, 1)} – {numLabel(l.stats.xga, 1)}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+export default async function TriosPage({ searchParams }: { searchParams: Promise<{ equipe?: string; saison?: string }> }) {
   const supabase = await createClient()
   const params = await searchParams
 
@@ -127,6 +192,32 @@ export default async function TriosPage({ searchParams }: { searchParams: Promis
   }
   const of = (g: string) => rows.filter(r => r.group_id === g)
   const source = rows[0]
+
+  // Performance des combinaisons de cette équipe (MoneyPuck). Saison par défaut : la plus récente
+  // où une combinaison a au moins 10 matchs (MoneyPuck publie la nouvelle saison dès ses débuts).
+  const { data: lineRows } = await supabase
+    .from('line_advanced_stats')
+    .select('season, line_id, kind, name, player_ids, games_played, icetime, stats')
+    .eq('team', teamCode)
+    .order('season', { ascending: false })
+    .order('icetime', { ascending: false })
+    .order('line_id')
+    .limit(1000)
+  const allLines = (lineRows ?? []) as LineStat[]
+  const lineSeasons = [...new Set(allLines.map(l => l.season))].sort((a, b) => b - a)
+  const maxGpBySeason = new Map<number, number>()
+  for (const l of allLines) maxGpBySeason.set(l.season, Math.max(maxGpBySeason.get(l.season) ?? 0, l.games_played))
+  const requestedSeason = Number(params.saison)
+  const lineSeason = lineSeasons.includes(requestedSeason)
+    ? requestedSeason
+    : lineSeasons.find(s => (maxGpBySeason.get(s) ?? 0) >= MIN_GP_FOR_DEFAULT) ?? lineSeasons[0] ?? null
+  const seasonLines = allLines.filter(l => l.season === lineSeason)
+  // Combinaisons de l'alignement actuel (Daily Faceoff), pour les repérer dans le tableau.
+  const currentKeys = new Set<string>()
+  for (const g of ['f1', 'f2', 'f3', 'f4', 'd1', 'd2', 'd3']) {
+    const ids = of(g).map(r => r.players?.nhl_id).filter((id): id is number => id != null)
+    if (ids.length >= 2) currentKeys.add([...ids].sort((a, b) => a - b).join('-'))
+  }
 
   return (
     <div className="px-2 sm:px-4 py-8 max-w-6xl">
@@ -191,6 +282,49 @@ export default async function TriosPage({ searchParams }: { searchParams: Promis
           </section>
         )}
       </div>
+
+      {lineSeason !== null && seasonLines.length > 0 && (
+        <div className="mt-10">
+          <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
+            <div>
+              <h2 className="text-lg font-bold text-gray-800">Combinaisons les plus utilisées — {seasonLabel(lineSeason)}</h2>
+              <p className="text-xs text-gray-400 mt-0.5">
+                À 5 contre 5 seulement · Données :{' '}
+                <a href="https://moneypuck.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">MoneyPuck.com</a>
+              </p>
+            </div>
+            {lineSeasons.length > 1 && (
+              <div className="flex gap-1.5 text-sm">
+                {lineSeasons.map(s => (
+                  <a
+                    key={s}
+                    href={`/analytique/trios?equipe=${teamCode}&saison=${s}`}
+                    className={`rounded-lg border px-3 py-1.5 ${s === lineSeason ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    {seasonLabel(s)}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="mb-3">
+            <CollapsibleLegend title="Comment lire ces tableaux">
+              <ul className="space-y-1 text-xs text-gray-500">
+                <li>• Chaque ligne est une combinaison qui a réellement joué ensemble, classée par minutes jouées.</li>
+                <li>• <strong>xB %</strong> : part des buts attendus en leur faveur quand ils sont sur la glace. Au-dessus de 50 %, ils dominent ; en dessous, ils se font dominer.</li>
+                <li>• <strong>CF %</strong> (Corsi) : part des tentatives de tir en leur faveur, une mesure du contrôle de la rondelle.</li>
+                <li>• <strong>Buts</strong> et <strong>xB</strong> : pour – contre. Un écart entre les deux (beaucoup de buts, peu de buts attendus) relève souvent de la chance.</li>
+                <li>• Une combinaison surlignée fait partie de l&apos;alignement actuel affiché plus haut.</li>
+                <li>• Avec peu de minutes ensemble, les pourcentages varient beaucoup : fie-toi surtout aux combinaisons du haut du tableau.</li>
+              </ul>
+            </CollapsibleLegend>
+          </div>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <LineStatsTable title="Trios" lines={seasonLines.filter(l => l.kind === 'line').slice(0, MAX_LINES)} currentKeys={currentKeys} currentLabel="Trio actuel" />
+            <LineStatsTable title="Paires de défenseurs" lines={seasonLines.filter(l => l.kind === 'pairing').slice(0, MAX_PAIRS)} currentKeys={currentKeys} currentLabel="Paire actuelle" />
+          </div>
+        </div>
+      )}
 
       <p className="mt-4 text-[11px] text-gray-400">
         Alignement du dernier match ou annoncé par un journaliste : il peut changer d&apos;ici le prochain match. Pour les blessures, la page Blessures reste la référence.

@@ -239,6 +239,7 @@ Hockey_Pool_App/
 - `player_advanced_stats` (stats avancées MoneyPuck par saison/situation/joueur, clé `nhl_id` —
   `/analytique/stats-avancees` et `/analytique/analyse`, importée par
   `python_script/import_advanced_stats.py`)
+- `line_advanced_stats` (stats des trios et paires réellement joués, 5 contre 5, par saison — MoneyPuck)
 - `team_line_combos` (trios/paires/unités spéciales actuels, une ligne par joueur et par groupe —
   Daily Faceoff, `python_script/scrape_line_combos.py`, remplacement complet par équipe)
 - `ltir_requests` (demandes de mise sur LTIR en attente d'approbation admin — voir section 6)
@@ -325,7 +326,9 @@ saison précédente). Calcul des mesures partagé avec la fiche joueur (tableau 
 saison ») dans `app/lib/advancedMetrics.ts` — y ajouter toute nouvelle mesure, jamais dans une page.
 `/analytique/trios` (2026-10-02) : trios, paires, gardiens et unités d'avantage/désavantage
 numérique actuels par équipe (`team_line_combos`, source Daily Faceoff, `app/lib/lineCombos.ts`) ;
-la fiche joueur en tire une ligne « Utilisation ». `/admin/stats-avancees` et `/admin/analyse` sont des redirections.
+la fiche joueur en tire une ligne « Utilisation ». Sous l'alignement : performance des
+combinaisons réellement jouées à 5 contre 5 (`line_advanced_stats`, MoneyPuck `lines.csv`, importé
+par `import_advanced_stats.py`). `/admin/stats-avancees` et `/admin/analyse` sont des redirections.
 `/planification` (sondage type Doodle pour une rencontre — vue pooler : ses disponibilités,
 le résumé, le babillard propre au sondage ; notifie les admins par push à chaque
 soumission/commentaire). Gestion (créer le sondage, ajouter/retirer des dates) sur

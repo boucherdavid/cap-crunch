@@ -1327,3 +1327,6 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 -- ALTER TABLE team_line_combos ENABLE ROW LEVEL SECURITY;
 -- DROP POLICY IF EXISTS "Lecture publique team_line_combos" ON team_line_combos;
 -- CREATE POLICY "Lecture publique team_line_combos" ON team_line_combos FOR SELECT USING (true);
+
+-- Migration 2026-10-02 : line_advanced_stats (stats des trios/paires MoneyPuck, 5 contre 5) — voir
+-- supabase_migrations/line_stats.sql.

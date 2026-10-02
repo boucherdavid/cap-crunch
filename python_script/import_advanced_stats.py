@@ -17,6 +17,11 @@ pool) — complétés à partir de l'API stats de la LNH (`goalie/summary`, mêm
 rangés dans le même JSONB (`wins`, `losses`, `ot_losses`, `shutouts`, `starts`), pour que l'app
 lise tout depuis la base sans appeler la LNH à chaque affichage (David, 2026-10-01).
 
+Trios et paires (David, 2026-10-02) : `lines.csv` de la même page donne, pour chaque
+combinaison réellement utilisée à 5 contre 5, son temps de glace et ses résultats — importés
+dans `line_advanced_stats` (page /analytique/trios, sous l'alignement actuel de Daily Faceoff).
+`lineId` = les nhl_id des joueurs collés bout à bout (7 chiffres chacun).
+
 Remplacement complet par saison (delete + insert) : MoneyPuck recalcule toute la saison à
 chaque mise à jour, il n'y a pas d'historique à préserver.
 
@@ -104,6 +109,68 @@ STATS_GARDIENS = {
 }
 
 
+# Colonnes de lines.csv conservées (nom MoneyPuck → clé JSONB) — 5 contre 5 seulement.
+STATS_LIGNES = {
+    'xGoalsPercentage': 'xg_pct',
+    'corsiPercentage': 'cf_pct',
+    'xGoalsFor': 'xgf',
+    'xGoalsAgainst': 'xga',
+    'goalsFor': 'gf',
+    'goalsAgainst': 'ga',
+    'shotsOnGoalFor': 'sf',
+    'shotsOnGoalAgainst': 'sa',
+}
+NHL_ID_LEN = 7
+
+
+def build_line_records(season: int, rows: list[dict]) -> list[dict]:
+    records = []
+    for r in rows:
+        line_id = (r.get('lineId') or '').strip()
+        kind = r.get('position')
+        if not line_id or kind not in ('line', 'pairing') or len(line_id) % NHL_ID_LEN:
+            continue
+        records.append({
+            'season': season,
+            'line_id': line_id,
+            'kind': kind,
+            'team': r.get('team'),
+            'name': r.get('name'),
+            'player_ids': [int(line_id[i:i + NHL_ID_LEN]) for i in range(0, len(line_id), NHL_ID_LEN)],
+            'games_played': num(r.get('games_played')) or 0,
+            'icetime': int(float(r.get('icetime') or 0)),
+            'stats': {key: num(r.get(col)) for col, key in STATS_LIGNES.items()},
+        })
+    return records
+
+
+def import_lines(db, season: int) -> None:
+    """Trios et paires d'une saison. Jamais bloquant : un échec ici (table pas encore créée,
+    fichier absent) n'empêche pas l'import des joueurs."""
+    label = f'{season}-{(season + 1) % 100:02d}'
+    try:
+        rows = fetch_rows(season, 'lines')
+        if rows is None:
+            print(f'[INFO] {label} lines : pas encore publié par MoneyPuck.')
+            return
+        records = build_line_records(season, rows)
+        trios = sum(1 for r in records if r['kind'] == 'line')
+        print(f'[INFO] {label} lines : {trios} trio(s), {len(records) - trios} paire(s).')
+        if db is None or not records:
+            return
+        existing = db.table('line_advanced_stats').select('line_id', count='exact', head=True) \
+            .eq('season', season).execute().count or 0
+        if existing and len(records) < existing * 0.5:
+            print(f'[ATTENTION] {label} lines : {len(records)} ligne(s) contre {existing} en base — laissé tel quel.')
+            return
+        db.table('line_advanced_stats').delete().eq('season', season).execute()
+        for i in range(0, len(records), BATCH_SIZE):
+            db.table('line_advanced_stats').insert(records[i:i + BATCH_SIZE]).execute()
+        print(f'[OK] {label} lines : {len(records)} ligne(s) importée(s).')
+    except Exception as e:
+        print(f'[ATTENTION] {label} lines : import ignoré ({e}).')
+
+
 def saison_courante() -> int:
     """Année de début de la saison LNH en cours (convention MoneyPuck) — bascule en juillet."""
     today = datetime.now()
@@ -124,7 +191,7 @@ def fetch_rows(season: int, kind: str) -> list[dict] | None:
     if res.status_code == 404:
         return None
     res.raise_for_status()
-    if not res.text.startswith('playerId'):
+    if not res.text.startswith(('playerId', 'lineId')):
         raise RuntimeError(f'Format inattendu pour {url} (page HTML au lieu du CSV ?)')
     return list(csv.DictReader(io.StringIO(res.text)))
 
@@ -203,6 +270,8 @@ def main():
             print(f'[INFO] {season}-{(season + 1) % 100:02d} {kind} : {len(recs)} ligne(s) '
                   f'({len({r["nhl_id"] for r in recs})} joueurs).')
             records.extend(recs)
+
+        import_lines(db, season)
 
         if not records:
             continue

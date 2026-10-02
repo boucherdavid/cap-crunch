@@ -21,6 +21,22 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-02
 
+**[Feat] — Performance des trios et paires (MoneyPuck) — migration à exécuter** (`python_script/import_advanced_stats.py`,
+`supabase_migrations/line_stats.sql`, `app/app/analytique/trios/page.tsx`) :
+- Étape 2 des trios (David : « ça ne touche pas aux outils, le risque est faible »). L'étape 1
+  (Daily Faceoff) est en prod depuis ce soir : fusion `f1700d8`, workflow `line_combos.yml` lancé
+  à la main, 32 équipes / 1 284 lignes en prod.
+- `lines.csv` de MoneyPuck (5 contre 5 seulement) importé par le script des stats avancées dans
+  `line_advanced_stats` (PK saison + `line_id` ; `player_ids` = nhl_id découpés du `lineId`,
+  7 chiffres chacun ; `stats` JSONB : xg_pct, cf_pct, xgf/xga, gf/ga, sf/sa). ~2 000 trios et
+  ~960 paires par saison. Import jamais bloquant pour celui des joueurs (try/except) : le workflow
+  quotidien continue de fonctionner tant que la table n'existe pas.
+- Page `/analytique/trios` : sous l'alignement actuel, « Combinaisons les plus utilisées » de
+  l'équipe (12 trios, 8 paires, classés par minutes) — PJ, minutes, xB %, CF %, buts et xB
+  pour–contre ; les combinaisons de l'alignement actuel sont surlignées (« Trio actuel ») ;
+  sélecteur de saison ; explications dans un accordéon.
+
+
 **[Feat] — Trios et paires actuels (Daily Faceoff) — migration à exécuter** (`python_script/scrape_line_combos.py`,
 `.github/workflows/line_combos.yml`, `supabase_migrations/line_combos.sql`, `app/lib/lineCombos.ts`,
 `app/app/analytique/trios/*`, `app/components/player-search-actions.ts`, `PlayerSlideOver.tsx`, `Navbar.tsx`) :

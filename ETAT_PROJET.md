@@ -22,8 +22,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : trios et paires (Daily Faceoff), correctif de la recherche de « Mes listes » — à valider, **après** le pool |
-| `main` (prod) | À jour — fusion du 2026-10-02 : hub du repêchage des recrues (Démarrer, chrono paramétrable, sélecteur et confirmation dans le bandeau, notifications), tour du pooler plus visible sur les deux repêchages, réinitialisations (zones de test) ; migration `draft_timers.sql` exécutée |
+| `staging` | En avance sur `main` : performance des trios et paires (MoneyPuck) — migration `line_stats.sql` à exécuter, puis à valider |
+| `main` (prod) | À jour — fusion du 2026-10-02 (`f1700d8`) : trios et paires actuels (Daily Faceoff, table remplie en prod), correctif de la recherche de « Mes listes », hub du repêchage des recrues et chronos |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
 détail des sources par blessure, correctif de saut d'écran du repêchage admin, renvoi en banque
@@ -62,12 +62,10 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **Trios et paires (Daily Faceoff)** : codé, en staging. À faire : David exécute
-  `supabase_migrations/line_combos.sql` (staging, puis prod) → Claude lance
-  `scrape_line_combos.py --apply` en staging → valider `/analytique/trios` et la ligne
-  « Utilisation » de la fiche joueur → fusion sur `main` et premier passage du workflow
-  `line_combos.yml`. Étape 2 possible : performance des combinaisons (MoneyPuck `lines.csv`).
-  **Ne rien fusionner avant la fin du pool du 2026-10-03.**
+- **Performance des trios (MoneyPuck)** : codé, en staging. À faire : David exécute
+  `supabase_migrations/line_stats.sql` (staging, puis prod) → Claude importe en staging
+  (`import_advanced_stats.py --seasons 2024 2025 2026`) → valider le bas de `/analytique/trios`
+  → fusion sur `main` et import en prod par le workflow `advanced_stats.yml`.
 
 - **Pool le 2026-10-03.** Tout est en prod. Avant de commencer : régler au besoin les durées des
   chronos (Configuration → Général, 120 s par défaut), puis hub `/repechage-recrues` →
