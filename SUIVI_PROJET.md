@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-28
+Derniere mise a jour: 2026-10-02
 
 ## Role du fichier
 
@@ -18,6 +18,111 @@ techniques : voir `CLAUDE.md` (sections 1 à 6) — c'est la référence mainten
 qu'un second inventaire dérive silencieusement de la réalité comme celui qui était ici
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
+
+### 2026-10-02
+
+**[Déploiement] — Repêchages (hub des recrues, chronos, tour du pooler) en prod** : validés par
+David en staging la veille du pool, fusionnés sur `main`. Migration `draft_timers.sql` déjà
+exécutée en staging et en prod ; `presaison_turn_seconds` corrigé de 90 à 120 dans les deux bases
+(le premier bloc SQL montré à David contenait encore 90).
+
+
+**[Fix] — Menu Admin : lien « Repêchage recrues » retiré** (`app/components/Navbar.tsx`) : doublon
+du lien « Repêchage des recrues » du groupe « Repêchage annuel des poolers » depuis que le hub
+sert aux deux (repéré par David). Même situation que les agents libres, sans lien Admin. Le hub
+Nouvelle saison et l'ancienne adresse `/admin/repechage` y mènent toujours.
+
+
+**[Feat] — Repêchage des recrues : sélecteur de recrue dans le bandeau du tour (admin)**
+(`app/app/repechage-recrues/RookieTurnBanner.tsx`, `page.tsx`, `app/app/admin/repechage/DraftBoard.tsx`,
+`actions.ts`) :
+- Demande de David : ne plus se promener dans la page — choisir la recrue près du chrono, comme
+  pour les agents libres. Le bandeau (collé en haut) porte un `RookieSelect` pour le choix en
+  cours, à côté du bouton « Confirmer » : un tour complet se fait sans descendre dans le tableau.
+- Une seule voie d'enregistrement : le bandeau émet `rookie-pick-select`, le tableau (DraftBoard)
+  l'applique par son `handlePickChange` habituel et émet `rookie-draft-changed` — les deux
+  affichages restent synchronisés. `getRookieTurnStateAction` renvoie `pendingPlayerIds` pour
+  exclure du sélecteur les recrues déjà sélectionnées ailleurs. Le bouton Confirmer n'apparaît
+  qu'une fois la sélection enregistrée côté serveur. Poolers : aucun changement.
+
+
+**[Feat] — Repêchage des recrues : confirmer le choix avant de passer au pooler suivant**
+(`app/app/admin/repechage/actions.ts`, `DraftBoard.tsx`, `app/app/repechage-recrues/RookieTurnBanner.tsx`) :
+- Retour de David après test du hub : entrer le nom de la recrue changeait tout de suite de
+  pooler. Voulu : la sélection se sauvegarde, mais le tour ne passe qu'après confirmation.
+- Le choix « à l'horloge » redevient le premier choix **pas encore officiel** (`is_used=false`),
+  qu'une sélection y soit enregistrée ou non. Bouton vert « ✓ Confirmer : joueur → passer à X »
+  dans le bandeau (admin, dès qu'une sélection est enregistrée) : `confirmRookiePickAction` =
+  `submitDraftAction` pour ce seul choix — la recrue entre dans la banque tout de suite (les
+  listes « Déjà pris » des poolers se mettent à jour en direct), le chrono repart et le pooler
+  suivant est notifié. Aucune migration.
+- Chrono et notification déplacés de l'enregistrement vers la soumission (bouton Confirmer ou
+  « Soumettre » du bas du tableau, gardé comme filet). Le bandeau montre à tous « Sélection à
+  confirmer : X ». Le tableau signale une sélection enregistrée au bandeau (événement
+  `rookie-draft-changed`) pour que le bouton apparaisse sans délai.
+
+
+**[Feat] — Hub du repêchage des recrues, départ, chrono paramétrable** (`app/app/repechage-recrues/page.tsx`,
+`RookieTurnBanner.tsx`, `app/app/admin/repechage/actions.ts`, `app/app/admin/repechage/page.tsx`,
+`app/lib/draftTimers.ts`, `app/app/admin/config/DraftTimerSettingsForm.tsx`,
+`app/app/admin/presaison/actions.ts`, `app/components/turn-watch-actions.ts`,
+`supabase_migrations/draft_timers.sql`) — veille du pool :
+- **Hub unique** (question de David : « aurions-nous été mieux avec un hub comme pour les agents
+  libres ? ») : `/repechage-recrues` sert à tout le monde. Poolers : tableau en lecture seule.
+  Admin : tableau modifiable (`readOnly={!isAdmin}`), ordre du repêchage, zone de test.
+  `/admin/repechage` redirige vers le hub (paramètre de saison transmis) ; le lien du menu Admin
+  pointe vers le hub. L'admin voit toutes les saisons (préparer une saison pas encore active).
+- **Pas de rechargement automatique pour l'admin** (AutoRefresh / TurnWatcher) — un rechargement
+  en pleine saisie fait sauter l'écran ; son bandeau relit le tour toutes les 5 s.
+- **« Démarrer le repêchage »** (le repêchage des recrues n'avait pas de départ explicite) : lance
+  le chrono du premier choix. Avant le départ, les poolers voient « Pas encore commencé » et pas
+  de bandeau. Notification push au pooler dont c'est le tour, au départ puis à chaque sélection
+  enregistrée (aucune avant). Chrono arrêté tout seul quand il ne reste aucun choix sans sélection.
+- **Chrono** : état sur `pool_seasons` (`rookie_draft_timer_active`, `_turn_started_at`,
+  `_turn_seconds` ; `started_at` NULL = en pause). Contrôles admin : Pause/Reprendre, ±30 s,
+  Réinitialiser, Arrêter. Indicatif : rien ne se passe à 00:00.
+- **Durées paramétrables** (Configuration → Général, « Chronos des repêchages ») :
+  `app_settings.rookie_draft_turn_seconds` et `presaison_turn_seconds`, 120 s par défaut toutes
+  les deux (décision de David). Le tour des agents libres n'est plus fixé à 90 s dans le code.
+- **Corrigé** : le choix « à l'horloge » est le premier choix SANS sélection (une sélection
+  enregistrée mais pas encore soumise ne compte plus comme « ton tour »).
+- Le code retombe sur les valeurs par défaut si les colonnes manquent, mais le départ et le
+  chrono exigent la migration `draft_timers.sql`.
+
+
+**[Feat] — Réinitialiser le repêchage des recrues (zone de test) ; garde-fou saison démarrée**
+(`app/app/admin/repechage/actions.ts`, `ResetRookieDraftButton.tsx`, `page.tsx`,
+`app/app/admin/presaison/actions.ts`) :
+- Demande de David, pour tester le bandeau du tour : un bouton par repêchage. Celui des agents
+  libres existait (Panneau admin → Zone de test) ; ajout de « Réinitialiser le repêchage des
+  recrues » en bas de `/admin/repechage` (`resetRookieDraftAction`) : recrues repêchées retirées
+  des alignements (`is_active=false`, `draft_pick_id=null` pour ne pas polluer l'historique
+  choix → joueur), choix remis disponibles, sélections en attente effacées. Ordre et
+  propriétaires des choix inchangés. Confirmation avant d'agir.
+- **Garde-fou serveur sur les deux** : refusés si `season_started=true` (le bouton des agents
+  libres n'avait qu'un masquage à l'écran).
+
+
+**[Feat] — Tour du pooler plus visible pendant les repêchages** (`app/components/TurnWatcher.tsx`,
+`app/components/YourTurnPrompt.tsx`, `app/components/turn-watch-actions.ts`,
+`app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`, `app/app/repechage-recrues/page.tsx`) :
+- Demande de David : chrono du choix plus gros et toujours visible, et que le pooler sache
+  clairement que c'est son tour (« un prompt serait-il trop agressif ? » — non, s'il n'apparaît
+  qu'une fois par tour).
+- **Bandeau du tour collé en haut de l'écran** (`sticky top-14`) sur les deux pages. Agents
+  libres : chrono en gros chiffres (gris, ambre à 30 s, rouge à 10 s), « ⏸ En pause » ; bandeau
+  ambre vif « C'est ton tour ! » pour le pooler concerné, « Tu es le prochain » pour le suivant.
+  Recrues (pas de chrono) : « Au tour de X — ronde R, choix N ».
+- **Fenêtre « C'est ton tour ! »** (`YourTurnPrompt`) : une fois par tour (drapeau localStorage),
+  fermée par le bouton, un clic à côté ou Échap. L'admin ne la voit qu'à son propre tour.
+  Recrues : seulement une fois le repêchage commencé. Agents libres : le drapeau est effacé quand
+  le tour passe à un autre (`YourTurnPromptReset`), la file tournante ramenant la même clé.
+- **Constat fait en codant** : le rechargement automatique des agents libres est aux 5 minutes
+  (60 s pour les recrues) — un pooler ne voyait donc pas son tour arriver sans notification push
+  ni rafraîchissement manuel. `TurnWatcher` sonde une courte empreinte de l'état toutes les 10 s
+  et ne recharge la page que si elle a changé (pas de clignotement), en pause pendant une
+  sélection en cours, comme AutoReload.
+- Pas de signal sonore (les navigateurs le bloquent sans clic préalable).
 
 ### 2026-10-01
 

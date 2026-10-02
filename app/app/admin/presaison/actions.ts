@@ -10,9 +10,15 @@ import { isRookieProtectionExpired, isElcActiveForSeason } from '@/lib/rookiePro
 import { applyTransactionItems, type TxItemPayload } from '../transactions/actions'
 import { DEFAULT_NHL_MINIMUM_SALARY } from './types'
 import { fetchInjuriesByPlayerId } from '@/lib/injuries'
+import { fetchDraftTurnSeconds } from '@/lib/draftTimers'
 import type { PoolerCapInfo, DraftState } from './types'
 
-const TURN_DURATION_DEFAULT = 90
+// Durée d'un tour (David, 2026-10-02) : paramétrable — app_settings.presaison_turn_seconds,
+// réglée dans Configuration → Général ; lue à chaque nouveau tour.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function presaisonTurnSeconds(supabase: any): Promise<number> {
+  return (await fetchDraftTurnSeconds(supabase)).presaison
+}
 
 function eligibleQueueIds(poolers: PoolerCapInfo[], order: string[], threshold: number): string[] {
   return order.filter(id => {
@@ -333,6 +339,11 @@ export async function resetPresaisonDraftAction(
   const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
   if (!me?.is_admin) return { error: 'Accès refusé.' }
 
+  // Zone de test : jamais sur une saison démarrée (David, 2026-10-02) — les signatures annulées
+  // seraient alors de vrais joueurs d'alignements en cours de saison.
+  const { data: saisonRow } = await supabase.from('pool_seasons').select('season_started').eq('id', saisonId).single()
+  if (saisonRow?.season_started) return { error: 'La saison est démarrée : le repêchage ne peut plus être réinitialisé.' }
+
   // 1. Find all pre-season draft transactions for this season
   const { data: txs, error: txErr } = await supabase
     .from('transactions')
@@ -391,7 +402,7 @@ export async function resetPresaisonDraftAction(
     is_active: false,
     queue: [],
     turn_started_at: null,
-    turn_duration_seconds: TURN_DURATION_DEFAULT,
+    turn_duration_seconds: (await presaisonTurnSeconds(supabase)),
     ended_at: null,
     updated_at: new Date().toISOString(),
   })
@@ -480,7 +491,7 @@ export async function loadPresaisonDraftStateAction(saisonId: number): Promise<{
         is_active: false,
         queue: [],
         turn_started_at: null,
-        turn_duration_seconds: TURN_DURATION_DEFAULT,
+        turn_duration_seconds: (await presaisonTurnSeconds(supabase)),
         ended_at: null,
         release_phase_open: false,
         pass_skip_one: false,
@@ -574,7 +585,7 @@ export async function startPresaisonDraftAction(saisonId: number): Promise<{ err
     is_active: true,
     queue,
     turn_started_at: nowIso,
-    turn_duration_seconds: TURN_DURATION_DEFAULT,
+    turn_duration_seconds: (await presaisonTurnSeconds(supabase)),
     ended_at: null,
     updated_at: nowIso,
   })
@@ -636,7 +647,7 @@ export async function advancePresaisonQueueAction(saisonId: number, isPass = fal
       is_active: isActive,
       queue: nextQueue,
       turn_started_at: isActive ? nowIso : null,
-      turn_duration_seconds: TURN_DURATION_DEFAULT,
+      turn_duration_seconds: (await presaisonTurnSeconds(supabase)),
       ended_at: isActive ? null : nowIso,
       updated_at: nowIso,
     })
@@ -687,7 +698,7 @@ async function removeFromQueueInternal(supabase: any, saisonId: number, poolerId
       // Seul le retrait du pooler EN TRAIN de jouer relance le chrono pour le suivant — retirer
       // quelqu'un plus loin dans la file ne doit pas perturber le tour en cours.
       turn_started_at: isActive ? (wasCurrent ? nowIso : current?.turn_started_at ?? nowIso) : null,
-      turn_duration_seconds: isActive ? (wasCurrent ? TURN_DURATION_DEFAULT : current?.turn_duration_seconds ?? TURN_DURATION_DEFAULT) : TURN_DURATION_DEFAULT,
+      turn_duration_seconds: isActive ? (wasCurrent ? (await presaisonTurnSeconds(supabase)) : current?.turn_duration_seconds ?? (await presaisonTurnSeconds(supabase))) : (await presaisonTurnSeconds(supabase)),
       ended_at: isActive ? null : nowIso,
       updated_at: nowIso,
     })
@@ -766,7 +777,7 @@ export async function endPresaisonDraftAction(saisonId: number): Promise<{ error
     is_active: false,
     queue: [],
     turn_started_at: null,
-    turn_duration_seconds: TURN_DURATION_DEFAULT,
+    turn_duration_seconds: (await presaisonTurnSeconds(supabase)),
     ended_at: nowIso,
     updated_at: nowIso,
   })
@@ -790,7 +801,7 @@ export async function adjustPresaisonTimerAction(saisonId: number, deltaSeconds:
     .select('turn_duration_seconds')
     .eq('pool_season_id', saisonId)
     .maybeSingle()
-  const nextDuration = Math.max(0, (current?.turn_duration_seconds ?? TURN_DURATION_DEFAULT) + deltaSeconds)
+  const nextDuration = Math.max(0, (current?.turn_duration_seconds ?? (await presaisonTurnSeconds(supabase))) + deltaSeconds)
 
   const { error } = await supabase
     .from('presaison_draft_state')
@@ -814,7 +825,7 @@ export async function resetPresaisonTimerAction(saisonId: number): Promise<{ err
   const nowIso = new Date().toISOString()
   const { error } = await supabase
     .from('presaison_draft_state')
-    .update({ turn_started_at: nowIso, turn_duration_seconds: TURN_DURATION_DEFAULT, updated_at: nowIso })
+    .update({ turn_started_at: nowIso, turn_duration_seconds: (await presaisonTurnSeconds(supabase)), updated_at: nowIso })
     .eq('pool_season_id', saisonId)
   if (error) return { error: error.message }
 

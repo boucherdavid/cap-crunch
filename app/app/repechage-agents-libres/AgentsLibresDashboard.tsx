@@ -1,5 +1,7 @@
 'use client'
 
+import TurnWatcher from '@/components/TurnWatcher'
+import YourTurnPrompt, { YourTurnPromptReset } from '@/components/YourTurnPrompt'
 import UnsignedBadge from '@/components/UnsignedBadge'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import AutoReload from '@/components/AutoReload'
@@ -137,6 +139,12 @@ export default function AgentsLibresDashboard({
     : isPaused ? draftState.turn_duration_seconds : null
 
   const myPooler = poolers.find(p => p.id === me.id) ?? null
+  // L'admin est aussi un pooler : « mon tour » seulement quand c'est le sien (David, 2026-10-01).
+  const isMyTurn = draftState.is_active && myPooler !== null && currentPoolerId === me.id
+  const isNextUp = draftState.is_active && myPooler !== null && draftState.queue[1] === me.id && !isMyTurn
+  const timeLabel = remainingSeconds !== null
+    ? `${String(Math.floor(remainingSeconds / 60)).padStart(2, '0')}:${String(remainingSeconds % 60).padStart(2, '0')}`
+    : ''
 
   // Masquer le sommaire des poolers + activité récente (David, 2026-09-18) — un pooler qui ne
   // s'en sert pas peut redonner cet espace à "Mon alignement". Préférence locale, persistée par
@@ -218,6 +226,13 @@ export default function AgentsLibresDashboard({
             </button>
           )}
           <AutoReload enabled={!draftState.ended_at && !releaseSelectionActive && adminReleaseSelectionIds.size === 0 && !adminSigningActive && !adminOrderDirty} intervalMs={300000} />
+          {/* Détecte le changement de tour en ~10 s sans recharger pour rien (David, 2026-10-01) —
+              mêmes conditions de pause que le rechargement automatique. */}
+          <TurnWatcher
+            kind="agents-libres"
+            saisonId={saisonId}
+            enabled={!seasonStarted && !draftState.ended_at && !releaseSelectionActive && adminReleaseSelectionIds.size === 0 && !adminSigningActive && !adminOrderDirty}
+          />
         </div>
       </div>
 
@@ -248,25 +263,52 @@ export default function AgentsLibresDashboard({
         />
       )}
 
+      {/* Bandeau du tour (David, 2026-10-01) — collé en haut de l'écran pendant le défilement,
+          gros chrono, et couleur vive pour le pooler dont c'est le tour. */}
       {draftState.is_active && currentPoolerName && (
-        <div className="bg-white rounded-lg shadow px-5 py-4 mb-6 flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <p className="text-sm text-gray-700">
-              Au tour de : <span className="font-semibold text-blue-700">{currentPoolerName}</span>
-              {isPaused && <span className="ml-3 text-sm font-medium text-amber-600">⏸ En pause</span>}
-              {remainingSeconds !== null && !isPaused && (
-                <span className={`ml-3 text-sm font-mono ${
-                  remainingSeconds <= 10 ? 'text-red-600' : remainingSeconds <= 30 ? 'text-amber-600' : 'text-gray-400'
-                }`}>
-                  ⏱ {String(Math.floor(remainingSeconds / 60)).padStart(2, '0')}:{String(remainingSeconds % 60).padStart(2, '0')}
-                </span>
-              )}
-            </p>
-            <p className="text-xs text-gray-400 mt-1">
+        <div className={`sticky top-14 z-30 rounded-lg shadow-md px-5 py-3 mb-6 flex items-center justify-between flex-wrap gap-x-6 gap-y-2 border-2 ${
+          isMyTurn ? 'bg-amber-400 border-amber-500' : 'bg-white border-blue-100'
+        }`}>
+          <div className="min-w-0">
+            {isMyTurn ? (
+              <p className="text-2xl font-extrabold text-amber-950">C&apos;est ton tour !</p>
+            ) : (
+              <p className="text-lg text-gray-700">
+                Au tour de : <span className="font-bold text-blue-700">{currentPoolerName}</span>
+                {isNextUp && <span className="ml-3 text-sm font-semibold text-amber-700 bg-amber-50 rounded px-2 py-0.5">Tu es le prochain</span>}
+              </p>
+            )}
+            <p className={`text-xs mt-1 ${isMyTurn ? 'text-amber-900' : 'text-gray-400'}`}>
               File : {draftState.queue.map(id => poolers.find(p => p.id === id)?.name ?? id).join(' → ')}
             </p>
           </div>
+          <div className="shrink-0 text-right">
+            {isPaused ? (
+              <p className={`text-3xl font-bold ${isMyTurn ? 'text-amber-950' : 'text-amber-600'}`}>⏸ En pause</p>
+            ) : remainingSeconds !== null && (
+              <p className={`text-5xl font-mono font-bold tabular-nums leading-none ${
+                isMyTurn
+                  ? (remainingSeconds <= 10 ? 'text-red-700' : 'text-amber-950')
+                  : remainingSeconds <= 10 ? 'text-red-600' : remainingSeconds <= 30 ? 'text-amber-600' : 'text-gray-700'
+              }`}>
+                {timeLabel}
+              </p>
+            )}
+          </div>
         </div>
+      )}
+
+      {/* Fenêtre « C'est ton tour ! » — une fois par tour ; le drapeau est effacé dès que le tour
+          passe à quelqu'un d'autre, pour qu'elle revienne au tour suivant du même pooler. */}
+      {draftState.is_active && myPooler && (
+        isMyTurn ? (
+          <YourTurnPrompt turnKey={`al:${saisonId}:${me.id}`}>
+            <p>Dis à l&apos;admin quel agent libre tu veux signer, ou passe ton tour.</p>
+            {remainingSeconds !== null && !isPaused && <p className="mt-2 text-4xl font-mono font-bold tabular-nums text-gray-900">{timeLabel}</p>}
+          </YourTurnPrompt>
+        ) : (
+          <YourTurnPromptReset turnKey={`al:${saisonId}:${me.id}`} />
+        )
       )}
 
       {/* Listes privées d'agents libres à cibler (David, 2026-09-27) — un joueur signé par un

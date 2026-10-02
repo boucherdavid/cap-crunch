@@ -348,6 +348,13 @@ tour" persisté dans `presaison_draft_state` (section 4), remplace l'ancien éta
 `PresaisonManager.tsx` — survit à une navigation de l'admin vers `/admin/transactions` (ex:
 traiter un échange) et retour.
 
+**Tour du pooler pendant un repêchage (David, 2026-10-02)** — sur `/repechage-agents-libres` et
+`/repechage-recrues` : bandeau du tour collé en haut (`sticky top-14`), gros chrono (agents
+libres), fenêtre « C'est ton tour ! » une fois par tour (`app/components/YourTurnPrompt.tsx`,
+drapeau localStorage), et `app/components/TurnWatcher.tsx` qui sonde une empreinte de l'état
+toutes les 10 s et ne recharge la page que si le tour a changé — AutoReload garde son intervalle
+long (5 min / 60 s) comme filet.
+
 **Panneau admin rétractable sur `/repechage-agents-libres` (David, 2026-09-08)** — David
 trouvait confus de devoir jongler entre cette page et `/admin/init?tab=presaison` pour gérer
 son propre alignement (l'admin est aussi un pooler). `AdminPanel.tsx`
@@ -613,6 +620,24 @@ l'étape suivante sans repasser par le menu Admin.
 le 2026-08-28 une redirection volontaire vers `/admin/communaute?tab=planification` (mise à
 jour le 2026-09-01, voir ci-dessus), même pattern que `/admin/joueurs` et `/admin/draft-center`
 ci-dessous — la page publique `/planification` (vue pooler) n'est pas affectée.
+
+**Hub du repêchage des recrues (David, 2026-10-02)** — `/repechage-recrues` sert aux poolers
+(lecture seule) ET à l'admin (tableau modifiable, ordre, zone de test), comme
+`/repechage-agents-libres` ; `/admin/repechage` n'est plus qu'une redirection vers lui. Le lien
+« Repêchage recrues » du menu Admin a été retiré (doublon) : le hub s'ouvre par « Repêchage annuel
+des poolers » ou par le hub Nouvelle saison. Bouton
+« Démarrer le repêchage » + chrono indicatif (`RookieTurnBanner.tsx`, état sur
+`pool_seasons.rookie_draft_*`, notification push au pooler dont c'est le tour). Enregistrer une
+sélection ne change pas le tour : l'admin clique « Confirmer » (`confirmRookiePickAction`, le
+choix devient officiel) pour passer au pooler suivant. Pas de
+rechargement automatique pour l'admin. Durées des deux chronos de repêchage :
+`app_settings.rookie_draft_turn_seconds` / `presaison_turn_seconds` (120 s par défaut), réglées
+dans Configuration → Général (`app/lib/draftTimers.ts`).
+
+Zones de test (David, 2026-10-02) : « Réinitialiser le repêchage des recrues » en bas du hub
+`/repechage-recrues` (`resetRookieDraftAction`) et « Réinitialiser le repêchage » des agents libres
+(Panneau admin de `/repechage-agents-libres`, `resetPresaisonDraftAction`) — tous deux refusés
+côté serveur dès que `season_started=true`.
 
 Repêchage annuel en direct (tableau de sélection) : route à part `/admin/repechage`
 (pas un onglet — lien direct dans la Navbar), distinct de l'onglet `/admin/init?tab=choix`

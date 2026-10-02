@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-10-01
+**Dernière mise à jour :** 2026-10-02
 
 ---
 
@@ -23,7 +23,7 @@
 | Branche | État |
 |---|---|
 | `staging` | Identique à `main` |
-| `main` (prod) | À jour — fusion du 2026-10-01 : cap simulé pour les RFA seulement (UFA sans contrat = 0 $) et suivi des signatures étendu aux UFA, bouton « Approbations », LTIR pour un réserviste, outil d'analyse (gardiens, évolution), menu « Analytique », recherche globale, MoneyPuck |
+| `main` (prod) | À jour — fusion du 2026-10-02 : hub du repêchage des recrues (Démarrer, chrono paramétrable, sélecteur et confirmation dans le bandeau, notifications), tour du pooler plus visible sur les deux repêchages, réinitialisations (zones de test) ; migration `draft_timers.sql` exécutée |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
 détail des sources par blessure, correctif de saut d'écran du repêchage admin, renvoi en banque
@@ -61,6 +61,12 @@ desktop.
 ## 4. À faire / à vérifier
 
 ### ▶ Prochaine session — commencer ici
+
+- **Pool le 2026-10-03.** Tout est en prod. Avant de commencer : régler au besoin les durées des
+  chronos (Configuration → Général, 120 s par défaut), puis hub `/repechage-recrues` →
+  « Démarrer le repêchage ». Les zones de test (réinitialisations) restent disponibles tant que
+  la saison n'est pas démarrée. Si un pooler ne voit pas son tour : sa page se met à jour en
+  ~10 s, sinon bouton « Rafraîchir ».
 
 - **Outil d'analyse** : suites possibles — pointage du pool plutôt que points LNH, mémoriser le
   graphique masqué.
