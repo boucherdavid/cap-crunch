@@ -141,6 +141,7 @@ export default function WatchlistPanel({
   // Recherche (délai de frappe) — le nom est optionnel : sans nom, parcourt les disponibles
   // selon les filtres.
   const selectedKind = selected?.kind ?? null
+  const searchSeq = useRef(0)
   useEffect(() => {
     if (!adding || !selectedKind) return
     const maxM = parseFloat(fMaxSalary.replace(',', '.'))
@@ -152,9 +153,15 @@ export default function WatchlistPanel({
       elcOnly: selectedKind === 'joueurs' && fElc ? true : undefined,
       sort: fSort || undefined,
     }
+    // Chaque recherche porte un numéro : une réponse plus ancienne qui arrive après une plus
+    // récente est ignorée. Sans ça, en tapant vite, les résultats d'une frappe précédente
+    // remplaçaient ceux de la dernière — la liste apparaissait, disparaissait, changeait toute
+    // seule (David, 2026-10-02).
+    const seq = ++searchSeq.current
     const t = window.setTimeout(async () => {
       setSearching(true)
       const res = await searchWatchlistPlayersAction(selectedKind, opts)
+      if (seq !== searchSeq.current) return
       setSearching(false)
       setResults(res.players)
       setTruncated(res.truncated)
@@ -443,7 +450,8 @@ export default function WatchlistPanel({
                       <button type="button" onClick={resetFilters} className="text-xs text-gray-500 hover:underline">Réinitialiser</button>
                     )}
                   </div>
-                  {searching && <p className="text-xs text-gray-400">Recherche…</p>}
+                  {/* Hauteur réservée : le message ne pousse plus la liste vers le bas à chaque frappe. */}
+                  <p className="text-xs text-gray-400 h-4" aria-live="polite">{searching ? 'Recherche…' : ''}</p>
                   <ul className="max-h-72 overflow-y-auto divide-y divide-gray-50">
                     {shownResults.filter(p => !inList.has(p.id)).map(p => (
                       <li key={p.id} className="py-1.5 flex items-center gap-2 text-sm">
