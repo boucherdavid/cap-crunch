@@ -21,6 +21,21 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-02
 
+**[Feat] — « Mes listes » : durée du contrat à côté du salaire** (`app/app/listes/actions.ts`,
+`app/components/WatchlistPanel.tsx`) :
+- Demande de David : repérer les joueurs signés pour plus d'un an. Affichage « 2.50 M$ · 2 ans »
+  dans les résultats de recherche et dans les éléments d'une liste. `contractYears` = nombre de
+  saisons avec un salaire à partir de la saison active (`player_contracts.years_remaining` n'est
+  pas alimenté). En parcours filtré par contrat, la jointure ne ramène que la saison active :
+  une requête à part compte la durée pour les seuls résultats affichés.
+- Recherche des listes : David confirme en staging qu'elle est « beaucoup mieux » après la mise
+  en parallèle des requêtes.
+- Trios — « Disponible » signalé comme faux par David (Lehkonen, Blackwood) : vérifié en base,
+  le jumelage est bon ; ces joueurs ne sont dans aucun alignement de la saison active en
+  **staging** (2026-27, données de test), seulement dans ceux de 2025-26. Pas un bug.
+  Décision de retirer ou non la disponibilité laissée à David.
+
+
 **[Fix] — Recherche de « Mes listes » lente ou bloquée sur « Recherche… »** (`app/app/listes/actions.ts`,
 `app/components/WatchlistPanel.tsx`, + les quatre autres recherches de joueurs) :
 - Signalé par David sur `/simulation`. Mesuré depuis le poste local : chaque requête prend moins

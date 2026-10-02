@@ -23,6 +23,7 @@ export type WatchlistItem = {
   team: string | null
   draftOverall: number | null
   capNumber: number | null
+  contractYears: number | null  // saisons sous contrat à partir de la saison active, null si aucune
   note: string | null
   // Pooler qui possède le joueur dans la saison active — null = encore disponible.
   takenBy: string | null
@@ -36,7 +37,17 @@ export type PlayerSearchResult = {
   team: string | null
   draftOverall: number | null
   capNumber: number | null
+  contractYears: number | null  // saisons sous contrat à partir de la saison active, null si aucune
   isElc: boolean
+}
+
+/** Durée restante d'un contrat (David, 2026-10-02) : nombre de saisons avec un salaire à partir
+ * de la saison active, celle-ci comprise — pour repérer un joueur signé pour plus d'un an.
+ * `player_contracts.years_remaining` n'est pas alimenté ; on compte les lignes de contrat. */
+function countContractYears(contracts: { season: string; cap_number: number | null }[] | null | undefined, activeSeasonLabel: string | undefined): number | null {
+  if (!activeSeasonLabel) return null
+  const n = (contracts ?? []).filter(c => c.season >= activeSeasonLabel && c.cap_number != null && c.cap_number > 0).length
+  return n > 0 ? n : null
 }
 
 async function currentUserId(): Promise<string | null> {
@@ -189,6 +200,7 @@ export async function getWatchlistItemsAction(listId: number): Promise<{ error?:
         team: p?.teams?.code ?? null,
         draftOverall: p?.draft_overall ?? null,
         capNumber: contract?.cap_number ?? null,
+        contractYears: countContractYears(p?.player_contracts, season?.season),
         note: (r.note as string | null) ?? null,
         takenBy: taken.get(r.player_id as number) ?? null,
       }
@@ -350,6 +362,7 @@ export async function searchWatchlistPlayersAction(
         team: r.teams?.code ?? null,
         draftOverall: r.draft_overall ?? null,
         capNumber: c?.cap_number ?? null,
+        contractYears: countContractYears(r.player_contracts, season?.season),
         isElc: c?.is_elc ?? false,
       }
     })
@@ -365,6 +378,24 @@ export async function searchWatchlistPlayersAction(
   const limit = 150
   const truncated = players.length > limit
   players = players.slice(0, limit)
+
+  // En parcours filtré par contrat (`needContract`), la jointure ne ramène que la ligne de la
+  // saison active : la durée se compte alors sur une requête à part, pour les seuls résultats.
+  if (needContract && season && players.length > 0) {
+    const { data: contractRows } = await admin
+      .from('player_contracts')
+      .select('player_id, season, cap_number')
+      .in('player_id', players.map(p => p.id))
+      .gte('season', season.season)
+      .not('cap_number', 'is', null)
+      .order('id')
+      .limit(2000)
+    const byPlayer = new Map<number, { season: string; cap_number: number | null }[]>()
+    for (const c of (contractRows ?? []) as { player_id: number; season: string; cap_number: number | null }[]) {
+      byPlayer.set(c.player_id, [...(byPlayer.get(c.player_id) ?? []), c])
+    }
+    players = players.map(p => ({ ...p, contractYears: countContractYears(byPlayer.get(p.id), season.season) }))
+  }
   return { players, truncated }
 }
 

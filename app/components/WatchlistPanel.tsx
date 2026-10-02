@@ -17,6 +17,11 @@ import {
 const KIND_LABEL: Record<WatchlistKind, string> = { joueurs: 'Agents libres', recrues: 'Recrues' }
 const STORAGE_KEY = 'watchlist-selected'
 
+/** « 2 ans » à côté du salaire — rien si la durée est inconnue. */
+function fmtYears(n: number | null) {
+  return n ? `${n} an${n > 1 ? 's' : ''}` : null
+}
+
 function fmtCap(n: number | null) {
   if (n == null) return null
   return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(2)} M$` : `${Math.round(n / 1000)} k$`
@@ -366,7 +371,7 @@ export default function WatchlistPanel({
                       <span className="text-sm font-medium text-gray-800 min-w-0">
                         {item.lastName}, {item.firstName}
                         <span className="ml-2 text-xs font-normal text-gray-500">
-                          {[item.position, item.team, item.draftOverall ? `#${item.draftOverall}` : null, fmtCap(item.capNumber)].filter(Boolean).join(' · ')}
+                          {[item.position, item.team, item.draftOverall ? `#${item.draftOverall}` : null, fmtCap(item.capNumber), fmtYears(item.contractYears)].filter(Boolean).join(' · ')}
                         </span>
                       </span>
                       <input
@@ -465,7 +470,7 @@ export default function WatchlistPanel({
                       <li key={p.id} className="py-1.5 flex items-center gap-2 text-sm">
                         <span className="text-gray-800 min-w-0">{p.lastName}, {p.firstName}</span>
                         <span className="text-xs text-gray-500">
-                          {[p.position, p.team, p.draftOverall ? `#${p.draftOverall}` : null, fmtCap(p.capNumber)].filter(Boolean).join(' · ')}
+                          {[p.position, p.team, p.draftOverall ? `#${p.draftOverall}` : null, fmtCap(p.capNumber), fmtYears(p.contractYears)].filter(Boolean).join(' · ')}
                         </span>
                         {p.isElc && <span className="text-[10px] px-1 rounded bg-emerald-50 text-emerald-700">ELC</span>}
                         <button type="button" onClick={() => handleAdd(p)} className="ml-auto shrink-0 text-xs px-2 py-1 rounded bg-indigo-50 text-indigo-700 hover:bg-indigo-100">+ Ajouter</button>
