@@ -21,6 +21,12 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-01
 
+**[Fix] — Menu : groupe « Repêchage annuel des poolers » décalé** (`app/components/Navbar.tsx`) :
+- Le libellé, le plus long du menu, passe sur deux lignes ; le texte d'un bouton étant centré par
+  défaut, il paraissait en retrait, comme un sous-élément de « Prospects LNH ». `text-left` sur
+  les boutons de groupe. Validé par David en staging, fusionné sur `main`.
+
+
 **[Déploiement] — Cap simulé RFA seulement + suivi des UFA en prod** : validés par David en
 staging, fusionnés sur `main`.
 
