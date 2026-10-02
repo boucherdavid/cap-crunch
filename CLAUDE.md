@@ -623,7 +623,9 @@ ci-dessous — la page publique `/planification` (vue pooler) n'est pas affecté
 
 **Hub du repêchage des recrues (David, 2026-10-02)** — `/repechage-recrues` sert aux poolers
 (lecture seule) ET à l'admin (tableau modifiable, ordre, zone de test), comme
-`/repechage-agents-libres` ; `/admin/repechage` n'est plus qu'une redirection vers lui. Bouton
+`/repechage-agents-libres` ; `/admin/repechage` n'est plus qu'une redirection vers lui. Le lien
+« Repêchage recrues » du menu Admin a été retiré (doublon) : le hub s'ouvre par « Repêchage annuel
+des poolers » ou par le hub Nouvelle saison. Bouton
 « Démarrer le repêchage » + chrono indicatif (`RookieTurnBanner.tsx`, état sur
 `pool_seasons.rookie_draft_*`, notification push au pooler dont c'est le tour). Enregistrer une
 sélection ne change pas le tour : l'admin clique « Confirmer » (`confirmRookiePickAction`, le
