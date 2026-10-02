@@ -47,6 +47,7 @@ export default function SimPanel({
   const [resultsTruncated, setResultsTruncated] = useState(false)
   const [searching, setSearching] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const searchSeq = useRef(0)
   const [filterPosition, setFilterPosition] = useState<'' | 'forward' | 'defense' | 'goalie'>('')
   const [filterMaxSalary, setFilterMaxSalary] = useState('')
   const [filterElcOnly, setFilterElcOnly] = useState(false)
@@ -54,6 +55,10 @@ export default function SimPanel({
 
   const hasFilters = !!filterPosition || filterMaxSalary.trim() !== '' || filterElcOnly || !!filterTeam
   useEffect(() => {
+    // Chaque recherche porte un numéro : une réponse plus ancienne qui arrive après une plus
+    // récente est ignorée — sinon, en tapant vite, les résultats clignotaient et changeaient
+    // tout seuls (David, 2026-10-02 ; même correctif que WatchlistPanel).
+    const seq = ++searchSeq.current
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       setSearching(true)
@@ -65,6 +70,7 @@ export default function SimPanel({
         elcOnly: filterElcOnly || undefined,
         teamCode: filterTeam || undefined,
       })
+      if (seq !== searchSeq.current) return
       setSearching(false)
       setResults(res.players ?? [])
       setResultsTruncated(res.truncated ?? false)
@@ -268,7 +274,8 @@ export default function SimPanel({
           </button>
         )}
       </div>
-      {searching && <p className="text-xs text-gray-400 mb-2">Recherche...</p>}
+      {/* Hauteur réservée : le message ne déplace plus la liste à chaque frappe. */}
+      <p className="text-xs text-gray-400 mb-1 h-4" aria-live="polite">{searching ? 'Recherche…' : ''}</p>
       {results.length > 0 && (
         <div className="space-y-0.5 mb-3 max-h-56 overflow-y-auto">
           {results.map(p => (

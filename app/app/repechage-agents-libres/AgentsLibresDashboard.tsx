@@ -843,6 +843,7 @@ function MonAlignement({
   const [results, setResults] = useState<SandboxFreeAgentResult[]>([])
   const [resultsTruncated, setResultsTruncated] = useState(false)
   const [searching, setSearching] = useState(false)
+  const searchSeq = useRef(0)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Filtres de recherche du bac à sable (David, 2026-09-10) — "un défenseur à moins de X$"
   // revient souvent sans que le pooler connaisse un nom précis.
@@ -1067,6 +1068,10 @@ function MonAlignement({
   // une recherche de moins de 2 caractères (pas de condition ilike ajoutée) — rien à répliquer
   // ici, juste ne plus bloquer l'appel.
   useEffect(() => {
+    // Chaque recherche porte un numéro : une réponse plus ancienne qui arrive après une plus
+    // récente est ignorée — sinon, en tapant vite, les résultats clignotaient et changeaient
+    // tout seuls (David, 2026-10-02 ; même correctif que WatchlistPanel).
+    const seq = ++searchSeq.current
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       setSearching(true)
@@ -1081,6 +1086,7 @@ function MonAlignement({
         elcOnly: filterElcOnly || undefined,
         teamCode: filterTeam || undefined,
       })
+      if (seq !== searchSeq.current) return
       setSearching(false)
       setResults(res.players ?? [])
       setResultsTruncated(res.truncated ?? false)
@@ -1583,7 +1589,7 @@ function MonAlignement({
                 </button>
               )}
             </div>
-            {searching && <p className="text-xs text-gray-400 mb-2">Recherche...</p>}
+            <p className="text-xs text-gray-400 mb-1 h-4" aria-live="polite">{searching ? 'Recherche…' : ''}</p>
             {results.length > 0 && (
               <div className="space-y-0.5 mb-3 max-h-56 overflow-y-auto">
                 {results.map(fa => (

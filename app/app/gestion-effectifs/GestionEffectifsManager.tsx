@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useTransition } from 'react'
+import { useState, useEffect, useMemo, useRef, useTransition } from 'react'
 import MovementHistoryPanel from '@/components/MovementHistoryPanel'
 import BallotageTab from './BallotageTab'
 import TradeOffersTab from './TradeOffersTab'
@@ -225,12 +225,19 @@ function PlayerSearch({
   const [results, setResults]   = useState<PlayerSearchResult[]>([])
   const [selected, setSelected] = useState<PlayerSearchResult | null>(null)
   const [loading, setLoading]   = useState(false)
+  const searchSeq = useRef(0)
 
   useEffect(() => {
+    // Chaque recherche porte un numéro : une réponse plus ancienne qui arrive après une plus
+    // récente est ignorée — sinon, en tapant vite, les résultats clignotaient et changeaient
+    // tout seuls (David, 2026-10-02 ; même correctif que WatchlistPanel).
+    const seq = ++searchSeq.current
     if (query.length < 2) { setResults([]); return }
     const t = setTimeout(async () => {
       setLoading(true)
-      setResults(await searchPlayersAction(query, season, saisonId))
+      const found = await searchPlayersAction(query, season, saisonId)
+      if (seq !== searchSeq.current) return
+      setResults(found)
       setLoading(false)
     }, 300)
     return () => clearTimeout(t)

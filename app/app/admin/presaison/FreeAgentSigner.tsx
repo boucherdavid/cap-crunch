@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { submitTransactionAction, searchFreeAgentsAction } from '../transactions/actions'
 import { listTeamsAction } from '../../repechage-agents-libres/actions'
 import type { PoolerCapInfo } from './types'
@@ -33,6 +33,7 @@ export default function FreeAgentSigner({
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<FreeAgentResult[]>([])
   const [loadingSearch, setLoadingSearch] = useState(false)
+  const searchSeq = useRef(0)
   const [selected, setSelected] = useState<FreeAgentResult | null>(null)
   const [newType, setNewType] = useState('actif')
   const [busy, setBusy] = useState(false)
@@ -57,6 +58,10 @@ export default function FreeAgentSigner({
   const maxAffordable = pooler.capSpace - missingAfterThisSignature * threshold
 
   useEffect(() => {
+    // Chaque recherche porte un numéro : une réponse plus ancienne qui arrive après une plus
+    // récente est ignorée — sinon, en tapant vite, les résultats clignotaient et changeaient
+    // tout seuls (David, 2026-10-02 ; même correctif que WatchlistPanel).
+    const seq = ++searchSeq.current
     const timer = setTimeout(async () => {
       if (query.trim().length < 2 && !filterPosition && !filterTeam) { setResults([]); return }
       setLoadingSearch(true)
@@ -65,6 +70,7 @@ export default function FreeAgentSigner({
         teamCode: filterTeam || undefined,
         maxSalary: maxAffordable,
       })
+      if (seq !== searchSeq.current) return
       setResults(res.players)
       setLoadingSearch(false)
     }, 300)
