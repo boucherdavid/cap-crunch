@@ -110,9 +110,9 @@ export default function RookieTurnBanner({
           {/* Admin : choisir la recrue ici, puis confirmer — le tour ne change qu'à la confirmation
               (David, 2026-10-02). Le bouton attend que la sélection soit enregistrée côté serveur. */}
           {adminSaisonId !== undefined && (
-            <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <div className="mt-2 flex items-center gap-3 flex-wrap">
               {rookies && (
-                <div className="w-80 max-w-full">
+                <div className="w-[26rem] max-w-full shrink-0">
                   <RookieSelect rookies={rookies} value={selectedPlayerId} excludeIds={pendingIds} onChange={selectRookie} />
                 </div>
               )}
