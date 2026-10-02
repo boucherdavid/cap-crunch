@@ -21,6 +21,19 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-02
 
+**[Feat] — Réinitialiser le repêchage des recrues (zone de test) ; garde-fou saison démarrée**
+(`app/app/admin/repechage/actions.ts`, `ResetRookieDraftButton.tsx`, `page.tsx`,
+`app/app/admin/presaison/actions.ts`) :
+- Demande de David, pour tester le bandeau du tour : un bouton par repêchage. Celui des agents
+  libres existait (Panneau admin → Zone de test) ; ajout de « Réinitialiser le repêchage des
+  recrues » en bas de `/admin/repechage` (`resetRookieDraftAction`) : recrues repêchées retirées
+  des alignements (`is_active=false`, `draft_pick_id=null` pour ne pas polluer l'historique
+  choix → joueur), choix remis disponibles, sélections en attente effacées. Ordre et
+  propriétaires des choix inchangés. Confirmation avant d'agir.
+- **Garde-fou serveur sur les deux** : refusés si `season_started=true` (le bouton des agents
+  libres n'avait qu'un masquage à l'écran).
+
+
 **[Feat] — Tour du pooler plus visible pendant les repêchages** (`app/components/TurnWatcher.tsx`,
 `app/components/YourTurnPrompt.tsx`, `app/components/turn-watch-actions.ts`,
 `app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`, `app/app/repechage-recrues/page.tsx`) :

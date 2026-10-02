@@ -333,6 +333,11 @@ export async function resetPresaisonDraftAction(
   const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
   if (!me?.is_admin) return { error: 'Accès refusé.' }
 
+  // Zone de test : jamais sur une saison démarrée (David, 2026-10-02) — les signatures annulées
+  // seraient alors de vrais joueurs d'alignements en cours de saison.
+  const { data: saisonRow } = await supabase.from('pool_seasons').select('season_started').eq('id', saisonId).single()
+  if (saisonRow?.season_started) return { error: 'La saison est démarrée : le repêchage ne peut plus être réinitialisé.' }
+
   // 1. Find all pre-season draft transactions for this season
   const { data: txs, error: txErr } = await supabase
     .from('transactions')

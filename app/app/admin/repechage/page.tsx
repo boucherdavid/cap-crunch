@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import DraftBoard from './DraftBoard'
 import DraftOrderEditor from './DraftOrderEditor'
+import ResetRookieDraftButton from './ResetRookieDraftButton'
 import { SaisonSelectNav } from '../init/SaisonSelectNav'
 import { AdminHubBackLink } from '@/components/AdminHubBackLink'
 
@@ -25,7 +26,7 @@ export default async function RepechageAdminPage({
 
   const { data: allSaisons } = await supabase
     .from('pool_seasons')
-    .select('id, season, is_active')
+    .select('id, season, is_active, season_started')
     .eq('is_playoff', false)
     .order('season', { ascending: false })
 
@@ -154,6 +155,13 @@ export default async function RepechageAdminPage({
         playerByPickId={Object.fromEntries(playerByPickId)}
         saisonId={saison.id}
         poolDraftYear={poolDraftYear}
+      />
+
+      <ResetRookieDraftButton
+        saisonId={saison.id}
+        season={saison.season}
+        seasonStarted={!!saison.season_started}
+        usedCount={usedPicksData?.length ?? 0}
       />
     </div>
   )

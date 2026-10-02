@@ -191,3 +191,49 @@ export async function rollbackPickAction(pickId: number): Promise<{ error?: stri
   revalidateDraftPages()
   return {}
 }
+
+/**
+ * Réinitialise le repêchage des recrues d'une saison (David, 2026-10-02 — zone de test, pour
+ * refaire le repêchage depuis le début) : chaque recrue repêchée est retirée de l'alignement où
+ * elle se trouve, et tous les choix redeviennent disponibles (sélections en attente effacées).
+ * L'ordre et les propriétaires des choix ne changent pas. Refusé dès que la saison est démarrée.
+ */
+export async function resetRookieDraftAction(saisonId: number): Promise<{ error?: string; reset?: number }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  const { data: pooler } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  if (!pooler?.is_admin) return { error: 'Accès refusé.' }
+
+  const { data: saison } = await supabase.from('pool_seasons').select('season_started').eq('id', saisonId).single()
+  if (!saison) return { error: 'Saison introuvable.' }
+  if (saison.season_started) return { error: 'La saison est démarrée : le repêchage ne peut plus être réinitialisé.' }
+
+  const { data: picks, error: picksErr } = await supabase
+    .from('pool_draft_picks')
+    .select('id, is_used')
+    .eq('pool_season_id', saisonId)
+  if (picksErr) return { error: picksErr.message }
+  const pickIds = (picks ?? []).map(p => p.id)
+  if (pickIds.length === 0) return { reset: 0 }
+
+  // `draft_pick_id` remis à null en même temps : l'historique choix → joueur du tableau lit toutes
+  // les lignes qui portent un draft_pick_id, actives ou non — une ancienne ligne ferait
+  // réapparaître l'ancien joueur sur un choix refait.
+  const { error: rosterErr } = await supabase
+    .from('pooler_rosters')
+    .update({ is_active: false, removed_at: new Date().toISOString(), draft_pick_id: null })
+    .eq('pool_season_id', saisonId)
+    .in('draft_pick_id', pickIds)
+  if (rosterErr) return { error: rosterErr.message }
+
+  const { error } = await supabase
+    .from('pool_draft_picks')
+    .update({ is_used: false, pending_player_id: null })
+    .eq('pool_season_id', saisonId)
+  if (error) return { error: error.message }
+
+  revalidateDraftPages()
+  return { reset: (picks ?? []).filter(p => p.is_used).length }
+}

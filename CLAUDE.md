@@ -621,6 +621,11 @@ le 2026-08-28 une redirection volontaire vers `/admin/communaute?tab=planificati
 jour le 2026-09-01, voir ci-dessus), même pattern que `/admin/joueurs` et `/admin/draft-center`
 ci-dessous — la page publique `/planification` (vue pooler) n'est pas affectée.
 
+Zones de test (David, 2026-10-02) : « Réinitialiser le repêchage des recrues » en bas de
+`/admin/repechage` (`resetRookieDraftAction`) et « Réinitialiser le repêchage » des agents libres
+(Panneau admin de `/repechage-agents-libres`, `resetPresaisonDraftAction`) — tous deux refusés
+côté serveur dès que `season_started=true`.
+
 Repêchage annuel en direct (tableau de sélection) : route à part `/admin/repechage`
 (pas un onglet — lien direct dans la Navbar), distinct de l'onglet `/admin/init?tab=choix`
 qui ne sert qu'à réassigner un pick déjà existant.

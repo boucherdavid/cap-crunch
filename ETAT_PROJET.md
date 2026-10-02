@@ -22,7 +22,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : tour du pooler plus visible pendant les repêchages (bandeau collé, gros chrono, fenêtre « C'est ton tour ! », détection du tour aux 10 s) — à valider |
+| `staging` | En avance sur `main` : tour du pooler plus visible pendant les repêchages + bouton de réinitialisation du repêchage des recrues — à valider |
 | `main` (prod) | À jour — fusion du 2026-10-01 : cap simulé pour les RFA seulement (UFA sans contrat = 0 $) et suivi des signatures étendu aux UFA, bouton « Approbations », LTIR pour un réserviste, outil d'analyse (gardiens, évolution), menu « Analytique », recherche globale, MoneyPuck |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
