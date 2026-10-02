@@ -21,6 +21,22 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-02
 
+**[Fix] — Recherche de « Mes listes » lente ou bloquée sur « Recherche… »** (`app/app/listes/actions.ts`,
+`app/components/WatchlistPanel.tsx`, + les quatre autres recherches de joueurs) :
+- Signalé par David sur `/simulation`. Mesuré depuis le poste local : chaque requête prend moins
+  d'une seconde ; la lenteur vient de l'enchaînement. `searchWatchlistPlayersAction` faisait cinq
+  allers-retours l'un après l'autre → deux étapes en parallèle (utilisateur + saison + dernier
+  repêchage + recherche par nom, puis joueurs + joueurs déjà pris). Les Server Actions d'une même
+  page s'exécutent en plus une à la fois : sur `/simulation`, la recherche attend derrière celles
+  que les panneaux de simulation lancent au chargement (non changé).
+- Aucune recherche ne gérait l'échec de l'appel au serveur (page restée ouverte pendant un
+  déploiement, réseau) : « Recherche… » restait affiché indéfiniment. Listes : message « La
+  recherche n'a pas pu se faire. Recharge la page et réessaie. » ; les quatre autres
+  (`/simulation`, Simulation du hub, Gestion d'effectifs, signature admin) cessent simplement
+  d'afficher « Recherche… ».
+- Non testé dans un navigateur ; la cause exacte du blocage vu par David n'est pas prouvée.
+
+
 **[Feat] — Charger un scénario de simulation dans le hub des agents libres ; recherches qui
 clignotaient** (`app/app/repechage-agents-libres/actions.ts`, `AgentsLibresDashboard.tsx`,
 `app/app/simulation/SimPanel.tsx`, `app/app/gestion-effectifs/GestionEffectifsManager.tsx`,

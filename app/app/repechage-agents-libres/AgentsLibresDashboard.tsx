@@ -1112,9 +1112,10 @@ function MonAlignement({
         maxSalary: maxSalary && !Number.isNaN(maxSalary) ? maxSalary : undefined,
         elcOnly: filterElcOnly || undefined,
         teamCode: filterTeam || undefined,
-      })
+      }).catch(() => null)  // échec de l'appel : on arrête simplement d'afficher « Recherche… »
       if (seq !== searchSeq.current) return
       setSearching(false)
+      if (!res) return
       setResults(res.players ?? [])
       setResultsTruncated(res.truncated ?? false)
     }, 300)

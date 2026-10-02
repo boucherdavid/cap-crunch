@@ -68,6 +68,7 @@ export default function WatchlistPanel({
   const [results, setResults] = useState<PlayerSearchResult[]>([])
   const [truncated, setTruncated] = useState(false)
   const [searching, setSearching] = useState(false)
+  const [searchError, setSearchError] = useState(false)
   // Filtres de recherche, comme /simulation (David, 2026-09-27) — parcourir sans connaître le nom.
   const [fPosition, setFPosition] = useState<'' | 'forward' | 'defense' | 'goalie'>('')
   const [fTeam, setFTeam] = useState('')
@@ -159,12 +160,19 @@ export default function WatchlistPanel({
     // seule (David, 2026-10-02).
     const seq = ++searchSeq.current
     const t = window.setTimeout(async () => {
-      setSearching(true)
-      const res = await searchWatchlistPlayersAction(selectedKind, opts)
-      if (seq !== searchSeq.current) return
+      setSearching(true); setSearchError(false)
+      try {
+        const res = await searchWatchlistPlayersAction(selectedKind, opts)
+        if (seq !== searchSeq.current) return
+        setResults(res.players)
+        setTruncated(res.truncated)
+      } catch {
+        // Appel au serveur impossible — typiquement une page restée ouverte pendant une mise à
+        // jour de l'app. Sans ça, « Recherche… » restait affiché indéfiniment.
+        if (seq !== searchSeq.current) return
+        setSearchError(true)
+      }
       setSearching(false)
-      setResults(res.players)
-      setTruncated(res.truncated)
     }, 300)
     return () => window.clearTimeout(t)
   }, [adding, selectedKind, query, fPosition, fTeam, fMaxSalary, fElc, fSort])
@@ -464,7 +472,9 @@ export default function WatchlistPanel({
                       </li>
                     ))}
                   </ul>
-                  {!searching && shownResults.length === 0 && (
+                  {searchError ? (
+                    <p className="text-xs text-red-600">La recherche n&apos;a pas pu se faire. Recharge la page et réessaie.</p>
+                  ) : !searching && shownResults.length === 0 && (
                     <p className="text-xs text-gray-400">Aucun joueur disponible trouvé.</p>
                   )}
                   {truncated && (

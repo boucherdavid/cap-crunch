@@ -235,10 +235,10 @@ function PlayerSearch({
     if (query.length < 2) { setResults([]); return }
     const t = setTimeout(async () => {
       setLoading(true)
-      const found = await searchPlayersAction(query, season, saisonId)
+      const found = await searchPlayersAction(query, season, saisonId).catch(() => null)
       if (seq !== searchSeq.current) return
-      setResults(found)
       setLoading(false)
+      if (found) setResults(found)
     }, 300)
     return () => clearTimeout(t)
   }, [query, season, saisonId])

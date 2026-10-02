@@ -282,23 +282,25 @@ export async function searchWatchlistPlayersAction(
   opts: SearchOptions,
 ): Promise<{ players: PlayerSearchResult[]; truncated: boolean }> {
   const empty = { players: [], truncated: false }
-  const userId = await currentUserId()
-  if (!userId) return empty
   const q = (opts.query ?? '').trim()
-
   const admin = createAdminClient()
-  const season = await activeSeason(admin)
-  const draftYear = kind === 'recrues' ? await latestDraftYear(admin) : null
-  if (kind === 'recrues' && draftYear == null) return empty
 
-  // Recherche insensible aux accents (même RPC que /admin/transactions).
-  let ids: number[] | null = null
-  if (q.length >= 2) {
-    const { data } = await admin.rpc('search_players_unaccent', { search_term: q }).select('id').limit(300)
-    const found = ((data ?? []) as { id: number }[]).map(p => p.id)
-    if (found.length === 0) return empty
-    ids = found
-  }
+  // Étape 1, en parallèle (David, 2026-10-02 — la recherche enchaînait cinq allers-retours à la
+  // base, un à la fois, et paraissait lente) : utilisateur, saison active, dernier repêchage,
+  // et recherche par nom insensible aux accents (même RPC que /admin/transactions).
+  const [userId, season, draftYear, nameMatches] = await Promise.all([
+    currentUserId(),
+    activeSeason(admin),
+    kind === 'recrues' ? latestDraftYear(admin) : Promise.resolve(null),
+    q.length >= 2
+      ? admin.rpc('search_players_unaccent', { search_term: q }).select('id').limit(300)
+          .then(({ data }) => ((data ?? []) as { id: number }[]).map(p => p.id))
+      : Promise.resolve(null),
+  ])
+  if (!userId) return empty
+  if (kind === 'recrues' && draftYear == null) return empty
+  const ids: number[] | null = nameMatches
+  if (ids && ids.length === 0) return empty
 
   const needContract = kind === 'joueurs' && season && (!ids || opts.maxSalary != null || opts.elcOnly)
   const contractsSelect = needContract ? 'player_contracts!inner(season, cap_number, contract_status, is_elc)' : 'player_contracts(season, cap_number, contract_status, is_elc)'
@@ -318,8 +320,13 @@ export async function searchWatchlistPlayersAction(
   // Tout charger (par pages de 1000, ~1500 joueurs sous contrat) avant de trier : les joueurs
   // pris et le filtre de position sont retirés après coup, et le tri par salaire doit porter
   // sur l'ensemble, pas sur les 1000 premiers.
-  const data: unknown[] = []
-  for (let offset = 0; offset < 5000; offset += 1000) {
+  // Étape 2, en parallèle : la première page de joueurs et les joueurs déjà pris de la saison.
+  const [firstPage, taken] = await Promise.all([
+    buildQuery().range(0, 999).then(({ data: page }) => page ?? []),
+    season ? takenMap(admin, season.id) : Promise.resolve(new Map<number, string>()),
+  ])
+  const data: unknown[] = [...firstPage]
+  for (let offset = 1000; firstPage.length === 1000 && offset < 5000; offset += 1000) {
     const { data: page } = await buildQuery().range(offset, offset + 999)
     data.push(...(page ?? []))
     if (!page || page.length < 1000) break
@@ -330,12 +337,6 @@ export async function searchWatchlistPlayersAction(
     teams: { code: string } | null; player_contracts: { season: string; cap_number: number | null; is_elc: boolean }[] | null
   }
   const rows = data as Row[]
-  // Au-delà de ~200 ids, la liste d'ids ferait une URL trop longue : on charge plutôt tous les
-  // joueurs pris de la saison (quelques centaines de lignes).
-  const taken = season && rows.length > 0
-    ? await takenMap(admin, season.id, rows.length <= 200 ? rows.map(r => r.id) : undefined)
-    : new Map()
-
   let players: PlayerSearchResult[] = rows
     .filter(r => !taken.has(r.id))
     .filter(r => !opts.position || posBucket(r.position) === opts.position)

@@ -69,10 +69,10 @@ export default function FreeAgentSigner({
         position: filterPosition || undefined,
         teamCode: filterTeam || undefined,
         maxSalary: maxAffordable,
-      })
+      }).catch(() => null)  // échec de l'appel : on arrête simplement d'afficher « Recherche… »
       if (seq !== searchSeq.current) return
-      setResults(res.players)
       setLoadingSearch(false)
+      if (res) setResults(res.players)
     }, 300)
     return () => clearTimeout(timer)
   }, [query, saisonId, filterPosition, filterTeam, maxAffordable])
