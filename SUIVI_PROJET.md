@@ -21,6 +21,12 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-02
 
+**[Fix] — Menu Admin : lien « Repêchage recrues » retiré** (`app/components/Navbar.tsx`) : doublon
+du lien « Repêchage des recrues » du groupe « Repêchage annuel des poolers » depuis que le hub
+sert aux deux (repéré par David). Même situation que les agents libres, sans lien Admin. Le hub
+Nouvelle saison et l'ancienne adresse `/admin/repechage` y mènent toujours.
+
+
 **[Feat] — Repêchage des recrues : sélecteur de recrue dans le bandeau du tour (admin)**
 (`app/app/repechage-recrues/RookieTurnBanner.tsx`, `page.tsx`, `app/app/admin/repechage/DraftBoard.tsx`,
 `actions.ts`) :
