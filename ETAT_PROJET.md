@@ -22,8 +22,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : hub du repêchage des recrues (départ, chrono paramétrable, notifications), tour du pooler plus visible, réinitialisation — à valider avant le pool du 2026-10-03 |
-| `main` (prod) | À jour — fusion du 2026-10-01 : cap simulé pour les RFA seulement (UFA sans contrat = 0 $) et suivi des signatures étendu aux UFA, bouton « Approbations », LTIR pour un réserviste, outil d'analyse (gardiens, évolution), menu « Analytique », recherche globale, MoneyPuck |
+| `staging` | Identique à `main` |
+| `main` (prod) | À jour — fusion du 2026-10-02 : hub du repêchage des recrues (Démarrer, chrono paramétrable, sélecteur et confirmation dans le bandeau, notifications), tour du pooler plus visible sur les deux repêchages, réinitialisations (zones de test) ; migration `draft_timers.sql` exécutée |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
 détail des sources par blessure, correctif de saut d'écran du repêchage admin, renvoi en banque
@@ -62,11 +62,11 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **Pool le 2026-10-03.** En staging, à valider par David avec deux comptes (admin + un pooler) :
-  hub `/repechage-recrues` (Démarrer le repêchage, chrono, sélections, fenêtre « C'est ton
-  tour ! », mise à jour de la page du pooler en ~10 s), puis les agents libres. **Migration
-  `supabase_migrations/draft_timers.sql` à exécuter en staging ET en prod** avant de fusionner.
-  Régler les durées dans Configuration → Général.
+- **Pool le 2026-10-03.** Tout est en prod. Avant de commencer : régler au besoin les durées des
+  chronos (Configuration → Général, 120 s par défaut), puis hub `/repechage-recrues` →
+  « Démarrer le repêchage ». Les zones de test (réinitialisations) restent disponibles tant que
+  la saison n'est pas démarrée. Si un pooler ne voit pas son tour : sa page se met à jour en
+  ~10 s, sinon bouton « Rafraîchir ».
 
 - **Outil d'analyse** : suites possibles — pointage du pool plutôt que points LNH, mémoriser le
   graphique masqué.

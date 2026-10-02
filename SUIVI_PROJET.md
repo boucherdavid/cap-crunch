@@ -21,6 +21,12 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-02
 
+**[Déploiement] — Repêchages (hub des recrues, chronos, tour du pooler) en prod** : validés par
+David en staging la veille du pool, fusionnés sur `main`. Migration `draft_timers.sql` déjà
+exécutée en staging et en prod ; `presaison_turn_seconds` corrigé de 90 à 120 dans les deux bases
+(le premier bloc SQL montré à David contenait encore 90).
+
+
 **[Fix] — Menu Admin : lien « Repêchage recrues » retiré** (`app/components/Navbar.tsx`) : doublon
 du lien « Repêchage des recrues » du groupe « Repêchage annuel des poolers » depuis que le hub
 sert aux deux (repéré par David). Même situation que les agents libres, sans lien Admin. Le hub
