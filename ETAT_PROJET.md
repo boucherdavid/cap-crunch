@@ -65,7 +65,8 @@ desktop.
 - **En staging, à valider par David** : (1) bas de `/analytique/trios` (combinaisons les plus
   utilisées, MoneyPuck — données importées en staging, migration faite partout) ; (2) « Charger
   un scénario sauvegardé… » dans l'onglet Simulation du hub des agents libres ; (3) recherches
-  de joueurs qui ne clignotent plus (`/simulation`, hub, gestion d'effectifs, signature admin).
+  de joueurs accélérées (validé par David) ; (4) durée du contrat dans « Mes listes » ;
+  (5) colonne « Alignement » de Gestion d'effectifs.
   Après validation : fusion sur `main`, puis `advanced_stats.yml` avec
   `seasons = 2020 2021 2022 2023 2024 2025 2026` pour importer les trios en prod.
 

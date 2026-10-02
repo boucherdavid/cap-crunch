@@ -21,6 +21,20 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-02
 
+**[Feat] — Gestion d'effectifs : colonne « Alignement » dans l'espace vide** (`app/app/gestion-effectifs/RosterPreview.tsx`,
+`GestionEffectifsManager.tsx`) :
+- Remarque de David : beaucoup de vide à droite sur grand écran. Plutôt qu'étirer le formulaire,
+  nouvelle colonne avec ce qui manquait : l'alignement du pooler, joueur par joueur (attaquants,
+  défenseurs, gardiens avec compteurs 12/6/2, réservistes, LTIR, banque), masse salariale et
+  espace restant. Avec un panier non vide, elle montre l'alignement **après** les mouvements :
+  ajouts en vert, changements de statut surlignés (« était réserviste »), retraits barrés.
+- Remplace le bloc « État projeté » (compteurs seulement, visible uniquement avec un panier) ;
+  ses avertissements de conformité sont repris dans la colonne.
+- Disposition : pooler = 2 colonnes à partir de `lg` (page élargie de `max-w-3xl` à `max-w-6xl`) ;
+  admin = 3 colonnes à partir de `2xl` (formulaire, alignement, historique), historique dessous
+  entre `lg` et `2xl` ; tout empilé sur téléphone. Logique des mouvements inchangée.
+
+
 **[Perf] — Recherches de joueurs : requêtes en parallèle partout** (`app/app/simulation/actions.ts`,
 `app/app/repechage-agents-libres/actions.ts`, `app/app/gestion-effectifs/actions.ts`,
 `app/components/player-search-actions.ts`) :

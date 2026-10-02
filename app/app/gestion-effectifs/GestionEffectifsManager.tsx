@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useTransition } from 'react'
 import MovementHistoryPanel from '@/components/MovementHistoryPanel'
+import RosterPreview from './RosterPreview'
 import BallotageTab from './BallotageTab'
 import TradeOffersTab from './TradeOffersTab'
 import {
@@ -852,7 +853,7 @@ export default function GestionEffectifsManager({
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const mainContent = (
-    <div className="max-w-3xl flex-1 min-w-0 space-y-6">
+    <div className="min-w-0 space-y-6">
 
       {/* Pooler selector — hub admin seulement (liste fournie par l'appelant) */}
       {showPoolerPicker && (
@@ -986,44 +987,6 @@ export default function GestionEffectifsManager({
         </div>
       )}
 
-      {/* Projected state */}
-      {projected && cart.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-5 space-y-3">
-          <p className="text-sm font-semibold text-gray-700">État projeté</p>
-          <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
-            <span>
-              Actifs :{' '}
-              <span className={actifCounts.F !== 12 ? 'text-red-600 font-semibold' : 'text-gray-700'}>{actifCounts.F}A</span>{' '}
-              <span className={actifCounts.D !== 6  ? 'text-red-600 font-semibold' : 'text-gray-700'}>{actifCounts.D}D</span>{' '}
-              <span className={actifCounts.G !== 2  ? 'text-red-600 font-semibold' : 'text-gray-700'}>{actifCounts.G}G</span>
-            </span>
-            <span>Réservistes : <span className={projected.reservistes.length < 2 ? 'text-red-600 font-semibold' : 'text-gray-700'}>{projected.reservistes.length}</span></span>
-            {projected.ltir.length   > 0 && <span>LTIR : {projected.ltir.length}</span>}
-            {projected.recrues.length > 0 && <span>Recrues : {projected.recrues.length}</span>}
-          </div>
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs text-gray-500">
-              <span>Masse salariale</span>
-              <span className={capOver ? 'text-red-600 font-semibold' : 'text-gray-700'}>{capFmt(capUsed)} / {capFmt(poolCap)}</span>
-            </div>
-            <div className="w-full bg-gray-100 rounded-full h-2">
-              <div className={`h-2 rounded-full transition-all ${capOver ? 'bg-red-500' : 'bg-green-500'}`}
-                style={{ width: `${Math.min((capUsed / poolCap) * 100, 100)}%` }} />
-            </div>
-          </div>
-          {!compositionOk && <p className="text-xs text-red-600">La composition des actifs doit être 12 attaquants / 6 défenseurs / 2 gardiens.</p>}
-          {!reservistesOk && <p className="text-xs text-red-600">Minimum 2 réservistes requis.</p>}
-          {capOver        && <p className="text-xs text-red-600">La masse salariale dépasse le cap du pool ({capFmt(poolCap)}).</p>}
-          {estimatedCapEntries.length > 0 && (
-            <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1.5">
-              Masse salariale estimée pour {estimatedCapEntries.length} joueur{estimatedCapEntries.length > 1 ? 's' : ''}
-              {' '}RFA sans contrat ({estimatedCapEntries.map(e => `${e.lastName}, ${e.firstName}`).join(' · ')}) —
-              le vrai montant peut différer une fois le contrat signé.
-            </p>
-          )}
-        </div>
-      )}
-
       {/* Admin date override */}
       {isAdmin && cart.length > 0 && (
         <div className="bg-white rounded-lg shadow p-5 space-y-3">
@@ -1098,18 +1061,59 @@ export default function GestionEffectifsManager({
     )
   }
 
+  // Colonne « Alignement » (David, 2026-10-02) : l'alignement du pooler, tel qu'il sera après les
+  // mouvements du panier — remplace l'ancien bloc « État projeté » et occupe l'espace qui restait
+  // vide à droite sur grand écran. Avertissements de conformité seulement quand le panier a du
+  // contenu (c'est le résultat de la soumission qui doit être conforme).
+  const rosterPreview = roster && projected ? (
+    <RosterPreview
+      roster={roster}
+      projected={projected}
+      poolCap={poolCap}
+      capUsed={capUsed}
+      hasCart={cart.length > 0}
+      messages={(cart.length > 0 && (!compositionOk || !reservistesOk || capOver)) || estimatedCapEntries.length > 0 ? (
+        <div className="space-y-1">
+          {cart.length > 0 && !compositionOk && <p className="text-xs text-red-600">La composition des actifs doit être 12 attaquants / 6 défenseurs / 2 gardiens.</p>}
+          {cart.length > 0 && !reservistesOk && <p className="text-xs text-red-600">Minimum 2 réservistes requis.</p>}
+          {cart.length > 0 && capOver && <p className="text-xs text-red-600">La masse salariale dépasse le cap du pool ({capFmt(poolCap)}).</p>}
+          {estimatedCapEntries.length > 0 && (
+            <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1.5">
+              Masse salariale estimée pour {estimatedCapEntries.length} joueur{estimatedCapEntries.length > 1 ? 's' : ''}
+              {' '}RFA sans contrat ({estimatedCapEntries.map(e => `${e.lastName}, ${e.firstName}`).join(' · ')}) —
+              le vrai montant peut différer une fois le contrat signé.
+            </p>
+          )}
+        </div>
+      ) : undefined}
+    />
+  ) : null
+
+  // Pooler : formulaire et alignement côte à côte sur grand écran, empilés sinon.
   if (!isAdmin) {
-    return <div className="max-w-3xl mx-auto">{tabs}{mainContent}</div>
+    return (
+      <div className="max-w-6xl mx-auto">
+        {tabs}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {mainContent}
+          {rosterPreview}
+        </div>
+      </div>
+    )
   }
 
+  // Admin : formulaire, alignement et historique en trois colonnes sur très grand écran ;
+  // l'historique passe dessous entre lg et xl, tout s'empile sur téléphone (la colonne de 320 px
+  // écrasait le formulaire — David, 2026-09-28).
   return (
     <div>
       {tabs}
-      {/* Historique à côté du formulaire en écran large, dessous sinon — la colonne de 320 px
-          écrasait le formulaire sur téléphone (David, 2026-09-28, vue admin). */}
-      <div className="flex flex-col lg:flex-row gap-6 lg:items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_20rem] gap-6 items-start">
         {mainContent}
-        <MovementHistoryPanel poolerId={poolerId || null} poolerName={poolerName} refreshKey={historyRefresh} saisonId={saisonId} excludePreseason />
+        {rosterPreview}
+        <div className="lg:col-span-2 2xl:col-span-1">
+          <MovementHistoryPanel poolerId={poolerId || null} poolerName={poolerName} refreshKey={historyRefresh} saisonId={saisonId} excludePreseason />
+        </div>
       </div>
     </div>
   )

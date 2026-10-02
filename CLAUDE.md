@@ -1353,6 +1353,11 @@ corrigée le 2026-09-20 :**
   `/gestion-effectifs`, widget "Blessures dans le pool" sur l'accueil, et page dédiée
   `/statistiques/blessures` (toute la LNH, colonne "LTIR" + filtre "Admissibles seulement").
 
+**Gestion d'effectifs — colonne « Alignement » (David, 2026-10-02)** : `RosterPreview.tsx` affiche
+l'alignement du pooler à côté du formulaire, et l'alignement projeté (changements surlignés) dès
+que le panier a du contenu — remplace l'ancien bloc « État projeté ». Pooler : 2 colonnes à partir
+de `lg` ; admin : 3 colonnes (formulaire, alignement, historique) à partir de `2xl`.
+
 **Demandes de mise sur LTIR (`ltir_requests`) — David, 2026-09-23 (suite) :**
 - **Actif ou réserviste (David, 2026-10-01)** — remplace « un actif » dans les points ci-dessous :
   les deux peuvent être mis sur LTIR (demande, boutons pré-saison, Gestion d'effectifs). Avec
