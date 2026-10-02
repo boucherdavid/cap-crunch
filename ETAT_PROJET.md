@@ -22,8 +22,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : performance des trios (MoneyPuck), chargement d'un scénario dans le hub des agents libres, correctif de quatre recherches qui clignotaient — à valider |
-| `main` (prod) | À jour — fusion du 2026-10-02 (`f1700d8`) : trios et paires actuels (Daily Faceoff, table remplie en prod), correctif de la recherche de « Mes listes », hub du repêchage des recrues et chronos |
+| `staging` | En avance sur `main` : alignement visible dans les onglets Ballotage et Échanges — à valider |
+| `main` (prod) | À jour — fusion du 2026-10-02 (`42acd18`) : trios et paires (Daily Faceoff + performance MoneyPuck, données importées), scénario de simulation dans le hub des agents libres, recherches accélérées, durée des contrats dans « Mes listes », colonne « Alignement » de Gestion d'effectifs, hub du repêchage des recrues et chronos |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
 détail des sources par blessure, correctif de saut d'écran du repêchage admin, renvoi en banque
@@ -62,13 +62,9 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **En staging, à valider par David** : (1) bas de `/analytique/trios` (combinaisons les plus
-  utilisées, MoneyPuck — données importées en staging, migration faite partout) ; (2) « Charger
-  un scénario sauvegardé… » dans l'onglet Simulation du hub des agents libres ; (3) recherches
-  de joueurs accélérées (validé par David) ; (4) durée du contrat dans « Mes listes » ;
-  (5) colonne « Alignement » de Gestion d'effectifs.
-  Après validation : fusion sur `main`, puis `advanced_stats.yml` avec
-  `seasons = 2020 2021 2022 2023 2024 2025 2026` pour importer les trios en prod.
+- **En staging, à valider par David** : colonne « Alignement actuel » dans les onglets Ballotage
+  et Échanges de Gestion d'effectifs. Suite possible : faire refléter l'échange en cours dans la
+  colonne, joueur par joueur.
 
 - **Pool le 2026-10-03.** Tout est en prod. Avant de commencer : régler au besoin les durées des
   chronos (Configuration → Général, 120 s par défaut), puis hub `/repechage-recrues` →

@@ -21,6 +21,19 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-02
 
+**[Feat] — Gestion d'effectifs : alignement visible aussi dans Ballotage et Échanges**
+(`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `BallotageTab.tsx`, `TradeOffersTab.tsx`) :
+- Demande de David après la colonne « Alignement » de Mouvements. Les deux onglets passent de la
+  colonne étroite (`max-w-3xl`) à deux colonnes à partir de `lg` : contenu de l'onglet à gauche,
+  « Alignement actuel » à droite (`RosterPreview` sans panier). Dans le hub admin, la colonne
+  apparaît quand un pooler est sélectionné.
+- Limite assumée : dans Échanges, la colonne montre l'alignement actuel, pas le résultat de
+  l'échange (l'onglet garde son propre aperçu chiffré à la confirmation).
+- Déploiement du même soir : `42acd18` fusionné sur `main` (performance des trios, scénario dans
+  le hub, recherches accélérées, durée des contrats, colonne Alignement) ; stats de trios
+  importées en prod, sept saisons.
+
+
 **[Feat] — Gestion d'effectifs : colonne « Alignement » dans l'espace vide** (`app/app/gestion-effectifs/RosterPreview.tsx`,
 `GestionEffectifsManager.tsx`) :
 - Remarque de David : beaucoup de vide à droite sur grand écran. Plutôt qu'étirer le formulaire,

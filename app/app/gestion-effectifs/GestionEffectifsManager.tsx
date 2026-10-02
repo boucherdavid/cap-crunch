@@ -1043,24 +1043,6 @@ export default function GestionEffectifsManager({
     </div>
   )
 
-  if (activeTab === 'ballotage') {
-    return (
-      <div className={isAdmin ? '' : 'max-w-3xl mx-auto'}>
-        {tabs}
-        <BallotageTab saisonId={saisonId} />
-      </div>
-    )
-  }
-
-  if (activeTab === 'echanges' && selfPoolerId) {
-    return (
-      <div className={isAdmin ? '' : 'max-w-3xl mx-auto'}>
-        {tabs}
-        <TradeOffersTab saisonId={saisonId} selfPoolerId={selfPoolerId} poolCap={poolCap} />
-      </div>
-    )
-  }
-
   // Colonne « Alignement » (David, 2026-10-02) : l'alignement du pooler, tel qu'il sera après les
   // mouvements du panier — remplace l'ancien bloc « État projeté » et occupe l'espace qui restait
   // vide à droite sur grand écran. Avertissements de conformité seulement quand le panier a du
@@ -1088,6 +1070,30 @@ export default function GestionEffectifsManager({
       ) : undefined}
     />
   ) : null
+
+  // Ballotage et Échanges : même disposition que Mouvements (David, 2026-10-02) — le contenu de
+  // l'onglet à gauche, l'alignement actuel à droite, pour décider avec sa masse salariale et ses
+  // compteurs sous les yeux. Pas d'aperçu du résultat ici : le panier ne s'applique qu'à Mouvements.
+  const currentRosterPreview = roster ? (
+    <RosterPreview roster={roster} projected={roster} poolCap={poolCap} capUsed={computeCap(roster)} hasCart={false} />
+  ) : null
+  const tabLayout = (content: React.ReactNode) => (
+    <div className={isAdmin ? '' : 'max-w-6xl mx-auto'}>
+      {tabs}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {content}
+        {currentRosterPreview}
+      </div>
+    </div>
+  )
+
+  if (activeTab === 'ballotage') {
+    return tabLayout(<BallotageTab saisonId={saisonId} />)
+  }
+
+  if (activeTab === 'echanges' && selfPoolerId) {
+    return tabLayout(<TradeOffersTab saisonId={saisonId} selfPoolerId={selfPoolerId} poolCap={poolCap} />)
+  }
 
   // Pooler : formulaire et alignement côte à côte sur grand écran, empilés sinon.
   if (!isAdmin) {

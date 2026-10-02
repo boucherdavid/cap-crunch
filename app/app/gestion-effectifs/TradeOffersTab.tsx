@@ -279,7 +279,7 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap }: { sa
   if (loading) return <p className="text-sm text-gray-500">Chargement…</p>
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="min-w-0 space-y-6">
       {error && <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">{error}</div>}
 
       <div>
