@@ -189,7 +189,8 @@ Hockey_Pool_App/
 │       ├── keepalive_staging.yml  ← Ping staging (jeudi 6h UTC) pour éviter pause Supabase
 │       ├── backup_tool.yml        ← Régénère backup/pool_backup.html (dimanche 12h UTC + manuel)
 │       ├── injuries.yml           ← Scrape blessures CBS + ESPN + MoneyPuck (quotidien 16h UTC (midi ET) + manuel)
-│       └── advanced_stats.yml     ← Stats avancées MoneyPuck (quotidien 11h UTC + manuel)
+│       ├── advanced_stats.yml     ← Stats avancées MoneyPuck (quotidien 11h UTC + manuel)
+│       └── line_combos.yml        ← Trios et paires Daily Faceoff (quotidien 15h UTC + manuel)
 ├── app/                       ← Application Next.js
 │   ├── CLAUDE.md              ← Règles spécifiques Next.js/TypeScript
 │   ├── AGENTS.md
@@ -207,6 +208,7 @@ Hockey_Pool_App/
 │   ├── generate_backup_tool.py ← Génère backup/pool_backup.html (voir section 2)
 │   ├── scrape_injuries.py      ← Scrape les blessures LNH, CBS + ESPN + MoneyPuck (voir section 2)
 │   ├── import_advanced_stats.py ← Stats avancées MoneyPuck (voir section 2)
+│   ├── scrape_line_combos.py   ← Trios et paires actuels, Daily Faceoff (dry-run par défaut, --apply)
 │   ├── source/                ← CSV générés par le scraping
 │   ├── teams_offline/
 │   ├── diagnostics/
@@ -237,6 +239,8 @@ Hockey_Pool_App/
 - `player_advanced_stats` (stats avancées MoneyPuck par saison/situation/joueur, clé `nhl_id` —
   `/analytique/stats-avancees` et `/analytique/analyse`, importée par
   `python_script/import_advanced_stats.py`)
+- `team_line_combos` (trios/paires/unités spéciales actuels, une ligne par joueur et par groupe —
+  Daily Faceoff, `python_script/scrape_line_combos.py`, remplacement complet par équipe)
 - `ltir_requests` (demandes de mise sur LTIR en attente d'approbation admin — voir section 6)
 - `meeting_polls`, `meeting_poll_dates`, `meeting_poll_responses`, `meeting_poll_comments`
   (sondage de planification, `/planification` — le babillard `meeting_poll_comments` est
@@ -318,7 +322,10 @@ gardiens par saison et situation) et `/analytique/analyse` (outil d'analyse croi
 MoneyPuck × salaire/âge/propriétaire, nuage de points à deux mesures au choix + écart à la
 tendance ; patineurs ou gardiens, `?type=gardiens` ; vue « Évolution » = même mesure à la
 saison précédente). Calcul des mesures partagé avec la fiche joueur (tableau « Stats avancées par
-saison ») dans `app/lib/advancedMetrics.ts` — y ajouter toute nouvelle mesure, jamais dans une page. `/admin/stats-avancees` et `/admin/analyse` sont des redirections.
+saison ») dans `app/lib/advancedMetrics.ts` — y ajouter toute nouvelle mesure, jamais dans une page.
+`/analytique/trios` (2026-10-02) : trios, paires, gardiens et unités d'avantage/désavantage
+numérique actuels par équipe (`team_line_combos`, source Daily Faceoff, `app/lib/lineCombos.ts`) ;
+la fiche joueur en tire une ligne « Utilisation ». `/admin/stats-avancees` et `/admin/analyse` sont des redirections.
 `/planification` (sondage type Doodle pour une rencontre — vue pooler : ses disponibilités,
 le résumé, le babillard propre au sondage ; notifie les admins par push à chaque
 soumission/commentaire). Gestion (créer le sondage, ajouter/retirer des dates) sur
@@ -511,7 +518,7 @@ sont deux natures de contenu différentes.**
 | Le pool | Classement · Tous les alignements (ex-"Équipes") · Journal des transactions — "ce qui concerne les autres poolers". Le groupe "Classement du pool" a été retiré le 2026-09-30 (David) : un seul lien Classement, avec un sélecteur Saison complète (défaut) / Mensuel / Hebdomadaire en haut de la page (`app/classement/PeriodSelector.tsx`, routes `/classement`, `/classement/mensuel`, `/classement/hebdomadaire` inchangées) |
 | Calendrier LNH (lien autonome, ex-sous-item de "Statistiques", sorti le 2026-09-23 (suite) — entre Le pool et Statistiques) | Le résumé personnel "mes joueurs cette semaine" a été extrait dans un onglet séparé sur `/poolers/[id]`, voir ci-dessous — cette page ne garde que la navigation jour par jour |
 | Statistiques (ex-partie de "LNH") | LNH · Projections · AHL |
-| Analytique (ajouté le 2026-10-01) | Statistiques avancées · Outil d'analyse |
+| Analytique (ajouté le 2026-10-01) | Statistiques avancées · Outil d'analyse · Trios et paires (2026-10-02) |
 | Blessures | Lien autonome (plus regroupé sous "LNH", qui cachait la page selon le retour du pooler) |
 | Contrats LNH | Lien autonome (ex-sous-item de "LNH") |
 | Prospects LNH (ex-"Recrues", réduit) | Classement pré-repêchage · Repêchage LNH — référence sur le vrai repêchage LNH, rien de propre au pool |

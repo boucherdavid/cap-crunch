@@ -21,6 +21,30 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-02
 
+**[Feat] — Trios et paires actuels (Daily Faceoff) — migration à exécuter** (`python_script/scrape_line_combos.py`,
+`.github/workflows/line_combos.yml`, `supabase_migrations/line_combos.sql`, `app/lib/lineCombos.ts`,
+`app/app/analytique/trios/*`, `app/components/player-search-actions.ts`, `PlayerSlideOver.tsx`, `Navbar.tsx`) :
+- Demande de David : combinaisons de trios et paires de défenseurs. Deux sources lisibles :
+  **Daily Faceoff** (alignement actuel, avantage numérique compris — retenu pour l'étape 1) et
+  **MoneyPuck** `lines.csv` (performance des combinaisons réellement jouées, 5 contre 5 —
+  étape 2, pas encore faite).
+- Scraper : les 32 pages `dailyfaceoff.com/teams/<slug>/line-combinations` embarquent leur JSON
+  dans `__NEXT_DATA__` (f1-f4, d1-d3, g, pp1-pp2, pk1-pk2, ir + source « Last Game (date) » ou nom
+  d'un journaliste). Jumelage par nom + équipe (`projections_common`) : 1 seul non jumelé sur
+  ~1 280 lignes au test. Remplacement complet par équipe ; équipe laissée telle quelle si moins
+  de 9 attaquants ou 4 défenseurs ; sortie en erreur si plus de 5 équipes ignorées. Une page par
+  seconde. `robots.txt` autorise les pages (seuls `/api/` et `/cms/` sont interdits) ; conditions
+  d'utilisation non lues.
+- Table `team_line_combos` (PK équipe/groupe/rang, `player_id` nullable). Workflow quotidien
+  15h UTC.
+- Page `/analytique/trios` (menu Analytique → « Trios et paires ») : une équipe à la fois, en
+  feuille de match, avec propriétaire ou « Disponible » par joueur. Fiche joueur : ligne
+  « Utilisation : 1er trio avec X et Y · 1re unité d'avantage numérique » (`summarizePlayerUsage`).
+- Aussi : **recherche de « Mes listes » qui clignotait** (`WatchlistPanel.tsx`) — une réponse
+  d'une frappe précédente arrivant en retard remplaçait les résultats de la dernière ; chaque
+  recherche porte maintenant un numéro et les réponses périmées sont ignorées.
+
+
 **[Déploiement] — Repêchages (hub des recrues, chronos, tour du pooler) en prod** : validés par
 David en staging la veille du pool, fusionnés sur `main`. Migration `draft_timers.sql` déjà
 exécutée en staging et en prod ; `presaison_turn_seconds` corrigé de 90 à 120 dans les deux bases

@@ -22,7 +22,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | Identique à `main` |
+| `staging` | En avance sur `main` : trios et paires (Daily Faceoff), correctif de la recherche de « Mes listes » — à valider, **après** le pool |
 | `main` (prod) | À jour — fusion du 2026-10-02 : hub du repêchage des recrues (Démarrer, chrono paramétrable, sélecteur et confirmation dans le bandeau, notifications), tour du pooler plus visible sur les deux repêchages, réinitialisations (zones de test) ; migration `draft_timers.sql` exécutée |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
@@ -61,6 +61,13 @@ desktop.
 ## 4. À faire / à vérifier
 
 ### ▶ Prochaine session — commencer ici
+
+- **Trios et paires (Daily Faceoff)** : codé, en staging. À faire : David exécute
+  `supabase_migrations/line_combos.sql` (staging, puis prod) → Claude lance
+  `scrape_line_combos.py --apply` en staging → valider `/analytique/trios` et la ligne
+  « Utilisation » de la fiche joueur → fusion sur `main` et premier passage du workflow
+  `line_combos.yml`. Étape 2 possible : performance des combinaisons (MoneyPuck `lines.csv`).
+  **Ne rien fusionner avant la fin du pool du 2026-10-03.**
 
 - **Pool le 2026-10-03.** Tout est en prod. Avant de commencer : régler au besoin les durées des
   chronos (Configuration → Général, 120 s par défaut), puis hub `/repechage-recrues` →

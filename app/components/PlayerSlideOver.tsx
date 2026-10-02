@@ -80,6 +80,14 @@ function PoolSummary({ summary, onNavigate }: { summary: PlayerPoolSummary; onNa
       {summary.injury && (
         <p className="text-xs text-gray-500">{[summary.injury.injuryType, summary.injury.status].filter(Boolean).join(' — ')}</p>
       )}
+      {summary.usage && (
+        <p className="text-sm text-gray-700">
+          <span className="text-gray-400">Utilisation :</span>{' '}
+          <Link href={`/analytique/trios${summary.teamCode ? `?equipe=${summary.teamCode}` : ''}`} onClick={onNavigate} className="hover:underline">
+            {summary.usage}
+          </Link>
+        </p>
+      )}
       <p className="text-xs text-gray-500">
         {[
           summary.age != null ? `${Math.floor(summary.age)} ans` : null,

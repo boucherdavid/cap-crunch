@@ -100,6 +100,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Statistiques avancées', href: '/analytique/stats-avancees' },
       { label: "Outil d'analyse", href: '/analytique/analyse' },
+      { label: 'Trios et paires', href: '/analytique/trios' },
     ],
   },
   { id: 'blessures', label: 'Blessures', href: '/statistiques/blessures' },

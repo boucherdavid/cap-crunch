@@ -1307,3 +1307,23 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 -- ALTER TABLE pool_seasons ADD COLUMN IF NOT EXISTS rookie_draft_timer_active BOOLEAN NOT NULL DEFAULT false;
 -- ALTER TABLE pool_seasons ADD COLUMN IF NOT EXISTS rookie_draft_turn_started_at TIMESTAMPTZ;
 -- ALTER TABLE pool_seasons ADD COLUMN IF NOT EXISTS rookie_draft_turn_seconds INTEGER;
+
+-- Migration 2026-10-02 : team_line_combos (trios/paires Daily Faceoff) — voir supabase_migrations/line_combos.sql.
+-- CREATE TABLE IF NOT EXISTS team_line_combos (
+--   team_code VARCHAR(5) NOT NULL,
+--   group_id VARCHAR(8) NOT NULL,
+--   slot SMALLINT NOT NULL,
+--   category VARCHAR(4),
+--   position_id VARCHAR(6),
+--   player_id INTEGER REFERENCES players(id) ON DELETE SET NULL,
+--   player_name TEXT NOT NULL,
+--   injury_status VARCHAR(20),
+--   source_name TEXT,
+--   source_updated_at TIMESTAMPTZ,
+--   scraped_at TIMESTAMPTZ DEFAULT NOW(),
+--   PRIMARY KEY (team_code, group_id, slot)
+-- );
+-- CREATE INDEX IF NOT EXISTS team_line_combos_player_idx ON team_line_combos (player_id);
+-- ALTER TABLE team_line_combos ENABLE ROW LEVEL SECURITY;
+-- DROP POLICY IF EXISTS "Lecture publique team_line_combos" ON team_line_combos;
+-- CREATE POLICY "Lecture publique team_line_combos" ON team_line_combos FOR SELECT USING (true);

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { fetchInjuriesByPlayerId, type InjuryInfo } from '@/lib/injuries'
 import { normalizeSearch } from '@/lib/normalizeSearch'
 import { computeMetrics, type AdvancedKind } from '@/lib/advancedMetrics'
+import { summarizePlayerUsage, type LineComboRow } from '@/lib/lineCombos'
 
 /**
  * Recherche globale de joueurs (barre du haut) et sommaire « dans le pool » de la fiche joueur
@@ -33,6 +34,8 @@ export type PlayerPoolSummary = {
   contracts: { season: string; capNumber: number | null; status: string | null }[]
   owner: { poolerId: string; poolerName: string; playerType: string } | null
   injury: InjuryInfo | null
+  // Trio ou paire actuels et unité d'avantage numérique (Daily Faceoff) — null si inconnu.
+  usage: string | null
   // Stats avancées MoneyPuck par saison (la plus récente d'abord) — vide pour un prospect.
   advanced: { kind: AdvancedKind; seasons: { season: number; m: Record<string, number | null> }[] } | null
 }
@@ -154,6 +157,17 @@ export async function getPlayerPoolSummaryAction(ref: { nhlId?: number | null; p
       : Promise.resolve({ data: [] }),
   ])
 
+  // Où joue-t-il en ce moment : ses lignes, puis celles de son équipe pour nommer ses partenaires.
+  const { data: myCombos } = await supabase
+    .from('team_line_combos').select('team_code').eq('player_id', player.id).limit(1)
+  const comboTeam = (myCombos ?? [])[0]?.team_code as string | undefined
+  const { data: teamCombos } = comboTeam
+    ? await supabase
+        .from('team_line_combos')
+        .select('team_code, group_id, slot, position_id, player_id, player_name, injury_status')
+        .eq('team_code', comboTeam)
+    : { data: [] }
+
   const advRows = (advancedRows ?? []) as { season: number; kind: AdvancedKind; games_played: number; icetime: number; stats: Record<string, number | null> }[]
   const own = ((roster ?? []) as unknown as { pooler_id: string; player_type: string; poolers: { name: string } | null }[])[0]
   return {
@@ -174,6 +188,7 @@ export async function getPlayerPoolSummaryAction(ref: { nhlId?: number | null; p
       .map(c => ({ season: c.season, capNumber: c.cap_number != null ? Number(c.cap_number) : null, status: c.contract_status })),
     owner: own?.poolers ? { poolerId: own.pooler_id, poolerName: own.poolers.name, playerType: own.player_type } : null,
     injury: injuries.get(player.id) ?? null,
+    usage: summarizePlayerUsage((teamCombos ?? []) as LineComboRow[], player.id),
     advanced: advRows.length
       ? { kind: advRows[0].kind, seasons: advRows.map(r => ({ season: r.season, m: computeMetrics(r.kind, r, null, null) })) }
       : null,

@@ -91,6 +91,11 @@ const CATEGORIES: Category[] = [
         description: 'Croise deux mesures au choix (salaire, points, âge, temps de glace…) sur un graphique pour repérer qui fait mieux ou moins bien que la tendance, par exemple le rendement par rapport au salaire.',
       },
       {
+        title: 'Trios et paires',
+        href: '/analytique/trios',
+        description: "L'alignement actuel de chaque équipe : trios, paires de défenseurs, gardiens et unités d'avantage numérique, avec le pooler qui possède chaque joueur. Données Daily Faceoff, mises à jour chaque jour.",
+      },
+      {
         title: 'Blessures',
         href: '/statistiques/blessures',
         description: 'Les joueurs blessés de la LNH (CBS Sports, ESPN et MoneyPuck, confirmés par au moins 2 sources), mis à jour chaque jour, avec leur admissibilité au LTIR et le pooler qui les possède.',

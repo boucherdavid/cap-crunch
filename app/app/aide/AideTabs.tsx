@@ -548,12 +548,13 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Le menu <strong>Analytique</strong> regroupe deux pages pour creuser plus loin que les buts et les passes. Les données viennent de MoneyPuck.com et sont mises à jour chaque jour.
+          Le menu <strong>Analytique</strong> regroupe trois pages pour creuser plus loin que les buts et les passes. Les données viennent de MoneyPuck.com et de Daily Faceoff, et sont mises à jour chaque jour.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• <strong>Statistiques avancées</strong> : un tableau par saison, pour les patineurs ou les gardiens, selon la situation de jeu (toutes, 5 contre 5, avantage ou désavantage numérique). Ouvre « Définitions des colonnes » pour savoir ce que chaque sigle mesure, et clique un en-tête pour trier.</li>
           <li>• <strong>Outil d&apos;analyse</strong> : choisis deux mesures (ou une des questions prêtes, comme « Rendement ») pour les voir sur un graphique. La ligne de tendance montre ce qui est attendu ; l&apos;écart de chaque joueur dit s&apos;il fait mieux ou moins bien. Patineurs ou gardiens (victoires, blanchissages, buts sauvés).</li>
           <li>• <strong>Évolution</strong> : la question prête « Évolution » compare la même mesure d&apos;une saison à la suivante ; au-dessus de la diagonale, le joueur progresse. La fiche d&apos;un joueur montre aussi ses stats avancées saison par saison, depuis 2020-21.</li>
+          <li>• <strong>Trios et paires</strong> : l&apos;alignement actuel d&apos;une équipe — les quatre trios, les trois paires, les gardiens et les deux unités d&apos;avantage numérique. Un joueur du premier trio et de la première unité d&apos;avantage numérique a plus de chances de produire. La fiche d&apos;un joueur indique aussi son trio et ses partenaires.</li>
           <li>• Filtre par position, par pooler ou « Disponibles seulement » pour repérer un agent libre sous-estimé, et fixe un salaire maximum selon ton espace sous le plafond.</li>
           <li>• Clique un nom ou un point du graphique pour ouvrir la fiche du joueur.</li>
           <li>• Ce sont des aides à la décision : une tendance calculée sur une saison ne garantit rien pour la suivante.</li>

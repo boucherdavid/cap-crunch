@@ -1,0 +1,36 @@
+name: Trios et paires (Daily Faceoff)
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+
+  # Tous les jours à 15h UTC (11h ET) : les alignements du matin sont publiés, avant les matchs.
+  schedule:
+    - cron: '0 15 * * *'
+
+jobs:
+  scrape:
+    name: Lit les 32 équipes et importe dans team_line_combos
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: python_script/requirements.txt
+
+      - name: Installer les dépendances
+        run: pip install -r python_script/requirements.txt
+
+      - name: Lire et importer les trios
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python python_script/scrape_line_combos.py --apply
