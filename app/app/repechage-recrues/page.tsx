@@ -3,6 +3,8 @@ import DraftBoard from '../admin/repechage/DraftBoard'
 import SaisonSelectClient from './SaisonSelectClient'
 import AutoRefresh from '@/components/AutoReload'
 import WatchlistPanel from '@/components/WatchlistPanel'
+import TurnWatcher from '@/components/TurnWatcher'
+import YourTurnPrompt from '@/components/YourTurnPrompt'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,6 +15,7 @@ export default async function RepechageRecruesPage({
 }) {
   const supabase = await createClient()
   const { saisonId } = await searchParams
+  const { data: { user } } = await supabase.auth.getUser()
 
   const { data: allSaisons } = await supabase
     .from('pool_seasons')
@@ -107,6 +110,14 @@ export default async function RepechageRecruesPage({
   const hasPendingPick = (picksData ?? []).some(p => p.pending_player_id != null)
   const isDraftStarted = (usedPicksData?.length ?? 0) > 0 || hasPendingPick
 
+  // Choix « à l'horloge » (David, 2026-10-01) : le premier choix non utilisé, par ronde puis
+  // ordre — sert au bandeau du tour et à la fenêtre « C'est ton tour ! ».
+  type PickRow = { id: number; round: number; draft_order: number | null; current_owner: { id: string; name: string } | null }
+  const currentPick = [...((picksData ?? []) as unknown as PickRow[])]
+    .sort((a, b) => a.round - b.round || (a.draft_order ?? 0) - (b.draft_order ?? 0))[0] ?? null
+  const onTheClock = saison.is_active && !isDraftDone && currentPick?.current_owner ? currentPick : null
+  const isMyTurn = !!onTheClock && onTheClock.current_owner?.id === user?.id
+
   return (
     <div className="mx-auto py-8 px-4">
       <div className="flex items-center justify-between mb-6">
@@ -123,9 +134,36 @@ export default async function RepechageRecruesPage({
           {/* 60 s, seulement une fois le repêchage commencé (David, 2026-09-27 — 10 s dès que des
               choix existaient, même avant le début, était beaucoup trop fréquent). */}
           <AutoRefresh enabled={saison.is_active && isDraftStarted && !isDraftDone && totalPicks > 0} intervalMs={60000} />
+          {/* Détecte chaque sélection en ~10 s, sans attendre la minute (David, 2026-10-01). */}
+          <TurnWatcher kind="recrues" saisonId={saison.id} enabled={saison.is_active && !isDraftDone && totalPicks > 0} />
           <SaisonSelectClient saisons={saisons} selectedId={saison.id} />
         </div>
       </div>
+
+      {/* Bandeau du tour, collé en haut de l'écran (David, 2026-10-01). */}
+      {onTheClock && (
+        <div className={`sticky top-14 z-30 rounded-lg shadow-md px-5 py-3 mb-6 border-2 ${
+          isMyTurn ? 'bg-amber-400 border-amber-500' : 'bg-white border-blue-100'
+        }`}>
+          {isMyTurn ? (
+            <p className="text-2xl font-extrabold text-amber-950">C&apos;est ton tour !</p>
+          ) : (
+            <p className="text-lg text-gray-700">
+              Au tour de : <span className="font-bold text-blue-700">{onTheClock.current_owner?.name}</span>
+            </p>
+          )}
+          <p className={`text-xs mt-1 ${isMyTurn ? 'text-amber-900' : 'text-gray-400'}`}>
+            Ronde {onTheClock.round}{onTheClock.draft_order != null && <>, choix {onTheClock.draft_order}</>}
+          </p>
+        </div>
+      )}
+      {/* Fenêtre seulement une fois le repêchage commencé : avant, le détenteur du premier choix
+          la verrait des jours à l'avance à chaque visite. */}
+      {onTheClock && isMyTurn && isDraftStarted && (
+        <YourTurnPrompt turnKey={`recrues:${onTheClock.id}`}>
+          <p>Ronde {onTheClock.round}{onTheClock.draft_order != null && <>, choix {onTheClock.draft_order}</>} : dis à l&apos;admin quelle recrue tu repêches.</p>
+        </YourTurnPrompt>
+      )}
 
       {/* Listes privées de recrues à cibler (David, 2026-09-27) — rafraîchies toutes les 15 s
           pendant le repêchage : une recrue repêchée par un autre pooler passe dans « Déjà pris ». */}

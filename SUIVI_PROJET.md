@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-09-28
+Derniere mise a jour: 2026-10-02
 
 ## Role du fichier
 
@@ -18,6 +18,29 @@ techniques : voir `CLAUDE.md` (sections 1 à 6) — c'est la référence mainten
 qu'un second inventaire dérive silencieusement de la réalité comme celui qui était ici
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
+
+### 2026-10-02
+
+**[Feat] — Tour du pooler plus visible pendant les repêchages** (`app/components/TurnWatcher.tsx`,
+`app/components/YourTurnPrompt.tsx`, `app/components/turn-watch-actions.ts`,
+`app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`, `app/app/repechage-recrues/page.tsx`) :
+- Demande de David : chrono du choix plus gros et toujours visible, et que le pooler sache
+  clairement que c'est son tour (« un prompt serait-il trop agressif ? » — non, s'il n'apparaît
+  qu'une fois par tour).
+- **Bandeau du tour collé en haut de l'écran** (`sticky top-14`) sur les deux pages. Agents
+  libres : chrono en gros chiffres (gris, ambre à 30 s, rouge à 10 s), « ⏸ En pause » ; bandeau
+  ambre vif « C'est ton tour ! » pour le pooler concerné, « Tu es le prochain » pour le suivant.
+  Recrues (pas de chrono) : « Au tour de X — ronde R, choix N ».
+- **Fenêtre « C'est ton tour ! »** (`YourTurnPrompt`) : une fois par tour (drapeau localStorage),
+  fermée par le bouton, un clic à côté ou Échap. L'admin ne la voit qu'à son propre tour.
+  Recrues : seulement une fois le repêchage commencé. Agents libres : le drapeau est effacé quand
+  le tour passe à un autre (`YourTurnPromptReset`), la file tournante ramenant la même clé.
+- **Constat fait en codant** : le rechargement automatique des agents libres est aux 5 minutes
+  (60 s pour les recrues) — un pooler ne voyait donc pas son tour arriver sans notification push
+  ni rafraîchissement manuel. `TurnWatcher` sonde une courte empreinte de l'état toutes les 10 s
+  et ne recharge la page que si elle a changé (pas de clignotement), en pause pendant une
+  sélection en cours, comme AutoReload.
+- Pas de signal sonore (les navigateurs le bloquent sans clic préalable).
 
 ### 2026-10-01
 

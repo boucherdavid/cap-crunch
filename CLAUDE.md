@@ -348,6 +348,13 @@ tour" persisté dans `presaison_draft_state` (section 4), remplace l'ancien éta
 `PresaisonManager.tsx` — survit à une navigation de l'admin vers `/admin/transactions` (ex:
 traiter un échange) et retour.
 
+**Tour du pooler pendant un repêchage (David, 2026-10-02)** — sur `/repechage-agents-libres` et
+`/repechage-recrues` : bandeau du tour collé en haut (`sticky top-14`), gros chrono (agents
+libres), fenêtre « C'est ton tour ! » une fois par tour (`app/components/YourTurnPrompt.tsx`,
+drapeau localStorage), et `app/components/TurnWatcher.tsx` qui sonde une empreinte de l'état
+toutes les 10 s et ne recharge la page que si le tour a changé — AutoReload garde son intervalle
+long (5 min / 60 s) comme filet.
+
 **Panneau admin rétractable sur `/repechage-agents-libres` (David, 2026-09-08)** — David
 trouvait confus de devoir jongler entre cette page et `/admin/init?tab=presaison` pour gérer
 son propre alignement (l'admin est aussi un pooler). `AdminPanel.tsx`

@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-10-01
+**Dernière mise à jour :** 2026-10-02
 
 ---
 
@@ -22,7 +22,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | Identique à `main` |
+| `staging` | En avance sur `main` : tour du pooler plus visible pendant les repêchages (bandeau collé, gros chrono, fenêtre « C'est ton tour ! », détection du tour aux 10 s) — à valider |
 | `main` (prod) | À jour — fusion du 2026-10-01 : cap simulé pour les RFA seulement (UFA sans contrat = 0 $) et suivi des signatures étendu aux UFA, bouton « Approbations », LTIR pour un réserviste, outil d'analyse (gardiens, évolution), menu « Analytique », recherche globale, MoneyPuck |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
@@ -61,6 +61,10 @@ desktop.
 ## 4. À faire / à vérifier
 
 ### ▶ Prochaine session — commencer ici
+
+- **Tour du pooler pendant les repêchages** : en staging, à valider par David avec deux comptes
+  (admin + un pooler) sur un vrai tour — bandeau collé, gros chrono, fenêtre « C'est ton tour ! »
+  une seule fois, page du pooler qui se met à jour en ~10 s quand l'admin passe au suivant.
 
 - **Outil d'analyse** : suites possibles — pointage du pool plutôt que points LNH, mémoriser le
   graphique masqué.
