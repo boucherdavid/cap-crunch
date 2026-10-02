@@ -62,9 +62,10 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **En staging, à valider par David** : colonne « Alignement actuel » dans les onglets Ballotage
-  et Échanges de Gestion d'effectifs. Suite possible : faire refléter l'échange en cours dans la
-  colonne, joueur par joueur.
+- **En staging, à valider par David** : Gestion d'effectifs — colonne « Alignement » dans Ballotage et
+  Échanges ; dans Échanges, aperçu en direct de la proposition et « Charger un scénario… ».
+  À tester avec un vrai scénario de l'onglet Transaction de `/simulation`. Suite possible :
+  sauvegarder une proposition comme scénario.
 
 - **Pool le 2026-10-03.** Tout est en prod. Avant de commencer : régler au besoin les durées des
   chronos (Configuration → Général, 120 s par défaut), puis hub `/repechage-recrues` →

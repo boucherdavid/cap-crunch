@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, useTransition } from 'react'
 import MovementHistoryPanel from '@/components/MovementHistoryPanel'
 import RosterPreview from './RosterPreview'
 import BallotageTab from './BallotageTab'
-import TradeOffersTab from './TradeOffersTab'
+import TradeOffersTab, { type TradeDraft } from './TradeOffersTab'
 import {
   getPoolerRosterAction,
   searchPlayersAction,
@@ -373,6 +373,9 @@ export default function GestionEffectifsManager({
   const [success, setSuccess] = useState(false)
   const [submitWarning, setSubmitWarning] = useState<string | null>(null)
   const [historyRefresh, setHistoryRefresh] = useState(0)
+
+  // Proposition d'échange en préparation (onglet Échanges), pour l'aperçu de l'alignement.
+  const [tradeDraft, setTradeDraft] = useState<TradeDraft | null>(null)
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -1077,22 +1080,70 @@ export default function GestionEffectifsManager({
   const currentRosterPreview = roster ? (
     <RosterPreview roster={roster} projected={roster} poolCap={poolCap} capUsed={computeCap(roster)} hasCart={false} />
   ) : null
-  const tabLayout = (content: React.ReactNode) => (
+  const tabLayout = (content: React.ReactNode, preview: React.ReactNode = currentRosterPreview) => (
     <div className={isAdmin ? '' : 'max-w-6xl mx-auto'}>
       {tabs}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {content}
-        {currentRosterPreview}
+        {preview}
       </div>
     </div>
   )
+
+  // Échanges : effet de la proposition en préparation sur l'alignement (David, 2026-10-02) — les
+  // joueurs donnés sortent, les joueurs reçus entrent avec le statut qu'ils ont chez l'autre
+  // pooler (le vrai choix actif/réserviste se fait à la confirmation). Aperçu seulement.
+  const tradePreview = (() => {
+    if (!roster) return null
+    const draft = tradeDraft
+    if (!draft || (draft.givePlayerIds.length === 0 && draft.receive.length === 0)) return currentRosterPreview
+    const given = new Set(draft.givePlayerIds)
+    const kept = [...roster.actifs, ...roster.reservistes, ...roster.ltir, ...roster.recrues].filter(e => !given.has(e.playerId))
+    const received: RosterEntry[] = draft.receive.map((p, i) => {
+      const [lastName, firstName] = p.name.includes(', ') ? p.name.split(', ') : [p.name, '']
+      return {
+        id: -1 - i, playerId: p.playerId, playerType: p.playerType, firstName, lastName,
+        position: p.position, teamCode: p.teamCode, nhlId: null, capNumber: p.capNumber,
+        isEstimatedCap: false, lastDeactivatedAt: null, recrueEligible: p.recrueEligible, injury: null,
+      }
+    })
+    const all = [...kept, ...received]
+    const after: RosterForPooler = {
+      actifs: all.filter(e => e.playerType === 'actif'),
+      reservistes: all.filter(e => e.playerType === 'reserviste'),
+      ltir: all.filter(e => e.playerType === 'ltir'),
+      recrues: all.filter(e => e.playerType === 'recrue'),
+    }
+    const counts = after.actifs.reduce((acc, e) => { acc[posCategory(e.position)]++; return acc }, { F: 0, D: 0, G: 0 })
+    const cap = computeCap(after)
+    const compoOk = counts.F === 12 && counts.D === 6 && counts.G === 2
+    const resOk = after.reservistes.length >= 2
+    return (
+      <RosterPreview
+        roster={roster}
+        projected={after}
+        poolCap={poolCap}
+        capUsed={cap}
+        hasCart
+        previewTitle="Alignement après l'échange"
+        removedTitle="Donnés dans l'échange"
+        messages={(!compoOk || !resOk || cap > poolCap) ? (
+          <div className="space-y-1">
+            {!compoOk && <p className="text-xs text-amber-700">Après l&apos;échange, les actifs ne feraient plus 12 attaquants / 6 défenseurs / 2 gardiens : tu devras ajuster à la confirmation.</p>}
+            {!resOk && <p className="text-xs text-amber-700">Après l&apos;échange, il resterait moins de 2 réservistes.</p>}
+            {cap > poolCap && <p className="text-xs text-red-600">Après l&apos;échange, la masse salariale dépasserait le cap du pool ({capFmt(poolCap)}).</p>}
+          </div>
+        ) : undefined}
+      />
+    )
+  })()
 
   if (activeTab === 'ballotage') {
     return tabLayout(<BallotageTab saisonId={saisonId} />)
   }
 
   if (activeTab === 'echanges' && selfPoolerId) {
-    return tabLayout(<TradeOffersTab saisonId={saisonId} selfPoolerId={selfPoolerId} poolCap={poolCap} />)
+    return tabLayout(<TradeOffersTab saisonId={saisonId} selfPoolerId={selfPoolerId} poolCap={poolCap} onDraftChange={setTradeDraft} />, tradePreview)
   }
 
   // Pooler : formulaire et alignement côte à côte sur grand écran, empilés sinon.

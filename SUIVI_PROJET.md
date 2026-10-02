@@ -21,6 +21,24 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-02
 
+**[Feat] — Échanges : effet sur l'alignement en direct, import d'un scénario** (`app/app/gestion-effectifs/TradeOffersTab.tsx`,
+`GestionEffectifsManager.tsx`, `RosterPreview.tsx`) :
+- Retour de David sur l'onglet Échanges : pouvoir seulement envoyer n'est pas pratique, il faut
+  voir l'effet sur l'alignement de droite ; et pouvoir partir d'un scénario de simulation.
+- **Aperçu en direct** : `TradeOffersTab` remonte la proposition en préparation (`TradeDraft`,
+  prop `onDraftChange`) ; le parent construit l'alignement projeté — joueurs donnés retirés,
+  joueurs reçus ajoutés avec le statut qu'ils ont chez l'autre pooler — et l'affiche dans
+  `RosterPreview` (« Alignement après l'échange », « Donnés dans l'échange », masse, compteurs,
+  avertissements). Choix de repêchage ignorés. Le vrai choix actif/réserviste reste à la
+  confirmation.
+- **Import d'un scénario** (« Charger un scénario… » dans le formulaire) : dans un scénario de
+  `/simulation` (onglet Transaction), un joueur reçu est un « ajout » portant le nom du pooler
+  (`ownerName`) → coché dans « Tu reçois » et pooler sélectionné ; les retraits → cochés dans
+  « Tu donnes ». Limites signalées à l'écran : retraits = échange ou libération (à décocher au
+  besoin), un seul pooler par proposition, joueur qui a changé d'alignement ignoré.
+- Pas fait (étape suivante possible) : sauvegarder une proposition comme scénario.
+
+
 **[Feat] — Gestion d'effectifs : alignement visible aussi dans Ballotage et Échanges**
 (`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `BallotageTab.tsx`, `TradeOffersTab.tsx`) :
 - Demande de David après la colonne « Alignement » de Mouvements. Les deux onglets passent de la

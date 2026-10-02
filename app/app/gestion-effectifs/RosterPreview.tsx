@@ -72,14 +72,16 @@ function Group({ title, count, target, entries, original }: {
 }
 
 export default function RosterPreview({
-  roster, projected, poolCap, capUsed, hasCart, messages,
+  roster, projected, poolCap, capUsed, hasCart, messages, previewTitle, removedTitle,
 }: {
   roster: RosterForPooler
   projected: RosterForPooler
   poolCap: number
   capUsed: number
-  hasCart: boolean
+  hasCart: boolean            // un aperçu est affiché (panier de mouvements, ou échange en préparation)
   messages?: React.ReactNode  // avertissements de conformité, affichés sous le sommaire
+  previewTitle?: string       // titre de l'aperçu — par défaut celui du panier de mouvements
+  removedTitle?: string
 }) {
   const original = new Map<number, RosterEntry>()
   for (const e of [...roster.actifs, ...roster.reservistes, ...roster.ltir, ...roster.recrues]) original.set(e.id, e)
@@ -93,8 +95,8 @@ export default function RosterPreview({
   return (
     <div className="bg-white rounded-lg shadow p-5 space-y-4 min-w-0">
       <div>
-        <p className="text-sm font-semibold text-gray-700">{hasCart ? 'Alignement après les mouvements du panier' : 'Alignement actuel'}</p>
-        {hasCart && <p className="text-xs text-gray-400 mt-0.5">Aperçu : rien n&apos;est enregistré avant la soumission.</p>}
+        <p className="text-sm font-semibold text-gray-700">{hasCart ? (previewTitle ?? 'Alignement après les mouvements du panier') : 'Alignement actuel'}</p>
+        {hasCart && <p className="text-xs text-gray-400 mt-0.5">Aperçu : rien n&apos;est enregistré pour l&apos;instant.</p>}
       </div>
 
       <div className="space-y-1">
@@ -121,7 +123,7 @@ export default function RosterPreview({
 
       {removed.length > 0 && (
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-red-600 border-b pb-1 mb-1">Retirés par le panier</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-red-600 border-b pb-1 mb-1">{removedTitle ?? 'Retirés par le panier'}</p>
           <ul>{removed.map(e => <Row key={e.id} e={e} removed />)}</ul>
         </div>
       )}

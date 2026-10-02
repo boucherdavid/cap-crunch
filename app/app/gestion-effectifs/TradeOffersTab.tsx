@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback, useTransition } from 'react'
+import { useRef, useState, useEffect, useCallback, useTransition } from 'react'
 import {
   getMyTradeOffersAction, proposeTradeOfferAction, respondToTradeOfferAction, confirmTradeReadyAction,
   listTradeableAssetsAction,
   type TradeOfferView, type TradeableItem,
 } from './trade-actions'
 import type { TradeExtraAction } from '@/lib/tradeOffers'
-import { listOtherPoolersAction } from '../simulation/actions'
+import { listOtherPoolersAction, listScenariosAction, loadScenarioAction } from '../simulation/actions'
 import { getPlayerBucket, ACTIVE_LIMITS } from '@/lib/rosterLimits'
 
 const fmtCap = (n: number) =>
@@ -94,7 +94,24 @@ function ItemPicker({
   )
 }
 
-export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap }: { saisonId: number; selfPoolerId: string; poolCap: number }) {
+type TradeablePlayer = Extract<TradeableItem, { kind: 'player' }>
+
+/** Clés de sélection (`player-<id>`) des joueurs demandés qui sont bien dans la liste. */
+function pickKeys(items: TradeableItem[], playerIds: number[]): string[] {
+  const wanted = new Set(playerIds)
+  return items.filter(i => i.kind === 'player' && wanted.has(i.playerId)).map(i => `player-${(i as TradeablePlayer).playerId}`)
+}
+
+/** Proposition en cours de composition (David, 2026-10-02) — remontée au parent pour que la
+ * colonne « Alignement » montre l'effet de l'échange à chaque case cochée. */
+export type TradeDraft = { givePlayerIds: number[]; receive: TradeablePlayer[] }
+
+export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraftChange }: {
+  saisonId: number
+  selfPoolerId: string
+  poolCap: number
+  onDraftChange?: (draft: TradeDraft | null) => void  // doit être stable (ex : un setState)
+}) {
   const [offers, setOffers] = useState<TradeOfferView[]>([])
   const [history, setHistory] = useState<TradeOfferView[]>([])
   const [loading, setLoading] = useState(true)
@@ -138,11 +155,68 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap }: { sa
     listOtherPoolersAction().then(res => setOtherPoolers(res.poolers))
   }, [composing])
 
+  // Sélection à appliquer une fois les joueurs de l'autre pooler chargés (import d'un scénario).
+  const pendingImport = useRef<{ targetId: string; receiveIds: number[] } | null>(null)
+
   useEffect(() => {
     if (!targetId) { setTheirAssets([]); return }
-    listTradeableAssetsAction(targetId, saisonId).then(setTheirAssets)
+    let cancelled = false
+    listTradeableAssetsAction(targetId, saisonId).then(assets => {
+      if (cancelled) return
+      setTheirAssets(assets)
+      const wanted = pendingImport.current?.targetId === targetId ? pendingImport.current.receiveIds : null
+      pendingImport.current = null
+      if (wanted) setTheirSelected(new Set(pickKeys(assets, wanted)))
+    })
     setTheirSelected(new Set())
+    return () => { cancelled = true }
   }, [targetId, saisonId])
+
+  // Le brouillon suit chaque case cochée ; rien quand aucune proposition n'est en préparation.
+  useEffect(() => {
+    if (!onDraftChange) return
+    if (!composing) { onDraftChange(null); return }
+    const players = (items: TradeableItem[], selected: Set<string>) =>
+      items.filter((i): i is TradeablePlayer => i.kind === 'player' && selected.has(`player-${i.playerId}`))
+    onDraftChange({
+      givePlayerIds: players(myFullRoster, mySelected).map(p => p.playerId),
+      receive: players(theirAssets, theirSelected),
+    })
+  }, [onDraftChange, composing, myFullRoster, mySelected, theirAssets, theirSelected])
+  useEffect(() => () => { onDraftChange?.(null) }, [onDraftChange])
+
+  // ── Import d'un scénario de /simulation (onglet Transaction) ───────────────
+  const [scenarios, setScenarios] = useState<{ id: number; name: string }[]>([])
+  const [scenarioMsg, setScenarioMsg] = useState<string | null>(null)
+  useEffect(() => {
+    if (!composing) return
+    listScenariosAction(saisonId).then(res => setScenarios(res.scenarios))
+  }, [composing, saisonId])
+
+  async function handleLoadScenario(scenarioId: number) {
+    if (!scenarioId) return
+    setScenarioMsg(null)
+    const res = await loadScenarioAction(scenarioId)
+    if (res.error || !res.data) { setScenarioMsg(res.error ?? 'Scénario introuvable.'); return }
+    // Dans un scénario, un joueur reçu d'un pooler est un « ajout » qui porte le nom de ce pooler.
+    const received = res.data.added.filter(a => a.ownerName)
+    const ownerNames = [...new Set(received.map(a => a.ownerName as string))]
+    const target = otherPoolers.find(p => p.name === ownerNames[0])
+    if (!target) {
+      setScenarioMsg(ownerNames.length === 0
+        ? 'Ce scénario ne contient aucun joueur reçu d\'un autre pooler : rien à importer comme échange.'
+        : `Pooler introuvable pour ce scénario (${ownerNames[0]}).`)
+      return
+    }
+    const receiveIds = received.filter(a => a.ownerName === target.name).map(a => a.id)
+    setMySelected(new Set(pickKeys(myFullRoster, res.data.removed)))
+    if (target.id === targetId) setTheirSelected(new Set(pickKeys(theirAssets, receiveIds)))
+    else { pendingImport.current = { targetId: target.id, receiveIds }; setTargetId(target.id) }
+    const notes = [`Scénario chargé avec ${target.name}. Tous les retraits du scénario sont cochés dans « Tu donnes » : décoche ceux qui ne font pas partie de l'échange.`]
+    if (ownerNames.length > 1) notes.push(`Le scénario implique aussi ${ownerNames.slice(1).join(', ')} : non repris, une proposition vise un seul pooler.`)
+    notes.push('Un joueur du scénario qui a changé d\'alignement depuis est ignoré.')
+    setScenarioMsg(notes.join(' '))
+  }
 
   function toggle(setFn: React.Dispatch<React.SetStateAction<Set<string>>>, key: string) {
     setFn(prev => {
@@ -302,10 +376,19 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap }: { sa
 
         {composing && (
           <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4 space-y-3">
-            <select value={targetId} onChange={e => setTargetId(e.target.value)} className="border rounded-lg px-2 py-1.5 text-sm">
-              <option value="">— Choisir un pooler —</option>
-              {otherPoolers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+            <div className="flex flex-wrap items-center gap-2">
+              <select value={targetId} onChange={e => setTargetId(e.target.value)} className="border rounded-lg px-2 py-1.5 text-sm">
+                <option value="">— Choisir un pooler —</option>
+                {otherPoolers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              {scenarios.length > 0 && (
+                <select value="" onChange={e => handleLoadScenario(Number(e.target.value))} aria-label="Charger un scénario de simulation" className="border rounded-lg px-2 py-1.5 text-sm text-gray-600">
+                  <option value="">Charger un scénario…</option>
+                  {scenarios.map(sc => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
+                </select>
+              )}
+            </div>
+            {scenarioMsg && <p className="text-xs text-gray-500">{scenarioMsg}</p>}
             {targetId && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <ItemPicker title="Tu donnes" items={myFullRoster} selected={mySelected} onToggle={k => toggle(setMySelected, k)} />

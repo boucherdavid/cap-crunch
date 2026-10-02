@@ -1357,7 +1357,8 @@ corrigée le 2026-09-20 :**
 l'alignement du pooler à côté du formulaire, et l'alignement projeté (changements surlignés) dès
 que le panier a du contenu — remplace l'ancien bloc « État projeté ». Pooler : 2 colonnes à partir
 de `lg` ; admin : 3 colonnes (formulaire, alignement, historique) à partir de `2xl`. Les onglets
-Ballotage et Échanges affichent aussi l'alignement actuel à droite (sans aperçu du résultat).
+Ballotage et Échanges affichent aussi l'alignement à droite ; dans Échanges, il reflète en direct
+la proposition en préparation (`TradeDraft`), et un scénario de `/simulation` peut y être chargé.
 
 **Demandes de mise sur LTIR (`ltir_requests`) — David, 2026-09-23 (suite) :**
 - **Actif ou réserviste (David, 2026-10-01)** — remplace « un actif » dans les points ci-dessous :
