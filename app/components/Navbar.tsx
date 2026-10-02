@@ -157,7 +157,7 @@ const ADMIN_GROUP: NavGroup = {
       items: [
         { label: 'Nouvelle saison', href: '/admin/nouvelle-saison' },
         { label: 'Initialisation', href: '/admin/init' },
-        { label: 'Repêchage recrues', href: '/admin/repechage' },
+        { label: 'Repêchage recrues', href: '/repechage-recrues' },
       ],
     },
   ],

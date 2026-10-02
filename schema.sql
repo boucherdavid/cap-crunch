@@ -1300,3 +1300,10 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 -- CREATE POLICY "Lecture publique player_advanced_stats" ON player_advanced_stats FOR SELECT USING (true);
 -- ALTER TABLE player_injuries ADD COLUMN IF NOT EXISTS in_cbs BOOLEAN NOT NULL DEFAULT true;  -- recoupement 2 sources sur 3
 -- ALTER TABLE player_injuries ADD COLUMN IF NOT EXISTS cbs_return_date DATE;  -- date de retour selon CBS seul
+
+-- Migration 2026-10-02 : chronos de repêchage paramétrables — voir supabase_migrations/draft_timers.sql.
+-- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS rookie_draft_turn_seconds INTEGER NOT NULL DEFAULT 120;
+-- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS presaison_turn_seconds INTEGER NOT NULL DEFAULT 120;
+-- ALTER TABLE pool_seasons ADD COLUMN IF NOT EXISTS rookie_draft_timer_active BOOLEAN NOT NULL DEFAULT false;
+-- ALTER TABLE pool_seasons ADD COLUMN IF NOT EXISTS rookie_draft_turn_started_at TIMESTAMPTZ;
+-- ALTER TABLE pool_seasons ADD COLUMN IF NOT EXISTS rookie_draft_turn_seconds INTEGER;

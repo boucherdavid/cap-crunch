@@ -27,12 +27,21 @@ export async function getPresaisonTurnSignatureAction(saisonId: number): Promise
 /** Repêchage des recrues : choix restants et sélection en attente de confirmation. */
 export async function getRookieDraftSignatureAction(saisonId: number): Promise<string | null> {
   const supabase = await createClient()
-  const { data } = await supabase
-    .from('pool_draft_picks')
-    .select('id, pending_player_id, current_owner_id')
-    .eq('pool_season_id', saisonId)
-    .eq('is_used', false)
-    .order('id')
+  const [{ data }, { data: saison }] = await Promise.all([
+    supabase
+      .from('pool_draft_picks')
+      .select('id, pending_player_id, current_owner_id')
+      .eq('pool_season_id', saisonId)
+      .eq('is_used', false)
+      .order('id'),
+    // Chrono compris : une pause, une reprise ou un ajustement par l'admin se voit aussi.
+    supabase
+      .from('pool_seasons')
+      .select('rookie_draft_timer_active, rookie_draft_turn_started_at, rookie_draft_turn_seconds')
+      .eq('id', saisonId)
+      .maybeSingle(),
+  ])
   if (!data) return null
-  return data.map(p => `${p.id}:${p.pending_player_id ?? ''}:${p.current_owner_id ?? ''}`).join('|')
+  const timer = `${saison?.rookie_draft_timer_active ?? ''}:${saison?.rookie_draft_turn_started_at ?? ''}:${saison?.rookie_draft_turn_seconds ?? ''}`
+  return `${timer}#` + data.map(p => `${p.id}:${p.pending_player_id ?? ''}:${p.current_owner_id ?? ''}`).join('|')
 }

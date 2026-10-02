@@ -22,7 +22,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : tour du pooler plus visible pendant les repêchages + bouton de réinitialisation du repêchage des recrues — à valider |
+| `staging` | En avance sur `main` : hub du repêchage des recrues (départ, chrono paramétrable, notifications), tour du pooler plus visible, réinitialisation — à valider avant le pool du 2026-10-03 |
 | `main` (prod) | À jour — fusion du 2026-10-01 : cap simulé pour les RFA seulement (UFA sans contrat = 0 $) et suivi des signatures étendu aux UFA, bouton « Approbations », LTIR pour un réserviste, outil d'analyse (gardiens, évolution), menu « Analytique », recherche globale, MoneyPuck |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
@@ -62,9 +62,11 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **Tour du pooler pendant les repêchages** : en staging, à valider par David avec deux comptes
-  (admin + un pooler) sur un vrai tour — bandeau collé, gros chrono, fenêtre « C'est ton tour ! »
-  une seule fois, page du pooler qui se met à jour en ~10 s quand l'admin passe au suivant.
+- **Pool le 2026-10-03.** En staging, à valider par David avec deux comptes (admin + un pooler) :
+  hub `/repechage-recrues` (Démarrer le repêchage, chrono, sélections, fenêtre « C'est ton
+  tour ! », mise à jour de la page du pooler en ~10 s), puis les agents libres. **Migration
+  `supabase_migrations/draft_timers.sql` à exécuter en staging ET en prod** avant de fusionner.
+  Régler les durées dans Configuration → Général.
 
 - **Outil d'analyse** : suites possibles — pointage du pool plutôt que points LNH, mémoriser le
   graphique masqué.

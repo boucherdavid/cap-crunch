@@ -621,8 +621,17 @@ le 2026-08-28 une redirection volontaire vers `/admin/communaute?tab=planificati
 jour le 2026-09-01, voir ci-dessus), même pattern que `/admin/joueurs` et `/admin/draft-center`
 ci-dessous — la page publique `/planification` (vue pooler) n'est pas affectée.
 
-Zones de test (David, 2026-10-02) : « Réinitialiser le repêchage des recrues » en bas de
-`/admin/repechage` (`resetRookieDraftAction`) et « Réinitialiser le repêchage » des agents libres
+**Hub du repêchage des recrues (David, 2026-10-02)** — `/repechage-recrues` sert aux poolers
+(lecture seule) ET à l'admin (tableau modifiable, ordre, zone de test), comme
+`/repechage-agents-libres` ; `/admin/repechage` n'est plus qu'une redirection vers lui. Bouton
+« Démarrer le repêchage » + chrono indicatif (`RookieTurnBanner.tsx`, état sur
+`pool_seasons.rookie_draft_*`, notification push au pooler dont c'est le tour). Pas de
+rechargement automatique pour l'admin. Durées des deux chronos de repêchage :
+`app_settings.rookie_draft_turn_seconds` / `presaison_turn_seconds` (120 s par défaut), réglées
+dans Configuration → Général (`app/lib/draftTimers.ts`).
+
+Zones de test (David, 2026-10-02) : « Réinitialiser le repêchage des recrues » en bas du hub
+`/repechage-recrues` (`resetRookieDraftAction`) et « Réinitialiser le repêchage » des agents libres
 (Panneau admin de `/repechage-agents-libres`, `resetPresaisonDraftAction`) — tous deux refusés
 côté serveur dès que `season_started=true`.
 

@@ -2,6 +2,11 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
+import {
+  DEFAULT_TURN_SECONDS, MAX_TURN_SECONDS, MIN_TURN_SECONDS, fetchDraftTurnSeconds, remainingSeconds,
+  type DraftTurnSeconds, type RookieTimer,
+} from '@/lib/draftTimers'
 
 type PickSelection = {
   pick_id: number
@@ -124,6 +129,9 @@ export async function saveDraftProgressAction(
     if (error) return { error: error.message }
   }
 
+  // Une sélection vient d'être enregistrée : le chrono repart pour le choix suivant.
+  if (selections.some(s => s.playerId != null)) await restartRookieTimerIfActive(supabase, saisonId)
+
   // Pas de revalidatePath ici (David, 2026-09-28) : dans une Server Action, toute revalidation
   // renvoie la page admin courante entièrement recalculée — à chaque sélection, en pleine
   // saisie, d'où des sauts d'écran et un tableau qui se redessine. DraftBoard garde déjà les
@@ -233,7 +241,171 @@ export async function resetRookieDraftAction(saisonId: number): Promise<{ error?
     .update({ is_used: false, pending_player_id: null })
     .eq('pool_season_id', saisonId)
   if (error) return { error: error.message }
+  await supabase.from('pool_seasons').update({ rookie_draft_timer_active: false, rookie_draft_turn_started_at: null }).eq('id', saisonId)
 
   revalidateDraftPages()
   return { reset: (picks ?? []).filter(p => p.is_used).length }
+}
+
+// ─── Tour en cours et chrono du repêchage des recrues (David, 2026-10-02) ───────
+// État du chrono sur pool_seasons (rookie_draft_timer_active / _turn_started_at / _turn_seconds),
+// durée par défaut dans app_settings.rookie_draft_turn_seconds. Indicatif : rien ne se passe à
+// 00:00. `turn_started_at=null` pendant que le chrono est actif = en pause, `_turn_seconds`
+// tient alors les secondes restantes — même convention que presaison_draft_state.
+
+export type RookieTurnState = {
+  onTheClock: { pickId: number; round: number; draftOrder: number | null; ownerId: string; ownerName: string } | null
+  timer: RookieTimer
+  isDraftStarted: boolean
+}
+
+/** Choix « à l'horloge » : le premier choix sans sélection (ni utilisé ni en attente de
+ * confirmation), par ronde puis ordre. Lisible par tout pooler connecté. */
+export async function getRookieTurnStateAction(saisonId: number): Promise<RookieTurnState> {
+  const supabase = await createClient()
+  const [{ data: saison }, { data: picks }] = await Promise.all([
+    supabase
+      .from('pool_seasons')
+      .select('rookie_draft_timer_active, rookie_draft_turn_started_at, rookie_draft_turn_seconds')
+      .eq('id', saisonId)
+      .maybeSingle(),
+    supabase
+      .from('pool_draft_picks')
+      .select('id, round, draft_order, is_used, pending_player_id, current_owner:poolers!current_owner_id(id, name)')
+      .eq('pool_season_id', saisonId)
+      .order('round')
+      .order('draft_order')
+      .order('id'),
+  ])
+  type Row = { id: number; round: number; draft_order: number | null; is_used: boolean; pending_player_id: number | null; current_owner: { id: string; name: string } | null }
+  const rows = (picks ?? []) as unknown as Row[]
+  const next = rows.find(p => !p.is_used && p.pending_player_id == null && p.current_owner) ?? null
+  return {
+    onTheClock: next
+      ? { pickId: next.id, round: next.round, draftOrder: next.draft_order, ownerId: next.current_owner!.id, ownerName: next.current_owner!.name }
+      : null,
+    timer: {
+      active: !!saison?.rookie_draft_timer_active,
+      startedAt: saison?.rookie_draft_turn_started_at ?? null,
+      seconds: saison?.rookie_draft_turn_seconds ?? DEFAULT_TURN_SECONDS,
+    },
+    isDraftStarted: rows.some(p => p.is_used || p.pending_player_id != null),
+  }
+}
+
+async function requireAdminClient() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' } as const
+  const { data: pooler } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+  if (!pooler?.is_admin) return { error: 'Accès refusé.' } as const
+  return { supabase } as const
+}
+
+async function updateRookieTimer(saisonId: number, values: Record<string, unknown>): Promise<{ error?: string }> {
+  const check = await requireAdminClient()
+  if ('error' in check) return check
+  const { error } = await check.supabase.from('pool_seasons').update(values).eq('id', saisonId)
+  if (error) return { error: error.message }
+  return {}
+}
+
+/** Notification push au pooler dont c'est le tour — même principe que le repêchage des agents
+ * libres. Envoyée après la réponse (after), un échec d'envoi ne bloque jamais le repêchage. */
+function notifyOnTheClock(state: RookieTurnState) {
+  const next = state.onTheClock
+  if (!next) return
+  after(async () => {
+    const { sendPushToUser } = await import('@/lib/push')
+    await sendPushToUser(next.ownerId, {
+      title: 'Cap Crunch — C\'est ton tour !',
+      body: `Repêchage des recrues : ronde ${next.round}${next.draftOrder != null ? `, choix ${next.draftOrder}` : ''}.`,
+      url: '/repechage-recrues',
+    }).catch(() => {})
+  })
+}
+
+/** Après l'enregistrement d'une sélection, si le repêchage est lancé : relance le chrono pour le
+ * choix suivant et avertit son pooler (en pause : le chrono le reste, remis à la durée
+ * complète) ; s'il ne reste aucun choix sans sélection, arrête le chrono. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function restartRookieTimerIfActive(supabase: any, saisonId: number) {
+  const state = await getRookieTurnStateAction(saisonId)
+  if (!state.timer.active) return
+  if (!state.onTheClock) {
+    await supabase.from('pool_seasons').update({ rookie_draft_timer_active: false, rookie_draft_turn_started_at: null }).eq('id', saisonId)
+    return
+  }
+  const { rookie } = await fetchDraftTurnSeconds(supabase)
+  await supabase.from('pool_seasons').update({
+    rookie_draft_turn_started_at: state.timer.startedAt ? new Date().toISOString() : null,
+    rookie_draft_turn_seconds: rookie,
+  }).eq('id', saisonId)
+  notifyOnTheClock(state)
+}
+
+/** « Démarrer le repêchage » : lance le chrono du choix en cours et avertit son pooler. */
+export async function startRookieTimerAction(saisonId: number): Promise<{ error?: string }> {
+  const check = await requireAdminClient()
+  if ('error' in check) return check
+  const { rookie } = await fetchDraftTurnSeconds(check.supabase)
+  const result = await updateRookieTimer(saisonId, {
+    rookie_draft_timer_active: true, rookie_draft_turn_started_at: new Date().toISOString(), rookie_draft_turn_seconds: rookie,
+  })
+  if (!result.error) notifyOnTheClock(await getRookieTurnStateAction(saisonId))
+  return result
+}
+
+/** Remet le chrono du tour en cours à la durée complète, sans nouvelle notification. */
+export async function resetRookieTimerAction(saisonId: number): Promise<{ error?: string }> {
+  const check = await requireAdminClient()
+  if ('error' in check) return check
+  const { rookie } = await fetchDraftTurnSeconds(check.supabase)
+  return updateRookieTimer(saisonId, {
+    rookie_draft_timer_active: true, rookie_draft_turn_started_at: new Date().toISOString(), rookie_draft_turn_seconds: rookie,
+  })
+}
+
+export async function stopRookieTimerAction(saisonId: number): Promise<{ error?: string }> {
+  return updateRookieTimer(saisonId, { rookie_draft_timer_active: false, rookie_draft_turn_started_at: null })
+}
+
+export async function pauseRookieTimerAction(saisonId: number): Promise<{ error?: string }> {
+  const state = await getRookieTurnStateAction(saisonId)
+  if (!state.timer.active || !state.timer.startedAt) return {}
+  return updateRookieTimer(saisonId, {
+    rookie_draft_turn_started_at: null, rookie_draft_turn_seconds: remainingSeconds(state.timer, Date.now()),
+  })
+}
+
+export async function resumeRookieTimerAction(saisonId: number): Promise<{ error?: string }> {
+  return updateRookieTimer(saisonId, { rookie_draft_turn_started_at: new Date().toISOString() })
+}
+
+export async function adjustRookieTimerAction(saisonId: number, deltaSeconds: number): Promise<{ error?: string }> {
+  const state = await getRookieTurnStateAction(saisonId)
+  if (!state.timer.active) return {}
+  return updateRookieTimer(saisonId, { rookie_draft_turn_seconds: Math.max(0, state.timer.seconds + deltaSeconds) })
+}
+
+/** Durées des deux chronos (Configuration → Général). */
+export async function getDraftTurnSecondsAction(): Promise<DraftTurnSeconds> {
+  const supabase = await createClient()
+  return fetchDraftTurnSeconds(supabase)
+}
+
+export async function updateDraftTurnSecondsAction(values: DraftTurnSeconds): Promise<{ error?: string }> {
+  const check = await requireAdminClient()
+  if ('error' in check) return check
+  for (const v of [values.rookie, values.presaison]) {
+    if (!Number.isInteger(v) || v < MIN_TURN_SECONDS || v > MAX_TURN_SECONDS) {
+      return { error: `Chaque durée doit être un nombre entier de secondes entre ${MIN_TURN_SECONDS} et ${MAX_TURN_SECONDS}.` }
+    }
+  }
+  const { error } = await check.supabase
+    .from('app_settings')
+    .update({ rookie_draft_turn_seconds: values.rookie, presaison_turn_seconds: values.presaison })
+    .eq('id', 1)
+  if (error) return { error: error.message }
+  return {}
 }

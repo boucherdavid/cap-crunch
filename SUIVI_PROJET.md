@@ -21,6 +21,34 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-02
 
+**[Feat] — Hub du repêchage des recrues, départ, chrono paramétrable** (`app/app/repechage-recrues/page.tsx`,
+`RookieTurnBanner.tsx`, `app/app/admin/repechage/actions.ts`, `app/app/admin/repechage/page.tsx`,
+`app/lib/draftTimers.ts`, `app/app/admin/config/DraftTimerSettingsForm.tsx`,
+`app/app/admin/presaison/actions.ts`, `app/components/turn-watch-actions.ts`,
+`supabase_migrations/draft_timers.sql`) — veille du pool :
+- **Hub unique** (question de David : « aurions-nous été mieux avec un hub comme pour les agents
+  libres ? ») : `/repechage-recrues` sert à tout le monde. Poolers : tableau en lecture seule.
+  Admin : tableau modifiable (`readOnly={!isAdmin}`), ordre du repêchage, zone de test.
+  `/admin/repechage` redirige vers le hub (paramètre de saison transmis) ; le lien du menu Admin
+  pointe vers le hub. L'admin voit toutes les saisons (préparer une saison pas encore active).
+- **Pas de rechargement automatique pour l'admin** (AutoRefresh / TurnWatcher) — un rechargement
+  en pleine saisie fait sauter l'écran ; son bandeau relit le tour toutes les 5 s.
+- **« Démarrer le repêchage »** (le repêchage des recrues n'avait pas de départ explicite) : lance
+  le chrono du premier choix. Avant le départ, les poolers voient « Pas encore commencé » et pas
+  de bandeau. Notification push au pooler dont c'est le tour, au départ puis à chaque sélection
+  enregistrée (aucune avant). Chrono arrêté tout seul quand il ne reste aucun choix sans sélection.
+- **Chrono** : état sur `pool_seasons` (`rookie_draft_timer_active`, `_turn_started_at`,
+  `_turn_seconds` ; `started_at` NULL = en pause). Contrôles admin : Pause/Reprendre, ±30 s,
+  Réinitialiser, Arrêter. Indicatif : rien ne se passe à 00:00.
+- **Durées paramétrables** (Configuration → Général, « Chronos des repêchages ») :
+  `app_settings.rookie_draft_turn_seconds` et `presaison_turn_seconds`, 120 s par défaut toutes
+  les deux (décision de David). Le tour des agents libres n'est plus fixé à 90 s dans le code.
+- **Corrigé** : le choix « à l'horloge » est le premier choix SANS sélection (une sélection
+  enregistrée mais pas encore soumise ne compte plus comme « ton tour »).
+- Le code retombe sur les valeurs par défaut si les colonnes manquent, mais le départ et le
+  chrono exigent la migration `draft_timers.sql`.
+
+
 **[Feat] — Réinitialiser le repêchage des recrues (zone de test) ; garde-fou saison démarrée**
 (`app/app/admin/repechage/actions.ts`, `ResetRookieDraftButton.tsx`, `page.tsx`,
 `app/app/admin/presaison/actions.ts`) :
