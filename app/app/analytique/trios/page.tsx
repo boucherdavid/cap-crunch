@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import PlayerLink from '@/components/PlayerLink'
 import TeamSelect from './TeamSelect'
 import { INJURY_STATUS_LABEL, POSITION_LABEL, groupLabel, type LineComboRow } from '@/lib/lineCombos'
+import { teamColor } from '@/lib/nhl-colors'
 
 export const metadata = { title: 'Trios et paires' }
 export const dynamic = 'force-dynamic'
@@ -22,10 +23,35 @@ function fmtDate(iso: string | null): string {
   return iso ? new Date(iso).toLocaleDateString('fr-CA', { day: 'numeric', month: 'long' }) : ''
 }
 
+// Couleurs de l'équipe (David, 2026-10-02) — mêmes couleurs et même logique que la page des
+// contrats (JoueursTable) : bandeau en dégradé, titres de section dans la couleur secondaire, ou
+// la primaire si la secondaire est trop pâle pour porter du texte blanc. Les couleurs viennent
+// de lib/nhl-colors.ts, d'où le `style` (valeurs dynamiques, pas des classes Tailwind).
+function sectionColor(code: string): string {
+  const colors = teamColor(code)
+  const hex = colors.secondary.replace('#', '')
+  const [r, g, b] = [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16))
+  return (r * 299 + g * 587 + b * 114) / 1000 > 180 ? colors.primary : colors.secondary
+}
+
+function SectionTitle({ code, children }: { code: string; children: React.ReactNode }) {
+  return (
+    <h2
+      className="-mx-4 -mt-4 mb-3 rounded-t-lg px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white"
+      style={{ backgroundColor: sectionColor(code) }}
+    >
+      {children}
+    </h2>
+  )
+}
+
 function PlayerCell({ row, owners }: { row: Row; owners: Map<number, Owner> }) {
   const owner = row.player_id != null ? owners.get(row.player_id) : undefined
   return (
-    <div className="min-w-0 rounded-lg border border-gray-100 bg-white px-3 py-2">
+    <div
+      className="min-w-0 rounded-lg border border-gray-100 border-l-4 bg-white px-3 py-2"
+      style={{ borderLeftColor: teamColor(row.team_code).primary }}
+    >
       <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
         {POSITION_LABEL[row.position_id ?? ''] ?? ''}
       </p>
@@ -117,38 +143,48 @@ export default async function TriosPage({ searchParams }: { searchParams: Promis
         <TeamSelect teams={teams} selected={teamCode} />
       </div>
 
+      <div
+        className="mb-6 rounded-lg px-5 py-3 text-white shadow"
+        style={{ background: `linear-gradient(90deg, ${teamColor(teamCode).primary} 0%, ${teamColor(teamCode).secondary} 100%)` }}
+      >
+        <p className="text-xl font-bold leading-tight">
+          {teamCode}
+          <span className="ml-3 text-sm font-normal uppercase tracking-wide opacity-90">{teams.find(t => t.code === teamCode)?.name}</span>
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <section className="bg-gray-50 rounded-lg shadow p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Attaquants</h2>
+        <section className="bg-gray-50 rounded-lg shadow p-4 space-y-3 overflow-hidden">
+          <SectionTitle code={teamCode}>Attaquants</SectionTitle>
           {['f1', 'f2', 'f3', 'f4'].map(g => <Group key={g} groupId={g} rows={of(g)} owners={owners} cols="grid-cols-3" />)}
         </section>
 
         <div className="space-y-6">
-          <section className="bg-gray-50 rounded-lg shadow p-4 space-y-3">
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Défenseurs</h2>
+          <section className="bg-gray-50 rounded-lg shadow p-4 space-y-3 overflow-hidden">
+            <SectionTitle code={teamCode}>Défenseurs</SectionTitle>
             {['d1', 'd2', 'd3'].map(g => <Group key={g} groupId={g} rows={of(g)} owners={owners} cols="grid-cols-2" />)}
           </section>
-          <section className="bg-gray-50 rounded-lg shadow p-4 space-y-3">
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Gardiens</h2>
+          <section className="bg-gray-50 rounded-lg shadow p-4 space-y-3 overflow-hidden">
+            <SectionTitle code={teamCode}>Gardiens</SectionTitle>
             <div className="grid grid-cols-2 gap-2">
               {of('g').map(r => <PlayerCell key={`g-${r.slot}`} row={r} owners={owners} />)}
             </div>
           </section>
         </div>
 
-        <section className="bg-gray-50 rounded-lg shadow p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Avantage numérique</h2>
+        <section className="bg-gray-50 rounded-lg shadow p-4 space-y-3 overflow-hidden">
+          <SectionTitle code={teamCode}>Avantage numérique</SectionTitle>
           {['pp1', 'pp2'].map(g => <Group key={g} groupId={g} rows={of(g)} owners={owners} cols="grid-cols-2 sm:grid-cols-5" />)}
         </section>
 
-        <section className="bg-gray-50 rounded-lg shadow p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Désavantage numérique</h2>
+        <section className="bg-gray-50 rounded-lg shadow p-4 space-y-3 overflow-hidden">
+          <SectionTitle code={teamCode}>Désavantage numérique</SectionTitle>
           {['pk1', 'pk2'].map(g => <Group key={g} groupId={g} rows={of(g)} owners={owners} cols="grid-cols-2 sm:grid-cols-4" />)}
         </section>
 
         {of('ir').length > 0 && (
-          <section className="bg-gray-50 rounded-lg shadow p-4 space-y-3 lg:col-span-2">
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Blessés</h2>
+          <section className="bg-gray-50 rounded-lg shadow p-4 space-y-3 overflow-hidden lg:col-span-2">
+            <SectionTitle code={teamCode}>Blessés</SectionTitle>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
               {of('ir').map(r => <PlayerCell key={`ir-${r.slot}`} row={r} owners={owners} />)}
             </div>

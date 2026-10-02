@@ -40,6 +40,9 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Page `/analytique/trios` (menu Analytique → « Trios et paires ») : une équipe à la fois, en
   feuille de match, avec propriétaire ou « Disponible » par joueur. Fiche joueur : ligne
   « Utilisation : 1er trio avec X et Y · 1re unité d'avantage numérique » (`summarizePlayerUsage`).
+- Couleurs d'équipe (demande de David après validation de la disposition) : bandeau en dégradé,
+  titres de sections et liseré des cases aux couleurs de `lib/nhl-colors.ts`, même logique que
+  la page des contrats. Table remplie en staging : 32 équipes, 1 284 lignes, 1 non jumelé.
 - Aussi : **recherche de « Mes listes » qui clignotait** (`WatchlistPanel.tsx`) — une réponse
   d'une frappe précédente arrivant en retard remplaçait les résultats de la dernière ; chaque
   recherche porte maintenant un numéro et les réponses périmées sont ignorées.
