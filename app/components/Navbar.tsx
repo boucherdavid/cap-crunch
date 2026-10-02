@@ -230,10 +230,12 @@ function TreeGroup({ group, pathname, userName, expanded, onToggle, onNavigate, 
     <div>
       <button
         onClick={onToggle}
-        className={`w-full flex items-center justify-between px-3 py-2 rounded text-sm font-medium transition-colors ${
+        className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded text-sm font-medium text-left transition-colors ${
           active ? 'text-white' : 'text-pool-light hover:bg-pool-navy-light hover:text-white'
         }`}
       >
+        {/* text-left : un libellé long qui passe sur deux lignes (« Repêchage annuel des poolers »)
+            serait sinon centré comme tout texte de bouton, et paraîtrait en retrait. */}
         <span className="flex items-center gap-1.5">
           {group.label}
           {!!badge && badge > 0 && (
