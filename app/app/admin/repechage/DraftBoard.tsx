@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { submitDraftAction, rollbackPickAction, saveDraftProgressAction } from './actions'
 import RookieSelect from './RookieSelect'
 
@@ -79,6 +79,19 @@ export default function DraftBoard({
     // Le bandeau du tour (RookieTurnBanner) affiche la sélection à confirmer sans attendre.
     else window.dispatchEvent(new Event('rookie-draft-changed'))
   }
+
+  // Sélection faite dans le bandeau du tour (RookieTurnBanner, David 2026-10-02) : elle passe
+  // par le même chemin que celle du tableau, pour que les deux restent synchronisés. Sans tableau
+  // de dépendances : réabonné à chaque rendu, donc toujours le handlePickChange courant.
+  useEffect(() => {
+    if (readOnly) return
+    const handler = (e: Event) => {
+      const { pickId, playerId } = (e as CustomEvent<{ pickId: number; playerId: number | null }>).detail
+      handlePickChange(pickId, playerId)
+    }
+    window.addEventListener('rookie-pick-select', handler)
+    return () => window.removeEventListener('rookie-pick-select', handler)
+  })
 
   const handleRollback = async (pickId: number) => {
     if (!window.confirm('Annuler ce choix ? La recrue sera retirée de la banque et le pick redeviendra disponible.')) return

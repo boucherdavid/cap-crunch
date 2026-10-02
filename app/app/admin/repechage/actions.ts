@@ -269,6 +269,7 @@ export type RookieTurnState = {
   onTheClock: RookieOnTheClock | null
   timer: RookieTimer
   isDraftStarted: boolean
+  pendingPlayerIds: number[]  // recrues sélectionnées (pas encore officielles), tous choix confondus
 }
 
 /** Choix « à l'horloge » : le premier choix pas encore officiel (non utilisé), par ronde puis
@@ -315,6 +316,7 @@ export async function getRookieTurnStateAction(saisonId: number): Promise<Rookie
       seconds: saison?.rookie_draft_turn_seconds ?? DEFAULT_TURN_SECONDS,
     },
     isDraftStarted: rows.some(p => p.is_used || p.pending_player_id != null),
+    pendingPlayerIds: rows.filter(p => !p.is_used && p.pending_player_id != null).map(p => p.pending_player_id as number),
   }
 }
 

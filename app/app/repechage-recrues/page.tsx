@@ -193,6 +193,8 @@ export default async function RepechageRecruesPage({
           timer={turn.timer}
           adminSaisonId={isAdmin ? saison.id : undefined}
           myPoolerId={user?.id}
+          rookies={isAdmin ? (selectableRookies as never[]) : undefined}
+          initialPendingPlayerIds={turn.pendingPlayerIds}
         />
       )}
 

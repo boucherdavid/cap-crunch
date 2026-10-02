@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import YourTurnPrompt from '@/components/YourTurnPrompt'
+import RookieSelect, { type RookieOption } from '../admin/repechage/RookieSelect'
 import { formatClock, remainingSeconds, type RookieTimer } from '@/lib/draftTimers'
 import {
   adjustRookieTimerAction, pauseRookieTimerAction, resetRookieTimerAction,
@@ -20,6 +21,7 @@ export type OnTheClock = RookieOnTheClock
  */
 export default function RookieTurnBanner({
   onTheClock: initialOnTheClock, isMyTurn: initialIsMyTurn, showPrompt, timer: initialTimer, adminSaisonId, myPoolerId,
+  rookies, initialPendingPlayerIds,
 }: {
   onTheClock: OnTheClock | null
   isMyTurn: boolean
@@ -27,11 +29,17 @@ export default function RookieTurnBanner({
   timer: RookieTimer
   adminSaisonId?: number
   myPoolerId?: string
+  // Admin : recrues sélectionnables, pour choisir directement dans le bandeau (David, 2026-10-02
+  // — sans descendre dans le tableau, comme le panneau de signature des agents libres).
+  rookies?: RookieOption[]
+  initialPendingPlayerIds?: number[]
 }) {
   // Admin : le tableau garde ses sélections en état local et ne se recharge pas (voir
   // saveDraftProgressAction) — le bandeau relit donc lui-même le tour en cours toutes les 5 s, et
   // tout de suite quand le tableau signale une sélection enregistrée (`rookie-draft-changed`).
-  const [live, setLive] = useState<{ onTheClock: OnTheClock | null; timer: RookieTimer; isMyTurn: boolean } | null>(null)
+  const [live, setLive] = useState<{ onTheClock: OnTheClock | null; timer: RookieTimer; isMyTurn: boolean; pendingPlayerIds: number[] } | null>(null)
+  // Sélection tout juste faite dans le bandeau, affichée sans attendre la relecture du serveur.
+  const [optimistic, setOptimistic] = useState<{ pickId: number; playerId: number | null } | null>(null)
   useEffect(() => {
     if (adminSaisonId === undefined) return
     let cancelled = false
@@ -41,7 +49,9 @@ export default function RookieTurnBanner({
         onTheClock: st.onTheClock,
         timer: st.timer,
         isMyTurn: !!st.onTheClock && st.onTheClock.ownerId === myPoolerId,
+        pendingPlayerIds: st.pendingPlayerIds,
       })
+      setOptimistic(null)
     }).catch(() => {})
     const id = setInterval(load, 5000)
     window.addEventListener('rookie-draft-changed', load)
@@ -70,6 +80,13 @@ export default function RookieTurnBanner({
   }
 
   if (!onTheClock) return null
+  const selectedPlayerId = optimistic?.pickId === onTheClock.pickId ? optimistic.playerId : onTheClock.pendingPlayerId
+  const pendingIds = new Set(live ? live.pendingPlayerIds : initialPendingPlayerIds ?? [])
+  const selectRookie = (playerId: number | null) => {
+    setOptimistic({ pickId: onTheClock.pickId, playerId })
+    // Le tableau (DraftBoard) enregistre la sélection et met son propre affichage à jour.
+    window.dispatchEvent(new CustomEvent('rookie-pick-select', { detail: { pickId: onTheClock.pickId, playerId } }))
+  }
   const isPaused = timer.active && timer.startedAt === null
   const remaining = timer.active ? remainingSeconds(timer, now) : null
   const pickLabel = <>Ronde {onTheClock.round}{onTheClock.draftOrder != null && <>, choix {onTheClock.draftOrder}</>}</>
@@ -90,15 +107,25 @@ export default function RookieTurnBanner({
             {pickLabel}
             {onTheClock.pendingPlayerName && <> · Sélection à confirmer : <span className="font-semibold">{onTheClock.pendingPlayerName}</span></>}
           </p>
-          {/* Le tour ne change qu'à la confirmation par l'admin (David, 2026-10-02). */}
-          {adminSaisonId !== undefined && onTheClock.pendingPlayerName && (
-            <button
-              disabled={busy}
-              onClick={() => run(() => confirmRookiePickAction(adminSaisonId))}
-              className="mt-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg px-4 py-1.5 disabled:opacity-40"
-            >
-              ✓ Confirmer : {onTheClock.pendingPlayerName}{onTheClock.nextOwnerName ? ` → passer à ${onTheClock.nextOwnerName}` : ' (dernier choix)'}
-            </button>
+          {/* Admin : choisir la recrue ici, puis confirmer — le tour ne change qu'à la confirmation
+              (David, 2026-10-02). Le bouton attend que la sélection soit enregistrée côté serveur. */}
+          {adminSaisonId !== undefined && (
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
+              {rookies && (
+                <div className="w-80 max-w-full">
+                  <RookieSelect rookies={rookies} value={selectedPlayerId} excludeIds={pendingIds} onChange={selectRookie} />
+                </div>
+              )}
+              {onTheClock.pendingPlayerName && selectedPlayerId === onTheClock.pendingPlayerId && (
+                <button
+                  disabled={busy}
+                  onClick={() => run(() => confirmRookiePickAction(adminSaisonId))}
+                  className="text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg px-4 py-1.5 disabled:opacity-40"
+                >
+                  ✓ Confirmer : {onTheClock.pendingPlayerName}{onTheClock.nextOwnerName ? ` → passer à ${onTheClock.nextOwnerName}` : ' (dernier choix)'}
+                </button>
+              )}
+            </div>
           )}
           {actionError && <p className="mt-1 text-xs text-red-700">{actionError}</p>}
           {adminSaisonId !== undefined && (

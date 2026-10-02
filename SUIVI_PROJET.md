@@ -21,6 +21,19 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-02
 
+**[Feat] — Repêchage des recrues : sélecteur de recrue dans le bandeau du tour (admin)**
+(`app/app/repechage-recrues/RookieTurnBanner.tsx`, `page.tsx`, `app/app/admin/repechage/DraftBoard.tsx`,
+`actions.ts`) :
+- Demande de David : ne plus se promener dans la page — choisir la recrue près du chrono, comme
+  pour les agents libres. Le bandeau (collé en haut) porte un `RookieSelect` pour le choix en
+  cours, à côté du bouton « Confirmer » : un tour complet se fait sans descendre dans le tableau.
+- Une seule voie d'enregistrement : le bandeau émet `rookie-pick-select`, le tableau (DraftBoard)
+  l'applique par son `handlePickChange` habituel et émet `rookie-draft-changed` — les deux
+  affichages restent synchronisés. `getRookieTurnStateAction` renvoie `pendingPlayerIds` pour
+  exclure du sélecteur les recrues déjà sélectionnées ailleurs. Le bouton Confirmer n'apparaît
+  qu'une fois la sélection enregistrée côté serveur. Poolers : aucun changement.
+
+
 **[Feat] — Repêchage des recrues : confirmer le choix avant de passer au pooler suivant**
 (`app/app/admin/repechage/actions.ts`, `DraftBoard.tsx`, `app/app/repechage-recrues/RookieTurnBanner.tsx`) :
 - Retour de David après test du hub : entrer le nom de la recrue changeait tout de suite de
