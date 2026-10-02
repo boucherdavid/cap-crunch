@@ -76,6 +76,8 @@ export default function DraftBoard({
       return next
     })
     if (result.error) showMessage(result.error, 'error')
+    // Le bandeau du tour (RookieTurnBanner) affiche la sélection à confirmer sans attendre.
+    else window.dispatchEvent(new Event('rookie-draft-changed'))
   }
 
   const handleRollback = async (pickId: number) => {

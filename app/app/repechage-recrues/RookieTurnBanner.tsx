@@ -6,9 +6,10 @@ import { formatClock, remainingSeconds, type RookieTimer } from '@/lib/draftTime
 import {
   adjustRookieTimerAction, pauseRookieTimerAction, resetRookieTimerAction,
   resumeRookieTimerAction, startRookieTimerAction, stopRookieTimerAction, getRookieTurnStateAction,
+  confirmRookiePickAction, type RookieOnTheClock,
 } from '../admin/repechage/actions'
 
-export type OnTheClock = { pickId: number; round: number; draftOrder: number | null; ownerName: string }
+export type OnTheClock = RookieOnTheClock
 
 /**
  * Bandeau du tour du repêchage des recrues (David, 2026-10-02) — collé en haut de l'écran, sur
@@ -27,8 +28,9 @@ export default function RookieTurnBanner({
   adminSaisonId?: number
   myPoolerId?: string
 }) {
-  // Page admin : le tableau garde ses sélections en état local et ne se recharge pas (voir
-  // saveDraftProgressAction) — le bandeau relit donc lui-même le tour en cours toutes les 5 s.
+  // Admin : le tableau garde ses sélections en état local et ne se recharge pas (voir
+  // saveDraftProgressAction) — le bandeau relit donc lui-même le tour en cours toutes les 5 s, et
+  // tout de suite quand le tableau signale une sélection enregistrée (`rookie-draft-changed`).
   const [live, setLive] = useState<{ onTheClock: OnTheClock | null; timer: RookieTimer; isMyTurn: boolean } | null>(null)
   useEffect(() => {
     if (adminSaisonId === undefined) return
@@ -36,13 +38,14 @@ export default function RookieTurnBanner({
     const load = () => getRookieTurnStateAction(adminSaisonId).then(st => {
       if (cancelled) return
       setLive({
-        onTheClock: st.onTheClock && { pickId: st.onTheClock.pickId, round: st.onTheClock.round, draftOrder: st.onTheClock.draftOrder, ownerName: st.onTheClock.ownerName },
+        onTheClock: st.onTheClock,
         timer: st.timer,
         isMyTurn: !!st.onTheClock && st.onTheClock.ownerId === myPoolerId,
       })
     }).catch(() => {})
     const id = setInterval(load, 5000)
-    return () => { cancelled = true; clearInterval(id) }
+    window.addEventListener('rookie-draft-changed', load)
+    return () => { cancelled = true; clearInterval(id); window.removeEventListener('rookie-draft-changed', load) }
   }, [adminSaisonId, myPoolerId])
   const onTheClock = live ? live.onTheClock : initialOnTheClock
   const timer = live ? live.timer : initialTimer
@@ -56,9 +59,13 @@ export default function RookieTurnBanner({
   }, [timer.active, timer.startedAt])
 
   const [busy, setBusy] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
   const run = async (action: () => Promise<{ error?: string }>) => {
-    setBusy(true)
-    try { await action() } catch { /* l'état affiché reste celui d'avant, l'admin peut réessayer */ }
+    setBusy(true); setActionError(null)
+    try {
+      const result = await action()
+      if (result.error) { setActionError(result.error); setBusy(false); return }
+    } catch { /* l'état affiché reste celui d'avant ; le rechargement montre l'état réel */ }
     window.location.reload()
   }
 
@@ -79,7 +86,21 @@ export default function RookieTurnBanner({
           ) : (
             <p className="text-lg text-gray-700">Au tour de : <span className="font-bold text-blue-700">{onTheClock.ownerName}</span></p>
           )}
-          <p className={`text-xs mt-1 ${isMyTurn ? 'text-amber-900' : 'text-gray-400'}`}>{pickLabel}</p>
+          <p className={`text-xs mt-1 ${isMyTurn ? 'text-amber-900' : 'text-gray-400'}`}>
+            {pickLabel}
+            {onTheClock.pendingPlayerName && <> · Sélection à confirmer : <span className="font-semibold">{onTheClock.pendingPlayerName}</span></>}
+          </p>
+          {/* Le tour ne change qu'à la confirmation par l'admin (David, 2026-10-02). */}
+          {adminSaisonId !== undefined && onTheClock.pendingPlayerName && (
+            <button
+              disabled={busy}
+              onClick={() => run(() => confirmRookiePickAction(adminSaisonId))}
+              className="mt-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg px-4 py-1.5 disabled:opacity-40"
+            >
+              ✓ Confirmer : {onTheClock.pendingPlayerName}{onTheClock.nextOwnerName ? ` → passer à ${onTheClock.nextOwnerName}` : ' (dernier choix)'}
+            </button>
+          )}
+          {actionError && <p className="mt-1 text-xs text-red-700">{actionError}</p>}
           {adminSaisonId !== undefined && (
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               {!timer.active ? (

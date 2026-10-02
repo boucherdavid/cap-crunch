@@ -625,7 +625,9 @@ ci-dessous — la page publique `/planification` (vue pooler) n'est pas affecté
 (lecture seule) ET à l'admin (tableau modifiable, ordre, zone de test), comme
 `/repechage-agents-libres` ; `/admin/repechage` n'est plus qu'une redirection vers lui. Bouton
 « Démarrer le repêchage » + chrono indicatif (`RookieTurnBanner.tsx`, état sur
-`pool_seasons.rookie_draft_*`, notification push au pooler dont c'est le tour). Pas de
+`pool_seasons.rookie_draft_*`, notification push au pooler dont c'est le tour). Enregistrer une
+sélection ne change pas le tour : l'admin clique « Confirmer » (`confirmRookiePickAction`, le
+choix devient officiel) pour passer au pooler suivant. Pas de
 rechargement automatique pour l'admin. Durées des deux chronos de repêchage :
 `app_settings.rookie_draft_turn_seconds` / `presaison_turn_seconds` (120 s par défaut), réglées
 dans Configuration → Général (`app/lib/draftTimers.ts`).

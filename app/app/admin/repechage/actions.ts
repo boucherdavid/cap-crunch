@@ -104,6 +104,9 @@ export async function submitDraftAction(
     if (error) return { error: error.message }
   }
 
+  // Des choix viennent de devenir officiels : le tour passe au suivant (chrono, notification).
+  await restartRookieTimerIfActive(supabase, saisonId)
+
   revalidateDraftPages()
   return {}
 }
@@ -128,9 +131,6 @@ export async function saveDraftProgressAction(
       .eq('is_used', false)
     if (error) return { error: error.message }
   }
-
-  // Une sélection vient d'être enregistrée : le chrono repart pour le choix suivant.
-  if (selections.some(s => s.playerId != null)) await restartRookieTimerIfActive(supabase, saisonId)
 
   // Pas de revalidatePath ici (David, 2026-09-28) : dans une Server Action, toute revalidation
   // renvoie la page admin courante entièrement recalculée — à chaque sélection, en pleine
@@ -253,14 +253,28 @@ export async function resetRookieDraftAction(saisonId: number): Promise<{ error?
 // 00:00. `turn_started_at=null` pendant que le chrono est actif = en pause, `_turn_seconds`
 // tient alors les secondes restantes — même convention que presaison_draft_state.
 
+export type RookieOnTheClock = {
+  pickId: number
+  round: number
+  draftOrder: number | null
+  ownerId: string
+  ownerName: string
+  // Sélection enregistrée mais pas encore confirmée par l'admin (le tour ne change pas avant).
+  pendingPlayerId: number | null
+  pendingPlayerName: string | null
+  nextOwnerName: string | null  // pooler du choix suivant, pour le libellé « passer à X »
+}
+
 export type RookieTurnState = {
-  onTheClock: { pickId: number; round: number; draftOrder: number | null; ownerId: string; ownerName: string } | null
+  onTheClock: RookieOnTheClock | null
   timer: RookieTimer
   isDraftStarted: boolean
 }
 
-/** Choix « à l'horloge » : le premier choix sans sélection (ni utilisé ni en attente de
- * confirmation), par ronde puis ordre. Lisible par tout pooler connecté. */
+/** Choix « à l'horloge » : le premier choix pas encore officiel (non utilisé), par ronde puis
+ * ordre — qu'une sélection y soit enregistrée ou non. Le tour ne passe au suivant que lorsque
+ * l'admin confirme (David, 2026-10-02 : enregistrer le nom ne doit pas changer de pooler).
+ * Lisible par tout pooler connecté. */
 export async function getRookieTurnStateAction(saisonId: number): Promise<RookieTurnState> {
   const supabase = await createClient()
   const [{ data: saison }, { data: picks }] = await Promise.all([
@@ -271,18 +285,29 @@ export async function getRookieTurnStateAction(saisonId: number): Promise<Rookie
       .maybeSingle(),
     supabase
       .from('pool_draft_picks')
-      .select('id, round, draft_order, is_used, pending_player_id, current_owner:poolers!current_owner_id(id, name)')
+      .select('id, round, draft_order, is_used, pending_player_id, current_owner:poolers!current_owner_id(id, name), pending:players!pending_player_id(first_name, last_name)')
       .eq('pool_season_id', saisonId)
       .order('round')
       .order('draft_order')
       .order('id'),
   ])
-  type Row = { id: number; round: number; draft_order: number | null; is_used: boolean; pending_player_id: number | null; current_owner: { id: string; name: string } | null }
+  type Row = {
+    id: number; round: number; draft_order: number | null; is_used: boolean; pending_player_id: number | null
+    current_owner: { id: string; name: string } | null
+    pending: { first_name: string; last_name: string } | null
+  }
   const rows = (picks ?? []) as unknown as Row[]
-  const next = rows.find(p => !p.is_used && p.pending_player_id == null && p.current_owner) ?? null
+  const open = rows.filter(p => !p.is_used && p.current_owner)
+  const next = open[0] ?? null
   return {
     onTheClock: next
-      ? { pickId: next.id, round: next.round, draftOrder: next.draft_order, ownerId: next.current_owner!.id, ownerName: next.current_owner!.name }
+      ? {
+          pickId: next.id, round: next.round, draftOrder: next.draft_order,
+          ownerId: next.current_owner!.id, ownerName: next.current_owner!.name,
+          pendingPlayerId: next.pending_player_id,
+          pendingPlayerName: next.pending ? `${next.pending.first_name} ${next.pending.last_name}` : null,
+          nextOwnerName: open[1]?.current_owner?.name ?? null,
+        }
       : null,
     timer: {
       active: !!saison?.rookie_draft_timer_active,
@@ -325,8 +350,8 @@ function notifyOnTheClock(state: RookieTurnState) {
   })
 }
 
-/** Après l'enregistrement d'une sélection, si le repêchage est lancé : relance le chrono pour le
- * choix suivant et avertit son pooler (en pause : le chrono le reste, remis à la durée
+/** Après la confirmation d'un choix (ou une soumission), si le repêchage est lancé : relance le
+ * chrono pour le choix suivant et avertit son pooler (en pause : le chrono le reste, remis à la durée
  * complète) ; s'il ne reste aucun choix sans sélection, arrête le chrono. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function restartRookieTimerIfActive(supabase: any, saisonId: number) {
@@ -342,6 +367,22 @@ async function restartRookieTimerIfActive(supabase: any, saisonId: number) {
     rookie_draft_turn_seconds: rookie,
   }).eq('id', saisonId)
   notifyOnTheClock(state)
+}
+
+/** « Confirmer le choix » (David, 2026-10-02) : rend officielle la sélection enregistrée pour le
+ * choix à l'horloge — même opération que « Soumettre », pour ce seul choix — puis le tour passe
+ * au pooler suivant. Tant que l'admin n'a pas confirmé, la sélection peut encore être changée. */
+export async function confirmRookiePickAction(saisonId: number): Promise<{ error?: string }> {
+  const check = await requireAdminClient()
+  if ('error' in check) return check
+  const state = await getRookieTurnStateAction(saisonId)
+  const pick = state.onTheClock
+  if (!pick) return { error: 'Aucun choix en cours.' }
+  if (pick.pendingPlayerId == null) return { error: "Aucune recrue n'est sélectionnée pour ce choix." }
+  const { data: saison } = await check.supabase.from('pool_seasons').select('season').eq('id', saisonId).single()
+  if (!saison) return { error: 'Saison introuvable.' }
+  const poolDraftYear = parseInt(saison.season.split('-')[0], 10)
+  return submitDraftAction(saisonId, poolDraftYear, [{ pick_id: pick.pickId, player_id: pick.pendingPlayerId }])
 }
 
 /** « Démarrer le repêchage » : lance le chrono du choix en cours et avertit son pooler. */

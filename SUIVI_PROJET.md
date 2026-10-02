@@ -21,6 +21,22 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-02
 
+**[Feat] — Repêchage des recrues : confirmer le choix avant de passer au pooler suivant**
+(`app/app/admin/repechage/actions.ts`, `DraftBoard.tsx`, `app/app/repechage-recrues/RookieTurnBanner.tsx`) :
+- Retour de David après test du hub : entrer le nom de la recrue changeait tout de suite de
+  pooler. Voulu : la sélection se sauvegarde, mais le tour ne passe qu'après confirmation.
+- Le choix « à l'horloge » redevient le premier choix **pas encore officiel** (`is_used=false`),
+  qu'une sélection y soit enregistrée ou non. Bouton vert « ✓ Confirmer : joueur → passer à X »
+  dans le bandeau (admin, dès qu'une sélection est enregistrée) : `confirmRookiePickAction` =
+  `submitDraftAction` pour ce seul choix — la recrue entre dans la banque tout de suite (les
+  listes « Déjà pris » des poolers se mettent à jour en direct), le chrono repart et le pooler
+  suivant est notifié. Aucune migration.
+- Chrono et notification déplacés de l'enregistrement vers la soumission (bouton Confirmer ou
+  « Soumettre » du bas du tableau, gardé comme filet). Le bandeau montre à tous « Sélection à
+  confirmer : X ». Le tableau signale une sélection enregistrée au bandeau (événement
+  `rookie-draft-changed`) pour que le bouton apparaisse sans délai.
+
+
 **[Feat] — Hub du repêchage des recrues, départ, chrono paramétrable** (`app/app/repechage-recrues/page.tsx`,
 `RookieTurnBanner.tsx`, `app/app/admin/repechage/actions.ts`, `app/app/admin/repechage/page.tsx`,
 `app/lib/draftTimers.ts`, `app/app/admin/config/DraftTimerSettingsForm.tsx`,
