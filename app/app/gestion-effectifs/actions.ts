@@ -206,18 +206,21 @@ export async function searchPlayersAction(
   // complétion) — jamais signables via la recherche normale, seulement via le bouton
   // "Ballotage" pré-rempli du gagnant (David, 2026-09-21). Filtre côté recherche pour l'UX ;
   // addNewPlayer revalide de toute façon au moment de la soumission.
-  const { data: lockedClaims } = await db.from('waiver_claims').select('player_id')
-    .eq('pool_season_id', saisonId).in('status', ['open', 'awarded'])
-  const lockedIds = (lockedClaims ?? []).map(c => c.player_id)
-
-  let q = supabase
-    .from('players')
-    .select('id, first_name, last_name, position, nhl_id, teams (code), player_contracts (season, cap_number, contract_status)')
-    .or(`last_name.ilike.%${query}%,first_name.ilike.%${query}%`)
-    .eq('is_available', true)
-  if (lockedIds.length > 0) q = q.not('id', 'in', `(${lockedIds.join(',')})`)
-  const { data } = await q.order('last_name').limit(20)
-  return (data ?? []).map((p: any) => ({
+  // Les deux requêtes partent ensemble (David, 2026-10-02) ; les joueurs au ballotage sont
+  // retirés ensuite, d'où quelques résultats de plus demandés que les 20 affichés.
+  const [{ data: lockedClaims }, { data }] = await Promise.all([
+    db.from('waiver_claims').select('player_id').eq('pool_season_id', saisonId).in('status', ['open', 'awarded']),
+    supabase
+      .from('players')
+      .select('id, first_name, last_name, position, nhl_id, teams (code), player_contracts (season, cap_number, contract_status)')
+      .or(`last_name.ilike.%${query}%,first_name.ilike.%${query}%`)
+      .eq('is_available', true)
+      .order('last_name')
+      .order('id')
+      .limit(40),
+  ])
+  const lockedIds = new Set((lockedClaims ?? []).map(c => c.player_id))
+  return (data ?? []).filter(p => !lockedIds.has(p.id)).slice(0, 20).map((p: any) => ({
     id: p.id,
     firstName: p.first_name,
     lastName: p.last_name,

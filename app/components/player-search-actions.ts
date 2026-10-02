@@ -69,11 +69,17 @@ export async function searchPlayersGlobalAction(query: string): Promise<PlayerSe
   // Le RPC cherche UN terme dans le prénom ou le nom : on lui passe le mot le plus long, puis on
   // exige tous les mots dans le nom complet (« connor mcdavid », « mcdavid connor »).
   const longest = [...tokens].sort((a, b) => b.length - a.length)[0]
-  const { data } = await supabase
-    .rpc('search_players_unaccent', { search_term: longest })
-    .select('id, nhl_id, first_name, last_name, position, team_id')
-    .order('id')
-    .limit(300)
+  // Requêtes indépendantes lancées ensemble plutôt qu'une après l'autre (David, 2026-10-02 —
+  // même accélération que la recherche de « Mes listes »).
+  const [{ data }, season, { data: teams }] = await Promise.all([
+    supabase
+      .rpc('search_players_unaccent', { search_term: longest })
+      .select('id, nhl_id, first_name, last_name, position, team_id')
+      .order('id')
+      .limit(300),
+    fetchActiveSeason(supabase),
+    supabase.from('teams').select('id, code'),
+  ])
 
   const matches = ((data ?? []) as PlayerRow[])
     .filter(p => {
@@ -91,18 +97,14 @@ export async function searchPlayersGlobalAction(query: string): Promise<PlayerSe
   if (matches.length === 0) return []
 
   const ids = matches.map(p => p.id)
-  const season = await fetchActiveSeason(supabase)
-  const [{ data: teams }, { data: rosters }] = await Promise.all([
-    supabase.from('teams').select('id, code'),
-    season
-      ? supabase
-          .from('pooler_rosters')
-          .select('player_id, poolers (name)')
-          .eq('pool_season_id', season.id)
-          .eq('is_active', true)
-          .in('player_id', ids)
-      : Promise.resolve({ data: [] }),
-  ])
+  const { data: rosters } = season
+    ? await supabase
+        .from('pooler_rosters')
+        .select('player_id, poolers (name)')
+        .eq('pool_season_id', season.id)
+        .eq('is_active', true)
+        .in('player_id', ids)
+    : { data: [] }
   const teamCode = new Map((teams ?? []).map(t => [t.id, t.code as string]))
   const ownerName = new Map<number, string>()
   for (const r of (rosters ?? []) as unknown as { player_id: number; poolers: { name: string } | null }[]) {

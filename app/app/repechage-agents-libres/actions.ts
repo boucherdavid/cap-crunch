@@ -285,16 +285,15 @@ export async function searchSandboxFreeAgentsAction(
 ): Promise<{ players: SandboxFreeAgentResult[]; truncated: boolean }> {
   const supabase = await createClient()
 
-  const { data: saison } = await supabase.from('pool_seasons').select('season').eq('id', saisonId).single()
+  // Requêtes indépendantes lancées ensemble plutôt qu'une après l'autre (David, 2026-10-02 —
+  // même accélération que la recherche de « Mes listes »).
+  const [{ data: saison }, { data: onRoster }] = await Promise.all([
+    supabase.from('pool_seasons').select('season').eq('id', saisonId).single(),
+    supabase.from('pooler_rosters').select('player_id').eq('pool_season_id', saisonId).eq('is_active', true),
+  ])
   if (!saison) return { players: [], truncated: false }
 
   const q = (opts.query ?? '').trim()
-
-  const { data: onRoster } = await supabase
-    .from('pooler_rosters')
-    .select('player_id')
-    .eq('pool_season_id', saisonId)
-    .eq('is_active', true)
   const takenIds = (onRoster ?? []).map(r => r.player_id)
 
   // player_contracts!inner + filtre de saison toujours actif (David, 2026-09-10) — un joueur

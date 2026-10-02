@@ -21,6 +21,19 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-02
 
+**[Perf] — Recherches de joueurs : requêtes en parallèle partout** (`app/app/simulation/actions.ts`,
+`app/app/repechage-agents-libres/actions.ts`, `app/app/gestion-effectifs/actions.ts`,
+`app/components/player-search-actions.ts`) :
+- Suite de l'accélération de la recherche des listes, validée par David (« beaucoup mieux ») :
+  mêmes regroupements `Promise.all` pour `/simulation` (utilisateur + saison + alignements),
+  la Simulation du hub (saison + alignements), Gestion d'effectifs (ballotages + joueurs, filtre
+  des joueurs au ballotage fait ensuite en mémoire) et la recherche globale (RPC + saison +
+  équipes). La boîte de signature admin (`searchFreeAgentsAction`) l'était déjà. Résultats
+  inchangés.
+- Trios : la disponibilité reste affichée (David : « mon erreur » — les joueurs vus comme
+  disponibles le sont bien dans les données de test de staging).
+
+
 **[Feat] — « Mes listes » : durée du contrat à côté du salaire** (`app/app/listes/actions.ts`,
 `app/components/WatchlistPanel.tsx`) :
 - Demande de David : repérer les joueurs signés pour plus d'un an. Affichage « 2.50 M$ · 2 ans »

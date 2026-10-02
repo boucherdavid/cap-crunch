@@ -36,19 +36,17 @@ export async function searchSimulationPlayersAction(
   opts: { query?: string; position?: 'forward' | 'defense' | 'goalie'; maxSalary?: number; elcOnly?: boolean; teamCode?: string },
 ): Promise<{ players: SimulationPlayerResult[]; truncated: boolean }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // Requêtes indépendantes lancées ensemble plutôt qu'une après l'autre (David, 2026-10-02 —
+  // même accélération que la recherche de « Mes listes »).
+  const [{ data: { user } }, { data: saison }, { data: onRoster }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.from('pool_seasons').select('season').eq('id', saisonId).single(),
+    supabase.from('pooler_rosters').select('player_id, pooler_id, poolers(name)').eq('pool_season_id', saisonId).eq('is_active', true),
+  ])
   if (!user) return { players: [], truncated: false }
-
-  const { data: saison } = await supabase.from('pool_seasons').select('season').eq('id', saisonId).single()
   if (!saison) return { players: [], truncated: false }
 
   const q = (opts.query ?? '').trim()
-
-  const { data: onRoster } = await supabase
-    .from('pooler_rosters')
-    .select('player_id, pooler_id, poolers(name)')
-    .eq('pool_season_id', saisonId)
-    .eq('is_active', true)
   const ownerByPlayer = new Map<number, string>()
   const ownIds = new Set<number>()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
