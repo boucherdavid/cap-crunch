@@ -21,6 +21,26 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-02
 
+**[Feat] — Charger un scénario de simulation dans le hub des agents libres ; recherches qui
+clignotaient** (`app/app/repechage-agents-libres/actions.ts`, `AgentsLibresDashboard.tsx`,
+`app/app/simulation/SimPanel.tsx`, `app/app/gestion-effectifs/GestionEffectifsManager.tsx`,
+`app/app/admin/presaison/FreeAgentSigner.tsx`) :
+- **Scénarios** (demande de David) : menu « Charger un scénario sauvegardé… » en haut de l'onglet
+  Simulation de « Mon alignement ». `loadScenarioForSandboxAction` reprend d'un scénario de
+  `/simulation` les retraits, les agents libres ajoutés et les recrues de banque ajoutées (les
+  deux outils utilisent des `player_id`). Écarts gérés : agent libre signé entre-temps par un
+  pooler → écarté et nommé dans un message ; joueur « retiré » qu'on n'a plus → ignoré ; statuts
+  réserviste/LTIR du scénario → non repris (la Simulation du hub compte tout ajout comme actif),
+  signalé. Rien n'est signé ni libéré : la simulation reste locale.
+- **Recherches** (David : la boîte de recherche de `/simulation` se comportait comme celle des
+  listes) : même défaut à quatre endroits — `/simulation`, Simulation du hub, recherche d'agent
+  libre de Gestion d'effectifs, boîte de signature de l'admin. Une réponse d'une frappe précédente
+  arrivant en retard remplaçait les résultats de la dernière. Numéro de séquence par recherche,
+  réponses périmées ignorées ; ligne « Recherche… » à hauteur fixe.
+- Stats de trios MoneyPuck importées en staging (2020-21 à 2026-27) ; migration `line_stats.sql`
+  exécutée par David en staging et en prod.
+
+
 **[Feat] — Performance des trios et paires (MoneyPuck) — migration à exécuter** (`python_script/import_advanced_stats.py`,
 `supabase_migrations/line_stats.sql`, `app/app/analytique/trios/page.tsx`) :
 - Étape 2 des trios (David : « ça ne touche pas aux outils, le risque est faible »). L'étape 1

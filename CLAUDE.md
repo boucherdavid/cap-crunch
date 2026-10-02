@@ -468,6 +468,11 @@ recrue est déjà signée — son `cap_number` est réellement déduit dans la s
 indicatif) ; reste une simulation, pas soumissible (l'activation réelle passe par "Activer ou
 libérer une recrue" dans l'onglet Actuel).
 
+**Charger un scénario de `/simulation` dans la Simulation du hub (David, 2026-10-02)** — menu en
+haut de l'onglet Simulation (`loadScenarioForSandboxAction`) : reprend les retraits, agents libres
+ajoutés et recrues ajoutées d'un scénario sauvegardé ; les statuts réserviste/LTIR ne sont pas
+repris, un joueur devenu indisponible est écarté et signalé. Reste une simulation, rien n'est écrit.
+
 **LTIR et recrues de banque dans `/repechage-agents-libres` (David, 2026-09-28)** — l'alignement
 déplié de chaque pooler montre sa banque (`PoolerCapInfo.bank`) et les blessures
 (`RosterEntry.injury`) ; l'admin peut y activer une recrue, mettre un actif **admissible** sur

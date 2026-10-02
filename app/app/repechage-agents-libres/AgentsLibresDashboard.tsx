@@ -7,7 +7,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import AutoReload from '@/components/AutoReload'
 import WatchlistPanel from '@/components/WatchlistPanel'
 import { submitTransactionAction } from '../admin/transactions/actions'
-import { submitSelfServiceAction, loadOwnRecrueBankAction, setReadyAction, leaveDraftQueueAction, searchSandboxFreeAgentsAction, listTeamsAction, type SandboxFreeAgentResult } from './actions'
+import { submitSelfServiceAction, loadOwnRecrueBankAction, setReadyAction, leaveDraftQueueAction, searchSandboxFreeAgentsAction, listTeamsAction, loadScenarioForSandboxAction, type SandboxFreeAgentResult } from './actions'
+import { listScenariosAction } from '../simulation/actions'
 import AdminPanel from './AdminPanel'
 import TourEnCoursPanel from './TourEnCoursPanel'
 import InjuryBadge from '@/components/InjuryBadge'
@@ -853,11 +854,37 @@ function MonAlignement({
   const [filterTeam, setFilterTeam] = useState('')
   const [teams, setTeams] = useState<{ code: string; name: string }[]>([])
   const [selectedSandboxRecrueId, setSelectedSandboxRecrueId] = useState('')
+  // Scénarios sauvegardés dans /simulation, chargeables ici (David, 2026-10-02).
+  const [scenarios, setScenarios] = useState<{ id: number; name: string }[]>([])
+  const [scenarioBusy, setScenarioBusy] = useState(false)
+  const [scenarioMsg, setScenarioMsg] = useState<{ text: string; error: boolean } | null>(null)
 
   useEffect(() => {
     if (seasonStarted) return
     listTeamsAction().then(res => setTeams(res.teams))
-  }, [seasonStarted])
+    listScenariosAction(saisonId).then(res => setScenarios(res.scenarios))
+  }, [seasonStarted, saisonId])
+
+  const handleLoadScenario = async (scenarioId: number) => {
+    if (!scenarioId) return
+    setScenarioBusy(true); setScenarioMsg(null)
+    const res = await loadScenarioForSandboxAction(saisonId, scenarioId)
+    setScenarioBusy(false)
+    if (res.error || !res.scenario) { setScenarioMsg({ text: res.error ?? 'Erreur de chargement.', error: true }); return }
+    const sc = res.scenario
+    // Seuls les joueurs encore dans mon alignement peuvent être « retirés ».
+    const myIds = new Set((myPooler?.roster ?? []).map(e => e.player_id))
+    setRemoved(new Set(sc.removed.filter(id => myIds.has(id))))
+    setAdded(sc.added)
+    setAddedRecrueIds(new Set(sc.addedRecrueIds))
+    setQuery(''); setResults([])
+    const notes = ['Scénario chargé dans la simulation — rien n\'est signé ni libéré.']
+    if (sc.unavailable.length > 0) {
+      notes.push(`${sc.unavailable.length > 1 ? 'Joueurs qui ne sont plus disponibles' : 'Joueur qui n\'est plus disponible'} : ${sc.unavailable.join(', ')}.`)
+    }
+    if (sc.hadStatusChoices) notes.push('Les statuts choisis dans le scénario (réserviste, LTIR) ne sont pas repris ici : tout joueur ajouté compte comme actif.')
+    setScenarioMsg({ text: notes.join(' '), error: false })
+  }
 
   // Libre-service (ménage pré-saison) — actions réelles, distinctes du bac à sable ci-dessous.
   const [busy, setBusy] = useState(false)
@@ -1115,7 +1142,7 @@ function MonAlignement({
       return next
     })
   }
-  const resetSandbox = () => { setRemoved(new Set()); setAdded([]); setAddedRecrueIds(new Set()); setQuery(''); setResults([]); setSelectedSandboxRecrueId('') }
+  const resetSandbox = () => { setRemoved(new Set()); setAdded([]); setAddedRecrueIds(new Set()); setQuery(''); setResults([]); setSelectedSandboxRecrueId(''); setScenarioMsg(null) }
 
   // Soumettre pour vrai les retraits testés dans le bac à sable (David, 2026-09-08) — même
   // action_type 'release' que le flux de l'onglet Actuel, donc soumis au même garde-fou
@@ -1445,6 +1472,23 @@ function MonAlignement({
         ) : (
           <>
             <p className="text-xs text-gray-400 mb-3">Ajoute ou retire librement pour tester. Rien n&apos;est sauvegardé automatiquement — un retrait peut être soumis pour vrai ci-dessous, un ajout reste toujours une simulation.</p>
+            {scenarios.length > 0 && (
+              <div className="mb-3">
+                <select
+                  value=""
+                  disabled={scenarioBusy}
+                  onChange={e => handleLoadScenario(Number(e.target.value))}
+                  aria-label="Charger un scénario de simulation"
+                  className="w-full border rounded-lg px-2 py-1.5 text-xs text-gray-700 bg-white disabled:opacity-50"
+                >
+                  <option value="">{scenarioBusy ? 'Chargement…' : 'Charger un scénario sauvegardé…'}</option>
+                  {scenarios.map(sc => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
+                </select>
+                {scenarioMsg && (
+                  <p className={`mt-1.5 text-xs ${scenarioMsg.error ? 'text-red-600' : 'text-gray-500'}`}>{scenarioMsg.text}</p>
+                )}
+              </div>
+            )}
             <div className="space-y-2 mb-2">
               {groupRosterByPosition(myPooler.roster).map(group => (
                 <div key={group.label} className={`border-l-2 pl-2 ${groupAccent(group.label).border}`}>

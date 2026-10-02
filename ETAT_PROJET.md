@@ -22,7 +22,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : performance des trios et paires (MoneyPuck) — migration `line_stats.sql` à exécuter, puis à valider |
+| `staging` | En avance sur `main` : performance des trios (MoneyPuck), chargement d'un scénario dans le hub des agents libres, correctif de quatre recherches qui clignotaient — à valider |
 | `main` (prod) | À jour — fusion du 2026-10-02 (`f1700d8`) : trios et paires actuels (Daily Faceoff, table remplie en prod), correctif de la recherche de « Mes listes », hub du repêchage des recrues et chronos |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
@@ -62,10 +62,12 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **Performance des trios (MoneyPuck)** : codé, en staging. À faire : David exécute
-  `supabase_migrations/line_stats.sql` (staging, puis prod) → Claude importe en staging
-  (`import_advanced_stats.py --seasons 2024 2025 2026`) → valider le bas de `/analytique/trios`
-  → fusion sur `main` et import en prod par le workflow `advanced_stats.yml`.
+- **En staging, à valider par David** : (1) bas de `/analytique/trios` (combinaisons les plus
+  utilisées, MoneyPuck — données importées en staging, migration faite partout) ; (2) « Charger
+  un scénario sauvegardé… » dans l'onglet Simulation du hub des agents libres ; (3) recherches
+  de joueurs qui ne clignotent plus (`/simulation`, hub, gestion d'effectifs, signature admin).
+  Après validation : fusion sur `main`, puis `advanced_stats.yml` avec
+  `seasons = 2020 2021 2022 2023 2024 2025 2026` pour importer les trios en prod.
 
 - **Pool le 2026-10-03.** Tout est en prod. Avant de commencer : régler au besoin les durées des
   chronos (Configuration → Général, 120 s par défaut), puis hub `/repechage-recrues` →

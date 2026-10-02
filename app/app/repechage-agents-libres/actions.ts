@@ -1,5 +1,6 @@
 'use server'
 
+import { loadScenarioAction } from '../simulation/actions'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
@@ -380,4 +381,55 @@ export async function listTeamsAction(): Promise<{ teams: { code: string; name: 
   const supabase = await createClient()
   const { data } = await supabase.from('teams').select('code, name').order('code')
   return { teams: data ?? [] }
+}
+
+// ─── Charger un scénario de /simulation dans la Simulation du hub (David, 2026-10-02) ───
+// Le scénario reste une simulation : rien n'est signé ni libéré. On en reprend les retraits, les
+// agents libres ajoutés et les recrues de banque ajoutées ; les statuts choisis dans /simulation
+// (réserviste, LTIR) ne sont pas repris, la Simulation du hub ne les gérant pas. Un joueur ajouté
+// qui appartient maintenant à un pooler est écarté et signalé.
+
+export type SandboxScenario = {
+  removed: number[]
+  added: { id: number; first_name: string; last_name: string; position: string | null; cap_number: number }[]
+  addedRecrueIds: number[]
+  unavailable: string[]      // noms des joueurs du scénario qui ne sont plus disponibles
+  hadStatusChoices: boolean  // le scénario contenait des statuts non repris ici
+}
+
+export async function loadScenarioForSandboxAction(
+  saisonId: number,
+  scenarioId: number,
+): Promise<{ error?: string; scenario?: SandboxScenario }> {
+  // loadScenarioAction vérifie que le scénario appartient à l'utilisateur connecté.
+  const res = await loadScenarioAction(scenarioId)
+  if (res.error || !res.data) return { error: res.error ?? 'Scénario introuvable.' }
+  const data = res.data
+
+  const supabase = await createClient()
+  const addedIds = data.added.map(a => a.id)
+  const { data: taken } = addedIds.length
+    ? await supabase
+        .from('pooler_rosters')
+        .select('player_id')
+        .eq('pool_season_id', saisonId)
+        .eq('is_active', true)
+        .in('player_id', addedIds)
+    : { data: [] }
+  const takenIds = new Set((taken ?? []).map(t => t.player_id as number))
+
+  const overrides = data.currentTypeOverrides ?? []
+  return {
+    scenario: {
+      removed: data.removed,
+      added: data.added
+        .filter(a => !takenIds.has(a.id))
+        .map(a => ({ id: a.id, first_name: a.first_name, last_name: a.last_name, position: a.position, cap_number: a.cap_number })),
+      addedRecrueIds: data.addedRecrues.map(r => r.id),
+      unavailable: data.added.filter(a => takenIds.has(a.id)).map(a => `${a.first_name} ${a.last_name}`),
+      hadStatusChoices: overrides.length > 0
+        || data.added.some(a => a.playerType !== 'actif')
+        || data.addedRecrues.some(r => r.playerType !== 'actif'),
+    },
+  }
 }
