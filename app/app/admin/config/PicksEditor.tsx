@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { updatePickOwnerAction } from './actions'
 
 export type Pick = {
@@ -34,10 +35,17 @@ export default function PicksEditor({
   poolers: Pooler[]
   seasonLabel: string
 }) {
+  const router = useRouter()
   const [localPicks, setLocalPicks] = useState<Pick[]>(picks)
+  // Resynchronise avec la base à chaque nouveau rendu serveur (après router.refresh(), ou un
+  // changement fait ailleurs : transaction, échange) — avant, la liste initiale restait figée.
+  const [syncedPicks, setSyncedPicks] = useState<Pick[]>(picks)
+  if (picks !== syncedPicks) {
+    setSyncedPicks(picks)
+    setLocalPicks(picks)
+  }
   const [saving, setSaving] = useState<number | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [, startTransition] = useTransition()
 
   const handleChange = async (pickId: number, newOwnerId: string) => {
     setSaving(pickId)
@@ -55,7 +63,7 @@ export default function PicksEditor({
             : p,
         ),
       )
-      startTransition(() => {})
+      router.refresh()
     }
   }
 

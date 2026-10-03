@@ -21,6 +21,13 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-03
 
+**[Fix] — Résumé des choix de repêchage figé** (`app/app/admin/config/PicksEditor.tsx`,
+`app/app/admin/config/actions.ts`) : le tableau de `/admin/init?tab=choix` gardait la liste
+chargée à l'ouverture (jamais relue) ; il se resynchronise maintenant avec la base après chaque
+sauvegarde (`router.refresh()`) et à chaque nouveau rendu serveur. `updatePickOwnerAction`
+vérifie aussi qu'une ligne a bien été modifiée (`.select('id')`) — une mise à jour bloquée par
+RLS ne renvoyait aucune erreur — et revalide `/admin/init`.
+
 **[Chore] — Fusion staging → main** après le pool : échanges en pré-saison, indicateur « à faire »,
 liens de courriel absolus en prod (`2667d2f`).
 

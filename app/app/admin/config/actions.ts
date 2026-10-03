@@ -508,13 +508,18 @@ export async function updatePickOwnerAction(
   const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
   if (!me?.is_admin) return { error: 'Accès refusé.' }
 
-  const { error } = await supabase
+  // `.select()` : une mise à jour bloquée par RLS ne renvoie aucune erreur, seulement 0 ligne —
+  // sans cette vérification, l'écran affichait le changement alors que rien n'était enregistré.
+  const { data: updated, error } = await supabase
     .from('pool_draft_picks')
     .update({ current_owner_id: newOwnerId })
     .eq('id', pickId)
+    .select('id')
 
   if (error) return { error: error.message }
+  if (!updated || updated.length === 0) return { error: "Le choix n'a pas été modifié : aucune ligne mise à jour." }
 
+  revalidatePath('/admin/init')
   revalidatePath('/admin/config')
   revalidatePath('/poolers')
   revalidatePath('/repechage')
