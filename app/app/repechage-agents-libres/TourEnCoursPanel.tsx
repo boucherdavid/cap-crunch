@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import FreeAgentSigner from '../admin/presaison/FreeAgentSigner'
 import {
   advancePresaisonQueueAction, endPresaisonDraftAction,
@@ -34,16 +35,24 @@ export default function TourEnCoursPanel({
     ? Math.max(0, draftState.turn_duration_seconds - Math.floor((now - new Date(draftState.turn_started_at).getTime()) / 1000))
     : isPaused ? draftState.turn_duration_seconds : null
 
+  // Un seul avancement par tour : bouton désactivé pendant le traitement, et le serveur ne fait
+  // tourner la file que si c'est encore le tour de `currentPoolerId` (voir
+  // advancePresaisonQueueAction) — un double clic décalait toute la file (David, 2026-10-03).
+  const [advancing, setAdvancing] = useState(false)
   const handlePass = async () => {
+    if (advancing || !currentPoolerId) return
+    setAdvancing(true)
     try {
-      await advancePresaisonQueueAction(saisonId, true)
+      await advancePresaisonQueueAction(saisonId, true, currentPoolerId)
       window.location.reload()
-    } catch { /* le tour reste affiché tel quel, l'admin peut réessayer */ }
+    } catch { setAdvancing(false) /* le tour reste affiché tel quel, l'admin peut réessayer */ }
   }
   // isPass=false : une signature va toujours en fin de file.
   const handleSignAdvance = async () => {
+    if (advancing || !currentPoolerId) return
+    setAdvancing(true)
     try {
-      await advancePresaisonQueueAction(saisonId, false)
+      await advancePresaisonQueueAction(saisonId, false, currentPoolerId)
     } catch { /* la signature a déjà eu lieu ; on recharge quand même pour refléter l'état réel */ }
     window.location.reload()
   }
@@ -114,8 +123,8 @@ export default function TourEnCoursPanel({
       />
 
       <div className="border-t pt-3 mt-3">
-        <button onClick={handlePass} className="text-sm text-gray-500 hover:text-gray-700 border rounded-lg px-4 py-2 hover:bg-gray-50">
-          Passer{nextPoolerName ? ` → ${nextPoolerName}` : ''}
+        <button onClick={handlePass} disabled={advancing} className="text-sm text-gray-500 hover:text-gray-700 border rounded-lg px-4 py-2 hover:bg-gray-50 disabled:opacity-50">
+          {advancing ? 'Un instant…' : `Passer${nextPoolerName ? ` → ${nextPoolerName}` : ''}`}
         </button>
       </div>
     </div>
