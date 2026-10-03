@@ -63,8 +63,8 @@ desktop.
 ### ▶ Prochaine session — commencer ici
 
 - **Lag du repêchage** (2026-10-03, en prod sans validation staging) : rechargements des poolers réduits et étalés.
-  À valider au prochain repêchage avec plusieurs poolers connectés ; reste à vérifier que la
-  région Vercel = région Supabase (Supabase → Project Settings → General → Region).
+  À valider au prochain repêchage avec plusieurs poolers connectés. Fonctions Vercel déplacées
+  en Oregon (`pdx1`, `app/vercel.json`), à côté de la base prod (`us-west-2`) — vérifié en prod.
 - **Résumé des choix de repêchage** (`/admin/init?tab=choix`, en prod sans validation staging) : se resynchronise
   après chaque changement — à valider.
 - **Marché des échanges** : en prod (2026-10-03). Suite possible : sauvegarder une proposition
