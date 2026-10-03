@@ -22,7 +22,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : échanges entre poolers ouverts avant le début de saison — à valider après le pool |
+| `staging` | En avance sur `main`, **validé par David** : échanges en pré-saison, indicateur « à faire » du pooler, liens cliquables dans les courriels — **à fusionner après le pool du 2026-10-03** |
 | `main` (prod) | À jour — fusion du 2026-10-02 : Gestion d'effectifs (colonne « Alignement » dans les trois onglets, aperçu d'un échange en direct, import d'un scénario), trios et paires, recherches accélérées, hub du repêchage des recrues et chronos |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
@@ -62,11 +62,23 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **En staging, à valider** : échanges en pré-saison (validé par David), indicateur « à faire »
-  du pooler (pastilles échanges/ballotage), liens cliquables dans les courriels (à vérifier avec
-  un vrai courriel). Ne rien fusionner avant la fin du pool du 2026-10-03.
-- **À faire ensuite (approuvé)** : Marché des échanges (migration SQL), puis « Je cherche ».
-  Suite possible : sauvegarder une proposition comme scénario.
+- **Fusion en attente** : `staging` validé par David (échanges en pré-saison, indicateur « à faire »,
+  liens de courriel absolus). Fusionner sur `main` une fois le pool du 2026-10-03 terminé, puis
+  vérifier un vrai courriel en prod (lien cliquable).
+- **Prochaine session — Marché des échanges** (plan approuvé par David le 2026-10-03) :
+  - page « Marché des échanges » dans le menu « Le pool » ; chaque pooler y met ses joueurs
+    (actif, réserviste, recrue) **et ses choix de repêchage**, avec une note facultative et une
+    **date d'expiration choisie par lui** ; retrait à la main ou automatique (joueur échangé ou
+    libéré, date passée) ;
+  - bouton « Faire une offre » → onglet Échanges pré-rempli (pooler sélectionné, élément coché dans
+    « Tu reçois ») — fonctionne aussi en pré-saison ;
+  - **notification push** à tous les poolers à chaque mise en marché ; encadré « Sur le marché »
+    sur l'accueil (derniers éléments) ;
+  - puis **« Je cherche »** : publication d'un besoin sans joueur précis (même expiration, même
+    notification), avec « Faire une offre » vers ce pooler ;
+  - migration SQL requise (une table pour les éléments offerts, une pour les demandes) ;
+    entrées dans `/aide` et `/a-propos`.
+  Suite possible ailleurs : sauvegarder une proposition d'échange comme scénario de simulation.
 
 - **Pool le 2026-10-03.** Tout est en prod. Avant de commencer : régler au besoin les durées des
   chronos (Configuration → Général, 120 s par défaut), puis hub `/repechage-recrues` →

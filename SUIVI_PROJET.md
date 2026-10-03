@@ -21,6 +21,12 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-03
 
+**[Clôture de session]** : échanges en pré-saison, indicateur « à faire » du pooler et liens de
+courriel absolus **validés par David en staging** ; fusion sur `main` reportée après le pool du
+jour. Marché des échanges et « Je cherche » : plan approuvé, réalisation à la prochaine session
+(détail dans `ETAT_PROJET.md`).
+
+
 **[Feat] — Indicateur « à faire » du pooler (échanges, ballotage) ; liens cliquables dans tous les
 courriels** (`app/components/pooler-todo-actions.ts`, `usePoolerTodo.ts`, `PoolerTodoIndicator.tsx`,
 `Navbar.tsx`, `app/app/gestion-effectifs/*`, `app/lib/siteUrl.ts`, `app/lib/email.ts`,
