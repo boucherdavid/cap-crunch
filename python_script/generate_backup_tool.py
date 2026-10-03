@@ -359,10 +359,29 @@ function loadState() {
       if (!parsed.manualJournal) parsed.manualJournal = [];
       if (parsed.poolCapOverride === undefined) parsed.poolCapOverride = null;
       if (parsed.activeSeason === undefined) parsed.activeSeason = null;
+      // Modifications locales faites sur un AUTRE export de la même saison (David, 2026-10-03) :
+      // sans ce contrôle, un fichier tout juste régénéré réaffichait les vieilles données
+      // locales au lieu des siennes. On propose les données du nouveau fichier (journal manuel
+      // conservé) ; « Annuler » garde les modifications locales.
+      if (parsed.baselineGeneratedAt !== BASELINE.generatedAt) {
+        const fmt = d => d ? new Date(d).toLocaleString('fr-CA') : 'date inconnue';
+        const useNew = confirm(
+          "Ce fichier a été généré le " + fmt(BASELINE.generatedAt) + ", mais ton navigateur garde des modifications locales "
+          + "faites sur un autre export (dernière modification : " + fmt(parsed.savedAt) + ").\\n\\n"
+          + "OK : utiliser les données de ce fichier (ton journal manuel est conservé).\\n"
+          + "Annuler : garder tes modifications locales."
+        );
+        if (useNew) return freshState(parsed.manualJournal);
+        parsed.baselineGeneratedAt = BASELINE.generatedAt;
+      }
       return parsed;
     }
   } catch (e) {}
-  return { rosters: JSON.parse(JSON.stringify(BASELINE.rosters)), manualJournal: [], poolCapOverride: null, activeSeason: null, savedAt: null };
+  return freshState([]);
+}
+
+function freshState(manualJournal) {
+  return { rosters: JSON.parse(JSON.stringify(BASELINE.rosters)), manualJournal: manualJournal, poolCapOverride: null, activeSeason: null, savedAt: null, baselineGeneratedAt: BASELINE.generatedAt };
 }
 
 function saveState() {
@@ -373,7 +392,7 @@ function saveState() {
 
 function resetToBaseline() {
   if (!confirm("Écraser les modifications locales (alignements, journal manuel, cap ajusté ET saison active) et revenir à l'export d'origine ?")) return;
-  state = { rosters: JSON.parse(JSON.stringify(BASELINE.rosters)), manualJournal: [], poolCapOverride: null, activeSeason: null, savedAt: null };
+  state = freshState([]);
   saveState();
   renderAlignements();
   renderParametres();

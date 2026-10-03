@@ -21,6 +21,22 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-03
 
+**[Fix] — Copie de secours : un nouveau fichier réaffichait les vieilles données locales**
+(`python_script/generate_backup_tool.py`) : l'état local (localStorage, clé par saison) remplaçait
+les données de tout nouvel export de la même saison. L'état retient maintenant
+`baselineGeneratedAt` ; si l'export ouvert est différent, une confirmation propose ses données
+(journal manuel conservé) ou de garder les modifications locales.
+
+**[Données prod] — Statut recrue rétabli pour 7 repêchés encore protégés en 2026-27**
+(Slafkovský, Carlsson, Bedard, Fantilli, Gauthier, Nazar, Hutson) : `rookie_type='repeche'` et
+`pool_draft_year` (2022 ou 2023) recopiés de leur ligne 2025-26 sur leur ligne 2026-27, position
+inchangée (pas de renvoi en banque forcé, alignements déjà bâtis). Leur étiquette manquait sans
+aucune transaction ni `roster_change_log` — cause probable : étiquette posée sur 2025-26 après la
+transition. Code de transition / `syncExpiredRookieProtection` relus : corrects. Les poolers
+peuvent les mettre en banque eux-mêmes (★) tant que la saison n'est pas démarrée.
+Pendant l'opération, la base prod répondait en ~20 s par requête (incident Supabase « partiellement
+dégradé ») — à surveiller.
+
 **[Perf] — Fonctions Vercel déplacées en Oregon** (`app/vercel.json`) : les fonctions tournaient
 en `iad1` (Washington, défaut Vercel) alors que la base Supabase prod est en `us-west-2` (Oregon) —
 chaque requête traversait le continent (~70 ms aller-retour, des dizaines par page). `regions:
