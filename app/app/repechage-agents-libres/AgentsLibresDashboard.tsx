@@ -314,7 +314,7 @@ export default function AgentsLibresDashboard({
 
       {/* Listes privées d'agents libres à cibler (David, 2026-09-27) — un joueur signé par un
           autre pooler passe dans « Déjà pris » (rafraîchi toutes les 15 s). */}
-      <WatchlistPanel kinds={['joueurs']} refreshMs={15000} />
+      <WatchlistPanel kinds={['joueurs']} refreshMs={30000} />
 
       {/* Disposition en 3 colonnes (David, 2026-09-18, pour réduire le défilement pendant un
           repêchage en direct) : panneau admin à gauche (réglages/file d'attente, moins

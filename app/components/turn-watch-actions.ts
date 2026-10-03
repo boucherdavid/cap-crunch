@@ -24,7 +24,12 @@ export async function getPresaisonTurnSignatureAction(saisonId: number): Promise
   ].join('|')
 }
 
-/** Repêchage des recrues : choix restants et sélection en attente de confirmation. */
+/** Séparateur entre la partie « majeure » d'une empreinte (rechargement complet de la page) et
+ * la partie « mineure » (mise à jour légère du bandeau seulement) — voir TurnWatcher. */
+const MINOR_SEPARATOR = '§'  // même valeur dans TurnWatcher.tsx (un fichier 'use server' n'exporte que des fonctions)
+
+/** Repêchage des recrues — majeur : choix restants et leur propriétaire (un choix confirmé
+ * disparaît) ; mineur : sélection en attente et chrono, affichés par le bandeau sans recharger. */
 export async function getRookieDraftSignatureAction(saisonId: number): Promise<string | null> {
   const supabase = await createClient()
   const [{ data }, { data: saison }] = await Promise.all([
@@ -43,5 +48,7 @@ export async function getRookieDraftSignatureAction(saisonId: number): Promise<s
   ])
   if (!data) return null
   const timer = `${saison?.rookie_draft_timer_active ?? ''}:${saison?.rookie_draft_turn_started_at ?? ''}:${saison?.rookie_draft_turn_seconds ?? ''}`
-  return `${timer}#` + data.map(p => `${p.id}:${p.pending_player_id ?? ''}:${p.current_owner_id ?? ''}`).join('|')
+  const major = data.map(p => `${p.id}:${p.current_owner_id ?? ''}`).join('|')
+  const pending = data.map(p => p.pending_player_id ?? '').join(',')
+  return `${major}${MINOR_SEPARATOR}${timer}#${pending}`
 }

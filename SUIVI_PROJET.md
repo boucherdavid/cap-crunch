@@ -21,6 +21,23 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-03
 
+**[Perf] — Moins de charge pendant les repêchages** (`app/components/TurnWatcher.tsx`,
+`turn-watch-actions.ts`, `WatchlistPanel.tsx`, `app/app/repechage-recrues/RookieTurnBanner.tsx`,
+`page.tsx`, `app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`) — David trouvait le
+repêchage très lent côté admin quand tous les poolers étaient connectés (impossible de
+« prioriser » l'admin : chaque requête est indépendante sur Vercel/Supabase) :
+- Avant : à chaque changement d'empreinte (sélection enregistrée, confirmation, chrono), tous
+  les poolers rechargeaient la page complète à la même seconde, soit ~3 vagues de 7-8 rendus
+  lourds par choix.
+- Empreinte du repêchage des recrues scindée : partie majeure (choix restants + propriétaire →
+  un choix confirmé) = rechargement ; partie mineure (sélection en attente, chrono) = événement
+  `rookie-draft-changed`, que le bandeau du tour écoute maintenant aussi chez les poolers
+  (`saisonId`) pour se mettre à jour sans recharger.
+- Rechargements étalés au hasard sur 0-4 s ; aucun sondage quand l'onglet est caché (vérif
+  immédiate au retour).
+- « Mes listes » : 30 s au lieu de 15 s sur les deux hubs, et pas pendant la saisie ni onglet caché.
+- Piste restante : vérifier que la région des fonctions Vercel = région Supabase.
+
 **[Fix] — Résumé des choix de repêchage figé** (`app/app/admin/config/PicksEditor.tsx`,
 `app/app/admin/config/actions.ts`) : le tableau de `/admin/init?tab=choix` gardait la liste
 chargée à l'ouverture (jamais relue) ; il se resynchronise maintenant avec la base après chaque

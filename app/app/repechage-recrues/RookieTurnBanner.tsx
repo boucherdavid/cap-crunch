@@ -20,7 +20,7 @@ export type OnTheClock = RookieOnTheClock
  * restartRookieTimerIfActive, admin/repechage/actions.ts).
  */
 export default function RookieTurnBanner({
-  onTheClock: initialOnTheClock, isMyTurn: initialIsMyTurn, showPrompt, timer: initialTimer, adminSaisonId, myPoolerId,
+  onTheClock: initialOnTheClock, isMyTurn: initialIsMyTurn, showPrompt, timer: initialTimer, adminSaisonId, saisonId, myPoolerId,
   rookies, initialPendingPlayerIds,
 }: {
   onTheClock: OnTheClock | null
@@ -28,6 +28,9 @@ export default function RookieTurnBanner({
   showPrompt: boolean
   timer: RookieTimer
   adminSaisonId?: number
+  // Poolers (2026-10-03) : relit le tour sur l'événement `rookie-draft-changed` émis par
+  // TurnWatcher (sélection en attente, chrono), sans recharger la page ni sonder toutes les 5 s.
+  saisonId?: number
   myPoolerId?: string
   // Admin : recrues sélectionnables, pour choisir directement dans le bandeau (David, 2026-10-02
   // — sans descendre dans le tableau, comme le panneau de signature des agents libres).
@@ -41,9 +44,10 @@ export default function RookieTurnBanner({
   // Sélection tout juste faite dans le bandeau, affichée sans attendre la relecture du serveur.
   const [optimistic, setOptimistic] = useState<{ pickId: number; playerId: number | null } | null>(null)
   useEffect(() => {
-    if (adminSaisonId === undefined) return
+    const liveSaisonId = adminSaisonId ?? saisonId
+    if (liveSaisonId === undefined) return
     let cancelled = false
-    const load = () => getRookieTurnStateAction(adminSaisonId).then(st => {
+    const load = () => getRookieTurnStateAction(liveSaisonId).then(st => {
       if (cancelled) return
       setLive({
         onTheClock: st.onTheClock,
@@ -53,10 +57,10 @@ export default function RookieTurnBanner({
       })
       setOptimistic(null)
     }).catch(() => {})
-    const id = setInterval(load, 5000)
+    const id = adminSaisonId !== undefined ? setInterval(load, 5000) : undefined
     window.addEventListener('rookie-draft-changed', load)
     return () => { cancelled = true; clearInterval(id); window.removeEventListener('rookie-draft-changed', load) }
-  }, [adminSaisonId, myPoolerId])
+  }, [adminSaisonId, saisonId, myPoolerId])
   const onTheClock = live ? live.onTheClock : initialOnTheClock
   const timer = live ? live.timer : initialTimer
   const isMyTurn = live ? live.isMyTurn : initialIsMyTurn

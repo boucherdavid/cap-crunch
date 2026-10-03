@@ -192,6 +192,7 @@ export default async function RepechageRecruesPage({
           showPrompt={isDraftStarted}
           timer={turn.timer}
           adminSaisonId={isAdmin ? saison.id : undefined}
+          saisonId={saison.id}
           myPoolerId={user?.id}
           rookies={isAdmin ? (selectableRookies as never[]) : undefined}
           initialPendingPlayerIds={turn.pendingPlayerIds}
@@ -200,7 +201,7 @@ export default async function RepechageRecruesPage({
 
       {/* Listes privées de recrues à cibler (David, 2026-09-27) — rafraîchies toutes les 15 s
           pendant le repêchage : une recrue repêchée par un autre pooler passe dans « Déjà pris ». */}
-      {saison.is_active && <WatchlistPanel kinds={['recrues']} refreshMs={15000} defaultOpen={!isDraftDone} />}
+      {saison.is_active && <WatchlistPanel kinds={['recrues']} refreshMs={30000} defaultOpen={!isDraftDone} />}
 
       {isAdmin && totalPicks > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">

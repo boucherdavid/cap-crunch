@@ -127,7 +127,13 @@ export default function WatchlistPanel({
   const selectedRef = useRef(selectedId)
   useEffect(() => { selectedRef.current = selectedId }, [selectedId])
   useEffect(() => {
-    const refresh = () => { if (selectedRef.current != null) loadItems(selectedRef.current) }
+    const refresh = () => {
+      if (selectedRef.current == null || document.hidden) return
+      // Pas pendant qu'on écrit (recherche, note) : on attend le prochain rafraîchissement.
+      const el = document.activeElement
+      if (el && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return
+      loadItems(selectedRef.current)
+    }
     window.addEventListener('focus', refresh)
     const timer = refreshMs ? window.setInterval(refresh, refreshMs) : undefined
     return () => {
