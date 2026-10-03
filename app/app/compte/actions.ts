@@ -1,5 +1,6 @@
 'use server'
 
+import { absoluteUrl } from '@/lib/siteUrl'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
@@ -33,10 +34,9 @@ export async function updateEmailAction(email: string): Promise<{ error?: string
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié.' }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
   const { error } = await supabase.auth.updateUser(
     { email: trimmed },
-    { emailRedirectTo: `${siteUrl}/compte` },
+    { emailRedirectTo: absoluteUrl('/compte') },
   )
   if (error) return { error: error.message }
   return {}
@@ -78,9 +78,8 @@ export async function resetPasswordForPoolerAction(poolerId: string): Promise<{ 
   const { data: authUser, error: fetchErr } = await admin.auth.admin.getUserById(poolerId)
   if (fetchErr || !authUser?.user?.email) return { error: 'Utilisateur introuvable.' }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('.supabase.co', '.vercel.app') ?? ''
   const { error } = await supabase.auth.resetPasswordForEmail(authUser.user.email, {
-    redirectTo: `${siteUrl}/compte`,
+    redirectTo: absoluteUrl('/compte'),
   })
   if (error) return { error: error.message }
   return {}

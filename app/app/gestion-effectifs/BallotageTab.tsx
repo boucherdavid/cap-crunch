@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useState, useEffect, useTransition, useCallback } from 'react'
+import { refreshPoolerTodo } from '@/components/usePoolerTodo'
 import { getWaiverClaimsAction, submitWaiverClaimAction, refuseWaiverClaimAction } from './waiver-actions'
 import type { WaiverClaimView, WaiverHistoryEntry } from './waiver-actions'
 
@@ -58,6 +59,7 @@ export default function BallotageTab({ saisonId }: { saisonId: number }) {
       const res = await submitWaiverClaimAction(saisonId, id)
       if (res.error) setError(res.error)
       load()
+      refreshPoolerTodo()
     })
   }
 
@@ -67,6 +69,7 @@ export default function BallotageTab({ saisonId }: { saisonId: number }) {
       const res = await refuseWaiverClaimAction(saisonId, id)
       if (res.error) setError(res.error)
       load()
+      refreshPoolerTodo()
     })
   }
 

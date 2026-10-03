@@ -1,3 +1,4 @@
+import { emailLinkHtml } from '@/lib/siteUrl'
 import { after } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPushToUsers } from '@/lib/push'
@@ -16,7 +17,6 @@ const COMPLETION_GRACE_HOURS = 48
 // courriel). `?tab=ballotage` pré-sélectionne l'onglet Ballotage de Gestion d'effectifs
 // (`GestionEffectifsManager.tsx`, `initialTab`) ; les notifications "tu as gagné" pointent
 // plutôt vers l'onglet Mouvements (défaut, pas de query param) où se trouve le bandeau à agir.
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? ''
 const BALLOTAGE_TAB_PATH = '/gestion-effectifs?tab=ballotage'
 const MOUVEMENTS_PATH = '/gestion-effectifs'
 
@@ -79,7 +79,7 @@ async function playerLabel(admin: ReturnType<typeof createAdminClient>, playerId
 }
 
 function linkHtml(path: string): string {
-  return `<p><a href="${SITE_URL}${path}">Voir sur Cap Crunch</a></p>`
+  return emailLinkHtml(path)
 }
 
 async function notifyAllPoolersExcept(excludePoolerId: string | null, title: string, body: string, subject: string, html: string, path: string) {

@@ -1,3 +1,4 @@
+import { emailLinkHtml } from '@/lib/siteUrl'
 import { after } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPushToUsers, sendPushToAdmins } from '@/lib/push'
@@ -41,11 +42,10 @@ function pickChangeType(oldType: string | null, newType: string | null): string 
 // /admin/transactions (pensées pour un admin en train de naviguer) — voir le commentaire en
 // tête de waiverClaims.ts pour la même distinction.
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? ''
 const TRADE_TAB_PATH = '/gestion-effectifs?tab=echanges'
 
 function linkHtml(path: string): string {
-  return `<p><a href="${SITE_URL}${path}">Voir sur Cap Crunch</a></p>`
+  return emailLinkHtml(path)
 }
 
 async function poolerName(admin: ReturnType<typeof createAdminClient>, poolerId: string): Promise<string> {

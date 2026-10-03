@@ -5,7 +5,13 @@ import AdminApprovalsPanel from './AdminApprovalsPanel'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, createContext, useContext, useEffect, useRef, useState } from 'react'
+import PoolerTodoIndicator, { TodoPills } from './PoolerTodoIndicator'
+import { usePoolerTodo } from './usePoolerTodo'
+import type { PoolerTodo } from './pooler-todo-actions'
+
+// Choses à faire du pooler (échanges, ballotage — David, 2026-10-03), partagées avec le menu.
+const TodoContext = createContext<PoolerTodo>({ trades: 0, waivers: 0 })
 import { createClient } from '@/lib/supabase/client'
 
 function HamburgerIcon() {
@@ -184,17 +190,19 @@ function groupIsActive(pathname: string, group: NavGroup): boolean {
 function TreeLeaf({ leaf, pathname, userName, onNavigate }: {
   leaf: NavLeaf; pathname: string; userName: string | null; onNavigate: () => void
 }) {
+  const todo = useContext(TodoContext)
   if (leaf.auth && !userName) return null
   const active = isActive(pathname, leaf.href)
   return (
     <Link
       href={leaf.href}
       onClick={onNavigate}
-      className={`block pl-8 pr-3 py-1.5 rounded text-sm transition-colors ${
+      className={`flex items-center justify-between gap-2 pl-8 pr-3 py-1.5 rounded text-sm transition-colors ${
         active ? 'bg-pool-navy-light text-white font-medium' : 'text-pool-light hover:bg-pool-navy-light hover:text-white'
       }`}
     >
-      {leaf.label}
+      <span>{leaf.label}</span>
+      {leaf.href === '/gestion-effectifs' && <TodoPills todo={todo} compact />}
     </Link>
   )
 }
@@ -277,6 +285,7 @@ function NavTree({
   adminBadge: number
   adminBadgeTitle: string
 }) {
+  const todo = useContext(TodoContext)
   const groups = effectiveIsAdmin ? [...NAV_GROUPS, ADMIN_GROUP] : NAV_GROUPS
   return (
     <nav className="flex flex-col gap-0.5 p-2">
@@ -298,7 +307,7 @@ function NavTree({
           expanded={expanded.has(group.id)}
           onToggle={() => onToggle(group.id)}
           onNavigate={onNavigate}
-          badge={group.id === 'admin' ? adminBadge : undefined}
+          badge={group.id === 'admin' ? adminBadge : group.id === 'mon-equipe' ? todo.trades + todo.waivers : undefined}
           badgeTitle={group.id === 'admin' ? adminBadgeTitle : undefined}
         />
       ))}
@@ -446,8 +455,10 @@ export default function Navbar({
 
   const adminBadgeCount = unreadCount + unreadNotifCount
 
+  const todo = usePoolerTodo(!!userName)
+
   return (
-    <>
+    <TodoContext.Provider value={todo}>
       {/* Barre du haut — toujours visible, pleine largeur */}
       <div className="bg-pool-navy shadow sticky top-0 z-40">
         {isPoolerView && (
@@ -475,6 +486,7 @@ export default function Navbar({
             <Suspense fallback={<div className="flex-1" />}><PlayerSearch /></Suspense>
 
             <div className="flex items-center gap-2 shrink-0">
+              {userName && <PoolerTodoIndicator todo={todo} />}
               {effectiveIsAdmin && <AdminApprovalsPanel />}
               {installPrompt && (
                 <button onClick={handleInstall}
@@ -599,6 +611,6 @@ export default function Navbar({
           </div>
         )}
       </aside>
-    </>
+    </TodoContext.Provider>
   )
 }

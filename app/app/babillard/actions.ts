@@ -1,5 +1,6 @@
 'use server'
 
+import { emailLinkHtml } from '@/lib/siteUrl'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
@@ -34,7 +35,6 @@ export async function createPostAction(title: string, body: string): Promise<{ e
 
   const { sendPushToAll } = await import('@/lib/push')
   const { sendEmailToAll, escapeHtml } = await import('@/lib/email')
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
   // after() : voir le commentaire dans lib/threadNotify.ts — un envoi fire-and-forget non
   // enveloppé risque d'être coupé avant la fin sur Vercel.
   after(() => Promise.all([
@@ -48,7 +48,7 @@ export async function createPostAction(title: string, body: string): Promise<{ e
       html: `
         <p>Publié par <strong>${escapeHtml(author?.name ?? 'Admin')}</strong></p>
         <p>${escapeHtml(trimmedBody).replace(/\n/g, '<br>')}</p>
-        <p><a href="${siteUrl}/babillard">Voir sur Cap Crunch</a></p>
+        ${emailLinkHtml('/babillard')}
       `,
     }).catch(() => {}),
   ]))
@@ -95,7 +95,6 @@ export async function addCommentAction(postId: number, body: string): Promise<{ 
 
   const { escapeHtml } = await import('@/lib/email')
   const { notifyThreadParticipants } = await import('@/lib/threadNotify')
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
   const participantIds = [...new Set((priorComments ?? []).map(c => c.pooler_id as string))]
   // after() : notifyThreadParticipants fait un await (requête admins) avant son propre after()
   // interne — l'appel externe doit aussi être enveloppé, sinon ce premier await peut être coupé
@@ -113,7 +112,7 @@ export async function addCommentAction(postId: number, body: string): Promise<{ 
       html: `
         <p><strong>${escapeHtml(pooler?.name ?? 'Un pooler')}</strong> a commenté :</p>
         <p>${escapeHtml(trimmed).replace(/\n/g, '<br>')}</p>
-        <p><a href="${siteUrl}/babillard">Voir sur Cap Crunch</a></p>
+        ${emailLinkHtml('/babillard')}
       `,
     },
   ).catch(() => {}))

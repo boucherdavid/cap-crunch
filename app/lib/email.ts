@@ -108,6 +108,8 @@ export async function sendTestEmail(toEmail: string): Promise<{ error?: string }
 // Version texte brut à côté du HTML — un courriel HTML-only est un signal antispam classique.
 function htmlToText(html: string): string {
   return html
+    // Un lien garde son adresse dans la version texte : « Voir sur Cap Crunch : https://… »
+    .replace(/<a\s[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/gi, '$2 : $1')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n\n')
     .replace(/<[^>]+>/g, '')

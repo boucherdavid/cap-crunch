@@ -312,6 +312,11 @@ fiche affiche un sommaire du pool (propriétaire, blessure, contrat) en plus des
 Bouton « Ajouter à une liste » (`AddToWatchlist.tsx`) : listes du pooler connecté, du type
 correspondant au joueur (voir « Mes listes », section 6).
 
+**Indicateur « à faire » du pooler** (David, 2026-10-03) : pastilles bleue (échanges) et orange
+(ballotage) dans la barre du haut, sur « Gestion d'effectifs » dans le menu et sur les onglets
+(`app/components/PoolerTodoIndicator.tsx`, `usePoolerTodo.ts`). Ballotage compté en « non lu »
+(libérés depuis la dernière visite de l'onglet, date dans le navigateur) + joueurs remportés.
+
 **Bouton « Approbations »** (David, 2026-10-01) : barre du haut, admin seulement
 (`app/components/AdminApprovalsPanel.tsx`) — compteur + panneau latéral pour approuver les
 transactions entre poolers et les demandes de LTIR depuis n'importe quelle page, et voir les
@@ -1175,6 +1180,9 @@ corrigée le 2026-09-20 :**
 - Contrainte Gmail : le `from` doit obligatoirement être l'adresse authentifiée — les courriels
   partent visiblement de l'adresse Gmail de David, pas d'une adresse "Cap Crunch" dédiée, et ce
   n'est pas contournable sans un domaine "Send As" vérifié.
+- **Liens toujours absolus** (David, 2026-10-03) : `emailLinkHtml(path)` / `absoluteUrl(path)`
+  (`app/lib/siteUrl.ts`) — un `href` relatif s'affiche comme du texte non cliquable dans un
+  client de courriel. Ne jamais construire un lien de courriel à la main.
 - Toujours envoyer une version texte brut en parallèle du HTML (`htmlToText()`) — un courriel
   HTML-only envoyé par script depuis un compte personnel est un signal antispam classique,
   confirmé en pratique par un test tombé dans les pourriels avant ce correctif.

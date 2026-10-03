@@ -1,5 +1,6 @@
 'use server'
 
+import { emailLinkHtml } from '@/lib/siteUrl'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
@@ -131,7 +132,6 @@ export async function addCommentAction(pollId: number, body: string): Promise<{ 
 
   const { escapeHtml } = await import('@/lib/email')
   const { notifyThreadParticipants } = await import('@/lib/threadNotify')
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
   // Tous les poolers, pas seulement ceux ayant déjà commenté (David, 2026-09-14) — contrairement
   // au babillard (fort volume, on limite volontairement aux participants du fil pour éviter le
   // bruit), la planification vise un petit groupe fixe à coordonner pour une vraie rencontre :
@@ -154,7 +154,7 @@ export async function addCommentAction(pollId: number, body: string): Promise<{ 
       html: `
         <p><strong>${escapeHtml(pooler?.name ?? 'Un pooler')}</strong> a commenté :</p>
         <p>${escapeHtml(trimmed).replace(/\n/g, '<br>')}</p>
-        <p><a href="${siteUrl}/planification">Voir sur Cap Crunch</a></p>
+        ${emailLinkHtml('/planification')}
       `,
     },
   ).catch(() => {}))

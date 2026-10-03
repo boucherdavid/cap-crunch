@@ -7,6 +7,7 @@ import {
   type TradeOfferView, type TradeableItem,
 } from './trade-actions'
 import type { TradeExtraAction } from '@/lib/tradeOffers'
+import { refreshPoolerTodo } from '@/components/usePoolerTodo'
 import { listOtherPoolersAction, listScenariosAction, loadScenarioAction } from '../simulation/actions'
 import { getPlayerBucket, ACTIVE_LIMITS } from '@/lib/rosterLimits'
 
@@ -247,6 +248,7 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
       setComposing(false)
       setTargetId(''); setMySelected(new Set()); setTheirSelected(new Set())
       load()
+      refreshPoolerTodo()
     })
   }
 
@@ -256,6 +258,7 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
       const result = await respondToTradeOfferAction(id, accept)
       if (result.error) setError(result.error)
       load()
+      refreshPoolerTodo()
     })
   }
 
@@ -298,6 +301,7 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
       const result = await confirmTradeReadyAction(offer.id, types, getExtraActions(offer.id))
       if (result.error) setError(result.error)
       load()
+      refreshPoolerTodo()
     })
   }
 

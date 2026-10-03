@@ -21,6 +21,26 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-03
 
+**[Feat] — Indicateur « à faire » du pooler (échanges, ballotage) ; liens cliquables dans tous les
+courriels** (`app/components/pooler-todo-actions.ts`, `usePoolerTodo.ts`, `PoolerTodoIndicator.tsx`,
+`Navbar.tsx`, `app/app/gestion-effectifs/*`, `app/lib/siteUrl.ts`, `app/lib/email.ts`,
+`app/lib/tradeOffers.ts`, `ltirRequests.ts`, `waiverClaims.ts`, `app/app/babillard/actions.ts`,
+`app/app/planification/actions.ts`, `app/app/compte/actions.ts`) :
+- **Indicateur** (demande de David) : pastilles dans la barre du haut — bleue « Échanges »
+  (proposition reçue sans réponse, échange approuvé pas encore confirmé), orange « Ballotage »
+  (joueur remporté à ajouter, joueurs ni réclamés ni refusés **libérés depuis la dernière visite
+  de l'onglet**, option « non lu » choisie par David ; la date de visite est gardée dans le
+  navigateur). Menu au clic vers le bon onglet. Mêmes pastilles sur « Gestion d'effectifs » dans
+  le menu de gauche (total sur le groupe « Mon équipe ») et sur les onglets. Relu chaque minute
+  et après chaque action (`refreshPoolerTodo`).
+- **Liens des courriels** : le courriel « Jérôme te propose un échange » affichait
+  `[/gestion-effectifs?tab=echanges]Voir sur Cap Crunch`, non cliquable — lien relatif parce que
+  `NEXT_PUBLIC_SITE_URL` n'est pas défini. `lib/siteUrl.ts` : adresse absolue (variable si
+  définie, sinon `VERCEL_PROJECT_PRODUCTION_URL`, sinon `VERCEL_URL`), utilisée par tous les
+  courriels (`emailLinkHtml`) et par les redirections de `/compte`. Version texte des courriels :
+  « Voir sur Cap Crunch : https://… ». Non vérifié en envoyant un vrai courriel.
+
+
 **[Feat] — Échanges entre poolers ouverts avant le début de saison** (`app/lib/tradeOffers.ts`,
 `app/app/gestion-effectifs/page.tsx`, `GestionEffectifsManager.tsx`) :
 - Demande de David : que les poolers fassent eux-mêmes leurs échanges dès la pré-saison (avec

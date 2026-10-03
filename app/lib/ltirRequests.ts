@@ -16,6 +16,7 @@
  * dates historiques de l'app (voir CLAUDE.md section 6).
  */
 
+import { emailLinkHtml } from '@/lib/siteUrl'
 import { after } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPushToUser, sendPushToAdmins } from '@/lib/push'
@@ -23,12 +24,11 @@ import { sendEmailToIds } from '@/lib/email'
 import { submitBatchAction } from '@/app/gestion-effectifs/actions'
 import { fetchInjuriesByPlayerId, type InjuryInfo } from '@/lib/injuries'
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? ''
 const APPROBATION_PATH = '/admin/effectifs?tab=approbation'
 const MOUVEMENTS_PATH = '/gestion-effectifs'
 
 function linkHtml(path: string): string {
-  return `<p><a href="${SITE_URL}${path}">Voir sur Cap Crunch</a></p>`
+  return emailLinkHtml(path)
 }
 
 type AdminDb = ReturnType<typeof createAdminClient>

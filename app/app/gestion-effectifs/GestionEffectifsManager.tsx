@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo, useRef, useTransition } from 'react'
 import MovementHistoryPanel from '@/components/MovementHistoryPanel'
 import RosterPreview from './RosterPreview'
+import { TodoPills } from '@/components/PoolerTodoIndicator'
+import { markBallotageSeen, refreshPoolerTodo, usePoolerTodo } from '@/components/usePoolerTodo'
 import BallotageTab from './BallotageTab'
 import TradeOffersTab, { type TradeDraft } from './TradeOffersTab'
 import {
@@ -376,6 +378,14 @@ export default function GestionEffectifsManager({
   const [submitWarning, setSubmitWarning] = useState<string | null>(null)
   const [historyRefresh, setHistoryRefresh] = useState(0)
 
+  // Choses à faire du pooler (pastilles des onglets — David, 2026-10-03). Seulement sur sa propre
+  // page : dans le hub admin, le pooler affiché n'est pas forcément l'utilisateur connecté.
+  const todo = usePoolerTodo(!!selfPoolerId)
+  // Ouvrir l'onglet Ballotage marque les joueurs déjà au ballotage comme vus.
+  useEffect(() => {
+    if (activeTab === 'ballotage' && selfPoolerId) markBallotageSeen()
+  }, [activeTab, selfPoolerId])
+
   // Proposition d'échange en préparation (onglet Échanges), pour l'aperçu de l'alignement.
   const [tradeDraft, setTradeDraft] = useState<TradeDraft | null>(null)
 
@@ -657,6 +667,7 @@ export default function GestionEffectifsManager({
       }
 
       setSuccess(true)
+      refreshPoolerTodo()  // un ballotage remporté vient peut-être d'être complété
       setCart([])
       resetAddForm()
       setHistoryRefresh(k => k + 1)
@@ -1039,10 +1050,12 @@ export default function GestionEffectifsManager({
     <div className="flex gap-2 mb-6 border-b border-gray-200 overflow-x-auto">
       {availableTabs.map(tab => (
         <button key={tab} onClick={() => setActiveTab(tab)}
-          className={`px-3 sm:px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap shrink-0 ${
+          className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap shrink-0 ${
             activeTab === tab ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}>
           {TAB_LABEL[tab]}
+          {tab === 'echanges' && <TodoPills todo={{ trades: todo.trades, waivers: 0 }} compact />}
+          {tab === 'ballotage' && <TodoPills todo={{ trades: 0, waivers: todo.waivers }} compact />}
         </button>
       ))}
     </div>

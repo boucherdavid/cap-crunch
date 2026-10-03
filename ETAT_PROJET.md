@@ -62,9 +62,9 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **Échanges en pré-saison** : en staging, à tester avec deux comptes pooler (proposer, accepter,
-  approuver, confirmer des deux côtés → échange exécuté sans contrôle de conformité). Ne rien
-  fusionner avant la fin du pool du 2026-10-03.
+- **En staging, à valider** : échanges en pré-saison (validé par David), indicateur « à faire »
+  du pooler (pastilles échanges/ballotage), liens cliquables dans les courriels (à vérifier avec
+  un vrai courriel). Ne rien fusionner avant la fin du pool du 2026-10-03.
 - **À faire ensuite (approuvé)** : Marché des échanges (migration SQL), puis « Je cherche ».
   Suite possible : sauvegarder une proposition comme scénario.
 
