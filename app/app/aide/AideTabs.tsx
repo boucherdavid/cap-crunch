@@ -238,6 +238,27 @@ const SECTIONS: Section[] = [
     ),
   },
   {
+    id: 'guide-marche-echanges',
+    tab: 'guide',
+    title: 'Marché des échanges',
+    keywords: 'marche echanges offrir mettre sur le marche je cherche besoin offre notification expiration',
+    href: '/marche-echanges',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Menu <strong>Le pool</strong>{' '}→ <strong>Marché des échanges</strong>{' '}— pour annoncer ce que tu es prêt à échanger ou ce que tu cherches.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• <strong>Mettre sur le marché</strong> : coche tes joueurs (actif, réserviste ou recrue) et tes choix de repêchage, ajoute une note au besoin et choisis jusqu&apos;à quand ils restent affichés.</li>
+          <li>• <strong>Je cherche</strong> : publie un besoin sans viser un joueur précis (ex : un défenseur à moins de 3 M$).</li>
+          <li>• Les autres poolers reçoivent une <strong>notification</strong>, et les derniers éléments s&apos;affichent sur l&apos;accueil.</li>
+          <li>• <strong>Faire une offre</strong> ouvre l&apos;onglet Échanges avec le pooler déjà choisi et l&apos;élément déjà coché dans « Tu reçois » : il reste à choisir ce que tu donnes.</li>
+          <li>• Un élément disparaît tout seul à sa date d&apos;expiration ou dès qu&apos;il change d&apos;alignement (échangé, libéré). Tu peux aussi le retirer toi-même.</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
     id: 'guide-agents-libres',
     tab: 'guide',
     title: 'Signatures des agents libres (pré-saison)',

@@ -87,6 +87,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Classement', href: '/classement' },
       { label: 'Tous les alignements', href: '/poolers' },
+      { label: 'Marché des échanges', href: '/marche-echanges' },
       { label: 'Journal des transactions', href: '/journal-transactions' },
     ],
   },

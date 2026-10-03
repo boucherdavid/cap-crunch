@@ -11,6 +11,7 @@ import {
 import Link from 'next/link'
 import Image from 'next/image'
 import { fetchInjuriesByPlayerId } from '@/lib/injuries'
+import { loadTradeMarket } from '@/lib/tradeMarket'
 
 export const dynamic = 'force-dynamic'
 
@@ -460,6 +461,57 @@ function PoolInjuriesWidget({ items }: { items: PoolInjuryItem[] }) {
   )
 }
 
+// ---------- marché des échanges ----------
+
+// Encadré « Sur le marché » (David, 2026-10-03) — derniers éléments offerts et recherches,
+// lus par loadTradeMarket (qui retire au passage ce qui a expiré ou changé d'alignement).
+async function fetchMarketSummary(poolSeasonId: number, limit = 5) {
+  try {
+    const { listings, requests } = await loadTradeMarket(poolSeasonId)
+    const items = [
+      ...listings.map(l => ({
+        key: `l-${l.id}`, createdAt: l.createdAt, poolerName: l.poolerName,
+        text: l.label + (l.position ? ` (${l.position})` : ''), kind: 'offre' as const,
+      })),
+      ...requests.map(r => ({
+        key: `r-${r.id}`, createdAt: r.createdAt, poolerName: r.poolerName,
+        text: r.description, kind: 'recherche' as const,
+      })),
+    ].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    return { items: items.slice(0, limit), total: items.length }
+  } catch {
+    return { items: [], total: 0 }
+  }
+}
+
+function MarketWidget({ summary }: { summary: Awaited<ReturnType<typeof fetchMarketSummary>> }) {
+  if (summary.items.length === 0) return null
+  return (
+    <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-slate-700 px-5 py-3 flex items-center justify-between">
+        <h2 className="text-white font-bold text-sm uppercase tracking-wide">Sur le marché</h2>
+        <Link href="/marche-echanges" className="text-xs text-slate-300 hover:text-white">
+          Tout voir ({summary.total}) →
+        </Link>
+      </div>
+      <ul className="divide-y divide-gray-100">
+        {summary.items.map(it => (
+          <li key={it.key} className="px-4 py-2.5 flex items-center justify-between gap-3">
+            <span className="text-sm text-gray-700 min-w-0">
+              <span className="font-medium">{it.text}</span>
+              <span className="text-gray-400"> ({it.poolerName})</span>
+            </span>
+            {it.kind === 'offre'
+              ? <span className="text-xs text-blue-700 bg-blue-50 rounded px-1.5 py-0.5 shrink-0">Offert</span>
+              : <span className="text-xs text-emerald-700 bg-emerald-50 rounded px-1.5 py-0.5 shrink-0">Recherché</span>
+            }
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 // ---------- header ----------
 
 function Header({
@@ -556,11 +608,12 @@ export default async function Home() {
   const playingTeams = new Set(todayGames.flatMap(g => [g.awayAbbrev, g.homeAbbrev]))
   const hasGames = todayGames.length > 0
 
-  const [standings, poolActivity, poolInjuries, nhlNews] = await Promise.all([
+  const [standings, poolActivity, poolInjuries, nhlNews, market] = await Promise.all([
     saison ? buildStandings(supabase, saison.id) : Promise.resolve([]),
     saison ? fetchPoolActivity(supabase, saison.id) : Promise.resolve([]),
     saison ? fetchPoolInjuries(supabase, saison.id) : Promise.resolve([]),
     fetchNhlNews(),
+    saison ? fetchMarketSummary(saison.id) : Promise.resolve({ items: [], total: 0 }),
   ])
 
   // Classement séries depuis le cache BD + récap d'hier + joueurs en action séries
@@ -679,6 +732,7 @@ export default async function Home() {
           )}
 
           <PoolActivityWidget items={poolActivity} />
+          <MarketWidget summary={market} />
           <PoolInjuriesWidget items={poolInjuries} />
         </div>
 

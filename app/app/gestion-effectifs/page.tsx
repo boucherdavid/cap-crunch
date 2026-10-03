@@ -9,9 +9,11 @@ export const dynamic = 'force-dynamic'
 export default async function GestionEffectifsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; avec?: string; recoit?: string }>
 }) {
-  const { tab } = await searchParams
+  const { tab, avec, recoit } = await searchParams
+  // « Faire une offre » depuis le marché des échanges : pooler visé et élément demandé.
+  const tradePrefill = avec ? { targetId: avec, receiveKey: recoit } : undefined
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -59,6 +61,7 @@ export default async function GestionEffectifsPage({
           isAdmin={false}
           tradesOnly
           initialTab="echanges"
+          tradePrefill={tradePrefill}
           selfPoolerId={pooler.id}
           selfPoolerName={pooler.name}
           saisonId={saison.id}
@@ -94,6 +97,7 @@ export default async function GestionEffectifsPage({
       <GestionEffectifsManager
         isAdmin={isAdmin}
         initialTab={tab === 'ballotage' ? 'ballotage' : tab === 'echanges' ? 'echanges' : 'mouvements'}
+        tradePrefill={tradePrefill}
         selfPoolerId={pooler.id}
         selfPoolerName={pooler.name}
         saisonId={saison.id}

@@ -243,6 +243,9 @@ Hockey_Pool_App/
 - `team_line_combos` (trios/paires/unités spéciales actuels, une ligne par joueur et par groupe —
   Daily Faceoff, `python_script/scrape_line_combos.py`, remplacement complet par équipe)
 - `ltir_requests` (demandes de mise sur LTIR en attente d'approbation admin — voir section 6)
+- `trade_market_listings`/`trade_market_requests` (marché des échanges, `/marche-echanges` —
+  éléments offerts et « Je cherche », avec `expires_on` ; retrait automatique paresseux par
+  `cleanupTradeMarket()`, `app/lib/tradeMarket.ts`)
 - `meeting_polls`, `meeting_poll_dates`, `meeting_poll_responses`, `meeting_poll_comments`
   (sondage de planification, `/planification` — le babillard `meeting_poll_comments` est
   propre à ce sondage, distinct de `bulletin_posts`/`bulletin_comments` ci-dessous)
@@ -292,7 +295,10 @@ heure de l'Est ; navigation précédent/suivant, voir section 6) `/resultats`
 saison ; **Échanges**, proposer/répondre à des transactions entre poolers — voir section 6
 pour les trois) `/draft-center` (classement des prospects, vue publique)
 `/dashboard` (redirige vers son propre alignement ; `/poolers/[id]` garde l'onglet ouvert dans
-`?onglet=` et le conserve en changeant de pooler) `/listes` (« Mes listes », menu Mon équipe —
+`?onglet=` et le conserve en changeant de pooler) `/marche-echanges` (marché des échanges, menu Le pool — David, 2026-10-03 : joueurs/choix offerts
+avec note et expiration, « Je cherche », push aux autres poolers, encadré sur l'accueil ; « Faire une
+offre » ouvre `/gestion-effectifs?tab=echanges&avec=<pooler>&recoit=player-<id>|pick-<id>` pré-rempli)
+`/listes` (« Mes listes », menu Mon équipe —
 voir section 6) `/compte` `/signaler` `/aide` `/a-propos`
 (David, 2026-09-23 — « tour d'horizon » statique des fonctionnalités consultables/en
 libre-service, regroupé par section de menu avec lien direct vers chaque page ; distinct
@@ -528,7 +534,7 @@ sont deux natures de contenu différentes.**
 | Section | Contenu |
 |---|---|
 | Mon équipe (nouveau nom de groupe — le lien "Mon alignement", ex-"Mon équipe", garde son nom de page inchangé depuis le renommage plus haut le même jour) | Mon alignement · Gestion d'effectifs · Simulation · Mes listes (ajouté le 2026-09-27) — "ce qui m'appartient / que je contrôle" |
-| Le pool | Classement · Tous les alignements (ex-"Équipes") · Journal des transactions — "ce qui concerne les autres poolers". Le groupe "Classement du pool" a été retiré le 2026-09-30 (David) : un seul lien Classement, avec un sélecteur Saison complète (défaut) / Mensuel / Hebdomadaire en haut de la page (`app/classement/PeriodSelector.tsx`, routes `/classement`, `/classement/mensuel`, `/classement/hebdomadaire` inchangées) |
+| Le pool | Classement · Tous les alignements (ex-"Équipes") · Marché des échanges (2026-10-03) · Journal des transactions — "ce qui concerne les autres poolers". Le groupe "Classement du pool" a été retiré le 2026-09-30 (David) : un seul lien Classement, avec un sélecteur Saison complète (défaut) / Mensuel / Hebdomadaire en haut de la page (`app/classement/PeriodSelector.tsx`, routes `/classement`, `/classement/mensuel`, `/classement/hebdomadaire` inchangées) |
 | Calendrier LNH (lien autonome, ex-sous-item de "Statistiques", sorti le 2026-09-23 (suite) — entre Le pool et Statistiques) | Le résumé personnel "mes joueurs cette semaine" a été extrait dans un onglet séparé sur `/poolers/[id]`, voir ci-dessous — cette page ne garde que la navigation jour par jour |
 | Statistiques (ex-partie de "LNH") | LNH · Projections · AHL |
 | Analytique (ajouté le 2026-10-01) | Statistiques avancées · Outil d'analyse · Trios et paires (2026-10-02) |

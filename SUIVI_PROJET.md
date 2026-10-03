@@ -21,6 +21,25 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-03
 
+**[Chore] — Fusion staging → main** après le pool : échanges en pré-saison, indicateur « à faire »,
+liens de courriel absolus en prod (`2667d2f`).
+
+**[Feat] — Marché des échanges et « Je cherche »** (`supabase_migrations/trade_market.sql`,
+`app/lib/tradeMarket.ts`, `app/lib/tradeMarketShared.ts`, `app/app/marche-echanges/*`,
+`app/app/gestion-effectifs/page.tsx`, `GestionEffectifsManager.tsx`, `TradeOffersTab.tsx`,
+`app/app/page.tsx`, `app/components/Navbar.tsx`, `app/app/aide/AideTabs.tsx`, `app/app/a-propos/page.tsx`) :
+- Nouvelle page `/marche-echanges` (menu Le pool) : chaque pooler met sur le marché ses joueurs
+  (actif, réserviste, recrue) et ses choix de repêchage, avec note facultative et date
+  d'expiration (jusqu'à 90 jours) ; ou publie un besoin (« Je cherche », catégorie facultative).
+- Retrait à la main, ou automatique et paresseux à chaque lecture (`cleanupTradeMarket`) : date
+  passée, joueur plus dans l'alignement du pooler, choix échangé ou utilisé.
+- « Faire une offre » → `/gestion-effectifs?tab=echanges&avec=<pooler>&recoit=player-<id>|pick-<id>` :
+  proposition ouverte sur le bon pooler, élément coché dans « Tu reçois » (état initial, pas
+  d'effet). Marche aussi en pré-saison (onglet Échanges seul).
+- Notification push à tous les autres poolers à chaque mise en marché ou recherche ; encadré
+  « Sur le marché » sur l'accueil (5 derniers éléments).
+- Migration à rouler (staging puis prod) : deux tables, RLS lecture publique + admin gère.
+
 **[Clôture de session]** : échanges en pré-saison, indicateur « à faire » du pooler et liens de
 courriel absolus **validés par David en staging** ; fusion sur `main` reportée après le pool du
 jour. Marché des échanges et « Je cherche » : plan approuvé, réalisation à la prochaine session

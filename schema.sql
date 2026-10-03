@@ -1330,3 +1330,7 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 
 -- Migration 2026-10-02 : line_advanced_stats (stats des trios/paires MoneyPuck, 5 contre 5) — voir
 -- supabase_migrations/line_stats.sql.
+
+-- Migration 2026-10-03 : marché des échanges (/marche-echanges) — voir supabase_migrations/trade_market.sql.
+-- Tables trade_market_listings (joueurs/choix offerts, note, expires_on) et trade_market_requests
+-- (« Je cherche » : category, description, expires_on). RLS lecture publique + admin gère.

@@ -22,8 +22,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main`, **validé par David** : échanges en pré-saison, indicateur « à faire » du pooler, liens cliquables dans les courriels — **à fusionner après le pool du 2026-10-03** |
-| `main` (prod) | À jour — fusion du 2026-10-02 : Gestion d'effectifs (colonne « Alignement » dans les trois onglets, aperçu d'un échange en direct, import d'un scénario), trios et paires, recherches accélérées, hub du repêchage des recrues et chronos |
+| `staging` | En avance sur `main` : **Marché des échanges + « Je cherche »** — migration `supabase_migrations/trade_market.sql` à rouler en staging, puis à valider |
+| `main` (prod) | À jour — fusion du 2026-10-03 (après le pool) : échanges en pré-saison, indicateur « à faire » du pooler, liens cliquables dans les courriels |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
 détail des sources par blessure, correctif de saut d'écran du repêchage admin, renvoi en banque
@@ -62,29 +62,14 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **Fusion en attente** : `staging` validé par David (échanges en pré-saison, indicateur « à faire »,
-  liens de courriel absolus). Fusionner sur `main` une fois le pool du 2026-10-03 terminé, puis
-  vérifier un vrai courriel en prod (lien cliquable).
-- **Prochaine session — Marché des échanges** (plan approuvé par David le 2026-10-03) :
-  - page « Marché des échanges » dans le menu « Le pool » ; chaque pooler y met ses joueurs
-    (actif, réserviste, recrue) **et ses choix de repêchage**, avec une note facultative et une
-    **date d'expiration choisie par lui** ; retrait à la main ou automatique (joueur échangé ou
-    libéré, date passée) ;
-  - bouton « Faire une offre » → onglet Échanges pré-rempli (pooler sélectionné, élément coché dans
-    « Tu reçois ») — fonctionne aussi en pré-saison ;
-  - **notification push** à tous les poolers à chaque mise en marché ; encadré « Sur le marché »
-    sur l'accueil (derniers éléments) ;
-  - puis **« Je cherche »** : publication d'un besoin sans joueur précis (même expiration, même
-    notification), avec « Faire une offre » vers ce pooler ;
-  - migration SQL requise (une table pour les éléments offerts, une pour les demandes) ;
-    entrées dans `/aide` et `/a-propos`.
-  Suite possible ailleurs : sauvegarder une proposition d'échange comme scénario de simulation.
-
-- **Pool le 2026-10-03.** Tout est en prod. Avant de commencer : régler au besoin les durées des
-  chronos (Configuration → Général, 120 s par défaut), puis hub `/repechage-recrues` →
-  « Démarrer le repêchage ». Les zones de test (réinitialisations) restent disponibles tant que
-  la saison n'est pas démarrée. Si un pooler ne voit pas son tour : sa page se met à jour en
-  ~10 s, sinon bouton « Rafraîchir ».
+- **Marché des échanges + « Je cherche »** (code fait, 2026-10-03) :
+  1. Rouler `supabase_migrations/trade_market.sql` dans le SQL Editor **staging**.
+  2. Valider sur staging : `/marche-echanges` (mettre sur le marché, Je cherche, retirer),
+     notification push reçue par un autre pooler, encadré « Sur le marché » de l'accueil,
+     « Faire une offre » → onglet Échanges pré-rempli (pooler + élément coché).
+  3. Puis rouler la migration en **prod** et fusionner.
+  Suite possible : sauvegarder une proposition d'échange comme scénario de simulation.
+- **Prod** : vérifier un vrai courriel (lien cliquable) depuis la fusion du 2026-10-03.
 
 - **Outil d'analyse** : suites possibles — pointage du pool plutôt que points LNH, mémoriser le
   graphique masqué.

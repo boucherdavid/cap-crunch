@@ -53,12 +53,13 @@ function fmtDeadline(iso: string | null) {
   return new Date(iso).toLocaleString('fr-CA', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Toronto' })
 }
 
+const itemKey = (i: TradeableItem) => i.kind === 'player' ? `player-${i.playerId}` : `pick-${i.pickId}`
+
 function ItemPicker({
   title, items, selected, onToggle,
 }: {
   title: string; items: TradeableItem[]; selected: Set<string>; onToggle: (key: string) => void
 }) {
-  const key = (i: TradeableItem) => i.kind === 'player' ? `player-${i.playerId}` : `pick-${i.pickId}`
   const groups = GROUP_ORDER
     .map(g => ({ label: GROUP_LABEL[g], items: items.filter(i => groupKey(i) === g) }))
     .filter(g => g.items.length > 0)
@@ -73,7 +74,7 @@ function ItemPicker({
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-2 pt-1.5">{g.label}</p>
             <div className="divide-y">
               {g.items.map(i => {
-                const k = key(i)
+                const k = itemKey(i)
                 const label = i.kind === 'player'
                   ? `${i.name}${i.position ? ` (${i.position}${i.teamCode ? ', ' + i.teamCode : ''})` : ''}`
                   : `Choix ronde ${i.round} (${i.season})`
@@ -107,11 +108,16 @@ function pickKeys(items: TradeableItem[], playerIds: number[]): string[] {
  * colonne « Alignement » montre l'effet de l'échange à chaque case cochée. */
 export type TradeDraft = { givePlayerIds: number[]; receive: TradeablePlayer[] }
 
-export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraftChange }: {
+/** « Faire une offre » depuis le marché des échanges (David, 2026-10-03) : pooler visé et,
+ * au besoin, l'élément à cocher dans « Tu reçois » (`player-<id>` ou `pick-<id>`). */
+export type TradePrefill = { targetId: string; receiveKey?: string }
+
+export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraftChange, prefill }: {
   saisonId: number
   selfPoolerId: string
   poolCap: number
   onDraftChange?: (draft: TradeDraft | null) => void  // doit être stable (ex : un setState)
+  prefill?: TradePrefill
 }) {
   const [offers, setOffers] = useState<TradeOfferView[]>([])
   const [history, setHistory] = useState<TradeOfferView[]>([])
@@ -143,9 +149,10 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
     .reduce((s, i) => s + i.capNumber, 0)
 
   // ── Nouvelle proposition ──────────────────────────────────────────────────
-  const [composing, setComposing] = useState(false)
+  const activePrefill = prefill && prefill.targetId !== selfPoolerId ? prefill : null
+  const [composing, setComposing] = useState(!!activePrefill)
   const [otherPoolers, setOtherPoolers] = useState<{ id: string; name: string }[]>([])
-  const [targetId, setTargetId] = useState('')
+  const [targetId, setTargetId] = useState(activePrefill?.targetId ?? '')
   const [theirAssets, setTheirAssets] = useState<TradeableItem[]>([])
   const [mySelected, setMySelected] = useState<Set<string>>(new Set())
   const [theirSelected, setTheirSelected] = useState<Set<string>>(new Set())
@@ -157,7 +164,12 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
   }, [composing])
 
   // Sélection à appliquer une fois les joueurs de l'autre pooler chargés (import d'un scénario).
-  const pendingImport = useRef<{ targetId: string; receiveIds: number[] } | null>(null)
+  // Pré-remplissage depuis le marché : la proposition s'ouvre sur le bon pooler (état initial de
+  // `composing`/`targetId` plus haut) et l'élément demandé est coché dès que ses actifs sont chargés.
+  const pendingImport = useRef<{ targetId: string; selectKeys: (assets: TradeableItem[]) => string[] } | null>(
+    activePrefill ? { targetId: activePrefill.targetId, selectKeys: assets => assets.map(itemKey).filter(k => k === activePrefill.receiveKey) } : null,
+  )
+
 
   useEffect(() => {
     if (!targetId) { setTheirAssets([]); return }
@@ -165,9 +177,9 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
     listTradeableAssetsAction(targetId, saisonId).then(assets => {
       if (cancelled) return
       setTheirAssets(assets)
-      const wanted = pendingImport.current?.targetId === targetId ? pendingImport.current.receiveIds : null
+      const pending = pendingImport.current?.targetId === targetId ? pendingImport.current : null
       pendingImport.current = null
-      if (wanted) setTheirSelected(new Set(pickKeys(assets, wanted)))
+      if (pending) setTheirSelected(new Set(pending.selectKeys(assets)))
     })
     setTheirSelected(new Set())
     return () => { cancelled = true }
@@ -212,7 +224,7 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
     const receiveIds = received.filter(a => a.ownerName === target.name).map(a => a.id)
     setMySelected(new Set(pickKeys(myFullRoster, res.data.removed)))
     if (target.id === targetId) setTheirSelected(new Set(pickKeys(theirAssets, receiveIds)))
-    else { pendingImport.current = { targetId: target.id, receiveIds }; setTargetId(target.id) }
+    else { pendingImport.current = { targetId: target.id, selectKeys: assets => pickKeys(assets, receiveIds) }; setTargetId(target.id) }
     const notes = [`Scénario chargé avec ${target.name}. Tous les retraits du scénario sont cochés dans « Tu donnes » : décoche ceux qui ne font pas partie de l'échange.`]
     if (ownerNames.length > 1) notes.push(`Le scénario implique aussi ${ownerNames.slice(1).join(', ')} : non repris, une proposition vise un seul pooler.`)
     notes.push('Un joueur du scénario qui a changé d\'alignement depuis est ignoré.')

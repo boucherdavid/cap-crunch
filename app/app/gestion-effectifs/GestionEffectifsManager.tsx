@@ -6,7 +6,7 @@ import RosterPreview from './RosterPreview'
 import { TodoPills } from '@/components/PoolerTodoIndicator'
 import { markBallotageSeen, refreshPoolerTodo, usePoolerTodo } from '@/components/usePoolerTodo'
 import BallotageTab from './BallotageTab'
-import TradeOffersTab, { type TradeDraft } from './TradeOffersTab'
+import TradeOffersTab, { type TradeDraft, type TradePrefill } from './TradeOffersTab'
 import {
   getPoolerRosterAction,
   searchPlayersAction,
@@ -312,6 +312,7 @@ export default function GestionEffectifsManager({
   isAdmin,
   initialTab,
   tradesOnly = false,
+  tradePrefill,
   poolers,
   selfPoolerId,
   selfPoolerName,
@@ -327,6 +328,7 @@ export default function GestionEffectifsManager({
   // `/gestion-effectifs?tab=ballotage` — David, 2026-09-21). Optionnel, défaut 'mouvements'.
   initialTab?: 'mouvements' | 'ballotage' | 'echanges'
   tradesOnly?: boolean  // pré-saison : seul l'onglet Échanges (David, 2026-10-03)
+  tradePrefill?: TradePrefill  // « Faire une offre » depuis le marché des échanges
   poolers?: { id: string; name: string }[]
   selfPoolerId?: string
   selfPoolerName?: string
@@ -1158,7 +1160,7 @@ export default function GestionEffectifsManager({
   }
 
   if (activeTab === 'echanges' && selfPoolerId) {
-    return tabLayout(<TradeOffersTab saisonId={saisonId} selfPoolerId={selfPoolerId} poolCap={poolCap} onDraftChange={setTradeDraft} />, tradePreview)
+    return tabLayout(<TradeOffersTab saisonId={saisonId} selfPoolerId={selfPoolerId} poolCap={poolCap} onDraftChange={setTradeDraft} prefill={tradePrefill} />, tradePreview)
   }
 
   // Pooler : formulaire et alignement côte à côte sur grand écran, empilés sinon.
