@@ -21,6 +21,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-03
 
+**[Perf] — Fonctions Vercel déplacées en Oregon** (`app/vercel.json`) : les fonctions tournaient
+en `iad1` (Washington, défaut Vercel) alors que la base Supabase prod est en `us-west-2` (Oregon) —
+chaque requête traversait le continent (~70 ms aller-retour, des dizaines par page). `regions:
+["pdx1"]` s'applique aux deux projets Vercel (prod et staging, même `rootDirectory=app`).
+
 **[Perf] — Moins de charge pendant les repêchages** (`app/components/TurnWatcher.tsx`,
 `turn-watch-actions.ts`, `WatchlistPanel.tsx`, `app/app/repechage-recrues/RookieTurnBanner.tsx`,
 `page.tsx`, `app/app/repechage-agents-libres/AgentsLibresDashboard.tsx`) — David trouvait le

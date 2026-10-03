@@ -42,6 +42,8 @@ Application web pour gérer un pool de hockey long terme, en remplacement d'un f
 - Frontend : Next.js 16, React 19, TypeScript, Tailwind CSS 4
 - Backend : Supabase (PostgreSQL, Auth, RLS)
 - Hébergement : Vercel (`https://cap-crunch.vercel.app/`)
+- Région des fonctions Vercel : `pdx1` (Oregon, `app/vercel.json`), alignée sur la base Supabase
+  prod (`us-west-2`) — ne pas revenir au défaut `iad1` (lag du repêchage, 2026-10-03)
 - Environnement staging distant (Vercel, branche `staging`, base Supabase staging, accessible
   aux poolers sans compte Vercel — SSO déploiement désactivé) :
   `https://cap-crunch-staging.vercel.app/`. Utile pour tester
