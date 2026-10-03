@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-10-02
+Derniere mise a jour: 2026-10-03
 
 ## Role du fichier
 
@@ -18,6 +18,23 @@ techniques : voir `CLAUDE.md` (sections 1 à 6) — c'est la référence mainten
 qu'un second inventaire dérive silencieusement de la réalité comme celui qui était ici
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
+
+### 2026-10-03
+
+**[Feat] — Échanges entre poolers ouverts avant le début de saison** (`app/lib/tradeOffers.ts`,
+`app/app/gestion-effectifs/page.tsx`, `GestionEffectifsManager.tsx`) :
+- Demande de David : que les poolers fassent eux-mêmes leurs échanges dès la pré-saison (avec
+  approbation admin), pour lui éviter de les passer à la main dans `/admin/transactions`.
+- Même circuit qu'en saison, **y compris la confirmation par les deux poolers** (choix de
+  David). Différences tant que `season_started=false` : pas de contrôle de conformité 12/6/2 +
+  plafond à la confirmation (exigé seulement au démarrage de la saison) ; exécution sans
+  historique (`added_at` NULL, pas de `roster_change_log`), comme les autres mouvements de
+  pré-saison. `createTradeOffer` n'est plus bloqué avant le démarrage.
+- Gestion d'effectifs en pré-saison, pour un pooler : seul l'onglet Échanges (`tradesOnly`), avec
+  un bandeau qui renvoie au hub des agents libres pour les autres ajustements.
+- Prochaines étapes approuvées par David : Marché des échanges (joueurs et choix, date
+  d'expiration choisie par le pooler, notification push, encadré sur l'accueil, « Faire une
+  offre » pré-rempli), puis « Je cherche ».
 
 ### 2026-10-02
 

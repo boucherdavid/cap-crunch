@@ -27,9 +27,12 @@ function pickChangeType(oldType: string | null, newType: string | null): string 
 
 // Transactions proposées entre poolers, avec approbation admin (David, 2026-09-21) — voir
 // schema.sql (migration trade_offers/trade_offer_items) pour le détail du flux complet.
-// Volontairement scopé à la saison démarrée (season_started=true) : les échanges pré-saison
-// passent par le filet de sécurité admin existant (/admin/transactions, action_type='transfer'),
-// pas encore couvert ici.
+// Pré-saison (David, 2026-10-03) : même circuit qu'en saison (proposition, acceptation,
+// approbation admin, confirmation par les deux poolers), avec deux différences tant que
+// season_started=false — la conformité 12/6/2 + plafond n'est pas exigée à la confirmation
+// (elle ne l'est qu'au démarrage de la saison, chacun ajuste ensuite dans le hub des agents
+// libres), et l'exécution n'écrit aucun historique (added_at NULL, pas de roster_change_log),
+// comme les autres mouvements de pré-saison. /admin/transactions reste le filet de sécurité.
 //
 // Rien n'est jamais écrit dans pooler_rosters/pool_draft_picks avant que les DEUX poolers aient
 // confirmé leur part — un délai manqué annule tout pour les deux (aucun rollback nécessaire,
@@ -66,8 +69,6 @@ export async function createTradeOffer(
   if (items.length === 0) return { error: 'Ajoute au moins un joueur ou un choix des deux côtés.' }
 
   const admin = createAdminClient()
-  const { data: saison } = await admin.from('pool_seasons').select('season_started').eq('id', saisonId).single()
-  if (!saison?.season_started) return { error: "La saison n'a pas encore démarré — les échanges pré-saison passent par l'admin." }
 
   const validPoolers = new Set([proposerPoolerId, targetPoolerId])
   for (const item of items) {
@@ -304,7 +305,7 @@ export async function confirmTradeReady(
     if (givenByThisPooler.has(extra.playerId)) return { error: 'Un ajustement supplémentaire ne peut pas viser un joueur déjà inclus dans l\'échange.' }
   }
 
-  const { data: saison } = await admin.from('pool_seasons').select('season, pool_cap').eq('id', offer.pool_season_id).single()
+  const { data: saison } = await admin.from('pool_seasons').select('season, pool_cap, season_started').eq('id', offer.pool_season_id).single()
   const { data: settingsRow } = await admin.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle()
   const unsignedMultiplier = settingsRow?.unsigned_player_cap_multiplier ?? 1.20
 
@@ -336,8 +337,11 @@ export async function confirmTradeReady(
     }
   }
 
-  const virtual = await simulatePostTradeRoster(admin, poolerId, offer.pool_season_id, saison?.season ?? '', unsignedMultiplier, items, chosenTypes, extraActions)
-  const limitError = validateRosterLimits(virtual, saison?.pool_cap ?? 0)
+  // Pré-saison : pas de contrôle de conformité (voir l'en-tête du fichier).
+  const virtual = saison?.season_started
+    ? await simulatePostTradeRoster(admin, poolerId, offer.pool_season_id, saison?.season ?? '', unsignedMultiplier, items, chosenTypes, extraActions)
+    : null
+  const limitError = virtual ? validateRosterLimits(virtual, saison?.pool_cap ?? 0) : null
   if (limitError) return { error: `Ton alignement ne serait pas conforme après cet échange : ${limitError}. Ajoute un ajustement supplémentaire (libération ou changement de statut) avant de confirmer.` }
 
   // Enregistre le type choisi pour chaque joueur reçu par CE pooler (pas de type pour une
@@ -394,10 +398,15 @@ async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tr
 
   const now = new Date().toISOString()
   const saisonId = offer.pool_season_id
-  const { data: saisonRow } = await admin.from('pool_seasons').select('season').eq('id', saisonId).single()
+  const { data: saisonRow } = await admin.from('pool_seasons').select('season, season_started').eq('id', saisonId).single()
   const season = saisonRow?.season ?? ''
+  // Pré-saison : aucun historique (added_at NULL, pas de roster_change_log) — « Démarrer la
+  // saison » date ensuite tous les actifs d'un coup, comme pour les autres mouvements.
+  const preseason = !saisonRow?.season_started
+  const addedAt = preseason ? null : now
 
   async function log(playerId: number, poolerId: string, oldType: string | null, newType: string | null) {
+    if (preseason) return
     await admin.from('roster_change_log').insert({
       player_id: playerId, pooler_id: poolerId, pool_season_id: saisonId,
       change_type: pickChangeType(oldType, newType),
@@ -444,11 +453,11 @@ async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tr
         .eq('pooler_id', item.to_pooler_id).eq('player_id', item.player_id).eq('pool_season_id', saisonId).maybeSingle()
       if (existingDest) {
         const { error } = await admin.from('pooler_rosters')
-          .update({ is_active: true, player_type: destType, removed_at: null, added_at: now, ...rookieFields }).eq('id', existingDest.id)
+          .update({ is_active: true, player_type: destType, removed_at: null, added_at: addedAt, ...rookieFields }).eq('id', existingDest.id)
         if (error) return { error: error.message }
       } else {
         const { error } = await admin.from('pooler_rosters')
-          .insert({ pooler_id: item.to_pooler_id, player_id: item.player_id, pool_season_id: saisonId, player_type: destType, is_active: true, added_at: now, ...rookieFields })
+          .insert({ pooler_id: item.to_pooler_id, player_id: item.player_id, pool_season_id: saisonId, player_type: destType, is_active: true, added_at: addedAt, ...rookieFields })
         if (error) return { error: error.message }
       }
       await log(item.player_id, item.to_pooler_id, null, destType)

@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-10-02
+**Dernière mise à jour :** 2026-10-03
 
 ---
 
@@ -22,7 +22,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | Identique à `main` |
+| `staging` | En avance sur `main` : échanges entre poolers ouverts avant le début de saison — à valider après le pool |
 | `main` (prod) | À jour — fusion du 2026-10-02 : Gestion d'effectifs (colonne « Alignement » dans les trois onglets, aperçu d'un échange en direct, import d'un scénario), trios et paires, recherches accélérées, hub du repêchage des recrues et chronos |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
@@ -62,8 +62,11 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **Suite possible (Échanges)** : sauvegarder une proposition en préparation comme scénario de
-  simulation (l'inverse de l'import, déjà livré).
+- **Échanges en pré-saison** : en staging, à tester avec deux comptes pooler (proposer, accepter,
+  approuver, confirmer des deux côtés → échange exécuté sans contrôle de conformité). Ne rien
+  fusionner avant la fin du pool du 2026-10-03.
+- **À faire ensuite (approuvé)** : Marché des échanges (migration SQL), puis « Je cherche ».
+  Suite possible : sauvegarder une proposition comme scénario.
 
 - **Pool le 2026-10-03.** Tout est en prod. Avant de commencer : régler au besoin les durées des
   chronos (Configuration → Général, 120 s par défaut), puis hub `/repechage-recrues` →

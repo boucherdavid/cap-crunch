@@ -1250,10 +1250,11 @@ corrigée le 2026-09-20 :**
   duplique le strict minimum de la logique `'transfer'` déjà en place là-bas (même vocabulaire
   `roster_change_log`, un seul en-tête `transactions` + un `transaction_items` par item pour
   que `/journal-transactions` affiche l'échange comme un tout).
-- Scopé à la saison démarrée (`season_started=true`) — un échange pré-saison passe par le
-  filet de sécurité admin existant (`/admin/transactions`, `action_type='transfer'`, déjà
-  fonctionnel et sans délai puisque la conformité n'est pas exigée avant le début de saison),
-  pas encore couvert par cet outil.
+- **Pré-saison (David, 2026-10-03)** : ouvert aussi avant le démarrage, même circuit y compris la
+  confirmation par les deux poolers ; tant que `season_started=false`, pas de contrôle de
+  conformité à la confirmation et exécution sans historique (`added_at` NULL, pas de
+  `roster_change_log`). Gestion d'effectifs n'ouvre alors que l'onglet Échanges aux poolers
+  (`tradesOnly`). `/admin/transactions` reste le filet de sécurité.
 - RLS `trade_offers`/`trade_offer_items` : lecture publique + admin seulement en écriture,
   même patron que `waiver_claims` — toutes les écritures passent par `createAdminClient()`
   depuis des Server Actions qui font leur propre vérification d'autorisation.

@@ -309,6 +309,7 @@ const ACTION_DEFS: { type: ActionType; label: string; description: string; admin
 export default function GestionEffectifsManager({
   isAdmin,
   initialTab,
+  tradesOnly = false,
   poolers,
   selfPoolerId,
   selfPoolerName,
@@ -323,6 +324,7 @@ export default function GestionEffectifsManager({
   // Onglet initial (lien "Voir sur Cap Crunch" depuis un courriel/push de ballotage,
   // `/gestion-effectifs?tab=ballotage` — David, 2026-09-21). Optionnel, défaut 'mouvements'.
   initialTab?: 'mouvements' | 'ballotage' | 'echanges'
+  tradesOnly?: boolean  // pré-saison : seul l'onglet Échanges (David, 2026-10-03)
   poolers?: { id: string; name: string }[]
   selfPoolerId?: string
   selfPoolerName?: string
@@ -1030,7 +1032,7 @@ export default function GestionEffectifsManager({
   // proposition/confirmation dérivent le pooler de la session courante (comme Ballotage), donc
   // proposer "au nom" du pooler sélectionné dans le picker Mouvements créerait une transaction
   // au nom réel de l'admin plutôt que du pooler affiché — trompeur, hors scope pour l'instant.
-  const availableTabs = selfPoolerId ? (['mouvements', 'ballotage', 'echanges'] as const) : (['mouvements', 'ballotage'] as const)
+  const availableTabs = tradesOnly ? (['echanges'] as const) : selfPoolerId ? (['mouvements', 'ballotage', 'echanges'] as const) : (['mouvements', 'ballotage'] as const)
   const TAB_LABEL: Record<string, string> = { mouvements: 'Mouvements', ballotage: 'Ballotage', echanges: 'Échanges' }
 
   const tabs = (

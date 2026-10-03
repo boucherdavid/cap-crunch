@@ -44,14 +44,30 @@ export default async function GestionEffectifsPage({
   const seasonStarted = saison.season_started ?? true
   const toolOuvert = saison.gestion_effectifs_ouvert ?? true
 
+  // Pré-saison (David, 2026-10-03) : seul l'onglet Échanges est ouvert aux poolers — les autres
+  // ajustements se font dans le hub des agents libres jusqu'au démarrage de la saison.
   if (!isAdmin && !seasonStarted) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Gestion d&apos;effectifs</h1>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-5 text-sm text-yellow-800">
-          La saison n&apos;a pas encore démarré. Tu peux consulter les alignements et le classement,
-          mais l&apos;auto-gestion de ton équipe s&apos;ouvrira une fois la saison lancée par l&apos;administrateur.
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold text-gray-800 mb-1">Gestion d&apos;effectifs</h1>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800 my-4">
+          La saison n&apos;a pas encore démarré : seuls les échanges sont ouverts. Pour activer, mettre en réserve ou libérer
+          un joueur, utilise <a href="/repechage-agents-libres" className="font-medium underline">Signatures des agents libres</a>.
+          Un échange approuvé n&apos;exige pas encore un alignement conforme : ce sera le cas au démarrage de la saison.
         </div>
+        <GestionEffectifsManager
+          isAdmin={false}
+          tradesOnly
+          initialTab="echanges"
+          selfPoolerId={pooler.id}
+          selfPoolerName={pooler.name}
+          saisonId={saison.id}
+          season={saison.season}
+          poolCap={Number(saison.pool_cap)}
+          delaiReactivationJours={saison.delai_reactivation_jours ?? 7}
+          maxSignaturesAl={saison.max_signatures_al ?? 10}
+          maxSignaturesLtir={saison.max_signatures_ltir ?? 2}
+        />
       </div>
     )
   }
