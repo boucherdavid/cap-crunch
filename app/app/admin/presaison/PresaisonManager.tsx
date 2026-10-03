@@ -291,7 +291,7 @@ export default function PresaisonManager({
   // rapide "juste après le suivant" si l'admin l'a activé — une signature va toujours en fin
   // de file, peu importe ce réglage.
   const advanceAfterAction = async (isPass: boolean) => {
-    const [stateResult] = await Promise.all([advancePresaisonQueueAction(saisonId, isPass), refreshData()])
+    const [stateResult] = await Promise.all([advancePresaisonQueueAction(saisonId, isPass, draftState?.queue[0]), refreshData()])
     if (stateResult.state) setDraftState(stateResult.state)
   }
 

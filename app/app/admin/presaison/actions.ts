@@ -610,7 +610,10 @@ export async function startPresaisonDraftAction(saisonId: number): Promise<{ err
 // file (comme un vrai tour de repêchage), peu importe pass_skip_one — seul un "Passer"
 // explicite (isPass=true) peut bénéficier du retour rapide "juste après le suivant" si
 // l'admin l'a activé (voir setPassModeAction).
-export async function advancePresaisonQueueAction(saisonId: number, isPass = false): Promise<{ error?: string; state?: DraftState }> {
+// `expectedCurrentId` (David, 2026-10-03) : le pooler dont c'était le tour quand l'admin a cliqué.
+// Si la file a déjà avancé entre-temps (double clic, clic répété pendant une lenteur de la base),
+// on ne la fait pas tourner une seconde fois — sinon un pooler était sauté et toute la file décalée.
+export async function advancePresaisonQueueAction(saisonId: number, isPass = false, expectedCurrentId?: string): Promise<{ error?: string; state?: DraftState }> {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -625,6 +628,7 @@ export async function advancePresaisonQueueAction(saisonId: number, isPass = fal
     .maybeSingle()
   const prevQueue = (current?.queue as string[] | undefined) ?? []
   if (prevQueue.length === 0) return loadPresaisonDraftStateAction(saisonId)
+  if (expectedCurrentId && prevQueue[0] !== expectedCurrentId) return loadPresaisonDraftStateAction(saisonId)
 
   const fresh = await loadPresaisonDataAction(saisonId)
   if (fresh.error || !fresh.poolers) return { error: fresh.error ?? 'Impossible de charger les données.' }
