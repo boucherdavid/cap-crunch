@@ -21,6 +21,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-02
 
+**[Déploiement] — Gestion d'effectifs (Ballotage, Échanges, aperçu et import de scénario) en prod** :
+validé par David en staging (« ça fonctionne », import d'un vrai scénario compris), fusionné sur
+`main`.
+
+
 **[Feat] — Échanges : effet sur l'alignement en direct, import d'un scénario** (`app/app/gestion-effectifs/TradeOffersTab.tsx`,
 `GestionEffectifsManager.tsx`, `RosterPreview.tsx`) :
 - Retour de David sur l'onglet Échanges : pouvoir seulement envoyer n'est pas pratique, il faut
