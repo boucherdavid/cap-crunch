@@ -22,8 +22,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : **Marché des échanges + « Je cherche »** — migration roulée en staging, à valider (`8c058ee`) |
-| `main` (prod) | À jour — fusion du 2026-10-03 (après le pool) : échanges en pré-saison, indicateur « à faire » du pooler, liens cliquables dans les courriels |
+| `staging` | = `main` |
+| `main` (prod) | À jour — 2026-10-03 : Marché des échanges + « Je cherche » (migré et validé), échanges en pré-saison, indicateur « à faire » du pooler, liens cliquables dans les courriels |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
 détail des sources par blessure, correctif de saut d'écran du repêchage admin, renvoi en banque
@@ -62,13 +62,8 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **Marché des échanges + « Je cherche »** (code fait, 2026-10-03) :
-  1. ✅ Migration roulée en staging ; code poussé (`8c058ee`).
-  2. Valider sur staging : `/marche-echanges` (mettre sur le marché, Je cherche, retirer),
-     notification push reçue par un autre pooler, encadré « Sur le marché » de l'accueil,
-     « Faire une offre » → onglet Échanges pré-rempli (pooler + élément coché).
-  3. Puis rouler la migration en **prod** et fusionner.
-  Suite possible : sauvegarder une proposition d'échange comme scénario de simulation.
+- **Marché des échanges** : en prod (2026-10-03). Suite possible : sauvegarder une proposition
+  d'échange comme scénario de simulation.
 - **Prod** : vérifier un vrai courriel (lien cliquable) depuis la fusion du 2026-10-03.
 
 - **Outil d'analyse** : suites possibles — pointage du pool plutôt que points LNH, mémoriser le
