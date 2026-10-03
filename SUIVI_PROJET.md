@@ -21,6 +21,12 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-03
 
+**[Fix] — Copie de secours : un nouveau fichier réaffichait les vieilles données locales**
+(`python_script/generate_backup_tool.py`) : l'état local (localStorage, clé par saison) remplaçait
+les données de tout nouvel export de la même saison. L'état retient maintenant
+`baselineGeneratedAt` ; si l'export ouvert est différent, une confirmation propose ses données
+(journal manuel conservé) ou de garder les modifications locales.
+
 **[Données prod] — Statut recrue rétabli pour 7 repêchés encore protégés en 2026-27**
 (Slafkovský, Carlsson, Bedard, Fantilli, Gauthier, Nazar, Hutson) : `rookie_type='repeche'` et
 `pool_draft_year` (2022 ou 2023) recopiés de leur ligne 2025-26 sur leur ligne 2026-27, position
