@@ -62,10 +62,10 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **Lag du repêchage** (2026-10-03, sur staging) : rechargements des poolers réduits et étalés.
+- **Lag du repêchage** (2026-10-03, en prod sans validation staging) : rechargements des poolers réduits et étalés.
   À valider au prochain repêchage avec plusieurs poolers connectés ; reste à vérifier que la
   région Vercel = région Supabase (Supabase → Project Settings → General → Region).
-- **Résumé des choix de repêchage** (`/admin/init?tab=choix`, sur staging) : se resynchronise
+- **Résumé des choix de repêchage** (`/admin/init?tab=choix`, en prod sans validation staging) : se resynchronise
   après chaque changement — à valider.
 - **Marché des échanges** : en prod (2026-10-03). Suite possible : sauvegarder une proposition
   d'échange comme scénario de simulation.
