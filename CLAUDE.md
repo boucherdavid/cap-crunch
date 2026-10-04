@@ -427,6 +427,10 @@ SUIVI_PROJET.md session 2026-09-08 suite 11)** — `presaison_draft_state.pass_s
   volontaire (confirmée avec David) : pas de pénalité réduite pour quelqu'un qui vient de
   signer. `advancePresaisonQueueAction(saisonId, isPass)` — `isPass=true` seulement pour un
   vrai clic "Passer", `isPass=false` (ou omis) pour une signature.
+- **Avancement idempotent (David, 2026-10-03)** : `advancePresaisonQueueAction(saisonId, isPass,
+  expectedCurrentId)` ne fait rien si la tête de file n'est plus `expectedCurrentId` — un double
+  clic sur « Passer » (ou un clic répété pendant une lenteur de la base) sautait un pooler et
+  décalait toute la file. Tout nouvel appelant doit passer le pooler dont c'était le tour.
 
 **Pause du chrono (David, 2026-09-08)** — `pausePresaisonTimerAction`/
 `resumePresaisonTimerAction` (`admin/presaison/actions.ts`), sans nouvelle colonne :

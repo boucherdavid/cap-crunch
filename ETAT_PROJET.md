@@ -10,9 +10,9 @@
 
 ## 1. Où en est la saison
 
-- Saison active : **2026-27 en staging**, mais **encore 2025-26 en prod** (2026-27 pas encore
-  activée là-bas) — les scripts qui prennent « la saison active » ciblent donc 2025-26 en prod
-  (ex : imports de projections → toujours passer `--season 2026-27`).
+- Saison active : **2026-27 en prod et en staging**, pas encore démarrée en prod
+  (`season_started=false`). Pool du 2026-10-03 : repêchage des recrues fait, **repêchage des
+  agents libres en cours** en prod.
 - **Prod** : vidée volontairement le 2026-09-20, puis **alignements 2025-26 ressaisis par David
   (Mode init) — terminé le 2026-09-29**, 326 lignes pour les 8 poolers. **Revalidation par David
   le 2026-09-30** (voir section 4). Historique complet reconstruit en **staging** seulement.
@@ -23,7 +23,7 @@
 | Branche | État |
 |---|---|
 | `staging` | = `main` |
-| `main` (prod) | À jour — 2026-10-03 : Marché des échanges + « Je cherche » (migré et validé), échanges en pré-saison, indicateur « à faire » du pooler, liens cliquables dans les courriels |
+| `main` (prod) | À jour — 2026-10-03 : Marché des échanges + « Je cherche », allègement du repêchage, fonctions Vercel en Oregon, correctif de la file des agents libres, copie de secours, résumé des choix |
 
 Livré en prod le 2026-09-28 (fin de journée, `6d3c801`) : recoupement ESPN via l'API JSON +
 détail des sources par blessure, correctif de saut d'écran du repêchage admin, renvoi en banque
@@ -62,6 +62,16 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
+- **File des agents libres** (correctif en prod, non testé) : un double clic sur « Passer » ne doit
+  plus sauter de pooler. À surveiller pendant la suite du repêchage.
+- **Base prod lente le soir du pool** (17 h-19 h, cause non confirmée) : si ça revient, regarder
+  Supabase → Reports → Database (CPU, connexions) et `pg_stat_activity` ; redémarrer le projet au
+  besoin. Envisager un plan Supabase supérieur si la base sature avec 8 poolers connectés.
+- **7 repêchés encore protégés** (Slafkovský, Carlsson, Bedard, Fantilli, Gauthier, Nazar, Hutson) :
+  statut recrue rétabli en prod — les poolers peuvent les mettre en banque (★) avant le démarrage.
+- **`credentials/poolers-prod.md` périmé** pour 6 poolers (ils ont changé leur mot de passe).
+- **Copie de secours** : un nouvel export propose maintenant ses données au lieu de l'état local
+  (en prod, fichier régénéré le 2026-10-03 19 h).
 - **Lag du repêchage** (2026-10-03, en prod sans validation staging) : rechargements des poolers réduits et étalés.
   À valider au prochain repêchage avec plusieurs poolers connectés. Fonctions Vercel déplacées
   en Oregon (`pdx1`, `app/vercel.json`), à côté de la base prod (`us-west-2`) — vérifié en prod.
