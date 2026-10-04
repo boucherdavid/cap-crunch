@@ -21,6 +21,30 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-03
 
+**[Soirée du pool — prod]** (repêchage des agents libres en direct) :
+- **Base prod saturée** (~17 h-19 h ET) : ~20 s par requête, certaines tables (`pooler_rosters`,
+  `pool_seasons`) sans réponse en 20-30 s ; le site lui-même répondait. Effets : connexions qui
+  semblaient refusées, menu sans les liens réservés aux connectés (dont « Signatures des agents
+  libres » et Admin) parce que le nom du pooler n'avait pas pu être lu, `/copie-de-secours` sans
+  réponse. Cause non confirmée (incident Supabase « partiellement dégradé » en cours, ou requête
+  bloquante) ; rétabli vers 19 h sans intervention de Claude.
+- **Mots de passe** : `credentials/poolers-prod.md` (2026-08-25) n'est plus à jour pour 6 poolers
+  sur 8 (refusés ; David et Steve OK) — ils l'ont vraisemblablement changé eux-mêmes ; tous se sont
+  connectés le jour même. Aucune réinitialisation demandée.
+- **Copie de secours** : génération OK ; l'affichage « pas à jour » venait de l'état local (voir
+  le [Fix] plus bas). Lien direct hors app : `github.com/boucherdavid/cap-crunch/raw/main/backup/pool_backup.html`.
+
+**[Fix] — File du repêchage des agents libres décalée par un double avancement**
+(`app/app/admin/presaison/actions.ts`, `app/app/repechage-agents-libres/TourEnCoursPanel.tsx`,
+`app/app/admin/presaison/PresaisonManager.tsx`) : « Passer » et l'avancement après signature
+faisaient tourner la file à chaque appel, sans vérifier à qui c'était le tour — un double clic
+(ou un clic répété pendant la lenteur de la base) sautait un pooler. `advancePresaisonQueueAction`
+reçoit maintenant `expectedCurrentId` et ne fait rien si la tête de file a déjà changé ; bouton
+« Passer » désactivé pendant le traitement. Cause probable seulement (l'historique de la file
+n'est pas conservé). File corrigée à la main en prod (Jérôme remis en tête, chrono redémarré) par
+une requête SQL lancée par David — écriture bloquée pour Claude par le mode automatique.
+Commits `77cc774` (staging), `b2a17e4` (main).
+
 **[Fix] — Copie de secours : un nouveau fichier réaffichait les vieilles données locales**
 (`python_script/generate_backup_tool.py`) : l'état local (localStorage, clé par saison) remplaçait
 les données de tout nouvel export de la même saison. L'état retient maintenant
