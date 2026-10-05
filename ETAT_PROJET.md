@@ -18,7 +18,11 @@
   le 2026-09-30** (voir section 4). Historique complet reconstruit en **staging** seulement.
 - Backup hors-ligne (`backup/pool_backup.html`) régénéré chaque dimanche depuis la prod.
 - Points de la nuit (`regular_stats.yml`) : 3 passages, 1 h 23 / 3 h 23 / 5 h 23 ET (2026-10-05) —
-  à vérifier demain matin que le classement est à jour avant 8 h.
+  à vérifier demain matin que le classement est à jour avant 8 h. L'import lie maintenant les
+  `nhl_id` manquants et retraite les 3 derniers jours (2026-10-05). **À promouvoir sur `main`**
+  (le cron ne tourne que depuis `main`).
+- **À trancher (David)** : alignements différents de Marqueur — Lardis (David), Will Smith et
+  Hischier (Steve). Fiche Elias Pettersson (id 1391) mélangée attaquant/défenseur.
 
 ## 2. Branches / déploiement
 
