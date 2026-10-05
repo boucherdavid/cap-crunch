@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { PoolerTodo } from './pooler-todo-actions'
+import { refreshPoolerTodo } from './usePoolerTodo'
 
 /** Pastilles des choses à faire : bleu = échanges, orange = ballotage (David, 2026-10-03). */
 export function TodoPills({ todo, compact = false }: { todo: Pick<PoolerTodo, 'trades' | 'waivers'>; compact?: boolean }) {
@@ -46,7 +47,9 @@ export default function PoolerTodoIndicator({ todo }: { todo: PoolerTodo }) {
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        // Relit la liste à l'ouverture : sans ça, elle pouvait dater d'une minute (ex. un échange
+        // que l'admin vient d'approuver n'y était pas encore).
+        onClick={() => { setOpen(true); refreshPoolerTodo() }}
         title={summary}
         className={`relative flex items-center gap-1.5 rounded px-2 py-1 text-sm border transition-colors ${
           count > 0 ? 'border-amber-400 text-white bg-amber-500/20 hover:bg-amber-500/30' : 'border-pool-silver/50 text-pool-silver hover:text-white'

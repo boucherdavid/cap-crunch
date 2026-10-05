@@ -5,6 +5,7 @@ import Link from 'next/link'
 import TradeApprovalManager from '@/app/admin/effectifs/TradeApprovalManager'
 import LtirApprovalManager from '@/app/admin/effectifs/LtirApprovalManager'
 import { getAdminApprovalsAction, type AdminApprovals } from './admin-approvals-actions'
+import { refreshPoolerTodo } from './usePoolerTodo'
 
 const REFRESH_MS = 30_000
 
@@ -33,6 +34,9 @@ export default function AdminApprovalsPanel() {
     const res = await getAdminApprovalsAction()
     setData(res)
     setVersion(v => v + 1)
+    // Une décision de l'admin crée souvent une chose à faire côté pooler (échange à confirmer) —
+    // y compris pour l'admin lui-même, qui est aussi un pooler.
+    refreshPoolerTodo()
   }, [])
 
   useEffect(() => {
