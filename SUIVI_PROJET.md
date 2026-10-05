@@ -19,6 +19,17 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-04
+
+**[Fix] — Points du premier soir de la saison absents du classement**
+(`python_script/import_regular_stats.py`) : les matchs du 2026-09-29 avaient été importés avec
+`season=20252026`, parce que le script prenait la saison de la saison pool active — encore 2025-26
+en prod à ce moment-là. `buildStandings()` filtre par saison, donc ces points n'étaient pas comptés
+(ex : Evan Bouchard, 3 au lieu de 8). Le script prend maintenant la saison du match lui-même
+(champ `season` du calendrier LNH, sinon les 4 premiers chiffres du gameId). Prod : 2026-09-29
+réimporté sous 20262027 (196 lignes). Les 189 anciennes lignes `20252026` du 2026-09-29 restent à
+supprimer par David (suppression bloquée pour Claude par le mode automatique).
+
 ### 2026-10-03
 
 **[Soirée du pool — prod]** (repêchage des agents libres en direct) :

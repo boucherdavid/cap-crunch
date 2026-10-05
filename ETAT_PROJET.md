@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-10-03
+**Dernière mise à jour :** 2026-10-04
 
 ---
 
@@ -62,6 +62,11 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
+- **Points du 2026-09-29** : réimportés sous la bonne saison en prod. **À faire par David** :
+  supprimer les 189 vieilles lignes (`delete from player_game_logs where game_date='2026-09-29'
+  and season=20252026 and game_type=2;`). Correctif du script sur staging, à fusionner sur `main`.
+- **Charge de la base pendant le hub** : diagnostic et plan d'allègement en suspens (2026-10-04),
+  en attente des chiffres Supabase (plan, Reports → Database, 3 oct. 21 h-23 h UTC).
 - **File des agents libres** (correctif en prod, non testé) : un double clic sur « Passer » ne doit
   plus sauter de pooler. À surveiller pendant la suite du repêchage.
 - **Base prod lente le soir du pool** (17 h-19 h, cause non confirmée) : si ça revient, regarder

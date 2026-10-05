@@ -33,6 +33,12 @@ def to_nhl_season(season: str) -> int:
     return start * 10000 + (start + 1)
 
 
+def game_season_from_id(game_id: int) -> int:
+    """2026020001 → 20262027 (les 4 premiers chiffres d'un gameId = année de début)."""
+    start = int(game_id) // 1_000_000
+    return start * 10000 + (start + 1)
+
+
 def get_yesterday_et() -> str:
     et_offset = timedelta(hours=-4)
     now_et = datetime.now(timezone.utc) + et_offset
@@ -57,7 +63,12 @@ def fetch_schedule_games(date_str: str, game_type: int) -> list[dict]:
             continue
         for g in day.get('games', []):
             if int(g.get('gameType', 0)) == game_type:
-                games.append({'id': g['id'], 'startTimeUTC': g.get('startTimeUTC', '')})
+                games.append({
+                    'id': g['id'],
+                    'startTimeUTC': g.get('startTimeUTC', ''),
+                    # Saison LNH du match lui-même (ex: 20262027) — voir main().
+                    'season': int(g.get('season') or 0) or game_season_from_id(g['id']),
+                })
     return games
 
 
@@ -194,14 +205,22 @@ def main() -> None:
         return
 
     season_str = resp.data['season']        # ex: '2026-27'
-    nhl_season = to_nhl_season(season_str)  # ex: 20262027
-    print(f'Saison : {season_str} (id={resp.data["id"]}) → NHL season {nhl_season}')
+    pool_nhl_season = to_nhl_season(season_str)  # ex: 20262027
+    print(f'Saison pool active : {season_str} (id={resp.data["id"]}) → NHL season {pool_nhl_season}')
 
     games = fetch_schedule_games(target_date, GAME_TYPE)
     if not games:
         print(f'Aucun match de saison régulière le {target_date} — rien à faire.')
         return
     print(f'{len(games)} match(s) : {[g["id"] for g in games]}')
+
+    # La saison vient du match lui-même, pas de la saison pool active (2026-10-04) : les matchs du
+    # 2026-09-29 avaient été importés en 20252026 parce que 2026-27 n'était pas encore activée en
+    # prod — le classement (filtré par saison) les ignorait.
+    nhl_season = games[0]['season']
+    if nhl_season != pool_nhl_season:
+        print(f'  Avertissement : saison des matchs ({nhl_season}) ≠ saison pool active ({pool_nhl_season}) '
+              f'— import sous la saison des matchs.')
 
     # nhl_id → player_id (DB) — pagination pour dépasser la limite Supabase de 1 000 lignes
     all_players: list[dict] = []
