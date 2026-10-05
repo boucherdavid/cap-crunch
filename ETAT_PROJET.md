@@ -27,9 +27,8 @@
 - Bouton « À faire » des poolers et redirection des courriels de test : en prod le 2026-10-05.
   `EMAIL_REDIRECT_TO` est définie dans le projet Vercel de staging seulement (courriel de test reçu).
 - Joueurs sur LTIR au marché et échangeables : en prod le 2026-10-05 (`5deebd1`).
-- **À valider sur staging (David)** : règle « a rejoué depuis moins de 7 jours → pas admissible
-  au LTIR » (badge « De retour au jeu »). **Migration à rouler** dans staging puis prod :
-  `supabase_migrations/ltir_recent_game_days.sql`.
+- Règle « a rejoué depuis moins de 7 jours → pas admissible au LTIR » (badge « De retour au jeu ») :
+  en prod le 2026-10-05, migration roulée dans les deux bases.
 - Après le prochain pipeline du lundi : vérifier qu'une fiche distincte a été créée pour Elias
   Pettersson le défenseur (`nhl_id` 8483678).
 
