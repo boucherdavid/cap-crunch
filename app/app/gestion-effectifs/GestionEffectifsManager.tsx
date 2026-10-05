@@ -680,7 +680,7 @@ export default function GestionEffectifsManager({
       }
 
       setSuccess(true)
-      refreshPoolerTodo()  // un ballotage remporté vient peut-être d'être complété
+      refreshPoolerTodo()  // ballotage complété, joueur revenu de LTIR, demande de LTIR soumise…
       setCart([])
       resetAddForm()
       setHistoryRefresh(k => k + 1)
