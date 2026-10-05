@@ -27,8 +27,8 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 en prod à ce moment-là. `buildStandings()` filtre par saison, donc ces points n'étaient pas comptés
 (ex : Evan Bouchard, 3 au lieu de 8). Le script prend maintenant la saison du match lui-même
 (champ `season` du calendrier LNH, sinon les 4 premiers chiffres du gameId). Prod : 2026-09-29
-réimporté sous 20262027 (196 lignes). Les 189 anciennes lignes `20252026` du 2026-09-29 restent à
-supprimer par David (suppression bloquée pour Claude par le mode automatique).
+réimporté sous 20262027 (196 lignes). Les anciennes lignes `20252026` du 2026-09-29 ont été supprimées
+par David (prod et staging) ; staging réimporté ensuite (189 lignes).
 
 ### 2026-10-03
 

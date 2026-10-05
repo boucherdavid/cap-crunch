@@ -62,9 +62,8 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
-- **Points du 2026-09-29** : réimportés sous la bonne saison en prod. **À faire par David** :
-  supprimer les 189 vieilles lignes (`delete from player_game_logs where game_date='2026-09-29'
-  and season=20252026 and game_type=2;`). Correctif du script sur staging, à fusionner sur `main`.
+- **Points du 2026-09-29** : corrigés en prod et en staging (vieilles lignes supprimées par David).
+  Correctif du script sur staging, à fusionner sur `main`.
 - **Charge de la base pendant le hub** : diagnostic et plan d'allègement en suspens (2026-10-04),
   en attente des chiffres Supabase (plan, Reports → Database, 3 oct. 21 h-23 h UTC).
 - **File des agents libres** (correctif en prod, non testé) : un double clic sur « Passer » ne doit
