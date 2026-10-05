@@ -1259,6 +1259,12 @@ corrigée le 2026-09-20 :**
   annulé pour les deux (`status='cancelled_expired'`) — aucun rollback nécessaire puisque rien
   n'a jamais été écrit ; à refaire au besoin. Résolution paresseuse
   (`resolveExpiredTradeOffers()`), même patron que le ballotage.
+- **Joueur sur LTIR échangeable** (David, 2026-10-05) — aussi affichable au marché des échanges
+  (`listTradeableAssetsAction` inclut `ltir`). Chez le donneur il reste hors masse et hors
+  composition ; chez le receveur il arrive **actif ou réserviste** (`chosen_type`, comme tout joueur
+  qui n'est pas une recrue) et compte dans la validation 12/6/2 + cap. Encore blessé → le receveur
+  refait sa propre demande de LTIR (avec ou sans signature), approuvée par l'admin. Le suivi de
+  retour au jeu (`ltir_return_watch`) se ferme tout seul chez le donneur.
 - Une recrue échangée reste une recrue chez le receveur (`rookie_type`/`pool_draft_year`
   transférés tels quels) — aucun choix actif/réserviste à faire, aucun impact cap/composition.
   Un choix de repêchage transfère juste `pool_draft_picks.current_owner_id`. Seuls les joueurs

@@ -15,7 +15,7 @@ import {
 const fmtCap = (n: number) =>
   new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 
-const TYPE_LABEL: Record<string, string> = { actif: 'Actif', reserviste: 'Réserviste', recrue: 'Recrue' }
+const TYPE_LABEL: Record<string, string> = { actif: 'Actif', reserviste: 'Réserviste', ltir: 'LTIR', recrue: 'Recrue' }
 
 function plusDays(iso: string, n: number): string {
   const d = new Date(iso + 'T12:00:00Z')

@@ -29,7 +29,7 @@ export async function cleanupTradeMarket(db: Db, saisonId: number): Promise<void
     playerIds.length > 0
       ? db.from('pooler_rosters').select('pooler_id, player_id')
           .eq('pool_season_id', saisonId).eq('is_active', true)
-          .in('player_type', ['actif', 'reserviste', 'recrue']).in('player_id', playerIds)
+          .in('player_type', ['actif', 'reserviste', 'ltir', 'recrue']).in('player_id', playerIds)
       : Promise.resolve({ data: [] as { pooler_id: string; player_id: number }[] }),
     pickIds.length > 0
       ? db.from('pool_draft_picks').select('id, current_owner_id, is_used').in('id', pickIds)

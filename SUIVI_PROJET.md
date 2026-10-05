@@ -21,6 +21,24 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-05
 
+**[Feat] — Joueurs sur LTIR au marché des échanges et échangeables** (`gestion-effectifs/trade-actions.ts`,
+`TradeOffersTab.tsx`, `GestionEffectifsManager.tsx`, `lib/tradeMarket.ts`, `marche-echanges/actions.ts`,
+`MarcheEchangesClient.tsx`, `aide/AideTabs.tsx`) :
+- Demande de David : pouvoir mettre un joueur sur LTIR au marché. Ils étaient exclus du marché ET
+  des échanges ; les deux sont ouverts (sinon « Faire une offre » menait à une impasse).
+- Règle choisie par David (option B) : chez le receveur, le joueur arrive actif ou réserviste et
+  compte dans la masse. Revenu au jeu → son pooler peut l'échanger pendant son délai ; encore
+  blessé → le receveur fait sa propre demande de LTIR (et peut signer un agent libre avec).
+- Le serveur gérait déjà ce cas à l'exécution (`destType = chosen_type`) ; changements surtout
+  d'affichage : groupe « Sur LTIR » dans les listes, exclu de la masse actuelle, de la projection
+  et des ajustements supplémentaires du donneur.
+
+**[Fix données] — Nick Lardis retiré de la banque de recrues de David** (prod, script ponctuel) :
+- Pris par erreur par David ; en banque (`recrue`, jamais actif, aucun point). Retiré à la demande
+  de David sans passer par le ballotage : ligne `pooler_rosters` 3158 désactivée (`removed_at` =
+  2026-10-05) + entrée `roster_change_log` `retrait` (`is_admin_override`). Aucun ballotage créé ;
+  le joueur est de nouveau disponible. Staging non modifié.
+
 **[Feat] — Bouton « À faire » des poolers et redirection des courriels de test** (`components/PoolerTodoIndicator.tsx`,
 `pooler-todo-actions.ts`, `usePoolerTodo.ts`, `lib/email.ts`, `aide/AideTabs.tsx`) :
 - Demande de David : un aperçu rapide pour le pooler, comme le bouton Approbations de l'admin.

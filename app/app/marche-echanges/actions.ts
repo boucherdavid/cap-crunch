@@ -51,7 +51,7 @@ export async function addMarketListingsAction(
     playerIds.length > 0
       ? db.from('pooler_rosters').select('player_id, players (first_name, last_name)')
           .eq('pool_season_id', saisonId).eq('pooler_id', user.id).eq('is_active', true)
-          .in('player_type', ['actif', 'reserviste', 'recrue']).in('player_id', playerIds)
+          .in('player_type', ['actif', 'reserviste', 'ltir', 'recrue']).in('player_id', playerIds)
       : Promise.resolve({ data: [] }),
     pickIds.length > 0
       ? db.from('pool_draft_picks').select('id, round, current_owner_id, is_used, pool_seasons (season)').in('id', pickIds)

@@ -232,6 +232,7 @@ const SECTIONS: Section[] = [
           <li>• Le pooler visé doit <strong>accepter ou refuser</strong> ta proposition.</li>
           <li>• Si accepté, l&apos;<strong>admin doit approuver</strong> l&apos;échange avant que quoi que ce soit ne bouge.</li>
           <li>• Une fois approuvé, tu as un délai pour <strong>confirmer</strong> que le résultat entre dans ta masse salariale et ta composition (12/6/2 + réservistes) — si ça ne rentre pas encore, une section dédiée directement dans cet onglet te permet d&apos;ajuster au passage (libérer, changer actif/réserviste, activer ou remettre en banque une recrue), pas besoin d&apos;aller dans Mouvements séparément.</li>
+          <li>• Un joueur <strong>sur le LTIR</strong> peut aussi être échangé. Chez le pooler qui le reçoit, il arrive comme <strong>actif ou réserviste</strong> (choix à la confirmation) et son salaire compte dans la masse salariale. S&apos;il est encore blessé, c&apos;est au nouveau propriétaire de faire sa propre demande de LTIR.</li>
           <li>• L&apos;échange s&apos;exécute seulement une fois que <strong>les deux poolers</strong> ont confirmé. Si l&apos;un des deux ne confirme pas à temps, l&apos;échange est annulé pour les deux — personne ne perd rien, à refaire au besoin.</li>
         </ul>
       </div>
@@ -289,7 +290,7 @@ const SECTIONS: Section[] = [
           Menu <strong>Le pool</strong>{' '}→ <strong>Marché des échanges</strong>{' '}— pour annoncer ce que tu es prêt à échanger ou ce que tu cherches.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
-          <li>• <strong>Mettre sur le marché</strong> : coche tes joueurs (actif, réserviste ou recrue) et tes choix de repêchage, ajoute une note au besoin et choisis jusqu&apos;à quand ils restent affichés.</li>
+          <li>• <strong>Mettre sur le marché</strong> : coche tes joueurs (actif, réserviste, recrue ou sur le LTIR) et tes choix de repêchage, ajoute une note au besoin et choisis jusqu&apos;à quand ils restent affichés.</li>
           <li>• <strong>Je cherche</strong> : publie un besoin sans viser un joueur précis (ex : un défenseur à moins de 3 M$).</li>
           <li>• Les autres poolers reçoivent une <strong>notification</strong>, et les derniers éléments s&apos;affichent sur l&apos;accueil.</li>
           <li>• <strong>Faire une offre</strong> ouvre l&apos;onglet Échanges avec le pooler déjà choisi et l&apos;élément déjà coché dans « Tu reçois » : il reste à choisir ce que tu donnes.</li>
