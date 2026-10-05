@@ -13,6 +13,7 @@ import type { PoolerTodo } from './pooler-todo-actions'
 // Choses à faire du pooler (échanges, ballotage — David, 2026-10-03), partagées avec le menu.
 const TodoContext = createContext<PoolerTodo>({ trades: 0, waivers: 0 })
 import { createClient } from '@/lib/supabase/client'
+import { MARQUEUR_URL } from '@/lib/externalLinks'
 
 function HamburgerIcon() {
   return (
@@ -86,9 +87,11 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Le pool',
     items: [
       { label: 'Classement', href: '/classement' },
+      { label: 'En direct', href: '/en-direct' },
       { label: 'Tous les alignements', href: '/poolers' },
       { label: 'Marché des échanges', href: '/marche-echanges' },
       { label: 'Journal des transactions', href: '/journal-transactions' },
+      { label: 'Marqueur.com ↗', href: MARQUEUR_URL },
     ],
   },
   { id: 'calendrier', label: 'Calendrier LNH', href: '/calendrier' },
@@ -193,6 +196,20 @@ function TreeLeaf({ leaf, pathname, userName, onNavigate }: {
 }) {
   const todo = useContext(TodoContext)
   if (leaf.auth && !userName) return null
+  // Lien externe (Marqueur.com) : nouvel onglet.
+  if (leaf.href.startsWith('http')) {
+    return (
+      <a
+        href={leaf.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={onNavigate}
+        className="flex items-center pl-8 pr-3 py-1.5 rounded text-sm transition-colors text-pool-light hover:bg-pool-navy-light hover:text-white"
+      >
+        {leaf.label}
+      </a>
+    )
+  }
   const active = isActive(pathname, leaf.href)
   return (
     <Link

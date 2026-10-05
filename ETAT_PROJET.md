@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-10-03
+**Dernière mise à jour :** 2026-10-04
 
 ---
 
@@ -62,6 +62,18 @@ desktop.
 
 ### ▶ Prochaine session — commencer ici
 
+- **Points du 2026-09-29** : corrigés en prod et en staging (vieilles lignes supprimées par David).
+  Correctif du script sur staging, à fusionner sur `main`.
+- **Pointage en direct** (`/en-direct` + cartes de l'accueil) et **Marqueur.com** (carte + menu) :
+  sur staging, à valider pendant des matchs avant `main`.
+- **Staging = prod** (2026-10-04) : alignements copiés (`sync_prod_to_staging.py`) et stats des
+  matchs rattrapées jusqu'au 2026-10-03. **Demain** : vérifier que le classement de staging
+  correspond à la prod (les captures du soir précédaient le rattrapage).
+- **À fusionner sur `main`** après validation : pointage en direct + Marqueur.com, saison des
+  game-logs tirée du match, étape staging de la tâche de nuit (sans fusion, staging ne reçoit pas
+  les stats de la nuit — relancer `import_regular_stats.py --date` avec `.env.staging` au besoin).
+- **Charge de la base pendant le hub** : diagnostic et plan d'allègement en suspens (2026-10-04),
+  en attente des chiffres Supabase (plan, Reports → Database, 3 oct. 21 h-23 h UTC).
 - **File des agents libres** (correctif en prod, non testé) : un double clic sur « Passer » ne doit
   plus sauter de pooler. À surveiller pendant la suite du repêchage.
 - **Base prod lente le soir du pool** (17 h-19 h, cause non confirmée) : si ça revient, regarder

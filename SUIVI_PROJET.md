@@ -19,6 +19,68 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-04
+
+**[Fix] — Points du premier soir de la saison absents du classement**
+(`python_script/import_regular_stats.py`) : les matchs du 2026-09-29 avaient été importés avec
+`season=20252026`, parce que le script prenait la saison de la saison pool active — encore 2025-26
+en prod à ce moment-là. `buildStandings()` filtre par saison, donc ces points n'étaient pas comptés
+(ex : Evan Bouchard, 3 au lieu de 8). Le script prend maintenant la saison du match lui-même
+(champ `season` du calendrier LNH, sinon les 4 premiers chiffres du gameId). Prod : 2026-09-29
+réimporté sous 20262027 (196 lignes). Les anciennes lignes `20252026` du 2026-09-29 ont été supprimées
+par David (prod et staging) ; staging réimporté ensuite (189 lignes).
+
+**[Feat] — Copie des alignements réels de prod vers staging** (`python_script/sync_prod_to_staging.py`) :
+sens inverse de `sync_staging_to_prod.py` (réutilise son mapping des joueurs). Remplace en staging
+les alignements, l'historique des changements, le journal des transactions, l'état pré-saison et
+les réglages de chaque saison qui a des données en prod (2025-26 et 2026-27 — David accepte de
+perdre l'historique 2025-26 reconstruit en staging) ; choix de repêchage mis à jour sur place,
+jumelés par (saison, propriétaire d'origine, ronde) car leurs id divergent. Dry-run validé
+(715 lignes d'alignement, 55 transactions/107 items, 128/128 choix jumelés) ; `--apply` bloqué pour
+Claude par le mode automatique (suppression), à lancer par David.
+
+**[Feat] — Pointage en direct de la soirée + Marqueur.com** (`app/lib/liveNight.ts`,
+`app/app/en-direct/`, `app/components/live/`, `app/app/page.tsx`, `app/components/Navbar.tsx`,
+`app/app/aide/AideTabs.tsx`) — forme inspirée de Marqueur.com (demande de David) :
+- Accueil : cartes « Classement — ce soir » (PJ = joueurs actifs ayant joué, Pts, Moy) et
+  « Pointeurs — ce soir » (tous les pointeurs LNH, propriétaire sous le nom, « Disponible » sinon ;
+  réserviste/recrue/LTIR signalés « ne compte pas ») ; remplacent « Joueurs en action » (saison
+  régulière). Page `/en-direct` : matchs et scores, classement de la soirée, détail par pooler
+  (dépliable), tous les pointeurs.
+- Non officiel, aucune écriture : boxscores LNH × `scoring_config`, joueurs actifs seulement.
+  Victoire/DP à la décision, blanchissage à la fin du match ; buts/passes de gardien ignorés
+  (absents du boxscore). Cache 45 s côté serveur ; sondage client chaque minute seulement pendant
+  les matchs et onglet visible — choisi pour ne pas recharger la base (soirée du pool du 3 oct.).
+- Vérifié sur les matchs du 2026-10-04 en cours (base staging) : Jérôme 7, David 4, comme Marqueur.
+- Marqueur.com : carte en haut à droite de l'accueil + entrée externe du menu Le pool
+  (`lib/externalLinks.ts`) ; le lien sous le classement ajouté plus tôt est retiré.
+- `/aide` (Classement) : quand les points sont mis à jour (chaque nuit ~2 h ET) et le direct.
+
+**[Fix] — Classement de staging ≠ prod : stats des matchs importées en prod seulement**
+(`.github/workflows/regular_stats.yml`) : la tâche de nuit n'écrivait que dans la base prod ; staging
+n'avait que le 2026-09-29 (importé à la main). Rattrapage en staging du 2026-09-30 au 2026-10-03
+(`import_regular_stats.py --date`, 1 102 lignes) ; nouvelle étape staging dans la tâche de nuit
+(`STAGING_SUPABASE_URL`/`STAGING_SERVICE_KEY`, `continue-on-error`). Le cron GitHub tourne depuis
+`main` : l'étape staging ne s'exécutera qu'une fois fusionnée sur `main`. Copie prod → staging
+réussie (David) : 389 lignes d'alignement 2026-27 identiques des deux côtés.
+
+**[Fix] — Copie prod → staging : `pool_cap` est une colonne générée** — exclue de la mise à jour
+des saisons (le premier `--apply` avait planté après avoir vidé 2025-26 en staging).
+
+**[Feat] — Copie des alignements réels de prod vers staging** (`python_script/sync_prod_to_staging.py`) :
+sens inverse de `sync_staging_to_prod.py` (réutilise son mapping des joueurs). Remplace en staging
+les alignements, l'historique des changements, le journal des transactions, l'état pré-saison et
+les réglages de chaque saison qui a des données en prod (2025-26 et 2026-27 — David accepte de
+perdre l'historique 2025-26 reconstruit en staging) ; choix de repêchage mis à jour sur place,
+jumelés par (saison, propriétaire d'origine, ronde) car leurs id divergent. Dry-run validé
+(715 lignes d'alignement, 55 transactions/107 items, 128/128 choix jumelés) ; `--apply` bloqué pour
+Claude par le mode automatique (suppression), à lancer par David.
+
+**[Feat] — Lien vers notre pool sur Marqueur.com** (`app/app/page.tsx`) : lien externe
+« Notre pool sur Marqueur.com ↗ » (nouvel onglet) à côté de « Classement détaillé → » sous le
+classement de l'accueil — David y a entré les alignements pour suivre et comparer
+(`https://www.marqueur.com/circuit_boucher`, constante `MARQUEUR_URL`).
+
 ### 2026-10-03
 
 **[Soirée du pool — prod]** (repêchage des agents libres en direct) :

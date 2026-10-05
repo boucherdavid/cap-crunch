@@ -123,6 +123,18 @@ python sync_staging_to_prod.py --apply   # exécution réelle — demande confir
 ```
 
 ```bash
+# Sens inverse (David, 2026-10-04) : copie les alignements RÉELS de prod vers staging, pour
+# tester sur de vraies données. Toutes les saisons qui ont des alignements/transactions en prod
+# (ex : 2025-26 et 2026-27) : pooler_rosters, roster_change_log, journal (transactions +
+# items), état pré-saison et réglages de pool_seasons → remplacement complet en staging ;
+# choix de repêchage mis à jour sur place (jumelés par saison/propriétaire d'origine/ronde).
+# Pas de ballotage, d'échanges proposés ni de marché. Écrit toujours dans staging seulement.
+cd python_script
+python sync_prod_to_staging.py           # dry-run
+python sync_prod_to_staging.py --apply   # exécution réelle (staging), sans confirmation
+```
+
+```bash
 # Régénère l'outil de backup manuel (David, 2026-09-21, étendu le 2026-09-22) — snapshot HTML
 # autonome de la saison active en PROD, éditable à la main dans le navigateur (localStorage)
 # sans dépendre de l'app/Supabase — filet de sécurité en cas de pépin, mais aussi un vrai outil
@@ -312,6 +324,17 @@ directement sur GitHub via l'API contents car le dépôt est public (`lib/backup
 par `workflow_dispatch` et suit l'exécution — exige `GITHUB_WORKFLOW_TOKEN` dans Vercel, jeton
 « fine-grained » limité au dépôt, permission Actions lecture/écriture ; sans lui, bouton désactivé)
 `/offline`
+
+**Pointage en direct** (David, 2026-10-04) : `/en-direct` (menu Le pool) et deux cartes sur l'accueil
+(« Classement — ce soir », « Pointeurs — ce soir », remplacent « Joueurs en action » en saison
+régulière). **Non officiel**, rien n'est écrit en base : `app/lib/liveNight.ts` lit les boxscores LNH
+de la soirée (date ET de maintenant − 6 h ; soirée d'avant tant qu'aucun match n'est commencé) et
+applique `scoring_config` aux joueurs **actifs** ; tous les pointeurs de la LNH sont listés, avec leur
+propriétaire. Calcul en cache 45 s (`unstable_cache`, client admin) ; les clients sondent
+`/en-direct/donnees` chaque minute pendant les matchs seulement (`components/live/useLiveNight.ts`),
+jamais un rechargement de page. LNH indisponible → `error`, jamais des zéros. Les points officiels
+restent `player_game_logs`, importés chaque nuit (~2 h ET). Lien Marqueur.com (notre pool, suivi
+comparatif) : `lib/externalLinks.ts`, carte sur l'accueil et entrée externe du menu Le pool.
 
 **Recherche globale de joueurs** (David, 2026-10-01) : champ dans la barre du haut
 (`app/components/PlayerSearch.tsx`, actions dans `player-search-actions.ts`), ouvre la fiche
@@ -540,7 +563,7 @@ sont deux natures de contenu différentes.**
 | Section | Contenu |
 |---|---|
 | Mon équipe (nouveau nom de groupe — le lien "Mon alignement", ex-"Mon équipe", garde son nom de page inchangé depuis le renommage plus haut le même jour) | Mon alignement · Gestion d'effectifs · Simulation · Mes listes (ajouté le 2026-09-27) — "ce qui m'appartient / que je contrôle" |
-| Le pool | Classement · Tous les alignements (ex-"Équipes") · Marché des échanges (2026-10-03) · Journal des transactions — "ce qui concerne les autres poolers". Le groupe "Classement du pool" a été retiré le 2026-09-30 (David) : un seul lien Classement, avec un sélecteur Saison complète (défaut) / Mensuel / Hebdomadaire en haut de la page (`app/classement/PeriodSelector.tsx`, routes `/classement`, `/classement/mensuel`, `/classement/hebdomadaire` inchangées) |
+| Le pool | Classement · En direct (2026-10-04) · Tous les alignements (ex-"Équipes") · Marché des échanges (2026-10-03) · Journal des transactions · Marqueur.com ↗ (lien externe) — "ce qui concerne les autres poolers". Le groupe "Classement du pool" a été retiré le 2026-09-30 (David) : un seul lien Classement, avec un sélecteur Saison complète (défaut) / Mensuel / Hebdomadaire en haut de la page (`app/classement/PeriodSelector.tsx`, routes `/classement`, `/classement/mensuel`, `/classement/hebdomadaire` inchangées) |
 | Calendrier LNH (lien autonome, ex-sous-item de "Statistiques", sorti le 2026-09-23 (suite) — entre Le pool et Statistiques) | Le résumé personnel "mes joueurs cette semaine" a été extrait dans un onglet séparé sur `/poolers/[id]`, voir ci-dessous — cette page ne garde que la navigation jour par jour |
 | Statistiques (ex-partie de "LNH") | LNH · Projections · AHL |
 | Analytique (ajouté le 2026-10-01) | Statistiques avancées · Outil d'analyse · Trios et paires (2026-10-02) |
