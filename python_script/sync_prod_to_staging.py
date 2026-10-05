@@ -33,6 +33,8 @@ from datetime import datetime
 from sync_staging_to_prod import BASE_DIR, Tee, connect, fetch_all_players, build_player_map
 
 PAGE = 1000
+# pool_cap est une colonne générée (nhl_cap × cap_multiplier, arrondi) : non modifiable.
+SEASON_SKIP_COLUMNS = ('id', 'created_at', 'pool_cap')
 
 
 def fetch_all(db, table: str, columns: str, **eq):
@@ -170,7 +172,7 @@ def main():
 
         season_row = next(s for s in prod_seasons if s['id'] == sid)
         staging_db.table('pool_seasons').update(
-            {k: v for k, v in season_row.items() if k not in ('id', 'created_at')}
+            {k: v for k, v in season_row.items() if k not in SEASON_SKIP_COLUMNS}
         ).eq('id', tid).execute()
 
     print(f'[INFO] Insertion de {len(rosters)} lignes pooler_rosters...')
