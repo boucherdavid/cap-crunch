@@ -24,7 +24,9 @@ export default function LtirRulesContent() {
           <li>• Tant que l&apos;administrateur n&apos;a pas décidé, un bandeau <strong>En attente d&apos;approbation</strong> s&apos;affiche et tu peux annuler ta demande.</li>
           <li>• Si elle est approuvée, la <strong>date effective est celle de ta demande</strong>, pas celle de l&apos;approbation — une approbation tardive ne te pénalise pas.</li>
           <li>• Un joueur sur le LTIR ne compte pas dans ta masse salariale et ne rapporte aucun point.</li>
-          <li>• Le <strong>retour du LTIR</strong> se fait par l&apos;administrateur, comme actif ou comme réserviste selon ton choix — contacte-le quand ton joueur est rétabli.</li>
+          <li>• Le <strong>retour du LTIR</strong> se fait par toi, depuis <strong>Gestion d&apos;effectifs</strong> → <strong>Retour LTIR</strong>, comme actif ou comme réserviste. L&apos;effet est immédiat et ton alignement doit rester conforme (12/6/2, 2 réservistes, plafond) : ajoute au besoin d&apos;autres mouvements au même lot.</li>
+          <li>• Dès qu&apos;un joueur sur le LTIR <strong>rejoue un match de la LNH</strong>, tu reçois une notification (l&apos;administrateur aussi) et tu as <strong>{jours(t.returnDeadlineDays)}</strong> pour le remettre dans ton alignement. Un bandeau dans Gestion d&apos;effectifs te rappelle la date limite. Passé ce délai, c&apos;est l&apos;administrateur qui décide de la suite.</li>
+          <li>• Pendant ce délai, le joueur reste sur le LTIR : il ne rapporte toujours aucun point et son salaire ne compte toujours pas.</li>
         </ul>
       </div>
       <div>

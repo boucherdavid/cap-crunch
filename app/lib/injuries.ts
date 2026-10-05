@@ -54,11 +54,16 @@ type SupabaseLike = Awaited<ReturnType<typeof createClient>>
 /** Seuils d'admissibilité LTIR configurés par l'admin (app_settings, voir ltirEligibility.ts) —
  * repli sur les défauts si la ligne ou une colonne manque. */
 export async function fetchLtirSettings(supabase: SupabaseLike): Promise<LtirSettings> {
-  const { data } = await supabase
-    .from('app_settings')
-    .select('ltir_return_min_days, ltir_injured_min_days, ltir_grace_days, injury_disagreement_days, injury_removal_absence_days')
-    .eq('id', 1)
-    .maybeSingle()
+  // Colonne lue à part (2026-10-05) : tant que sa migration n'est pas roulée, une seule requête
+  // échouerait en entier et ramènerait tous les seuils à leurs défauts.
+  const [{ data }, { data: returnRow }] = await Promise.all([
+    supabase
+      .from('app_settings')
+      .select('ltir_return_min_days, ltir_injured_min_days, ltir_grace_days, injury_disagreement_days, injury_removal_absence_days')
+      .eq('id', 1)
+      .maybeSingle(),
+    supabase.from('app_settings').select('ltir_return_deadline_days').eq('id', 1).maybeSingle(),
+  ])
   const d = DEFAULT_LTIR_SETTINGS
   return {
     returnMinDays: data?.ltir_return_min_days ?? d.returnMinDays,
@@ -66,6 +71,7 @@ export async function fetchLtirSettings(supabase: SupabaseLike): Promise<LtirSet
     graceDays: data?.ltir_grace_days ?? d.graceDays,
     disagreementDays: data?.injury_disagreement_days ?? d.disagreementDays,
     removalAbsenceDays: data?.injury_removal_absence_days ?? d.removalAbsenceDays,
+    returnDeadlineDays: returnRow?.ltir_return_deadline_days ?? d.returnDeadlineDays,
   }
 }
 

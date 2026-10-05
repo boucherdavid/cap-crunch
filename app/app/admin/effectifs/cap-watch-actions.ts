@@ -402,6 +402,9 @@ export async function updateLtirSettingsAction(settings: LtirSettings): Promise<
   if (settings.removalAbsenceDays < 1) {
     return { error: "Le délai avant retrait doit être d'au moins 1 jour." }
   }
+  if (settings.returnDeadlineDays < 1) {
+    return { error: "Le délai de retour de LTIR doit être d'au moins 1 jour." }
+  }
 
   const { error } = await supabase
     .from('app_settings')
@@ -411,6 +414,7 @@ export async function updateLtirSettingsAction(settings: LtirSettings): Promise<
       ltir_grace_days: settings.graceDays,
       injury_disagreement_days: settings.disagreementDays,
       injury_removal_absence_days: settings.removalAbsenceDays,
+      ltir_return_deadline_days: settings.returnDeadlineDays,
     })
     .eq('id', 1)
   if (error) return { error: error.message }

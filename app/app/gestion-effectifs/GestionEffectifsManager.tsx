@@ -18,8 +18,10 @@ import {
   submitLtirRequestAction,
   cancelLtirRequestAction,
   getPendingLtirRequestsAction,
+  getLtirReturnWatchesAction,
 } from './ltir-actions'
 import type { LtirRequestView } from '@/lib/ltirRequests'
+import type { LtirReturnWatchView } from '@/lib/ltirReturns'
 import type {
   ActionType,
   RosterEntry,
@@ -289,6 +291,11 @@ function PlayerSearch({
   )
 }
 
+function fmtReturnDay(day: string | null): string {
+  if (!day) return ''
+  return new Date(`${day}T12:00:00Z`).toLocaleDateString('fr-CA', { day: 'numeric', month: 'long', timeZone: 'UTC' })
+}
+
 // ─── Action definitions ───────────────────────────────────────────────────────
 
 const ACTION_DEFS: { type: ActionType; label: string; description: string; adminOnly?: boolean }[] = [
@@ -299,10 +306,11 @@ const ACTION_DEFS: { type: ActionType; label: string; description: string; admin
   // LTIR/LTIR+Signature ouverts aux poolers le 2026-09-23 (David) — passait auparavant
   // seulement par l'admin puisqu'il n'y avait aucune vérification possible ; maintenant que la
   // soumission passe par une demande d'approbation (voir handleSubmit, bandeau "En attente
-  // d'approbation"), le pooler peut l'initier lui-même. Retour LTIR reste admin-only — aucun
-  // risque d'abus à revenir plus tôt que prévu, mais pas demandé, scope inchangé pour l'instant.
+  // d'approbation"), le pooler peut l'initier lui-même. Retour LTIR ouvert aux poolers le
+  // 2026-10-05 (David) : un joueur qui recommence à jouer doit être réintégré par son pooler
+  // dans un délai (voir lib/ltirReturns.ts) — effet immédiat, soumis à validateRosterLimits.
   { type: 'ltir',            label: 'LTIR',              description: 'Actif ou réserviste → LTIR' },
-  { type: 'return_ltir',     label: 'Retour LTIR',       description: 'LTIR → actif ou réserviste', adminOnly: true },
+  { type: 'return_ltir',     label: 'Retour LTIR',       description: 'LTIR → actif ou réserviste' },
   { type: 'ltir_sign',       label: 'LTIR + signature',  description: 'LTIR et signer' },
 ]
 
@@ -349,6 +357,8 @@ export default function GestionEffectifsManager({
   const [awardedClaims, setAwardedClaims] = useState<AwardedClaim[]>([])
   // Demandes de LTIR en attente d'approbation admin (David, 2026-09-23) — voir bandeau plus bas.
   const [pendingLtirRequests, setPendingLtirRequests] = useState<LtirRequestView[]>([])
+  // Joueurs sur LTIR qui ont recommencé à jouer (David, 2026-10-05) — voir bandeau plus bas.
+  const [ltirReturns, setLtirReturns] = useState<LtirReturnWatchView[]>([])
 
   // Cart
   const [cart, setCart] = useState<CartItem[]>([])
@@ -472,6 +482,7 @@ export default function GestionEffectifsManager({
   useEffect(() => {
     if (!poolerId || activeTab !== 'mouvements') return
     getPendingLtirRequestsAction(saisonId, poolerId).then(setPendingLtirRequests)
+    getLtirReturnWatchesAction(saisonId, poolerId).then(setLtirReturns)
   }, [poolerId, saisonId, activeTab])
 
   function resetAddForm() {
@@ -673,17 +684,27 @@ export default function GestionEffectifsManager({
       setCart([])
       resetAddForm()
       setHistoryRefresh(k => k + 1)
-      const [r, counts, claims, pendingLtir] = await Promise.all([
+      const [r, counts, claims, pendingLtir, returns] = await Promise.all([
         getPoolerRosterAction(poolerId, saisonId, season),
         getSigningCountsAction(poolerId, saisonId),
         getAwardedWaiverClaimsAction(saisonId, poolerId, season),
         getPendingLtirRequestsAction(saisonId, poolerId),
+        getLtirReturnWatchesAction(saisonId, poolerId),
       ])
       setRoster(r)
       setDbCounts(counts)
       setAwardedClaims(claims)
       setPendingLtirRequests(pendingLtir)
+      setLtirReturns(returns)
     })
+  }
+
+  // Pré-remplit le formulaire « Retour LTIR » avec le joueur du bandeau (David, 2026-10-05).
+  function handlePrepareLtirReturn(playerId: number) {
+    const entry = projected?.ltir.find(e => e.playerId === playerId)
+    if (!entry) return
+    handleSelectAddType('return_ltir')
+    setAddReturnLtirId(entry.id)
   }
 
   function handleCancelLtirRequest(requestId: number) {
@@ -925,6 +946,27 @@ export default function GestionEffectifsManager({
               Ajouter (Actif)
             </button>
           </div>
+        </div>
+      ))}
+
+      {/* Joueurs sur LTIR de retour au jeu, à réintégrer (David, 2026-10-05) */}
+      {ltirReturns.filter(w => projected?.ltir.some(e => e.playerId === w.playerId)).map(w => (
+        <div key={w.id} className={`rounded-lg p-4 flex flex-wrap items-center gap-3 border ${w.overdue ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+          <div className="flex-1 min-w-0 text-sm">
+            <p className={`font-semibold ${w.overdue ? 'text-red-800' : 'text-amber-800'}`}>
+              De retour au jeu : {w.playerName}
+            </p>
+            <p className={`text-xs mt-0.5 ${w.overdue ? 'text-red-700' : 'text-amber-700'}`}>
+              {w.firstGameDate && <>Il a joué le {fmtReturnDay(w.firstGameDate)}.{' '}</>}
+              {w.overdue
+                ? <>Le délai pour le remettre dans ton alignement est dépassé ({fmtReturnDay(w.deadlineDay)}) : fais-le dès que possible, sinon l&apos;admin devra intervenir.</>
+                : <>Tu as jusqu&apos;au {fmtReturnDay(w.deadlineDay)} à 23 h 59 pour le remettre dans ton alignement, comme actif ou réserviste. Ajoute au besoin d&apos;autres mouvements au même lot pour rester conforme.</>}
+            </p>
+          </div>
+          <button onClick={() => handlePrepareLtirReturn(w.playerId)}
+            className={`px-3 py-1.5 rounded text-sm font-medium text-white shrink-0 ${w.overdue ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}>
+            Préparer le retour
+          </button>
         </div>
       ))}
 

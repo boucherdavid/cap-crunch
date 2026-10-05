@@ -257,6 +257,8 @@ Hockey_Pool_App/
 - `team_line_combos` (trios/paires/unités spéciales actuels, une ligne par joueur et par groupe —
   Daily Faceoff, `python_script/scrape_line_combos.py`, remplacement complet par équipe)
 - `ltir_requests` (demandes de mise sur LTIR en attente d'approbation admin — voir section 6)
+- `ltir_return_watch` (joueurs sur LTIR de retour au jeu, avec date limite de réintégration —
+  voir section 6)
 - `trade_market_listings`/`trade_market_requests` (marché des échanges, `/marche-echanges` —
   éléments offerts et « Je cherche », avec `expires_on` ; retrait automatique paresseux par
   `cleanupTradeMarket()`, `app/lib/tradeMarket.ts`)
@@ -1409,11 +1411,32 @@ de `lg` ; admin : 3 colonnes (formulaire, alignement, historique) à partir de `
 Ballotage et Échanges affichent aussi l'alignement à droite ; dans Échanges, il reflète en direct
 la proposition en préparation (`TradeDraft`), et un scénario de `/simulation` peut y être chargé.
 
+**Retour au jeu d'un joueur sur LTIR (`app/lib/ltirReturns.ts`, `ltir_return_watch`) — David,
+2026-10-05 :**
+- Un joueur sur LTIR qui **joue un match de la LNH** (`player_game_logs`, après sa mise sur LTIR :
+  dernier `roster_change_log` vers `ltir`, sinon la demande approuvée, sinon `added_at`) doit être
+  réintégré par son pooler dans `app_settings.ltir_return_deadline_days` jours (défaut 14, réglé
+  avec les autres seuils LTIR). Jusqu'à 23 h 59 ET du dernier jour, délai compté à partir de la
+  détection. Pendant le délai, rien ne change : aucun point, salaire hors masse.
+- **Le pooler fait le retour lui-même** : action « Retour LTIR » de Gestion d'effectifs ouverte à
+  tous (effet immédiat, `validateRosterLimits`), bandeau ambre/rouge avec « Préparer le retour ».
+- Notifications push + courriel au pooler **et à tous les admins** : détection, rappel 2 jours
+  avant, délai dépassé. Jamais de déplacement automatique : passé le délai, l'admin décide
+  (section « Retours de LTIR » du panneau Approbations ; seuls les dépassés comptent au compteur).
+- Joueur plus listé blessé par **aucune** source mais qui n'a pas encore joué : admins seulement
+  (`reason='not_injured'`), sans date limite ; passe à `played` au premier match.
+- Détection paresseuse (`syncLtirReturns()`), pas de tâche planifiée : accueil (`after()`, au plus
+  aux 5 min par instance), Gestion d'effectifs et panneau Approbations. L'index unique partiel
+  (un suivi ouvert par joueur) et les mises à jour conditionnelles évitent les notifications en
+  double. Suivi fermé (`resolved_at`) dès que le joueur n'est plus sur LTIR chez ce pooler.
+  Inactif tant que `season_started=false`.
+
 **Demandes de mise sur LTIR (`ltir_requests`) — David, 2026-09-23 (suite) :**
 - **Actif ou réserviste (David, 2026-10-01)** — remplace « un actif » dans les points ci-dessous :
   les deux peuvent être mis sur LTIR (demande, boutons pré-saison, Gestion d'effectifs). Avec
   LTIR + signature, le remplaçant prend le statut du joueur remplacé. **Retour de LTIR** : statut
-  au choix (`returnNewType` : `actif` ou `reserviste`), actif à désactiver en échange facultatif.
+  au choix (`returnNewType` : `actif` ou `reserviste`), actif à désactiver en échange facultatif ;
+  ouvert aux poolers depuis le 2026-10-05 (voir ci-dessus).
 - Jusqu'ici, `ltir`/`ltir_sign` (mettre un actif sur LTIR, avec ou sans signer un remplaçant)
   étaient marqués `adminOnly` dans `ACTION_DEFS` (`GestionEffectifsManager.tsx`) — un pooler ne
   voyait même pas le bouton, seul l'admin pouvait le faire (en pratique, sur demande hors-app
