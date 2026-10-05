@@ -312,6 +312,10 @@ pour les trois) `/draft-center` (classement des prospects, vue publique)
 `?onglet=` et le conserve en changeant de pooler) `/marche-echanges` (marché des échanges, menu Le pool — David, 2026-10-03 : joueurs/choix offerts
 avec note et expiration, « Je cherche », push aux autres poolers, encadré sur l'accueil ; « Faire une
 offre » ouvre `/gestion-effectifs?tab=echanges&avec=<pooler>&recoit=player-<id>|pick-<id>` pré-rempli)
+`/meilleurs-disponibles` (menu Le pool — David, 2026-10-05 : top 15 + « Voir plus » des
+attaquants/défenseurs/gardiens absents de tout alignement ET sous contrat pour la saison active,
+classés selon les points avec `scoring_config` ; total ou points par match (minimum 25 % des matchs
+du meneur, moitié pour les gardiens) ; saison en cours ou précédente via `?saison=precedente`)
 `/listes` (« Mes listes », menu Mon équipe —
 voir section 6) `/compte` `/signaler` `/aide` `/a-propos`
 (David, 2026-09-23 — « tour d'horizon » statique des fonctionnalités consultables/en
@@ -563,7 +567,7 @@ sont deux natures de contenu différentes.**
 | Section | Contenu |
 |---|---|
 | Mon équipe (nouveau nom de groupe — le lien "Mon alignement", ex-"Mon équipe", garde son nom de page inchangé depuis le renommage plus haut le même jour) | Mon alignement · Gestion d'effectifs · Simulation · Mes listes (ajouté le 2026-09-27) — "ce qui m'appartient / que je contrôle" |
-| Le pool | Classement · En direct (2026-10-04) · Tous les alignements (ex-"Équipes") · Marché des échanges (2026-10-03) · Journal des transactions · Marqueur.com ↗ (lien externe) — "ce qui concerne les autres poolers". Le groupe "Classement du pool" a été retiré le 2026-09-30 (David) : un seul lien Classement, avec un sélecteur Saison complète (défaut) / Mensuel / Hebdomadaire en haut de la page (`app/classement/PeriodSelector.tsx`, routes `/classement`, `/classement/mensuel`, `/classement/hebdomadaire` inchangées) |
+| Le pool | Classement · En direct (2026-10-04) · Tous les alignements (ex-"Équipes") · Meilleurs joueurs disponibles (2026-10-05) · Marché des échanges (2026-10-03) · Journal des transactions · Marqueur.com ↗ (lien externe) — "ce qui concerne les autres poolers". Le groupe "Classement du pool" a été retiré le 2026-09-30 (David) : un seul lien Classement, avec un sélecteur Saison complète (défaut) / Mensuel / Hebdomadaire en haut de la page (`app/classement/PeriodSelector.tsx`, routes `/classement`, `/classement/mensuel`, `/classement/hebdomadaire` inchangées) |
 | Calendrier LNH (lien autonome, ex-sous-item de "Statistiques", sorti le 2026-09-23 (suite) — entre Le pool et Statistiques) | Le résumé personnel "mes joueurs cette semaine" a été extrait dans un onglet séparé sur `/poolers/[id]`, voir ci-dessous — cette page ne garde que la navigation jour par jour |
 | Statistiques (ex-partie de "LNH") | LNH · Projections · AHL |
 | Analytique (ajouté le 2026-10-01) | Statistiques avancées · Outil d'analyse · Trios et paires (2026-10-02) |
@@ -1156,10 +1160,11 @@ corrigée le 2026-09-20 :**
   le champ `rookie` propre à l'API AHL (statut recrue au sens de la ligue), pas
   `rookieProtection.ts` (règle du pool, sans rapport).
 - **Indicateur de disponibilité (David, 2026-09-17)** — pastille verte/grise comme sur
-  `/statistiques`, réutilise `fetchTakenNames()` + `normName()` (`app/lib/nhl-stats.ts`) :
-  noms normalisés de tout joueur déjà présent dans un alignement de la saison active
-  (`pooler_rosters`, tous `player_type` confondus — donc un prospect en banque de recrues
-  compte comme "pris"). Matching sur le nom complet uniquement (les joueurs AHL n'ont pas de
+  `/statistiques`, réutilise `fetchTakenPlayers()` (`app/lib/takenPlayers.ts`, partagé avec
+  `/statistiques` et `/statistiques/projections`) : tout joueur présent dans un alignement de
+  la saison active (`pooler_rosters` non libéré, tous `player_type` confondus — donc un
+  prospect en banque de recrues compte comme "pris"). Côté LNH, jumelage par `nhl_id` d'abord
+  (2026-10-05 — le nom ratait « Mitch »/« Mitchell » Marner), nom en repli seulement. Matching sur le nom complet uniquement (les joueurs AHL n'ont pas de
   `nhl_id`/`player.id` fiable pour un matching plus robuste) — un homonyme improbable
   afficherait un faux positif, risque jugé acceptable.
 
@@ -1179,7 +1184,7 @@ corrigée le 2026-09-20 :**
   qu'elle répond à "ce joueur est-il pris *aujourd'hui*", une question qui ne dépend pas de la
   saison de stats regardée — contrairement au statut recrue/à la forme récente). Même
   comportement que sur `/statistiques/ahl`, qui n'a jamais masqué sa pastille selon la saison
-  choisie. `fetchTakenNames()` est donc appelée sans condition de saison.
+  choisie. `fetchTakenPlayers()` est donc appelée sans condition de saison.
 
 **Next.js 16 :**
 - Utiliser `proxy.ts`, PAS `middleware.ts`
@@ -1517,14 +1522,14 @@ téléphone : tout ce qui est masqué en portrait revient automatiquement en pay
 Pages adaptées selon ces conventions : `/poolers/[id]` (tous les onglets), `/classement` (+
 hebdo, mensuel), `/statistiques`, `/joueurs`, `/gestion-effectifs`, `/statistiques/blessures`,
 `/statistiques/projections`, `/journal-transactions`, `/poolers`, panneau « Mes listes »,
-`/analytique/stats-avancees`, `/analytique/analyse`. Pas
+`/analytique/stats-avancees`, `/analytique/analyse`, `/meilleurs-disponibles`. Pas
 encore : `/statistiques/ahl`, `/calendrier`, `/repechage-agents-libres`, `/repechage-recrues`,
 `/simulation`.
 
 Pages de consultation : `/`, `/joueurs`, `/statistiques`, `/statistiques/ahl`,
 `/statistiques/blessures`, `/statistiques/projections`, `/repechage`,
 `/poolers`, `/poolers/[id]`, `/journal-transactions`, `/gestion-series`, `/classement-series`,
-`/classement`, `/classement/hebdomadaire`, `/classement/mensuel`, `/aide`, `/a-propos`
+`/classement`, `/classement/hebdomadaire`, `/classement/mensuel`, `/meilleurs-disponibles`, `/aide`, `/a-propos`
 
 ---
 

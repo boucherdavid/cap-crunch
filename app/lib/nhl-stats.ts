@@ -56,6 +56,7 @@ export type NhlGoalieStat = {
   firstName: string
   lastName: string
   teamAbbrev: string
+  gamesPlayed: number
   gamesStarted: number
   wins: number
   otLosses: number
@@ -151,6 +152,7 @@ function groupGoalieRows(rows: Row[]): NhlGoalieStat[] {
       firstName,
       lastName,
       teamAbbrev:   entries.length > 1 ? `${entries.length} TM` : String(main.teamAbbrevs ?? ''),
+      gamesPlayed:  entries.reduce((s, e) => s + Number(e.gamesPlayed ?? 0), 0),
       gamesStarted: entries.reduce((s, e) => s + Number(e.gamesStarted ?? 0), 0),
       wins:         entries.reduce((s, e) => s + Number(e.wins ?? 0), 0),
       otLosses:     entries.reduce((s, e) => s + Number(e.otLosses ?? 0), 0),

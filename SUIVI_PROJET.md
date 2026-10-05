@@ -21,6 +21,27 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-05
 
+**[Feat] — Page « Meilleurs joueurs disponibles »** (`app/app/meilleurs-disponibles/`, `components/Navbar.tsx`,
+`lib/nhl-stats.ts`, `app/aide/AideTabs.tsx`, `app/a-propos/page.tsx`) :
+- Demande de David : les plus performants disponibles par position, selon le pointage du pool.
+  Menu Le pool. Stats de l'API LNH (saison en cours ou précédente), points calculés avec
+  `scoring_config` (mêmes défauts que `buildStandings()`), disponibilité via `fetchTakenPlayers()`.
+- Décisions de David : joueurs sans contrat pour la saison active cachés (pas pertinents une fois
+  la saison avancée) ; 15 par position + « Voir plus ».
+- Tri total ou par match (minimum 25 % des matchs du meneur, moitié pour les gardiens). Salaire de
+  la saison et badge blessure affichés. Pas de bouton de liste par ligne (une requête par ligne) :
+  la fiche joueur a déjà « Ajouter à une liste ».
+- `NhlGoalieStat` reçoit `gamesPlayed` (l'API le fournissait, seul `gamesStarted` était gardé).
+- Testé en local contre staging avec un compte de test (les deux saisons).
+
+**[Fix] — Pastille « disponible » fausse sur Statistiques/Projections/AHL** (`app/lib/takenPlayers.ts`,
+`app/app/statistiques/page.tsx`, `StatsTable.tsx`, `projections/page.tsx`, `ahl/page.tsx`) :
+- Marner affiché disponible alors qu'il est chez Steve : la disponibilité comparait les noms
+  (« Mitch » dans l'API LNH, « Mitchell » en base). Trois copies de `fetchTakenNames()`
+  remplacées par `fetchTakenPlayers()` : jumelage par `nhl_id`, nom en repli pour un joueur sans
+  `nhl_id` (et pour l'AHL, sans identifiant LNH).
+- Corrige aussi : les joueurs libérés (`removed_at` rempli) restaient marqués « pris ».
+
 **[Fix] — Points perdus des joueurs sans `nhl_id` + comparaison avec Marqueur** (`python_script/import_regular_stats.py`, `python_script/name_aliases.py`) :
 - Classement ≠ Marqueur.com. Comparaison joueur par joueur (prod vs API LNH vs Marqueur) : les
   points en base correspondaient exactement à l'API LNH pour tout joueur ayant un `nhl_id`.
@@ -41,9 +62,18 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   - alignements différents : Nick Lardis actif chez David sur Marqueur (recrue dans Cap Crunch),
     Will Smith actif chez Steve sur Marqueur (recrue dans Cap Crunch, 3 pts), Nico Hischier
     actif chez Steve dans Cap Crunch seulement — à trancher par David.
-- Restant à la main : Elias Pettersson (attaquant VAN, nhl_id 8480012) n'a pas de fiche — la seule
-  fiche « Elias Pettersson » (id 1391) porte le nhl_id du défenseur (8483678) avec la position
-  d'attaquant. Dans aucun alignement.
+- Écarts d'alignement (Lardis, Will Smith, Hischier) : erreurs de saisie de David sur Marqueur,
+  Cap Crunch était juste.
+- Promu sur `main` (`c9ace33`).
+
+**[Fix données] — Fiche Elias Pettersson mélangée attaquant/défenseur** (prod + staging, script
+ponctuel, pas de code) : la fiche 1391 avait les contrats de l'attaquant (11,6 M$, `nhl_id`
+8480012) mais le `nhl_id` (8483678) et le repêchage (2022, 3e ronde) du défenseur — elle affichait
+donc les stats du défenseur. Remise sur l'attaquant (`nhl_id` 8480012, repêché 2016, 1re ronde,
+5e), 74 game-logs du défenseur supprimés, 78 de l'attaquant importés (2025-26 et 2026-27). Le
+défenseur recevra sa propre fiche au prochain `import_drafts.py` (jumelage par `nhl_id`). Aucun
+alignement touché. « Mitch »/« Mitchell » Marner : pas de doublon en base (une seule fiche, id
+1439) — « Mitch » est l'orthographe de Marqueur.
 
 **[CI] — Import des points de la nuit plus tôt** (`.github/workflows/regular_stats.yml`) :
 - Classement Cap Crunch ≠ Marqueur.com ce matin : le seul passage planifié (6 h UTC) était retardé

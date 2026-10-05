@@ -89,6 +89,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Classement', href: '/classement' },
       { label: 'En direct', href: '/en-direct' },
       { label: 'Tous les alignements', href: '/poolers' },
+      { label: 'Meilleurs joueurs disponibles', href: '/meilleurs-disponibles' },
       { label: 'Marché des échanges', href: '/marche-echanges' },
       { label: 'Journal des transactions', href: '/journal-transactions' },
       { label: 'Marqueur.com ↗', href: MARQUEUR_URL },
