@@ -253,6 +253,7 @@ export default function BlessuresTable({ rows, myPoolerId }: { rows: InjuryRow[]
                 <PlayerLink nhlId={r.nhlId}>{r.lastName}, {r.firstName}</PlayerLink>
                 <span className="ml-1 text-[11px] font-normal text-gray-400">{[r.teamCode, r.position].filter(Boolean).join(' · ')}</span>
               </span>
+              {r.backInAction && <span className="shrink-0 text-[10px] font-bold bg-sky-100 text-sky-700 rounded px-1.5 py-0.5">De retour au jeu</span>}
               {r.eligible && <span className="shrink-0 text-[10px] font-bold bg-emerald-100 text-emerald-700 rounded px-1.5 py-0.5">LTIR</span>}
             </div>
             <p className="text-red-600 text-xs mt-0.5">{r.injuryType}</p>
@@ -314,9 +315,11 @@ export default function BlessuresTable({ rows, myPoolerId }: { rows: InjuryRow[]
                   </td>
                   <td className="px-4 py-2.5 text-gray-600 text-xs"><ReturnDates r={r} /></td>
                   <td className="px-4 py-2.5">
-                    {r.eligible
-                      ? <span className="text-xs font-bold bg-emerald-100 text-emerald-700 rounded px-1.5 py-0.5">Admissible</span>
-                      : <span className="text-xs text-gray-300">—</span>
+                    {r.backInAction
+                      ? <span className="text-xs font-bold bg-sky-100 text-sky-700 rounded px-1.5 py-0.5" title="Encore listé blessé, mais il a rejoué récemment — pas admissible au LTIR">De retour au jeu</span>
+                      : r.eligible
+                        ? <span className="text-xs font-bold bg-emerald-100 text-emerald-700 rounded px-1.5 py-0.5">Admissible</span>
+                        : <span className="text-xs text-gray-300">—</span>
                     }
                   </td>
                   <td className="px-4 py-2.5">

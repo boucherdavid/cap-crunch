@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import BlessuresTable from './BlessuresTable'
-import { computeDatesDisagree, computeLtirEligible, countInjurySources, isOnNhlIr, MIN_INJURY_SOURCES } from '@/lib/ltirEligibility'
-import { fetchLtirSettings } from '@/lib/injuries'
+import { computeDatesDisagree, computeLtirEligible, countInjurySources, isOnNhlIr, playedSinceInjury, MIN_INJURY_SOURCES } from '@/lib/ltirEligibility'
+import { fetchLastGameByPlayerId, fetchLtirSettings } from '@/lib/injuries'
 
 export const metadata = { title: 'Blessures LNH' }
 export const dynamic = 'force-dynamic'
@@ -19,6 +19,7 @@ export type InjuryRow = {
   status: string
   updatedLabel: string
   eligible: boolean
+  backInAction: boolean  // encore listé, mais a rejoué récemment (règle 0)
   estReturnDate: string | null
   cbsReturnDate: string | null
   espnEstReturnDate: string | null
@@ -77,12 +78,20 @@ export default async function BlessuresPage() {
     supabase.auth.getUser(),
   ])
 
+  const lastGames = await fetchLastGameByPlayerId((injuriesData ?? []).map(r => r.player_id as number), ltirSettings)
+
   const rows: InjuryRow[] = (injuriesData ?? [])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((row: any) => {
       const player = row.players
       if (!player) return null
       const confirmed = countInjurySources(row) >= MIN_INJURY_SOURCES
+      const eligibility = {
+        estReturnDate: row.est_return_date,
+        firstSeenAt: row.first_seen_at,
+        onNhlIr: isOnNhlIr(row.status, row.espn_status_desc, row.mp_status),
+        lastGameAt: lastGames.get(row.player_id) ?? null,
+      }
       return {
         playerId: player.id,
         nhlId: player.nhl_id,
@@ -95,11 +104,8 @@ export default async function BlessuresPage() {
         injuryType: row.injury_type ?? '',
         status: row.status ?? '',
         updatedLabel: row.updated_label ?? '',
-        eligible: confirmed && computeLtirEligible({
-          estReturnDate: row.est_return_date,
-          firstSeenAt: row.first_seen_at,
-          onNhlIr: isOnNhlIr(row.status, row.espn_status_desc, row.mp_status),
-        }, ltirSettings),
+        eligible: confirmed && computeLtirEligible(eligibility, ltirSettings),
+        backInAction: playedSinceInjury(eligibility, ltirSettings),
         estReturnDate: row.est_return_date,
         cbsReturnDate: row.cbs_return_date,
         espnEstReturnDate: row.espn_est_return_date,

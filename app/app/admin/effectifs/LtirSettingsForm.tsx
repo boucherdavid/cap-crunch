@@ -12,6 +12,7 @@ const FIELDS: { key: keyof LtirSettings; label: string; help: string }[] = [
   { key: 'graceDays', label: 'Période tampon après la date de retour', help: 'jours avant de considérer la blessure prolongée' },
   { key: 'disagreementDays', label: 'Écart CBS/ESPN signalé à partir de', help: 'jours (marqueur ⚠, informatif)' },
   { key: 'removalAbsenceDays', label: 'Retrait après absence de CBS pendant', help: 'jours consécutifs (compteur remis à zéro)' },
+  { key: 'recentGameDays', label: 'Pas admissible si le joueur a joué depuis moins de', help: 'jours (même encore listé blessé)' },
   { key: 'returnDeadlineDays', label: "Retour au jeu d'un joueur sur LTIR : délai de", help: "jours pour le remettre dans l'alignement" },
 ]
 

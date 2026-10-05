@@ -14,6 +14,10 @@
  * 4. Sinon (aucune date claire, ou date dépassée et toujours blessé) : blessé depuis
  *    `injuredMinDays` jours ou plus (`first_seen_at`) → admissible — couvre le "day-to-day"
  *    qui traîne.
+ * 0. Avant tout (David, 2026-10-05) : le joueur a joué un match de la LNH après que sa blessure
+ *    a été listée, et dans les `recentGameDays` derniers jours → PAS admissible, peu importe
+ *    les listes — elles gardent souvent un joueur plusieurs jours après son retour (Marchand :
+ *    « IR jusqu'au 25 octobre » chez les trois sources, un but le 4). Voir `playedSinceInjury`.
  * Calculé à la volée (jamais stocké) pour rester exact entre deux scrapes quotidiens.
  *
  * Seuils paramétrables par l'admin (David, 2026-09-25 — sujets à discussion avec les poolers) :
@@ -28,6 +32,7 @@ export type LtirSettings = {
   disagreementDays: number    // écart CBS/ESPN signalé (purement informatif)
   removalAbsenceDays: number  // lu par le scraper seulement — runs quotidiens d'absence avant retrait
   returnDeadlineDays: number  // délai pour réintégrer un joueur sur LTIR qui a recommencé à jouer (lib/ltirReturns.ts)
+  recentGameDays: number      // règle 0 — un match joué depuis moins de N jours annule l'admissibilité
 }
 
 export const DEFAULT_LTIR_SETTINGS: LtirSettings = {
@@ -37,12 +42,14 @@ export const DEFAULT_LTIR_SETTINGS: LtirSettings = {
   disagreementDays: 5,
   removalAbsenceDays: 2,
   returnDeadlineDays: 14,
+  recentGameDays: 7,
 }
 
 export type InjuryEligibilityInput = {
   estReturnDate: string | null  // ISO 'YYYY-MM-DD'
   firstSeenAt: string           // ISO timestamp
   onNhlIr: boolean              // voir isOnNhlIr()
+  lastGameAt?: string | null    // dernier match de la LNH joué (ISO), voir fetchLastGameByPlayerId
 }
 
 function daysBetween(a: Date, b: Date): number {
@@ -83,11 +90,25 @@ export function daysSinceFirstSeen(injury: InjuryEligibilityInput, today: Date =
   return daysBetween(new Date(injury.firstSeenAt), today)
 }
 
+/** Règle 0 : a joué après que la blessure a été listée, il y a moins de `recentGameDays` jours.
+ * S'il se blesse de nouveau, il redevient admissible une fois ce délai passé sans jouer. */
+export function playedSinceInjury(
+  injury: InjuryEligibilityInput,
+  settings: LtirSettings = DEFAULT_LTIR_SETTINGS,
+  today: Date = new Date(),
+): boolean {
+  if (!injury.lastGameAt) return false
+  const lastGame = new Date(injury.lastGameAt)
+  if (lastGame.getTime() <= new Date(injury.firstSeenAt).getTime()) return false
+  return today.getTime() - lastGame.getTime() < settings.recentGameDays * 86_400_000
+}
+
 export function computeLtirEligible(
   injury: InjuryEligibilityInput,
   settings: LtirSettings = DEFAULT_LTIR_SETTINGS,
   today: Date = new Date(),
 ): boolean {
+  if (playedSinceInjury(injury, settings, today)) return false
   if (injury.onNhlIr) return true
   if (injury.estReturnDate) {
     const daysUntilReturn = daysBetween(today, new Date(injury.estReturnDate + 'T12:00:00'))

@@ -33,7 +33,8 @@ export default function LtirRulesContent() {
         <p className="font-medium text-gray-800 mb-1.5">Quand un joueur est-il « admissible » ?</p>
         <p className="mb-1.5">Les règles sont vérifiées dans cet ordre ; la première qui s&apos;applique décide :</p>
         <ol className="space-y-1.5 list-decimal pl-5">
-          <li><strong>Placé sur la liste des blessés (IR) par son équipe LNH</strong> → toujours admissible, peu importe la date de retour annoncée. On colle à la réalité de la LNH.</li>
+          <li><strong>A joué un match de la LNH depuis moins de {jours(t.recentGameDays)}</strong>, après que sa blessure a été listée → <strong>pas admissible</strong>, même s&apos;il apparaît encore sur les listes de blessés (elles sont souvent en retard de quelques jours). Son badge indique « De retour au jeu ».</li>
+          <li><strong>Placé sur la liste des blessés (IR) par son équipe LNH</strong> → admissible, peu importe la date de retour annoncée. On colle à la réalité de la LNH.</li>
           <li><strong>Retour annoncé dans {jours(t.returnMinDays)} ou plus</strong> → admissible (blessures « semaine à semaine », « mois à mois »…).</li>
           <li><strong>Retour annoncé bientôt</strong> (dans moins de {jours(t.returnMinDays)}, ou date dépassée depuis moins de {jours(t.graceDays)}) → <strong>pas admissible</strong>, même si le joueur est blessé depuis longtemps. C&apos;est une <strong>période tampon</strong> : un joueur annoncé de retour le 2 octobre ne peut pas être mis sur le LTIR le 2 octobre. Il faut d&apos;abord voir la blessure se prolonger.</li>
           <li><strong>Blessé depuis {jours(t.injuredMinDays)} ou plus</strong>, sans date de retour, ou toujours sur la liste {jours(t.graceDays)} après sa date de retour prévue (la blessure se prolonge) → admissible. Couvre notamment le « day-to-day » qui traîne.</li>

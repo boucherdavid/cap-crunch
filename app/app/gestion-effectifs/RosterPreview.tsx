@@ -33,7 +33,7 @@ function Row({ e, previousType, isNew, removed }: { e: RosterEntry; previousType
         {isNew && <span className="ml-2 text-[10px] font-bold text-green-700">AJOUT</span>}
         {previousType && <span className="ml-2 text-[10px] font-semibold text-amber-700">était {TYPE_LABEL[previousType] ?? previousType}</span>}
         {removed && <span className="ml-2 text-[10px] font-bold text-red-600">RETIRÉ</span>}
-        {e.injury && !removed && <span className="ml-2 text-[10px] font-semibold text-red-500">{e.injury.eligible ? 'admissible LTIR' : 'blessé'}</span>}
+        {e.injury && !removed && <span className="ml-2 text-[10px] font-semibold text-red-500">{e.injury.backInAction ? 'de retour au jeu' : e.injury.eligible ? 'admissible LTIR' : 'blessé'}</span>}
       </span>
       <span className={`shrink-0 tabular-nums text-xs ${removed ? 'line-through text-gray-400' : 'text-gray-600'}`}>
         {capFmt(e.capNumber)}{e.isEstimatedCap && <span className="ml-1 text-amber-700">estimé</span>}

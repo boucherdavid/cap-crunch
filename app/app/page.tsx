@@ -411,7 +411,7 @@ function NhlNewsWidget({ items }: { items: NewsItem[] }) {
 
 // ---------- blessures du pool ----------
 
-type PoolInjuryItem = { poolerName: string; playerName: string; injuryType: string; status: string; eligible: boolean }
+type PoolInjuryItem = { poolerName: string; playerName: string; injuryType: string; status: string; eligible: boolean; backInAction: boolean }
 
 // Limité aux joueurs actif/réserviste (ceux qui comptent dans la masse salariale et pour qui
 // le LTIR est une vraie décision à prendre) — un joueur déjà en LTIR ou en banque de recrues
@@ -446,6 +446,7 @@ async function fetchPoolInjuries(
         injuryType: inj.injuryType,
         status: inj.status,
         eligible: inj.eligible,
+        backInAction: inj.backInAction,
       })
       if (out.length >= limit) break
     }
@@ -470,7 +471,9 @@ function PoolInjuriesWidget({ items }: { items: PoolInjuryItem[] }) {
               <span className="font-medium">{it.playerName}</span>
               <span className="text-gray-400"> ({it.poolerName})</span>
             </span>
-            {it.eligible
+            {it.backInAction
+              ? <span className="text-xs font-bold text-sky-700 bg-sky-100 rounded px-1.5 py-0.5 text-right shrink-0" title={it.status}>De retour au jeu</span>
+              : it.eligible
               ? <span className="text-xs font-bold text-emerald-700 bg-emerald-100 rounded px-1.5 py-0.5 text-right shrink-0" title={it.status}>Admissible LTIR</span>
               : <span className="text-xs text-red-600 text-right shrink-0" title={it.status}>{it.injuryType}</span>
             }

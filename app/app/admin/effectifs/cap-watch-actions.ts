@@ -415,6 +415,7 @@ export async function updateLtirSettingsAction(settings: LtirSettings): Promise<
       injury_disagreement_days: settings.disagreementDays,
       injury_removal_absence_days: settings.removalAbsenceDays,
       ltir_return_deadline_days: settings.returnDeadlineDays,
+      ltir_recent_game_days: settings.recentGameDays,
     })
     .eq('id', 1)
   if (error) return { error: error.message }

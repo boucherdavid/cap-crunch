@@ -66,7 +66,7 @@ function todayLocal() {
 
 function entryLabel(e: RosterEntry) {
   const meta = [e.position, e.teamCode].filter(Boolean).join(', ')
-  const injuryTag = e.injury ? (e.injury.eligible ? ' 🩹 admissible LTIR' : ' 🩹 blessé') : ''
+  const injuryTag = e.injury ? (e.injury.backInAction ? ' — de retour au jeu' : e.injury.eligible ? ' 🩹 admissible LTIR' : ' 🩹 blessé') : ''
   return `${e.lastName}, ${e.firstName}${meta ? ` (${meta})` : ''}${injuryTag}`
 }
 

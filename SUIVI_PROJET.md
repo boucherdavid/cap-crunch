@@ -21,6 +21,18 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-05
 
+**[Feat] — Admissibilité LTIR : un joueur qui a rejoué n'est plus admissible** (`lib/ltirEligibility.ts`, `lib/injuries.ts`,
+`components/InjuryBadge.tsx`, `statistiques/blessures/*`, `LtirSettingsForm.tsx`, `aide/LtirRulesContent.tsx`,
+`supabase_migrations/ltir_recent_game_days.sql`) :
+- Repéré par David après l'échange test : Marchand, redevenu actif, affichait « Admissible LTIR »
+  (les trois sources le disent sur IR jusqu'au 25 octobre) alors qu'il a marqué le 4.
+- Règle 0 : match joué après `first_seen_at` et depuis moins de 7 jours (paramétrable) → pas
+  admissible, badge « De retour au jeu ». Fenêtre de temps plutôt que « a joué depuis la
+  blessure » tout court : un joueur qui se reblesse redevient admissible après 7 jours sans jouer.
+- Marché/échange des joueurs sur LTIR et correctif du panneau « À faire » promus en prod (`5deebd1`).
+- **Migration à rouler** (staging puis prod) : sans elle la règle fonctionne avec 7 jours, mais
+  l'enregistrement des seuils LTIR échoue.
+
 **[Feat] — Joueurs sur LTIR au marché des échanges et échangeables** (`gestion-effectifs/trade-actions.ts`,
 `TradeOffersTab.tsx`, `GestionEffectifsManager.tsx`, `lib/tradeMarket.ts`, `marche-echanges/actions.ts`,
 `MarcheEchangesClient.tsx`, `aide/AideTabs.tsx`) :
