@@ -39,6 +39,35 @@ jumelés par (saison, propriétaire d'origine, ronde) car leurs id divergent. Dr
 (715 lignes d'alignement, 55 transactions/107 items, 128/128 choix jumelés) ; `--apply` bloqué pour
 Claude par le mode automatique (suppression), à lancer par David.
 
+**[Feat] — Pointage en direct de la soirée + Marqueur.com** (`app/lib/liveNight.ts`,
+`app/app/en-direct/`, `app/components/live/`, `app/app/page.tsx`, `app/components/Navbar.tsx`,
+`app/app/aide/AideTabs.tsx`) — forme inspirée de Marqueur.com (demande de David) :
+- Accueil : cartes « Classement — ce soir » (PJ = joueurs actifs ayant joué, Pts, Moy) et
+  « Pointeurs — ce soir » (tous les pointeurs LNH, propriétaire sous le nom, « Disponible » sinon ;
+  réserviste/recrue/LTIR signalés « ne compte pas ») ; remplacent « Joueurs en action » (saison
+  régulière). Page `/en-direct` : matchs et scores, classement de la soirée, détail par pooler
+  (dépliable), tous les pointeurs.
+- Non officiel, aucune écriture : boxscores LNH × `scoring_config`, joueurs actifs seulement.
+  Victoire/DP à la décision, blanchissage à la fin du match ; buts/passes de gardien ignorés
+  (absents du boxscore). Cache 45 s côté serveur ; sondage client chaque minute seulement pendant
+  les matchs et onglet visible — choisi pour ne pas recharger la base (soirée du pool du 3 oct.).
+- Vérifié sur les matchs du 2026-10-04 en cours (base staging) : Jérôme 7, David 4, comme Marqueur.
+- Marqueur.com : carte en haut à droite de l'accueil + entrée externe du menu Le pool
+  (`lib/externalLinks.ts`) ; le lien sous le classement ajouté plus tôt est retiré.
+- `/aide` (Classement) : quand les points sont mis à jour (chaque nuit ~2 h ET) et le direct.
+
+**[Fix] — Copie prod → staging : `pool_cap` est une colonne générée** — exclue de la mise à jour
+des saisons (le premier `--apply` avait planté après avoir vidé 2025-26 en staging).
+
+**[Feat] — Copie des alignements réels de prod vers staging** (`python_script/sync_prod_to_staging.py`) :
+sens inverse de `sync_staging_to_prod.py` (réutilise son mapping des joueurs). Remplace en staging
+les alignements, l'historique des changements, le journal des transactions, l'état pré-saison et
+les réglages de chaque saison qui a des données en prod (2025-26 et 2026-27 — David accepte de
+perdre l'historique 2025-26 reconstruit en staging) ; choix de repêchage mis à jour sur place,
+jumelés par (saison, propriétaire d'origine, ronde) car leurs id divergent. Dry-run validé
+(715 lignes d'alignement, 55 transactions/107 items, 128/128 choix jumelés) ; `--apply` bloqué pour
+Claude par le mode automatique (suppression), à lancer par David.
+
 **[Feat] — Lien vers notre pool sur Marqueur.com** (`app/app/page.tsx`) : lien externe
 « Notre pool sur Marqueur.com ↗ » (nouvel onglet) à côté de « Classement détaillé → » sous le
 classement de l'accueil — David y a entré les alignements pour suivre et comparer

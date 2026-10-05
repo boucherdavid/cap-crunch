@@ -64,9 +64,10 @@ desktop.
 
 - **Points du 2026-09-29** : corrigés en prod et en staging (vieilles lignes supprimées par David).
   Correctif du script sur staging, à fusionner sur `main`.
-- **Lien Marqueur.com sur l'accueil** : sur staging, à valider avant `main`.
-- **Copier prod → staging** : `cd python_script; python sync_prod_to_staging.py --apply` à lancer
-  par David (dry-run OK). Remplace 2025-26 et 2026-27 en staging par les données réelles de prod.
+- **Pointage en direct** (`/en-direct` + cartes de l'accueil) et **Marqueur.com** (carte + menu) :
+  sur staging, à valider pendant des matchs avant `main`.
+- **Copier prod → staging** : `cd python_script; python sync_prod_to_staging.py --apply` à relancer
+  par David (plantage `pool_cap` corrigé ; 2025-26 déjà vidé en staging par le premier essai). Remplace 2025-26 et 2026-27 en staging par les données réelles de prod.
 - **Charge de la base pendant le hub** : diagnostic et plan d'allègement en suspens (2026-10-04),
   en attente des chiffres Supabase (plan, Reports → Database, 3 oct. 21 h-23 h UTC).
 - **File des agents libres** (correctif en prod, non testé) : un double clic sur « Passer » ne doit

@@ -12,6 +12,9 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { fetchInjuriesByPlayerId } from '@/lib/injuries'
 import { loadTradeMarket } from '@/lib/tradeMarket'
+import { getLiveNight, type LiveNight } from '@/lib/liveNight'
+import LiveNightCards from '@/components/live/LiveNightCards'
+import { MARQUEUR_URL } from '@/lib/externalLinks'
 
 export const dynamic = 'force-dynamic'
 
@@ -117,10 +120,22 @@ type PoolerActivity = {
 
 const RANK_COLOR = ['text-yellow-500', 'text-gray-400', 'text-amber-600']
 
-// Notre pool sur Marqueur.com — David y a entré les alignements pour suivre et comparer.
-const MARQUEUR_URL = 'https://www.marqueur.com/circuit_boucher'
-
 // ---------- composants inline ----------
+
+function MarqueurCard() {
+  return (
+    <a
+      href={MARQUEUR_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block bg-white rounded-lg shadow px-5 py-4 hover:shadow-md hover:bg-blue-50/40 transition"
+    >
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Suivre et comparer</p>
+      <p className="mt-1 font-bold text-blue-700">Notre pool sur Marqueur.com ↗</p>
+      <p className="mt-0.5 text-xs text-gray-500">Nos alignements sur Marqueur.com, dans un nouvel onglet</p>
+    </a>
+  )
+}
 
 function ActivityTable({
   activity,
@@ -611,12 +626,14 @@ export default async function Home() {
   const playingTeams = new Set(todayGames.flatMap(g => [g.awayAbbrev, g.homeAbbrev]))
   const hasGames = todayGames.length > 0
 
-  const [standings, poolActivity, poolInjuries, nhlNews, market] = await Promise.all([
+  const [standings, poolActivity, poolInjuries, nhlNews, market, liveNight] = await Promise.all([
     saison ? buildStandings(supabase, saison.id) : Promise.resolve([]),
     saison ? fetchPoolActivity(supabase, saison.id) : Promise.resolve([]),
     saison ? fetchPoolInjuries(supabase, saison.id) : Promise.resolve([]),
     fetchNhlNews(),
     saison ? fetchMarketSummary(saison.id) : Promise.resolve({ items: [], total: 0 }),
+    // Pointage en direct (2026-10-04) — saison régulière seulement, calcul en cache 45 s.
+    !seriesSaison ? getLiveNight() : Promise.resolve(null as LiveNight | null),
   ])
 
   // Classement séries depuis le cache BD + récap d'hier + joueurs en action séries
@@ -655,7 +672,7 @@ export default async function Home() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
       <Header name={me?.name ?? null} saison={saison} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -721,16 +738,7 @@ export default async function Home() {
             standings.length > 0 ? (
               <>
                 <SummaryTable standings={standings} />
-                <div className="flex flex-wrap justify-end gap-x-4 gap-y-1">
-                  {/* Alignements entrés par David sur Marqueur.com pour suivre et comparer (2026-10-04) */}
-                  <a
-                    href={MARQUEUR_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    Notre pool sur Marqueur.com ↗
-                  </a>
+                <div className="text-right">
                   <Link href="/classement" className="text-sm text-blue-600 hover:underline">
                     Classement détaillé →
                   </Link>
@@ -743,14 +751,18 @@ export default async function Home() {
             )
           )}
 
+          {liveNight && <LiveNightCards initial={liveNight} myId={me?.id ?? null} />}
+
           <PoolActivityWidget items={poolActivity} />
           <MarketWidget summary={market} />
           <PoolInjuriesWidget items={poolInjuries} />
         </div>
 
         <div className="space-y-4">
+          <MarqueurCard />
           <ScheduleList todayDate={todayDate} games={todayGames} />
-          <ActivityTable activity={activity} todayDate={todayDate} hasGames={hasGames} />
+          {/* « Joueurs en action » remplacé par le pointage en direct en saison régulière (2026-10-04) */}
+          {seriesSaison && <ActivityTable activity={activity} todayDate={todayDate} hasGames={hasGames} />}
           <NhlNewsWidget items={nhlNews} />
         </div>
       </div>
