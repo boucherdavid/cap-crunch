@@ -39,6 +39,11 @@ jumelés par (saison, propriétaire d'origine, ronde) car leurs id divergent. Dr
 (715 lignes d'alignement, 55 transactions/107 items, 128/128 choix jumelés) ; `--apply` bloqué pour
 Claude par le mode automatique (suppression), à lancer par David.
 
+**[Feat] — Lien vers notre pool sur Marqueur.com** (`app/app/page.tsx`) : lien externe
+« Notre pool sur Marqueur.com ↗ » (nouvel onglet) à côté de « Classement détaillé → » sous le
+classement de l'accueil — David y a entré les alignements pour suivre et comparer
+(`https://www.marqueur.com/circuit_boucher`, constante `MARQUEUR_URL`).
+
 ### 2026-10-03
 
 **[Soirée du pool — prod]** (repêchage des agents libres en direct) :

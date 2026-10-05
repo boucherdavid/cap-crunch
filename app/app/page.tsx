@@ -117,6 +117,9 @@ type PoolerActivity = {
 
 const RANK_COLOR = ['text-yellow-500', 'text-gray-400', 'text-amber-600']
 
+// Notre pool sur Marqueur.com — David y a entré les alignements pour suivre et comparer.
+const MARQUEUR_URL = 'https://www.marqueur.com/circuit_boucher'
+
 // ---------- composants inline ----------
 
 function ActivityTable({
@@ -718,7 +721,16 @@ export default async function Home() {
             standings.length > 0 ? (
               <>
                 <SummaryTable standings={standings} />
-                <div className="text-right">
+                <div className="flex flex-wrap justify-end gap-x-4 gap-y-1">
+                  {/* Alignements entrés par David sur Marqueur.com pour suivre et comparer (2026-10-04) */}
+                  <a
+                    href={MARQUEUR_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    Notre pool sur Marqueur.com ↗
+                  </a>
                   <Link href="/classement" className="text-sm text-blue-600 hover:underline">
                     Classement détaillé →
                   </Link>
