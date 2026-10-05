@@ -29,6 +29,8 @@
 - Joueurs sur LTIR au marché et échangeables : en prod le 2026-10-05 (`5deebd1`).
 - Règle « a rejoué depuis moins de 7 jours → pas admissible au LTIR » (badge « De retour au jeu ») :
   en prod le 2026-10-05, migration roulée dans les deux bases.
+- **À valider sur staging (David)** : onglet Marqueur de Gestion des effectifs (écarts + liste à
+  reporter). Vidéos de l'Aide : envoyer les liens YouTube (non répertoriés) à ajouter par entrée.
 - Après le prochain pipeline du lundi : vérifier qu'une fiche distincte a été créée pour Elias
   Pettersson le défenseur (`nhl_id` 8483678).
 

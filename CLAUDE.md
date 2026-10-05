@@ -650,7 +650,7 @@ composant, pas de `?subtab=`), donc pas d'accès par URL directe comme pour `/ad
 | `/admin/pool` | `poolers` Poolers · `config` Configuration (sous-onglets `Saisons` / `Général` / `Pointage Saison` — `Général` = ex-"Pool Saison", renommé le 2026-09-01) |
 | `/admin/communaute` | `communication` Communication (feedback + notifs) · `babillard` Babillard (publier/supprimer des communications, ajouté le 2026-09-02) · `suivi` Suivi (activité) · `planification` Planification (sondage type Doodle, admin) |
 | `/admin/init` | `rosters` Rosters initiaux · `recrues` Banque de recrues · `choix` Choix de repêchage (← réassigner le propriétaire d'un pick échangé hors-app) — réglages one-shot déjà en place pour la saison courante |
-| `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `approbation` Approbation (transactions entre poolers en attente, `TradeApprovalManager.tsx` — onglet ajouté le 2026-09-21) · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) |
+| `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `approbation` Approbation (transactions entre poolers en attente, `TradeApprovalManager.tsx` — onglet ajouté le 2026-09-21) · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) · `marqueur` Marqueur (écarts avec notre pool sur Marqueur.com, 2026-10-05) |
 | `/admin/donnees` | `pipeline` Pipeline salaires/contrats/repêchages (doc, `PlayerMerge`) · `prospects` Classement des prospects |
 | `/admin/series` | pas d'onglets — vue unique (avancement des séries), message si aucune saison séries active. Retiré du dropdown Admin le 2026-08-28 (ne servait qu'aux tests, pas d'usage normal du pool des séries) — route et code conservés, toujours atteignable directement par URL. Depuis le 2026-08-30, également retiré du sous-menu "Pool Séries" côté pooler (voir ci-dessous) — plus aucun point d'entrée dans la nav, seulement l'URL directe |
 
@@ -1193,6 +1193,20 @@ corrigée le 2026-09-20 :**
   comportement que sur `/statistiques/ahl`, qui n'a jamais masqué sa pastille selon la saison
   choisie. `fetchTakenPlayers()` est donc appelée sans condition de saison.
 
+**Comparaison avec Marqueur.com (`app/lib/marqueur.ts`) — David, 2026-10-05 :**
+- David tient les alignements à la main sur Marqueur (`MARQUEUR_URL`) pour repérer nos bogues.
+  `/admin/effectifs?tab=marqueur` lit les pages **publiques** du pool (`stats_03.php`, une par
+  pooler, sans connexion) et liste les écarts : alignements (actifs = lignes `tr`, réservistes =
+  lignes `trj`) et points par joueur actif. **Lecture seule, à sens unique** — ne jamais faire
+  écrire Cap Crunch dans Marqueur : il reproduirait nos erreurs au lieu de les révéler.
+- Les écarts d'alignement servent de liste « à reporter sur Marqueur » (avec le dernier
+  `roster_change_log` du joueur comme contexte) ; elle se vide seule quand les deux concordent.
+- Marqueur n'a pas de LTIR : LTIR ici ↔ réserviste là-bas = concordant. Recrues en banque non
+  comparées (lues dans `pooler_rosters`, `buildStandings()` omettant les recrues jamais actives).
+- Jumelage des joueurs par nom exact, puis par nom de famille s'il est unique des deux côtés
+  (« Mitch »/« Mitchell »). HTML d'un tiers, donc fragile : une lecture ratée donne `error`,
+  jamais de faux écarts. Calculé à chaque ouverture de l'onglet (9 requêtes), sans cache.
+
 **Next.js 16 :**
 - Utiliser `proxy.ts`, PAS `middleware.ts`
 - Rester compatible avec les conventions Next.js 16
@@ -1586,6 +1600,10 @@ Pages de consultation : `/`, `/joueurs`, `/statistiques`, `/statistiques/ahl`,
 
 **Règle :** lors de l'ajout ou modification d'une fonctionnalité accessible aux poolers,
 évaluer si `/aide` (Guide ou Règlements) doit être mis à jour.
+
+**Vidéos de démonstration (David, 2026-10-05)** : chaque entrée de `AideTabs.tsx` accepte
+`video: '<lien YouTube>'` (visibilité « Non répertoriée »), affichée dans un lecteur intégré
+(`youtube-nocookie.com`) sous le texte. David enregistre sur staging avec les comptes de test.
 
 ---
 

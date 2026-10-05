@@ -21,6 +21,18 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-05
 
+**[Feat] — Comparaison avec Marqueur, liste à reporter et vidéos dans l'Aide** (`app/lib/marqueur.ts`,
+`admin/effectifs/MarqueurReportView.tsx`, `admin/effectifs/page.tsx`, `aide/AideTabs.tsx`) :
+- David demandait d'automatiser la saisie sur Marqueur. Écarté : pas d'API, robot fragile, et
+  Marqueur perdrait son rôle de référence indépendante. Retenu : rapport d'écarts en lecture seule
+  (onglet Marqueur de Gestion des effectifs), dont les écarts d'alignement tiennent lieu de liste
+  « à reporter » — pas de table ni de case à cocher, elle se vide quand la saisie est faite.
+- Vérifié contre la prod (lecture seule) : 5 écarts d'alignement réels (Steve : Lysell, Will
+  Smith ; Vincent : Sandin Pellikka, Sanderson, Ufko — mouvements du jour) et 2 écarts de points
+  (Guentzel, Leonard — erreurs de Marqueur déjà connues).
+- Aide : champ `video` par entrée (lecteur YouTube intégré). Aucune vidéo pour l'instant.
+- Pas de courriel quotidien des écarts (demanderait une tâche planifiée) — à ajouter au besoin.
+
 **[Feat] — Admissibilité LTIR : un joueur qui a rejoué n'est plus admissible** (`lib/ltirEligibility.ts`, `lib/injuries.ts`,
 `components/InjuryBadge.tsx`, `statistiques/blessures/*`, `LtirSettingsForm.tsx`, `aide/LtirRulesContent.tsx`,
 `supabase_migrations/ltir_recent_game_days.sql`) :
