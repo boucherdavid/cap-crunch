@@ -66,12 +66,12 @@ desktop.
   Correctif du script sur staging, à fusionner sur `main`.
 - **Pointage en direct** (`/en-direct` + cartes de l'accueil) et **Marqueur.com** (carte + menu) :
   sur staging, à valider pendant des matchs avant `main`.
-- **Staging = prod** (2026-10-04) : alignements copiés (`sync_prod_to_staging.py`) et stats des
-  matchs rattrapées jusqu'au 2026-10-03. **Demain** : vérifier que le classement de staging
-  correspond à la prod (les captures du soir précédaient le rattrapage).
-- **À fusionner sur `main`** après validation : pointage en direct + Marqueur.com, saison des
-  game-logs tirée du match, étape staging de la tâche de nuit (sans fusion, staging ne reçoit pas
-  les stats de la nuit — relancer `import_regular_stats.py --date` avec `.env.staging` au besoin).
+- **Pointage en direct + Marqueur.com** : validés par David le 2026-10-04 (points identiques à
+  Marqueur.com) et **fusionnés sur `main`**, avec la saison des game-logs tirée du match et l'étape
+  staging de la tâche de nuit (premier passage : nuit du 4 au 5 oct., à vérifier dans GitHub Actions).
+- **Staging = prod** : alignements copiés et stats rattrapées. Écart restant : Jérôme 34 en staging
+  contre 35 en prod (7 joueurs absents de la table `players` de staging, 189 lignes contre 196 le
+  29 sept.) — un `./run_pipeline_staging.ps1 --no-scrape` devrait l'aligner.
 - **Charge de la base pendant le hub** : diagnostic et plan d'allègement en suspens (2026-10-04),
   en attente des chiffres Supabase (plan, Reports → Database, 3 oct. 21 h-23 h UTC).
 - **File des agents libres** (correctif en prod, non testé) : un double clic sur « Passer » ne doit
