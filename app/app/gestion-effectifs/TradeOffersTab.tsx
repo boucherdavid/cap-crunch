@@ -14,12 +14,12 @@ import { getPlayerBucket, ACTIVE_LIMITS } from '@/lib/rosterLimits'
 const fmtCap = (n: number) =>
   new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 
-const GROUP_LABEL: Record<string, string> = { forward: 'Attaquants', defense: 'Défenseurs', goalie: 'Gardiens', recrue: 'Recrues', pick: 'Choix de repêchage' }
-const GROUP_ORDER = ['forward', 'defense', 'goalie', 'recrue', 'pick']
+const GROUP_LABEL: Record<string, string> = { forward: 'Attaquants', defense: 'Défenseurs', goalie: 'Gardiens', ltir: 'Sur LTIR (hors masse salariale)', recrue: 'Recrues', pick: 'Choix de repêchage' }
+const GROUP_ORDER = ['forward', 'defense', 'goalie', 'ltir', 'recrue', 'pick']
 
 function groupKey(i: TradeableItem): string {
   if (i.kind === 'pick') return 'pick'
-  if (i.playerType === 'recrue') return 'recrue'
+  if (i.playerType === 'recrue' || i.playerType === 'ltir') return i.playerType
   return getPlayerBucket(i.position)
 }
 
@@ -143,9 +143,9 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
     listTradeableAssetsAction(selfPoolerId, saisonId).then(setMyFullRoster)
   }, [selfPoolerId, saisonId])
 
-  // Masse actuelle (David, 2026-09-22) — recrues exclues, comme partout ailleurs dans l'app.
+  // Masse actuelle (David, 2026-09-22) — recrues et LTIR exclus, comme partout ailleurs dans l'app.
   const myCapUsed = myFullRoster
-    .filter((i): i is Extract<TradeableItem, { kind: 'player' }> => i.kind === 'player' && i.playerType !== 'recrue')
+    .filter((i): i is Extract<TradeableItem, { kind: 'player' }> => i.kind === 'player' && i.playerType !== 'recrue' && i.playerType !== 'ltir')
     .reduce((s, i) => s + i.capNumber, 0)
 
   // ── Nouvelle proposition ──────────────────────────────────────────────────
@@ -330,6 +330,7 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
     for (const i of myFullRoster) {
       if (i.kind !== 'player') continue
       if (i.playerType === 'recrue') { recrueMap.set(i.playerId, { position: i.position, capNumber: i.capNumber }); continue }
+      if (i.playerType === 'ltir') continue  // hors masse et hors composition tant qu'il est chez moi
       entries.set(i.playerId, { type: i.playerType, position: i.position, capNumber: i.capNumber })
     }
 
@@ -492,7 +493,7 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
                         {(() => {
                           const givenIds = new Set(o.give.filter(i => i.kind === 'player').map(i => i.id))
                           const adjustable = sortForAdjust(myFullRoster.filter(
-                            (i): i is Extract<TradeableItem, { kind: 'player' }> => i.kind === 'player' && !givenIds.has(i.playerId),
+                            (i): i is Extract<TradeableItem, { kind: 'player' }> => i.kind === 'player' && i.playerType !== 'ltir' && !givenIds.has(i.playerId),
                           ))
                           if (adjustable.length === 0) return null
                           return (

@@ -1161,7 +1161,7 @@ export default function GestionEffectifsManager({
     const received: RosterEntry[] = draft.receive.map((p, i) => {
       const [lastName, firstName] = p.name.includes(', ') ? p.name.split(', ') : [p.name, '']
       return {
-        id: -1 - i, playerId: p.playerId, playerType: p.playerType, firstName, lastName,
+        id: -1 - i, playerId: p.playerId, playerType: p.playerType === 'ltir' ? 'reserviste' : p.playerType, firstName, lastName,
         position: p.position, teamCode: p.teamCode, nhlId: null, capNumber: p.capNumber,
         isEstimatedCap: false, lastDeactivatedAt: null, recrueEligible: p.recrueEligible, injury: null,
       }

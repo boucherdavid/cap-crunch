@@ -26,6 +26,8 @@
 - **Retour au jeu des joueurs sur LTIR (2026-10-05) — en prod** (`aa2bbf5`), migration roulée dans les deux bases.
 - Bouton « À faire » des poolers et redirection des courriels de test : en prod le 2026-10-05.
   `EMAIL_REDIRECT_TO` est définie dans le projet Vercel de staging seulement (courriel de test reçu).
+- **À valider sur staging (David)** : joueurs sur LTIR au marché des échanges et dans les
+  échanges entre poolers (arrivent actif ou réserviste chez le receveur).
 - Après le prochain pipeline du lundi : vérifier qu'une fiche distincte a été créée pour Elias
   Pettersson le défenseur (`nhl_id` 8483678).
 

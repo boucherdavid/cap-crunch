@@ -12,9 +12,12 @@ import {
 // /poolers/[id], voir app/app/simulation/actions.ts pour le même principe) ────────────────────
 
 export type TradeableItem =
-  | { kind: 'player'; playerId: number; name: string; position: string | null; teamCode: string | null; playerType: 'actif' | 'reserviste' | 'recrue'; capNumber: number; recrueEligible: boolean }
+  | { kind: 'player'; playerId: number; name: string; position: string | null; teamCode: string | null; playerType: 'actif' | 'reserviste' | 'ltir' | 'recrue'; capNumber: number; recrueEligible: boolean }
   | { kind: 'pick'; pickId: number; round: number; season: string }
 
+// Joueurs sur LTIR inclus (David, 2026-10-05) : échangeables et affichables au marché. Chez le
+// receveur, ils arrivent comme actif ou réserviste (choix à la confirmation, comme tout joueur qui
+// n'est pas une recrue) et comptent alors dans sa masse — à lui de refaire une demande de LTIR.
 export async function listTradeableAssetsAction(poolerId: string, saisonId: number): Promise<TradeableItem[]> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -27,7 +30,7 @@ export async function listTradeableAssetsAction(poolerId: string, saisonId: numb
       .from('pooler_rosters')
       .select('player_id, player_type, players (first_name, last_name, position, is_rookie, draft_year, status, teams (code), player_contracts (season, cap_number, contract_status))')
       .eq('pooler_id', poolerId).eq('pool_season_id', saisonId).eq('is_active', true)
-      .in('player_type', ['actif', 'reserviste', 'recrue']),
+      .in('player_type', ['actif', 'reserviste', 'ltir', 'recrue']),
     supabase
       .from('pool_draft_picks')
       .select('id, round, pool_seasons (season)')
@@ -50,7 +53,7 @@ export async function listTradeableAssetsAction(poolerId: string, saisonId: numb
     teamCode: r.players?.teams?.code ?? null,
     playerType: r.player_type,
     capNumber: getEffectiveCap(r.players?.player_contracts, season, unsignedMultiplier).cap,
-    recrueEligible: r.player_type !== 'recrue' && !!(
+    recrueEligible: r.player_type !== 'recrue' && r.player_type !== 'ltir' && !!(
       r.players?.is_rookie || (r.players?.draft_year != null && r.players.draft_year >= draftYearCutoff) || r.players?.status === 'ELC'
     ),
   }))
@@ -126,7 +129,7 @@ export type TradeOfferItemView = {
   // à savoir si la confirmation doit proposer un choix Actif/Réserviste : une recrue échangée
   // reste une recrue chez le receveur, aucun choix à faire (voir executeTradeOffer,
   // app/lib/tradeOffers.ts).
-  currentPlayerType: 'actif' | 'reserviste' | 'recrue' | null
+  currentPlayerType: 'actif' | 'reserviste' | 'ltir' | 'recrue' | null
   // Salaire du joueur (David, 2026-09-22) — null pour un choix de repêchage.
   capNumber: number | null
   // Position du joueur — null pour un choix de repêchage. Sert au sommaire d'impact projeté
@@ -229,13 +232,13 @@ export async function getMyTradeOffersAction(saisonId: number): Promise<{
   // Type actuel (chez le donneur) des joueurs impliqués — pour savoir si un choix
   // actif/réserviste doit être proposé à la confirmation (jamais pour une recrue, voir
   // TradeOfferItemView.currentPlayerType ci-dessus).
-  const playerTypeById = new Map<number, 'actif' | 'reserviste' | 'recrue'>()
+  const playerTypeById = new Map<number, 'actif' | 'reserviste' | 'ltir' | 'recrue'>()
   const involvedPlayerIds = allItems.filter(i => i.item_type === 'player').map(i => i.player_id!)
   if (involvedPlayerIds.length > 0) {
     const { data: typeRows } = await db
       .from('pooler_rosters').select('player_id, player_type')
       .eq('pool_season_id', saisonId).eq('is_active', true).in('player_id', involvedPlayerIds)
-    for (const row of typeRows ?? []) playerTypeById.set(row.player_id, row.player_type as 'actif' | 'reserviste' | 'recrue')
+    for (const row of typeRows ?? []) playerTypeById.set(row.player_id, row.player_type as 'actif' | 'reserviste' | 'ltir' | 'recrue')
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
