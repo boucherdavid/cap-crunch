@@ -8,6 +8,7 @@ import {
   type AdminTradeOfferView,
 } from '@/app/admin/effectifs/cap-watch-actions'
 import type { LtirRequestView } from '@/lib/ltirRequests'
+import { listOpenLtirReturnWatches, syncLtirReturns, type LtirReturnWatchView } from '@/lib/ltirReturns'
 
 /**
  * Tout ce qui attend une décision de l'admin (David, 2026-10-01) — alimente le bouton
@@ -29,6 +30,8 @@ export type AdminApprovals = {
   offers: AdminTradeOfferView[]
   ltir: LtirRequestView[]
   blockedWaivers: BlockedWaiverView[]
+  /** Joueurs sur LTIR de retour au jeu ou plus listés blessés (lib/ltirReturns.ts). */
+  ltirReturns: LtirReturnWatchView[]
 }
 
 /** `null` si l'utilisateur n'est pas admin ou s'il n'y a pas de saison régulière active. */
@@ -41,12 +44,14 @@ export async function getAdminApprovalsAction(): Promise<AdminApprovals | null> 
 
   const { data: season } = await supabase
     .from('pool_seasons').select('id').eq('is_active', true).eq('is_playoff', false).maybeSingle()
-  if (!season) return { offers: [], ltir: [], blockedWaivers: [] }
+  if (!season) return { offers: [], ltir: [], blockedWaivers: [], ltirReturns: [] }
 
   const db = createAdminClient()
-  const [offers, ltir, { data: waivers }] = await Promise.all([
+  await syncLtirReturns()
+  const [offers, ltir, ltirReturns, { data: waivers }] = await Promise.all([
     getPendingTradeOffersForAdminAction(season.id),
     getPendingLtirRequestsForAdminAction(season.id),
+    listOpenLtirReturnWatches(season.id),
     db
       .from('waiver_claims')
       .select('id, awarded_at, error_message, players (first_name, last_name), awarded:poolers!awarded_to_pooler_id (name)')
@@ -65,6 +70,7 @@ export async function getAdminApprovalsAction(): Promise<AdminApprovals | null> 
   return {
     offers: offers.offers ?? [],
     ltir,
+    ltirReturns,
     blockedWaivers: ((waivers ?? []) as unknown as WaiverRow[]).map(w => ({
       id: w.id,
       playerName: w.players ? `${w.players.first_name} ${w.players.last_name}` : 'Joueur inconnu',

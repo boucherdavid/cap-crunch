@@ -6,6 +6,7 @@
 // (actions.ts) à l'approbation, donc actions.ts ne peut pas importer dans l'autre sens.
 
 import { createClient } from '@/lib/supabase/server'
+import { listOpenLtirReturnWatches, syncLtirReturns, type LtirReturnWatchView } from '@/lib/ltirReturns'
 import {
   createLtirRequest,
   cancelLtirRequest,
@@ -43,4 +44,13 @@ export async function getPendingLtirRequestsAction(poolSeasonId: number, poolerI
   const check = await requireSelfOrAdmin(poolerId)
   if ('error' in check) return []
   return listPendingLtirRequestsForPooler(poolSeasonId, poolerId)
+}
+
+/** Joueurs sur LTIR du pooler qui ont recommencé à jouer (David, 2026-10-05) — relance d'abord
+ * la détection, pour que le bandeau reflète les matchs de la veille. */
+export async function getLtirReturnWatchesAction(poolSeasonId: number, poolerId: string): Promise<LtirReturnWatchView[]> {
+  const check = await requireSelfOrAdmin(poolerId)
+  if ('error' in check) return []
+  await syncLtirReturns(true)
+  return listOpenLtirReturnWatches(poolSeasonId, poolerId)
 }

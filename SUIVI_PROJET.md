@@ -21,6 +21,22 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-05
 
+**[Feat] — Retour au jeu des joueurs sur LTIR : détection, délai et notifications** (`app/lib/ltirReturns.ts`,
+`supabase_migrations/ltir_return_watch.sql`, `gestion-effectifs/GestionEffectifsManager.tsx`, `ltir-actions.ts`,
+`components/AdminApprovalsPanel.tsx`, `admin-approvals-actions.ts`, `LtirSettingsForm.tsx`, `aide/LtirRulesContent.tsx`,
+`app/page.tsx`) :
+- Constat de David : des joueurs mis sur LTIR au pool du 3 octobre ont rejoué (Marchand chez Vincent,
+  Samoskevich chez Steve). Rien ne le détectait et le retour de LTIR était réservé à l'admin.
+- Signal = le joueur a joué un match de la LNH depuis sa mise sur LTIR (plus fiable que les listes
+  de blessés : Marchand y est encore). Table `ltir_return_watch`, détection paresseuse.
+- Décisions de David : délai de **14 jours** (paramétrable) ; joueur plus listé blessé sans avoir
+  joué → **admin seulement**, pour surveillance ; pendant le délai le salaire **ne compte pas**
+  (le pooler doit pouvoir faire sa gestion). L'admin reçoit toutes les notifications.
+- « Retour LTIR » ouvert aux poolers (le serveur validait déjà 12/6/2 + cap pour un non-admin).
+- Rien d'automatique passé le délai : l'admin décide, comme pour le cap et le ballotage.
+- **Migration à rouler** (staging puis prod) avant de tester. Sans elle le code ne plante pas
+  (détection journalisée en erreur, listes vides), mais l'enregistrement des seuils LTIR échoue.
+
 **[Feat] — Page « Meilleurs joueurs disponibles »** (`app/app/meilleurs-disponibles/`, `components/Navbar.tsx`,
 `lib/nhl-stats.ts`, `app/aide/AideTabs.tsx`, `app/a-propos/page.tsx`) :
 - Demande de David : les plus performants disponibles par position, selon le pointage du pool.

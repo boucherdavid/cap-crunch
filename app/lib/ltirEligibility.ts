@@ -27,6 +27,7 @@ export type LtirSettings = {
   graceDays: number           // règle 3 — délai après la date de retour avant "prolongée"
   disagreementDays: number    // écart CBS/ESPN signalé (purement informatif)
   removalAbsenceDays: number  // lu par le scraper seulement — runs quotidiens d'absence avant retrait
+  returnDeadlineDays: number  // délai pour réintégrer un joueur sur LTIR qui a recommencé à jouer (lib/ltirReturns.ts)
 }
 
 export const DEFAULT_LTIR_SETTINGS: LtirSettings = {
@@ -35,6 +36,7 @@ export const DEFAULT_LTIR_SETTINGS: LtirSettings = {
   graceDays: 3,
   disagreementDays: 5,
   removalAbsenceDays: 2,
+  returnDeadlineDays: 14,
 }
 
 export type InjuryEligibilityInput = {

@@ -21,8 +21,12 @@
   à vérifier demain matin que le classement est à jour avant 8 h. L'import lie maintenant les
   `nhl_id` manquants et retraite les 3 derniers jours (2026-10-05, en prod). Classement validé
   contre Marqueur : écarts restants = erreurs de Marqueur (Dahlin, Guentzel, Leonard).
-- **À valider sur staging (David)** : pastille « disponible » par `nhl_id` (Marner pris chez
-  Steve) et nouvelle page Meilleurs joueurs disponibles (menu Le pool).
+- En prod le 2026-10-05 (`5f737da`) : pastille « disponible » par `nhl_id` et page Meilleurs
+  joueurs disponibles (menu Le pool).
+- **Retour au jeu des joueurs sur LTIR (2026-10-05) — sur staging, à valider par David** :
+  migration roulée en staging et en prod. À tester : bandeau pooler dans Gestion d'effectifs,
+  section « Retours de LTIR » du panneau Approbations, notifications. Attendus dès l'activation en
+  prod : Marchand (Vincent) et Samoskevich (Steve).
 - Après le prochain pipeline du lundi : vérifier qu'une fiche distincte a été créée pour Elias
   Pettersson le défenseur (`nhl_id` 8483678).
 

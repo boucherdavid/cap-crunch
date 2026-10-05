@@ -15,6 +15,8 @@ import { loadTradeMarket } from '@/lib/tradeMarket'
 import { getLiveNight, type LiveNight } from '@/lib/liveNight'
 import LiveNightCards from '@/components/live/LiveNightCards'
 import { MARQUEUR_URL } from '@/lib/externalLinks'
+import { after } from 'next/server'
+import { syncLtirReturns } from '@/lib/ltirReturns'
 
 export const dynamic = 'force-dynamic'
 
@@ -613,6 +615,9 @@ async function fetchTodaySeriesActivity(
 export default async function Home() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+
+  // Retours au jeu des joueurs sur LTIR : détection en arrière-plan, sans ralentir l'accueil.
+  after(() => syncLtirReturns())
 
   const [{ data: saison }, { data: seriesSaison }, { data: me }] = await Promise.all([
     supabase.from('pool_seasons').select('id, season, pool_cap').eq('is_active', true).eq('is_playoff', false).single(),

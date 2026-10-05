@@ -8,6 +8,11 @@ import { getAdminApprovalsAction, type AdminApprovals } from './admin-approvals-
 
 const REFRESH_MS = 30_000
 
+/** Date sans heure (YYYY-MM-DD) → « 5 oct. », sans décalage de fuseau. */
+function fmtDay(day: string | null): string {
+  return day ? new Date(`${day}T12:00:00Z`).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : '—'
+}
+
 function fmtDate(iso: string | null): string {
   return iso ? new Date(iso).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short' }) : '—'
 }
@@ -52,7 +57,9 @@ export default function AdminApprovalsPanel() {
   }, [open])
 
   if (!data) return null
-  const count = data.offers.length + data.ltir.length + data.blockedWaivers.length
+  // Retours de LTIR : seuls ceux dont le délai est dépassé attendent une action de l'admin.
+  const overdueReturns = data.ltirReturns.filter(w => w.overdue).length
+  const count = data.offers.length + data.ltir.length + data.blockedWaivers.length + overdueReturns
 
   return (
     <>
@@ -97,6 +104,38 @@ export default function AdminApprovalsPanel() {
               <section>
                 <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Demandes de LTIR</h2>
                 <LtirApprovalManager key={`l${version}`} initialRequests={data.ltir} onDecided={refresh} />
+              </section>
+
+              <section>
+                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Retours de LTIR</h2>
+                {data.ltirReturns.length === 0 ? (
+                  <p className="text-sm text-gray-400">Aucun joueur sur LTIR de retour au jeu.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {data.ltirReturns.map(w => (
+                      <div key={w.id} className={`bg-white rounded-lg border p-4 ${w.overdue ? 'border-red-300' : w.reason === 'played' ? 'border-amber-200' : 'border-gray-200'}`}>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {w.playerName} <span className="font-normal text-gray-500">— LTIR de {w.poolerName}</span>
+                        </p>
+                        {w.reason === 'played' ? (
+                          <p className={`text-sm mt-0.5 ${w.overdue ? 'text-red-700 font-medium' : 'text-gray-600'}`}>
+                            A joué le {fmtDay(w.firstGameDate)}.{' '}
+                            {w.overdue
+                              ? <>Délai dépassé ({fmtDay(w.deadlineDay)}) : à toi de décider de la suite.</>
+                              : <>À remettre dans l&apos;alignement d&apos;ici le {fmtDay(w.deadlineDay)}, 23 h 59.</>}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-gray-600 mt-0.5">N&apos;est plus listé blessé par aucune source, mais n&apos;a pas encore joué. À surveiller.</p>
+                        )}
+                        {w.overdue && (
+                          <Link href="/admin/effectifs?tab=mouvements" onClick={() => setOpen(false)} className="inline-block mt-2 text-sm text-blue-600 hover:underline">
+                            Faire le retour dans Mouvements
+                          </Link>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </section>
 
               <section>
