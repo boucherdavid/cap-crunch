@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { fetchActiveNhlSeasonId } from '@/lib/nhl-active-season'
 import { fetchNhlSkatersByNhlId, fetchNhlGoaliesByNhlId, type NhlSkaterStat, type NhlGoalieStat } from '@/lib/nhl-stats'
 import ProjectionsTable from './ProjectionsTable'
+import { fetchTakenPlayers, isTakenPlayer } from '@/lib/takenPlayers'
 
 export const metadata = { title: 'Projections LNH' }
 export const dynamic = 'force-dynamic'
@@ -45,34 +46,6 @@ type RawProjection = {
   } | null
 }
 
-function normName(s: string) {
-  return (s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/-/g, ' ').trim()
-}
-
-/** Noms normalisés des joueurs dans un roster actif (même portée que /statistiques). */
-async function fetchTakenNames(): Promise<Set<string>> {
-  const supabase = await createClient()
-  const { data: season } = await supabase
-    .from('pool_seasons')
-    .select('id')
-    .eq('is_active', true)
-    .eq('is_playoff', false)
-    .single()
-  if (!season) return new Set()
-
-  const { data: rosters } = await supabase
-    .from('pooler_rosters')
-    .select('players(first_name, last_name)')
-    .eq('pool_season_id', season.id)
-  if (!rosters) return new Set()
-
-  return new Set(
-    rosters
-      .map(r => r.players as unknown as { first_name: string; last_name: string } | null)
-      .filter((p): p is { first_name: string; last_name: string } => !!p)
-      .map(p => normName(`${p.first_name} ${p.last_name}`)),
-  )
-}
 
 /** ["20262027", "20252026", "20242025"] à partir de la saison NHL courante */
 function recentSeasonIds(nhlSeasonId: string, count: number): string[] {
@@ -246,18 +219,20 @@ export default async function ProjectionsPage({
   // (pré-saison/tout début) et ne doit pas "gaspiller" un rang parmi les 3 saisons pondérées —
   // voir computeSkaterTrend/computeGoalieTrend, qui prennent les 3 premières qualifiées.
   const seasonIds = recentSeasonIds(nhlSeasonId, WEIGHTS.length + 1)
-  const [skaterMaps, goalieMaps, takenNames] = await Promise.all([
+  const [skaterMaps, goalieMaps, taken] = await Promise.all([
     Promise.all(seasonIds.map(id => fetchNhlSkatersByNhlId(2, id))),
     Promise.all(seasonIds.map(id => fetchNhlGoaliesByNhlId(2, id))),
-    fetchTakenNames(),
+    fetchTakenPlayers(),
   ])
 
   // Index 1 = saison précédant la saison active (ex: 2025-26) — la "saison dernière" au sens
   // usuel, peu importe où en est la saison courante (contrairement à la tendance, ce n'est pas
   // filtré par un seuil de matchs : c'est un vrai total, pas un rythme extrapolé).
+  const takenIds = new Set(taken.nhlIds)
+  const takenNames = new Set(taken.namesWithoutNhlId)
   const players: ProjectionRow[] = Array.from(byPlayer.values()).map(p => {
     const trend = p.isGoalie ? computeGoalieTrend(p.nhlId, goalieMaps) : computeSkaterTrend(p.nhlId, skaterMaps)
-    const available = !takenNames.has(normName(`${p.firstName} ${p.lastName}`))
+    const available = !isTakenPlayer(takenIds, takenNames, p.nhlId, p.firstName, p.lastName)
     const lastSeason = p.nhlId == null ? undefined
       : p.isGoalie ? goalieMaps[1]?.get(p.nhlId)
       : skaterMaps[1]?.get(p.nhlId)

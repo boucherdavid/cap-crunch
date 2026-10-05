@@ -21,6 +21,14 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-05
 
+**[Fix] — Pastille « disponible » fausse sur Statistiques/Projections/AHL** (`app/lib/takenPlayers.ts`,
+`app/app/statistiques/page.tsx`, `StatsTable.tsx`, `projections/page.tsx`, `ahl/page.tsx`) :
+- Marner affiché disponible alors qu'il est chez Steve : la disponibilité comparait les noms
+  (« Mitch » dans l'API LNH, « Mitchell » en base). Trois copies de `fetchTakenNames()`
+  remplacées par `fetchTakenPlayers()` : jumelage par `nhl_id`, nom en repli pour un joueur sans
+  `nhl_id` (et pour l'AHL, sans identifiant LNH).
+- Corrige aussi : les joueurs libérés (`removed_at` rempli) restaient marqués « pris ».
+
 **[Fix] — Points perdus des joueurs sans `nhl_id` + comparaison avec Marqueur** (`python_script/import_regular_stats.py`, `python_script/name_aliases.py`) :
 - Classement ≠ Marqueur.com. Comparaison joueur par joueur (prod vs API LNH vs Marqueur) : les
   points en base correspondaient exactement à l'API LNH pour tout joueur ayant un `nhl_id`.

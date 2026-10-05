@@ -89,6 +89,7 @@ function normName(s: string) {
 export default function StatsTable({
   skaters,
   goalies,
+  takenNhlIds,
   takenNames,
   rookieNames,
   gameMode,
@@ -100,6 +101,8 @@ export default function StatsTable({
 }: {
   skaters: SkaterStat[]
   goalies: GoalieStat[]
+  // Disponibilité : nhl_id d'abord, nom seulement pour un joueur pris sans nhl_id (lib/takenPlayers.ts)
+  takenNhlIds: number[]
   takenNames: string[]
   rookieNames: string[]
   gameMode: 'regular' | 'series'
@@ -119,6 +122,7 @@ export default function StatsTable({
   const [availOnly, setAvailOnly] = useState(false)
   const [positionFilter, setPositionFilter] = useState<'all' | 'forward' | 'defense'>('all')
 
+  const takenIdSet = useMemo(() => new Set(takenNhlIds), [takenNhlIds])
   const takenSet = useMemo(() => new Set(takenNames), [takenNames])
   const rookieSet = useMemo(() => new Set(rookieNames), [rookieNames])
 
@@ -127,11 +131,11 @@ export default function StatsTable({
 
   // Saison régulière : pas dans un roster actif
   // Séries : pas sélectionné par un participant du pool des séries
-  const isAvailable = (firstName: string, lastName: string) => {
+  const isAvailable = (nhlId: number, firstName: string, lastName: string) => {
     const key = normName(`${firstName} ${lastName}`)
     return gameMode === 'series'
       ? !(key in playoffPicksMap)
-      : !takenSet.has(key)
+      : !takenIdSet.has(nhlId) && !takenSet.has(key)
   }
 
   const getPickedBy = (firstName: string, lastName: string): string[] =>
@@ -149,7 +153,7 @@ export default function StatsTable({
     const q = normalizeSearch(search.trim())
     return skaters
       .filter(s => {
-        if (availOnly && !isAvailable(s.firstName, s.lastName)) return false
+        if (availOnly && !isAvailable(s.id, s.firstName, s.lastName)) return false
         if (selectedTeam && s.teamAbbrev !== selectedTeam) return false
         if (positionFilter === 'defense' && s.position !== 'D') return false
         if (positionFilter === 'forward' && s.position === 'D') return false
@@ -168,7 +172,7 @@ export default function StatsTable({
     const q = normalizeSearch(search.trim())
     return goalies
       .filter(g => {
-        if (availOnly && !isAvailable(g.firstName, g.lastName)) return false
+        if (availOnly && !isAvailable(g.id, g.firstName, g.lastName)) return false
         if (selectedTeam && g.teamAbbrev !== selectedTeam) return false
         if (q) {
           const name = normalizeSearch(`${g.firstName} ${g.lastName}`)
@@ -340,7 +344,7 @@ export default function StatsTable({
                 </tr>
               ) : (
                 filteredSkaters.map((s, i) => {
-                  const avail = isAvailable(s.firstName, s.lastName)
+                  const avail = isAvailable(s.id, s.firstName, s.lastName)
                   const pickedBy = gameMode === 'series' ? getPickedBy(s.firstName, s.lastName) : []
                   const ppm = s.gamesPlayed > 0 ? (s.points / s.gamesPlayed).toFixed(2) : '—'
                   return (
@@ -415,7 +419,7 @@ export default function StatsTable({
                 </tr>
               ) : (
                 filteredGoalies.map((g, i) => {
-                  const avail = isAvailable(g.firstName, g.lastName)
+                  const avail = isAvailable(g.id, g.firstName, g.lastName)
                   const pickedBy = gameMode === 'series' ? getPickedBy(g.firstName, g.lastName) : []
                   return (
                     <tr key={g.id} className="border-b hover:bg-gray-50 transition-colors">

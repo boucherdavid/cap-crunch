@@ -1156,10 +1156,11 @@ corrigée le 2026-09-20 :**
   le champ `rookie` propre à l'API AHL (statut recrue au sens de la ligue), pas
   `rookieProtection.ts` (règle du pool, sans rapport).
 - **Indicateur de disponibilité (David, 2026-09-17)** — pastille verte/grise comme sur
-  `/statistiques`, réutilise `fetchTakenNames()` + `normName()` (`app/lib/nhl-stats.ts`) :
-  noms normalisés de tout joueur déjà présent dans un alignement de la saison active
-  (`pooler_rosters`, tous `player_type` confondus — donc un prospect en banque de recrues
-  compte comme "pris"). Matching sur le nom complet uniquement (les joueurs AHL n'ont pas de
+  `/statistiques`, réutilise `fetchTakenPlayers()` (`app/lib/takenPlayers.ts`, partagé avec
+  `/statistiques` et `/statistiques/projections`) : tout joueur présent dans un alignement de
+  la saison active (`pooler_rosters` non libéré, tous `player_type` confondus — donc un
+  prospect en banque de recrues compte comme "pris"). Côté LNH, jumelage par `nhl_id` d'abord
+  (2026-10-05 — le nom ratait « Mitch »/« Mitchell » Marner), nom en repli seulement. Matching sur le nom complet uniquement (les joueurs AHL n'ont pas de
   `nhl_id`/`player.id` fiable pour un matching plus robuste) — un homonyme improbable
   afficherait un faux positif, risque jugé acceptable.
 
@@ -1179,7 +1180,7 @@ corrigée le 2026-09-20 :**
   qu'elle répond à "ce joueur est-il pris *aujourd'hui*", une question qui ne dépend pas de la
   saison de stats regardée — contrairement au statut recrue/à la forme récente). Même
   comportement que sur `/statistiques/ahl`, qui n'a jamais masqué sa pastille selon la saison
-  choisie. `fetchTakenNames()` est donc appelée sans condition de saison.
+  choisie. `fetchTakenPlayers()` est donc appelée sans condition de saison.
 
 **Next.js 16 :**
 - Utiliser `proxy.ts`, PAS `middleware.ts`

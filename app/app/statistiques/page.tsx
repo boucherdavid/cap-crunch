@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic'
 
 import { NHL_SEASON, recentNhlSeasons } from '@/lib/nhl-stats'
 import { fetchActiveNhlSeasonId } from '@/lib/nhl-active-season'
+import { fetchTakenPlayers } from '@/lib/takenPlayers'
 const REST = 'https://api.nhle.com/stats/rest/en'
 
 export type SkaterStat = {
@@ -205,32 +206,6 @@ async function fetchRookieNames(): Promise<string[]> {
   }
 }
 
-async function fetchTakenNames(): Promise<string[]> {
-  try {
-    const supabase = await createClient()
-    const { data: season } = await supabase
-      .from('pool_seasons')
-      .select('id')
-      .eq('is_active', true)
-      .eq('is_playoff', false)
-      .single()
-    if (!season) return []
-
-    const { data: rosters } = await supabase
-      .from('pooler_rosters')
-      .select('players(first_name, last_name)')
-      .eq('pool_season_id', season.id)
-    if (!rosters) return []
-
-    return rosters
-      .map(r => r.players as unknown as { first_name: string; last_name: string } | null)
-      .filter(Boolean)
-      .map(p => normName(`${p!.first_name} ${p!.last_name}`))
-  } catch {
-    return []
-  }
-}
-
 // Retourne nom normalisé → liste des poolers qui ont sélectionné ce joueur
 // (plusieurs poolers peuvent choisir le même joueur dans le pool des séries)
 async function fetchPlayoffPicksMap(): Promise<Record<string, string[]>> {
@@ -376,12 +351,12 @@ export default async function StatistiquesPage({
     : activeNhlSeason
   const isCurrentSeason = nhlSeason === activeNhlSeason
 
-  const [skaters, goalies, takenNames, rookieNames, currentTeamMap, playoffPicksMap, streaksMap] = await Promise.all([
+  const [skaters, goalies, taken, rookieNames, currentTeamMap, playoffPicksMap, streaksMap] = await Promise.all([
     fetchSkaters(gameType, nhlSeason),
     fetchGoalies(gameType, nhlSeason),
     // Disponibilité = état du jour dans le pool, indépendant de la saison de stats consultée
     // (contrairement au statut recrue ELC et aux séquences, ci-dessous) — toujours pertinente.
-    fetchTakenNames(),
+    fetchTakenPlayers(),
     isCurrentSeason ? fetchRookieNames() : Promise.resolve([] as string[]),
     fetchCurrentTeamMap(),
     gameType === 3 ? fetchPlayoffPicksMap() : Promise.resolve({} as Record<string, string[]>),
@@ -413,7 +388,8 @@ export default async function StatistiquesPage({
       <StatsTable
         skaters={skaters}
         goalies={goalies}
-        takenNames={takenNames}
+        takenNhlIds={taken.nhlIds}
+        takenNames={taken.namesWithoutNhlId}
         rookieNames={rookieNames}
         gameMode={saison === 'series' ? 'series' : 'regular'}
         playoffPicksMap={playoffPicksMap}
