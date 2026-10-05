@@ -114,8 +114,9 @@ export async function sendTestEmail(toEmail: string): Promise<{ error?: string }
   try {
     await transporter.sendMail({
       from: FROM_ADDRESS,
-      to: toEmail,
-      subject: 'Cap Crunch — Test de courriel',
+      // Redirection de test : même règle que les envois automatiques (voir REDIRECT_TO).
+      to: REDIRECT_TO ?? toEmail,
+      subject: REDIRECT_TO ? `[Test → ${toEmail}] Cap Crunch — Test de courriel` : 'Cap Crunch — Test de courriel',
       html,
       text: htmlToText(html),
     })
