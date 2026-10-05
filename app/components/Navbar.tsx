@@ -11,7 +11,7 @@ import { usePoolerTodo } from './usePoolerTodo'
 import type { PoolerTodo } from './pooler-todo-actions'
 
 // Choses à faire du pooler (échanges, ballotage — David, 2026-10-03), partagées avec le menu.
-const TodoContext = createContext<PoolerTodo>({ trades: 0, waivers: 0 })
+const TodoContext = createContext<PoolerTodo>({ trades: 0, waivers: 0, total: 0, items: [] })
 import { createClient } from '@/lib/supabase/client'
 import { MARQUEUR_URL } from '@/lib/externalLinks'
 

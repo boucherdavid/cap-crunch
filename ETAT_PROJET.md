@@ -23,10 +23,9 @@
   contre Marqueur : écarts restants = erreurs de Marqueur (Dahlin, Guentzel, Leonard).
 - En prod le 2026-10-05 (`5f737da`) : pastille « disponible » par `nhl_id` et page Meilleurs
   joueurs disponibles (menu Le pool).
-- **Retour au jeu des joueurs sur LTIR (2026-10-05) — sur staging, à valider par David** :
-  migration roulée en staging et en prod. À tester : bandeau pooler dans Gestion d'effectifs,
-  section « Retours de LTIR » du panneau Approbations, notifications. Attendus dès l'activation en
-  prod : Marchand (Vincent) et Samoskevich (Steve).
+- **Retour au jeu des joueurs sur LTIR (2026-10-05) — en prod** (`aa2bbf5`), migration roulée dans les deux bases.
+- Bouton « À faire » des poolers et redirection des courriels de test : en prod le 2026-10-05.
+  `EMAIL_REDIRECT_TO` est définie dans le projet Vercel de staging seulement (courriel de test reçu).
 - Après le prochain pipeline du lundi : vérifier qu'une fiche distincte a été créée pour Elias
   Pettersson le défenseur (`nhl_id` 8483678).
 

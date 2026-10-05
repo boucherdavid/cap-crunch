@@ -6,6 +6,7 @@ import { getPoolerTodoAction, type PoolerTodo } from './pooler-todo-actions'
 const SEEN_KEY = 'ballotage-vu-le'
 const REFRESH_EVENT = 'pooler-todo-refresh'
 const REFRESH_MS = 60_000
+const EMPTY: PoolerTodo = { trades: 0, waivers: 0, total: 0, items: [] }
 
 function readSeen(): string | null {
   try { return localStorage.getItem(SEEN_KEY) } catch { return null }
@@ -26,7 +27,7 @@ export function refreshPoolerTodo() {
 /** Compteurs « à faire » du pooler connecté (David, 2026-10-03), relus chaque minute et à chaque
  * `refreshPoolerTodo()`. `enabled=false` (personne de connecté) : toujours zéro. */
 export function usePoolerTodo(enabled: boolean): PoolerTodo {
-  const [todo, setTodo] = useState<PoolerTodo>({ trades: 0, waivers: 0 })
+  const [todo, setTodo] = useState<PoolerTodo>(EMPTY)
   useEffect(() => {
     if (!enabled) return
     let cancelled = false
@@ -38,5 +39,5 @@ export function usePoolerTodo(enabled: boolean): PoolerTodo {
     window.addEventListener(REFRESH_EVENT, load)
     return () => { cancelled = true; clearInterval(id); window.removeEventListener(REFRESH_EVENT, load) }
   }, [enabled])
-  return enabled ? todo : { trades: 0, waivers: 0 }
+  return enabled ? todo : EMPTY
 }

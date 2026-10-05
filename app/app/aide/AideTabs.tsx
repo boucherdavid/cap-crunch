@@ -238,6 +238,25 @@ const SECTIONS: Section[] = [
     ),
   },
   {
+    id: 'guide-a-faire',
+    tab: 'guide',
+    title: 'Bouton « À faire »',
+    keywords: 'a faire notifications cloche rappel echange ballotage ltir retour plafond delai',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Dans la barre du haut, le bouton <strong>À faire</strong> affiche en rouge le nombre de choses qui attendent une action de ta part.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• Clique dessus pour ouvrir la liste : joueur sur le LTIR de retour au jeu, ballotage remporté ou nouveau joueur au ballotage, échange à accepter ou à confirmer, plafond dépassé après une signature.</li>
+          <li>• Chaque élément indique la date limite, s&apos;il y en a une, et mène directement à la page où agir.</li>
+          <li>• Une demande de LTIR en attente d&apos;approbation y apparaît aussi, pour information.</li>
+          <li>• La liste se met à jour toute seule : un élément disparaît dès que c&apos;est réglé.</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
     id: 'guide-meilleurs-disponibles',
     tab: 'guide',
     title: 'Meilleurs joueurs disponibles',

@@ -20,6 +20,24 @@ function getTransporter() {
   })
 }
 
+// Redirection de test (David, 2026-10-05) — définie seulement dans le projet Vercel de staging :
+// tous les courriels partent vers cette adresse au lieu des vrais destinataires (les comptes
+// `@staging.test` n'existent pas), avec les destinataires prévus en tête de l'objet. Les
+// préférences `notif_email` sont alors ignorées, pour que tout soit visible pendant un test.
+// Jamais définie en prod.
+const REDIRECT_TO = process.env.EMAIL_REDIRECT_TO?.trim() || null
+
+async function sendRedirected(ids: string[] | undefined, payload: EmailPayload, excludeUserId?: string) {
+  const supabase = createAdminClient()
+  let query = supabase.from('poolers').select('id, name')
+  if (ids) query = query.in('id', ids)
+  const { data } = await query
+  const names = (data ?? []).filter(p => p.id !== excludeUserId).map(p => p.name as string)
+  if (names.length === 0) return
+  const label = !ids ? 'tous les poolers' : names.join(', ')
+  await sendToEmails([REDIRECT_TO!], { ...payload, subject: `[Test → ${label}] ${payload.subject}` })
+}
+
 export type EmailPayload = {
   subject: string
   html: string
@@ -68,6 +86,7 @@ async function optedInEmails(ids?: string[], excludeUserId?: string): Promise<st
 }
 
 export async function sendEmailToAll(payload: EmailPayload, excludeUserId?: string) {
+  if (REDIRECT_TO) return sendRedirected(undefined, payload, excludeUserId)
   const emails = await optedInEmails(undefined, excludeUserId)
   await sendToEmails(emails, payload)
 }
@@ -75,6 +94,7 @@ export async function sendEmailToAll(payload: EmailPayload, excludeUserId?: stri
 // Sous-ensemble explicite de poolers (ex: participants à un fil de commentaires).
 export async function sendEmailToIds(ids: string[], payload: EmailPayload) {
   if (ids.length === 0) return
+  if (REDIRECT_TO) return sendRedirected(ids, payload)
   const emails = await optedInEmails(ids)
   await sendToEmails(emails, payload)
 }
@@ -94,8 +114,9 @@ export async function sendTestEmail(toEmail: string): Promise<{ error?: string }
   try {
     await transporter.sendMail({
       from: FROM_ADDRESS,
-      to: toEmail,
-      subject: 'Cap Crunch — Test de courriel',
+      // Redirection de test : même règle que les envois automatiques (voir REDIRECT_TO).
+      to: REDIRECT_TO ?? toEmail,
+      subject: REDIRECT_TO ? `[Test → ${toEmail}] Cap Crunch — Test de courriel` : 'Cap Crunch — Test de courriel',
       html,
       text: htmlToText(html),
     })

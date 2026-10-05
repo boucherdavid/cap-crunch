@@ -349,8 +349,13 @@ fiche affiche un sommaire du pool (propriétaire, blessure, contrat) en plus des
 Bouton « Ajouter à une liste » (`AddToWatchlist.tsx`) : listes du pooler connecté, du type
 correspondant au joueur (voir « Mes listes », section 6).
 
-**Indicateur « à faire » du pooler** (David, 2026-10-03) : pastilles bleue (échanges) et orange
-(ballotage) dans la barre du haut, sur « Gestion d'effectifs » dans le menu et sur les onglets
+**Bouton « À faire » du pooler** (David, 2026-10-05, ex-indicateur à pastilles du 2026-10-03) :
+barre du haut, toujours visible, compteur rouge + panneau latéral — pendant du bouton
+« Approbations » de l'admin. `getPoolerTodoAction` (`components/pooler-todo-actions.ts`) renvoie
+`items` : retour de LTIR, plafond dépassé (`cap_signing_watch` `flagged`), échanges, ballotage, et
+demandes de LTIR en attente (`info`, hors compteur). Calculé en direct, pas un historique de
+notifications — y ajouter toute nouvelle chose à faire côté pooler. Les pastilles bleue (échanges)
+et orange (ballotage) restent sur « Gestion d'effectifs » dans le menu et sur les onglets
 (`app/components/PoolerTodoIndicator.tsx`, `usePoolerTodo.ts`). Ballotage compté en « non lu »
 (libérés depuis la dernière visite de l'onglet, date dans le navigateur) + joueurs remportés.
 
@@ -1225,6 +1230,10 @@ corrigée le 2026-09-20 :**
 - **Liens toujours absolus** (David, 2026-10-03) : `emailLinkHtml(path)` / `absoluteUrl(path)`
   (`app/lib/siteUrl.ts`) — un `href` relatif s'affiche comme du texte non cliquable dans un
   client de courriel. Ne jamais construire un lien de courriel à la main.
+- **Tester en staging** (David, 2026-10-05) : `EMAIL_REDIRECT_TO`, définie dans le projet Vercel
+  de staging seulement, envoie tous les courriels à cette adresse (objet préfixé
+  « [Test → destinataires prévus] »), sans tenir compte de `notif_email` — les comptes
+  `@staging.test` n'existent pas. Ne jamais la définir en prod.
 - Toujours envoyer une version texte brut en parallèle du HTML (`htmlToText()`) — un courriel
   HTML-only envoyé par script depuis un compte personnel est un signal antispam classique,
   confirmé en pratique par un test tombé dans les pourriels avant ce correctif.
