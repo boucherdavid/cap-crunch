@@ -21,6 +21,19 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-05
 
+**[Feat] — Page « Meilleurs joueurs disponibles »** (`app/app/meilleurs-disponibles/`, `components/Navbar.tsx`,
+`lib/nhl-stats.ts`, `app/aide/AideTabs.tsx`, `app/a-propos/page.tsx`) :
+- Demande de David : les plus performants disponibles par position, selon le pointage du pool.
+  Menu Le pool. Stats de l'API LNH (saison en cours ou précédente), points calculés avec
+  `scoring_config` (mêmes défauts que `buildStandings()`), disponibilité via `fetchTakenPlayers()`.
+- Décisions de David : joueurs sans contrat pour la saison active cachés (pas pertinents une fois
+  la saison avancée) ; 15 par position + « Voir plus ».
+- Tri total ou par match (minimum 25 % des matchs du meneur, moitié pour les gardiens). Salaire de
+  la saison et badge blessure affichés. Pas de bouton de liste par ligne (une requête par ligne) :
+  la fiche joueur a déjà « Ajouter à une liste ».
+- `NhlGoalieStat` reçoit `gamesPlayed` (l'API le fournissait, seul `gamesStarted` était gardé).
+- Testé en local contre staging avec un compte de test (les deux saisons).
+
 **[Fix] — Pastille « disponible » fausse sur Statistiques/Projections/AHL** (`app/lib/takenPlayers.ts`,
 `app/app/statistiques/page.tsx`, `StatsTable.tsx`, `projections/page.tsx`, `ahl/page.tsx`) :
 - Marner affiché disponible alors qu'il est chez Steve : la disponibilité comparait les noms

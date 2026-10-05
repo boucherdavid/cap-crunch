@@ -50,6 +50,11 @@ const CATEGORIES: Category[] = [
         description: 'Liste des 8 poolers avec rang au classement et masse salariale utilisée — chaque nom mène à son alignement détaillé.',
       },
       {
+        title: 'Meilleurs joueurs disponibles',
+        href: '/meilleurs-disponibles',
+        description: "Les attaquants, défenseurs et gardiens libres les plus productifs, classés selon les points qu'ils auraient rapportés avec le pointage du pool. Total ou points par match, saison en cours ou dernière, avec le salaire de chacun.",
+      },
+      {
         title: 'Marché des échanges',
         href: '/marche-echanges',
         description: "Mets sur le marché les joueurs et les choix de repêchage que tu es prêt à échanger, ou publie ce que tu cherches. Les autres poolers sont avertis par notification et peuvent te faire une offre en un clic.",
