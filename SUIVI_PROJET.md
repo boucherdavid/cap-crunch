@@ -56,6 +56,14 @@ Claude par le mode automatique (suppression), à lancer par David.
   (`lib/externalLinks.ts`) ; le lien sous le classement ajouté plus tôt est retiré.
 - `/aide` (Classement) : quand les points sont mis à jour (chaque nuit ~2 h ET) et le direct.
 
+**[Fix] — Classement de staging ≠ prod : stats des matchs importées en prod seulement**
+(`.github/workflows/regular_stats.yml`) : la tâche de nuit n'écrivait que dans la base prod ; staging
+n'avait que le 2026-09-29 (importé à la main). Rattrapage en staging du 2026-09-30 au 2026-10-03
+(`import_regular_stats.py --date`, 1 102 lignes) ; nouvelle étape staging dans la tâche de nuit
+(`STAGING_SUPABASE_URL`/`STAGING_SERVICE_KEY`, `continue-on-error`). Le cron GitHub tourne depuis
+`main` : l'étape staging ne s'exécutera qu'une fois fusionnée sur `main`. Copie prod → staging
+réussie (David) : 389 lignes d'alignement 2026-27 identiques des deux côtés.
+
 **[Fix] — Copie prod → staging : `pool_cap` est une colonne générée** — exclue de la mise à jour
 des saisons (le premier `--apply` avait planté après avoir vidé 2025-26 en staging).
 

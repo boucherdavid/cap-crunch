@@ -45,3 +45,17 @@ jobs:
           else
             python python_script/import_regular_stats.py
           fi
+
+      # Staging aussi (2026-10-04) : sans ça, le classement de staging n'avait que les matchs importés
+      # à la main et ne correspondait pas à la prod. Un échec ici ne doit pas faire échouer la prod.
+      - name: Mettre à jour les stats saison régulière (staging)
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.STAGING_SERVICE_KEY }}
+        run: |
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            python python_script/import_regular_stats.py --date "${{ github.event.inputs.date }}"
+          else
+            python python_script/import_regular_stats.py
+          fi
