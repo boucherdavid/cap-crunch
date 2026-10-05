@@ -1378,6 +1378,12 @@ corrigée le 2026-09-20 :**
   liste CBS (guéri) est supprimé, pas juste laissé périmé. Cron quotidien
   (`.github/workflows/injuries.yml`, 16h UTC/midi ET), séparé du pipeline hebdomadaire. Cible
   toujours prod comme les autres scripts.
+- **Règle 0 — a rejoué récemment (David, 2026-10-05)** : avant les règles ci-dessous, un joueur
+  qui a joué un match de la LNH après `first_seen_at` et depuis moins de
+  `app_settings.ltir_recent_game_days` jours (défaut 7) n'est PAS admissible, même sur IR selon les
+  trois sources (`playedSinceInjury()` ; `InjuryInfo.backInAction` → badge bleu « De retour au
+  jeu »). `fetchLastGameByPlayerId()` (`lib/injuries.ts`) fournit le dernier match ; tout nouvel
+  appelant de `computeLtirEligible()` doit passer `lastGameAt`.
 - **Admissibilité LTIR** (`app/lib/ltirEligibility.ts`, `computeLtirEligible()`) — règles de
   David (resserrées le 2026-09-25), dans l'ordre : (1) mis sur IR par son équipe LNH
   (`isOnNhlIr()` — CBS préfixe "IR." / ESPN "Injured Reserve") → toujours admissible ;

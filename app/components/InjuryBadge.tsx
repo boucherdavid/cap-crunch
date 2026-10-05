@@ -32,6 +32,16 @@ export function DisagreementMarker({ injury }: { injury: InjuryInfo }) {
 }
 
 function MainBadge({ injury }: { injury: InjuryInfo }) {
+  if (injury.backInAction) {
+    return (
+      <span
+        className="ml-1.5 inline-block text-[10px] font-bold bg-sky-100 text-sky-700 rounded px-1 py-0.5 align-middle cursor-help"
+        title={`Encore listé blessé (${injury.injuryType || injury.status}), mais il a rejoué récemment — pas admissible au LTIR`}
+      >
+        De retour au jeu
+      </span>
+    )
+  }
   if (injury.eligible) {
     return (
       <span

@@ -1372,3 +1372,10 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 -- CREATE POLICY "Lecture publique ltir_return_watch" ON ltir_return_watch FOR SELECT USING (true);
 -- CREATE POLICY "Admin gère ltir_return_watch" ON ltir_return_watch FOR ALL
 --   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+
+-- Migration 2026-10-05 (suite) : supabase_migrations/ltir_recent_game_days.sql
+-- Règle 0 d'admissibilité LTIR (David, 2026-10-05) — voir app/lib/ltirEligibility.ts : un joueur
+-- qui a joué un match de la LNH depuis moins de N jours n'est pas admissible, même s'il est encore
+-- listé blessé. À exécuter une seule fois dans le SQL Editor Supabase (staging, puis prod).
+
+-- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS ltir_recent_game_days INTEGER NOT NULL DEFAULT 7;
