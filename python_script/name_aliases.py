@@ -21,6 +21,9 @@ FIRST_NAME_ALIASES: dict[str, str] = {
     'dmitriy': 'dmitri',
     'dmitry': 'dmitri',
     'alexei': 'aliaksei',
+    'alexey': 'aliaksei',
+    'fedor': 'fyodor',
+    'zack': 'zachary',
     'j.j.': 'janis jerome',
     'jj': 'janis jerome',
 }

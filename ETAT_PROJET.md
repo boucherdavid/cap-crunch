@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-10-04
+**Dernière mise à jour :** 2026-10-05
 
 ---
 
@@ -17,6 +17,12 @@
   (Mode init) — terminé le 2026-09-29**, 326 lignes pour les 8 poolers. **Revalidation par David
   le 2026-09-30** (voir section 4). Historique complet reconstruit en **staging** seulement.
 - Backup hors-ligne (`backup/pool_backup.html`) régénéré chaque dimanche depuis la prod.
+- Points de la nuit (`regular_stats.yml`) : 3 passages, 1 h 23 / 3 h 23 / 5 h 23 ET (2026-10-05) —
+  à vérifier demain matin que le classement est à jour avant 8 h. L'import lie maintenant les
+  `nhl_id` manquants et retraite les 3 derniers jours (2026-10-05). **À promouvoir sur `main`**
+  (le cron ne tourne que depuis `main`).
+- **À trancher (David)** : alignements différents de Marqueur — Lardis (David), Will Smith et
+  Hischier (Steve). Fiche Elias Pettersson (id 1391) mélangée attaquant/défenseur.
 
 ## 2. Branches / déploiement
 
@@ -66,12 +72,12 @@ desktop.
   Correctif du script sur staging, à fusionner sur `main`.
 - **Pointage en direct** (`/en-direct` + cartes de l'accueil) et **Marqueur.com** (carte + menu) :
   sur staging, à valider pendant des matchs avant `main`.
-- **Staging = prod** (2026-10-04) : alignements copiés (`sync_prod_to_staging.py`) et stats des
-  matchs rattrapées jusqu'au 2026-10-03. **Demain** : vérifier que le classement de staging
-  correspond à la prod (les captures du soir précédaient le rattrapage).
-- **À fusionner sur `main`** après validation : pointage en direct + Marqueur.com, saison des
-  game-logs tirée du match, étape staging de la tâche de nuit (sans fusion, staging ne reçoit pas
-  les stats de la nuit — relancer `import_regular_stats.py --date` avec `.env.staging` au besoin).
+- **Pointage en direct + Marqueur.com** : validés par David le 2026-10-04 (points identiques à
+  Marqueur.com) et **fusionnés sur `main`**, avec la saison des game-logs tirée du match et l'étape
+  staging de la tâche de nuit (premier passage : nuit du 4 au 5 oct., à vérifier dans GitHub Actions).
+- **Staging = prod** : alignements copiés et stats rattrapées. Écart restant : Jérôme 34 en staging
+  contre 35 en prod (7 joueurs absents de la table `players` de staging, 189 lignes contre 196 le
+  29 sept.) — un `./run_pipeline_staging.ps1 --no-scrape` devrait l'aligner.
 - **Charge de la base pendant le hub** : diagnostic et plan d'allègement en suspens (2026-10-04),
   en attente des chiffres Supabase (plan, Reports → Database, 3 oct. 21 h-23 h UTC).
 - **File des agents libres** (correctif en prod, non testé) : un double clic sur « Passer » ne doit

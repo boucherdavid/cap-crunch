@@ -19,6 +19,41 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-05
+
+**[Fix] — Points perdus des joueurs sans `nhl_id` + comparaison avec Marqueur** (`python_script/import_regular_stats.py`, `python_script/name_aliases.py`) :
+- Classement ≠ Marqueur.com. Comparaison joueur par joueur (prod vs API LNH vs Marqueur) : les
+  points en base correspondaient exactement à l'API LNH pour tout joueur ayant un `nhl_id`.
+- Vrai bogue : `import_regular_stats.py` ignorait en silence tout joueur sans `nhl_id`.
+  `backfill_nhl_ids.py` (pipeline du lundi) ne le remplit qu'une fois le joueur présent dans les
+  stats de la saison — un joueur qui débute restait sans `nhl_id` pendant ses premiers matchs, et
+  ses points n'étaient jamais rattrapés. Touchait Ben Kindel (Jérôme, 1 pt) et Ivar Stenberg
+  (Paule, 1 pt) ; 27 fiches au total en prod.
+- Correctif : `link_missing_nhl_ids()` lie le `nhl_id` pendant l'import (nom de famille, prénom
+  confirmé par l'API LNH avec alias/forme courte, ET équipe actuelle/de repêchage ou année de
+  repêchage concordante — un seul candidat exigé, sinon avertissement sans écriture). Sans
+  `--date`, l'import retraite maintenant les 3 derniers jours (corrections de stats LNH + points
+  d'un joueur lié en retard). Alias ajoutés : Alexey, Fedor, Zack.
+- Saison réimportée (29 sept. → 4 oct.) en prod et en staging. Après correctif, Jérôme et Paule
+  = Marqueur. Écarts restants, aucun n'est une erreur de Cap Crunch :
+  - erreurs de Marqueur vs feuilles de match LNH : Dahlin (David, Marqueur +1), Guentzel
+    (Sébastien F., Marqueur −1), Leonard (Vincent, Marqueur +1) ;
+  - alignements différents : Nick Lardis actif chez David sur Marqueur (recrue dans Cap Crunch),
+    Will Smith actif chez Steve sur Marqueur (recrue dans Cap Crunch, 3 pts), Nico Hischier
+    actif chez Steve dans Cap Crunch seulement — à trancher par David.
+- Restant à la main : Elias Pettersson (attaquant VAN, nhl_id 8480012) n'a pas de fiche — la seule
+  fiche « Elias Pettersson » (id 1391) porte le nhl_id du défenseur (8483678) avec la position
+  d'attaquant. Dans aucun alignement.
+
+**[CI] — Import des points de la nuit plus tôt** (`.github/workflows/regular_stats.yml`) :
+- Classement Cap Crunch ≠ Marqueur.com ce matin : le seul passage planifié (6 h UTC) était retardé
+  par GitHub jusqu'à ~12 h UTC (8 h ET), après que les poolers aient consulté le pool. Relancé à
+  la main (5 matchs du 4 octobre importés, prod + staging).
+- Trois passages par nuit : 5 h 23, 7 h 23 et 9 h 23 UTC (1 h 23, 3 h 23, 5 h 23 ET). Minutes
+  décalées (moins retardées qu'une heure pile) ; upsert idempotent, chaque passage complète le
+  précédent (un match pas encore terminé au 1er passage est corrigé au suivant). Jamais avant
+  4 h UTC : « hier ET » désignerait l'avant-veille.
+
 ### 2026-10-04
 
 **[Fix] — Points du premier soir de la saison absents du classement**
