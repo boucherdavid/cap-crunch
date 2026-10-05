@@ -12,9 +12,14 @@ on:
         required: false
         default: ''
 
-  # Une fois par jour à 6h UTC (2h ET) — après la fin des matchs du soir
+  # Trois passages par nuit (2026-10-05) : GitHub retardait le seul passage de 6h UTC jusqu'à
+  # ~12h UTC (8h ET), après que les poolers aient consulté le classement. Minutes décalées (moins
+  # retardées qu'une heure pile) ; l'upsert est idempotent, chaque passage complète le précédent.
+  # Jamais avant 4h UTC : « hier ET » (get_yesterday_et) désignerait alors l'avant-veille.
   schedule:
-    - cron: '0 6 * * *'
+    - cron: '23 5 * * *'
+    - cron: '23 7 * * *'
+    - cron: '23 9 * * *'
 
 jobs:
   update-regular-stats:

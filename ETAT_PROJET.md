@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-10-04
+**Dernière mise à jour :** 2026-10-05
 
 ---
 
@@ -17,6 +17,8 @@
   (Mode init) — terminé le 2026-09-29**, 326 lignes pour les 8 poolers. **Revalidation par David
   le 2026-09-30** (voir section 4). Historique complet reconstruit en **staging** seulement.
 - Backup hors-ligne (`backup/pool_backup.html`) régénéré chaque dimanche depuis la prod.
+- Points de la nuit (`regular_stats.yml`) : 3 passages, 1 h 23 / 3 h 23 / 5 h 23 ET (2026-10-05) —
+  à vérifier demain matin que le classement est à jour avant 8 h.
 
 ## 2. Branches / déploiement
 

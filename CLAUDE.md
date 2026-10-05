@@ -333,7 +333,7 @@ applique `scoring_config` aux joueurs **actifs** ; tous les pointeurs de la LNH 
 propriétaire. Calcul en cache 45 s (`unstable_cache`, client admin) ; les clients sondent
 `/en-direct/donnees` chaque minute pendant les matchs seulement (`components/live/useLiveNight.ts`),
 jamais un rechargement de page. LNH indisponible → `error`, jamais des zéros. Les points officiels
-restent `player_game_logs`, importés chaque nuit (~2 h ET). Lien Marqueur.com (notre pool, suivi
+restent `player_game_logs`, importés chaque nuit (3 passages, 1 h 23 / 3 h 23 / 5 h 23 ET — `regular_stats.yml`). Lien Marqueur.com (notre pool, suivi
 comparatif) : `lib/externalLinks.ts`, carte sur l'accueil et entrée externe du menu Le pool.
 
 **Recherche globale de joueurs** (David, 2026-10-01) : champ dans la barre du haut

@@ -19,6 +19,17 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-05
+
+**[CI] — Import des points de la nuit plus tôt** (`.github/workflows/regular_stats.yml`) :
+- Classement Cap Crunch ≠ Marqueur.com ce matin : le seul passage planifié (6 h UTC) était retardé
+  par GitHub jusqu'à ~12 h UTC (8 h ET), après que les poolers aient consulté le pool. Relancé à
+  la main (5 matchs du 4 octobre importés, prod + staging).
+- Trois passages par nuit : 5 h 23, 7 h 23 et 9 h 23 UTC (1 h 23, 3 h 23, 5 h 23 ET). Minutes
+  décalées (moins retardées qu'une heure pile) ; upsert idempotent, chaque passage complète le
+  précédent (un match pas encore terminé au 1er passage est corrigé au suivant). Jamais avant
+  4 h UTC : « hier ET » désignerait l'avant-veille.
+
 ### 2026-10-04
 
 **[Fix] — Points du premier soir de la saison absents du classement**
