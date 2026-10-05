@@ -123,6 +123,18 @@ python sync_staging_to_prod.py --apply   # exécution réelle — demande confir
 ```
 
 ```bash
+# Sens inverse (David, 2026-10-04) : copie les alignements RÉELS de prod vers staging, pour
+# tester sur de vraies données. Toutes les saisons qui ont des alignements/transactions en prod
+# (ex : 2025-26 et 2026-27) : pooler_rosters, roster_change_log, journal (transactions +
+# items), état pré-saison et réglages de pool_seasons → remplacement complet en staging ;
+# choix de repêchage mis à jour sur place (jumelés par saison/propriétaire d'origine/ronde).
+# Pas de ballotage, d'échanges proposés ni de marché. Écrit toujours dans staging seulement.
+cd python_script
+python sync_prod_to_staging.py           # dry-run
+python sync_prod_to_staging.py --apply   # exécution réelle (staging), sans confirmation
+```
+
+```bash
 # Régénère l'outil de backup manuel (David, 2026-09-21, étendu le 2026-09-22) — snapshot HTML
 # autonome de la saison active en PROD, éditable à la main dans le navigateur (localStorage)
 # sans dépendre de l'app/Supabase — filet de sécurité en cas de pépin, mais aussi un vrai outil

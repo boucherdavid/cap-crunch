@@ -30,6 +30,15 @@ en prod à ce moment-là. `buildStandings()` filtre par saison, donc ces points 
 réimporté sous 20262027 (196 lignes). Les anciennes lignes `20252026` du 2026-09-29 ont été supprimées
 par David (prod et staging) ; staging réimporté ensuite (189 lignes).
 
+**[Feat] — Copie des alignements réels de prod vers staging** (`python_script/sync_prod_to_staging.py`) :
+sens inverse de `sync_staging_to_prod.py` (réutilise son mapping des joueurs). Remplace en staging
+les alignements, l'historique des changements, le journal des transactions, l'état pré-saison et
+les réglages de chaque saison qui a des données en prod (2025-26 et 2026-27 — David accepte de
+perdre l'historique 2025-26 reconstruit en staging) ; choix de repêchage mis à jour sur place,
+jumelés par (saison, propriétaire d'origine, ronde) car leurs id divergent. Dry-run validé
+(715 lignes d'alignement, 55 transactions/107 items, 128/128 choix jumelés) ; `--apply` bloqué pour
+Claude par le mode automatique (suppression), à lancer par David.
+
 ### 2026-10-03
 
 **[Soirée du pool — prod]** (repêchage des agents libres en direct) :
