@@ -21,6 +21,12 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-05
 
+**[Fix données] — Nick Lardis retiré de la banque de recrues de David** (prod, script ponctuel) :
+- Pris par erreur par David ; en banque (`recrue`, jamais actif, aucun point). Retiré à la demande
+  de David sans passer par le ballotage : ligne `pooler_rosters` 3158 désactivée (`removed_at` =
+  2026-10-05) + entrée `roster_change_log` `retrait` (`is_admin_override`). Aucun ballotage créé ;
+  le joueur est de nouveau disponible. Staging non modifié.
+
 **[Feat] — Bouton « À faire » des poolers et redirection des courriels de test** (`components/PoolerTodoIndicator.tsx`,
 `pooler-todo-actions.ts`, `usePoolerTodo.ts`, `lib/email.ts`, `aide/AideTabs.tsx`) :
 - Demande de David : un aperçu rapide pour le pooler, comme le bouton Approbations de l'admin.
