@@ -41,9 +41,18 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   - alignements différents : Nick Lardis actif chez David sur Marqueur (recrue dans Cap Crunch),
     Will Smith actif chez Steve sur Marqueur (recrue dans Cap Crunch, 3 pts), Nico Hischier
     actif chez Steve dans Cap Crunch seulement — à trancher par David.
-- Restant à la main : Elias Pettersson (attaquant VAN, nhl_id 8480012) n'a pas de fiche — la seule
-  fiche « Elias Pettersson » (id 1391) porte le nhl_id du défenseur (8483678) avec la position
-  d'attaquant. Dans aucun alignement.
+- Écarts d'alignement (Lardis, Will Smith, Hischier) : erreurs de saisie de David sur Marqueur,
+  Cap Crunch était juste.
+- Promu sur `main` (`c9ace33`).
+
+**[Fix données] — Fiche Elias Pettersson mélangée attaquant/défenseur** (prod + staging, script
+ponctuel, pas de code) : la fiche 1391 avait les contrats de l'attaquant (11,6 M$, `nhl_id`
+8480012) mais le `nhl_id` (8483678) et le repêchage (2022, 3e ronde) du défenseur — elle affichait
+donc les stats du défenseur. Remise sur l'attaquant (`nhl_id` 8480012, repêché 2016, 1re ronde,
+5e), 74 game-logs du défenseur supprimés, 78 de l'attaquant importés (2025-26 et 2026-27). Le
+défenseur recevra sa propre fiche au prochain `import_drafts.py` (jumelage par `nhl_id`). Aucun
+alignement touché. « Mitch »/« Mitchell » Marner : pas de doublon en base (une seule fiche, id
+1439) — « Mitch » est l'orthographe de Marqueur.
 
 **[CI] — Import des points de la nuit plus tôt** (`.github/workflows/regular_stats.yml`) :
 - Classement Cap Crunch ≠ Marqueur.com ce matin : le seul passage planifié (6 h UTC) était retardé
