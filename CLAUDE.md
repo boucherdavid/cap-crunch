@@ -324,6 +324,8 @@ offre » ouvre `/gestion-effectifs?tab=echanges&avec=<pooler>&recoit=player-<id>
 attaquants/défenseurs/gardiens absents de tout alignement ET sous contrat pour la saison active,
 classés selon les points avec `scoring_config` ; total ou points par match (minimum 25 % des matchs
 du meneur, moitié pour les gardiens) ; saison en cours ou précédente via `?saison=precedente`)
+`/comparaison-marqueur` (menu Le pool — David, 2026-10-06 : comparaison avec Marqueur ouverte aux
+poolers, mêmes données que l'onglet admin, en cache 5 minutes — voir section 6)
 `/listes` (« Mes listes », menu Mon équipe —
 voir section 6) `/compte` `/signaler` `/aide` `/a-propos`
 (David, 2026-09-23 — « tour d'horizon » statique des fonctionnalités consultables/en
@@ -580,7 +582,7 @@ sont deux natures de contenu différentes.**
 | Section | Contenu |
 |---|---|
 | Mon équipe (nouveau nom de groupe — le lien "Mon alignement", ex-"Mon équipe", garde son nom de page inchangé depuis le renommage plus haut le même jour) | Mon alignement · Gestion d'effectifs · Simulation · Mes listes (ajouté le 2026-09-27) — "ce qui m'appartient / que je contrôle" |
-| Le pool | Classement · En direct (2026-10-04) · Tous les alignements (ex-"Équipes") · Meilleurs joueurs disponibles (2026-10-05) · Marché des échanges (2026-10-03) · Journal des transactions · Marqueur.com ↗ (lien externe) — "ce qui concerne les autres poolers". Le groupe "Classement du pool" a été retiré le 2026-09-30 (David) : un seul lien Classement, avec un sélecteur Saison complète (défaut) / Mensuel / Hebdomadaire en haut de la page (`app/classement/PeriodSelector.tsx`, routes `/classement`, `/classement/mensuel`, `/classement/hebdomadaire` inchangées) |
+| Le pool | Classement · En direct (2026-10-04) · Tous les alignements (ex-"Équipes") · Meilleurs joueurs disponibles (2026-10-05) · Marché des échanges (2026-10-03) · Journal des transactions · Comparaison avec Marqueur (2026-10-06) · Marqueur.com ↗ (lien externe) — "ce qui concerne les autres poolers". Le groupe "Classement du pool" a été retiré le 2026-09-30 (David) : un seul lien Classement, avec un sélecteur Saison complète (défaut) / Mensuel / Hebdomadaire en haut de la page (`app/classement/PeriodSelector.tsx`, routes `/classement`, `/classement/mensuel`, `/classement/hebdomadaire` inchangées) |
 | Calendrier LNH (lien autonome, ex-sous-item de "Statistiques", sorti le 2026-09-23 (suite) — entre Le pool et Statistiques) | Le résumé personnel "mes joueurs cette semaine" a été extrait dans un onglet séparé sur `/poolers/[id]`, voir ci-dessous — cette page ne garde que la navigation jour par jour |
 | Statistiques (ex-partie de "LNH") | LNH · Projections · AHL |
 | Analytique (ajouté le 2026-10-01) | Statistiques avancées · Outil d'analyse · Trios et paires (2026-10-02) |
@@ -1215,7 +1217,10 @@ corrigée le 2026-09-20 :**
   comparées (lues dans `pooler_rosters`, `buildStandings()` omettant les recrues jamais actives).
 - Jumelage des joueurs par nom exact, puis par nom de famille s'il est unique des deux côtés
   (« Mitch »/« Mitchell »). HTML d'un tiers, donc fragile : une lecture ratée donne `error`,
-  jamais de faux écarts. Calculé à chaque ouverture de l'onglet (9 requêtes), sans cache.
+  jamais de faux écarts. Onglet admin : calculé à chaque ouverture (9 requêtes), sans cache.
+- **Page des poolers** `/comparaison-marqueur` (2026-10-06) : même composant
+  (`MarqueurReportView`, `audience='pooler'`), `getMarqueurReportCached()` — cache 5 minutes, les
+  erreurs de lecture ne sont jamais mises en cache.
 
 **Tâches planifiées — GitHub est en retard, Vercel déclenche (David, 2026-10-06) :**
 - Les `schedule` de GitHub Actions partent avec 3 à 8 heures de retard pour ce dépôt, et certains
@@ -1616,7 +1621,7 @@ encore : `/statistiques/ahl`, `/calendrier`, `/repechage-agents-libres`, `/repec
 Pages de consultation : `/`, `/joueurs`, `/statistiques`, `/statistiques/ahl`,
 `/statistiques/blessures`, `/statistiques/projections`, `/repechage`,
 `/poolers`, `/poolers/[id]`, `/journal-transactions`, `/gestion-series`, `/classement-series`,
-`/classement`, `/classement/hebdomadaire`, `/classement/mensuel`, `/meilleurs-disponibles`, `/aide`, `/a-propos`
+`/classement`, `/classement/hebdomadaire`, `/classement/mensuel`, `/meilleurs-disponibles`, `/comparaison-marqueur`, `/aide`, `/a-propos`
 
 ---
 

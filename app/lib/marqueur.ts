@@ -12,6 +12,7 @@
  * dans `error`, jamais transformée en faux écarts.
  */
 
+import { unstable_cache } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { buildStandings } from '@/lib/standings'
 import { CHANGE_LABEL } from '@/lib/rosterChangeLabels'
@@ -309,4 +310,25 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
   }
 
   return { fetchedAt, poolers: poolers.sort((a, b) => a.poolerName.localeCompare(b.poolerName)) }
+}
+
+class MarqueurReadError extends Error {}
+
+const cachedReport = unstable_cache(async () => {
+  const report = await buildMarqueurReport()
+  // Une lecture ratée ne doit pas rester en cache : on la fait sortir par une exception.
+  if (report.error) throw new MarqueurReadError(report.error)
+  return report
+}, ['marqueur-report-v1'], { revalidate: 300 })
+
+/** Rapport en cache 5 minutes, pour la page des poolers (/comparaison-marqueur) : 8 poolers qui
+ * consultent ne doivent pas déclencher 9 requêtes vers Marqueur chacun. Les erreurs ne sont
+ * jamais mises en cache. L'onglet admin garde `buildMarqueurReport()`, toujours frais. */
+export async function getMarqueurReportCached(): Promise<MarqueurReport> {
+  try {
+    return await cachedReport()
+  } catch (e) {
+    if (e instanceof MarqueurReadError) return { error: e.message, fetchedAt: new Date().toISOString(), poolers: [] }
+    throw e
+  }
 }

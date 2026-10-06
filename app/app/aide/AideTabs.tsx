@@ -282,6 +282,26 @@ const SECTIONS: Section[] = [
     ),
   },
   {
+    id: 'guide-comparaison-marqueur',
+    tab: 'guide',
+    title: 'Comparaison avec Marqueur',
+    keywords: 'marqueur comparaison ecart points classement different preuve lnh nhl verification',
+    href: '/comparaison-marqueur',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Menu <strong>Le pool</strong>{' '}→ <strong>Comparaison avec Marqueur</strong>{' '}— pour comprendre pourquoi le classement de Cap Crunch et celui de Marqueur.com ne sont pas toujours identiques.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• Nos alignements sont aussi tenus <strong>à la main sur Marqueur</strong>, pour vérifier Cap Crunch. Cette page compare les deux, pooler par pooler.</li>
+          <li>• <strong>Mouvements pas encore reportés</strong> : un changement fait dans Cap Crunch qui n&apos;est pas encore saisi sur Marqueur. C&apos;est la cause la plus fréquente d&apos;un écart de total.</li>
+          <li>• <strong>Écarts de points</strong> : pour chaque joueur dont le total diffère, la page donne le <strong>total officiel de la LNH</strong>, match par match, avec un lien vers sa fiche sur nhl.com pour le vérifier toi-même.</li>
+          <li>• En cas de désaccord, ce sont les <strong>feuilles de match de la LNH</strong> qui tranchent.</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
     id: 'guide-meilleurs-disponibles',
     tab: 'guide',
     title: 'Meilleurs joueurs disponibles',

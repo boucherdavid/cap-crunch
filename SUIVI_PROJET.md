@@ -21,6 +21,14 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-06
 
+**[Feat] — Comparaison avec Marqueur ouverte aux poolers** (`app/app/comparaison-marqueur/page.tsx`, `MarqueurReportView.tsx`,
+`lib/marqueur.ts`, `Navbar.tsx`, `aide/AideTabs.tsx`, `a-propos/page.tsx`) :
+- Demande de David. Page `/comparaison-marqueur` (menu Le pool) : totaux, mouvements pas encore
+  reportés (David a choisi de les montrer : ils expliquent un écart de total) et écarts de
+  points avec la preuve LNH. Même composant que l'onglet admin, textes adaptés.
+- Cache de 5 minutes côté poolers ; les erreurs de lecture n'y entrent pas. Écarts de points en
+  fiches plutôt qu'en tableau (lisible sur téléphone), tableau des totaux adapté au mobile.
+
 **[Feat] — Comparaison Marqueur : preuve LNH sur chaque écart de points** (`app/lib/marqueur.ts`, `MarqueurReportView.tsx`) :
 - Demande de David (Leonard : 1 pt selon la LNH, 2 sur Marqueur) : avoir la preuve sous la main si
   un pooler questionne Cap Crunch. Colonne « LNH (source officielle) » : total, verdict, détail
