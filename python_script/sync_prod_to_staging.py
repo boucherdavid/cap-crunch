@@ -12,6 +12,13 @@ Portée — chaque saison régulière qui a des alignements ou des transactions 
   - presaison_draft_state, presaison_pooler_ready → remplacés aussi ;
   - pool_seasons → réglages et état copiés (season_started, dates, ordre du repêchage,
     cap...), sauf id/created_at.
+Aussi copiés (David, 2026-10-06), pour tester le LTIR sur l'état réel :
+  - player_injuries → remplacement complet (le scraper ne met à jour que prod) ; un joueur
+    blessé absent de staging est simplement ignoré ;
+  - ltir_requests des saisons copiées → remplacement complet ;
+  - ltir_return_watch des saisons copiées → vidé : la détection de l'app le reconstruit à partir
+    des alignements copiés (voir app/lib/ltirReturns.ts) ;
+  - app_settings (seuils LTIR, délais...) → copié.
 Choix de repêchage (toutes les saisons) : propriétaire actuel, utilisé, ordre — mis à jour
 sur place (jamais supprimés : d'autres tables y font référence), jumelés par
 (saison, propriétaire d'origine, ronde) car pool_draft_picks.id diverge entre les bases.
@@ -97,6 +104,9 @@ def main():
         'id, transaction_id, action_type, from_pooler_id, to_pooler_id, player_id, pick_id, old_player_type, new_player_type')
     picks = fetch_all(prod_db, 'pool_draft_picks',
         'id, pool_season_id, original_owner_id, current_owner_id, round, is_used, draft_order')
+    injuries = fetch_all(prod_db, 'player_injuries', '*')
+    ltir_requests = fetch_all(prod_db, 'ltir_requests', '*')
+    app_settings = (prod_db.table('app_settings').select('*').eq('id', 1).execute().data or [None])[0]
     draft_states = prod_db.table('presaison_draft_state').select('*').execute().data or []
     ready_rows = prod_db.table('presaison_pooler_ready').select('*').execute().data or []
 
@@ -126,11 +136,15 @@ def main():
     rosters = [r for r in rosters if r['pool_season_id'] in synced_set]
     changelog = [c for c in changelog if c['pool_season_id'] in synced_set]
     transactions = [t for t in transactions if t['pool_season_id'] in synced_set]
+    ltir_requests = [r for r in ltir_requests if r['pool_season_id'] in synced_set]
     tx_ids = {t['id'] for t in transactions}
     items = [i for i in items if i['transaction_id'] in tx_ids]
 
     ref_players = ({r['player_id'] for r in rosters} | {c['player_id'] for c in changelog if c['player_id']}
-                   | {i['player_id'] for i in items if i['player_id']})
+                   | {i['player_id'] for i in items if i['player_id']}
+                   | {r['ltir_player_id'] for r in ltir_requests if r['ltir_player_id']}
+                   | {r['new_player_id'] for r in ltir_requests if r['new_player_id']})
+    injuries_mapped = [i for i in injuries if i['player_id'] in player_map]
     ref_picks = ({r['draft_pick_id'] for r in rosters if r['draft_pick_id']} | {c['pick_id'] for c in changelog if c['pick_id']}
                  | {i['pick_id'] for i in items if i['pick_id']})
     unmapped_players = ref_players - set(player_map)
@@ -140,6 +154,8 @@ def main():
     print(f'[INFO] roster_change_log   : {len(changelog)}')
     print(f'[INFO] transactions        : {len(transactions)} ({len(items)} items)')
     print(f'[INFO] choix de repêchage  : {len(picks)} en prod, {len(pick_map)} jumelés en staging')
+    print(f'[INFO] blessures           : {len(injuries_mapped)} (sur {len(injuries)} en prod, le reste absent de staging)')
+    print(f'[INFO] demandes de LTIR    : {len(ltir_requests)}')
 
     if unmapped_players:
         print(f'\n[ERREUR] {len(unmapped_players)} joueur(s) de prod sans correspondance fiable en staging :')
@@ -169,6 +185,8 @@ def main():
         staging_db.table('transactions').delete().eq('pool_season_id', tid).execute()   # items : ON DELETE CASCADE
         staging_db.table('presaison_pooler_ready').delete().eq('pool_season_id', tid).execute()
         staging_db.table('presaison_draft_state').delete().eq('pool_season_id', tid).execute()
+        staging_db.table('ltir_requests').delete().eq('pool_season_id', tid).execute()
+        staging_db.table('ltir_return_watch').delete().eq('pool_season_id', tid).execute()
 
         season_row = next(s for s in prod_seasons if s['id'] == sid)
         staging_db.table('pool_seasons').update(
@@ -219,6 +237,28 @@ def main():
     if synced_ready:
         insert_batches(staging_db, 'presaison_pooler_ready',
                        [{**r, 'pool_season_id': season_map[r['pool_season_id']]} for r in synced_ready])
+
+    print(f'[INFO] Remplacement de {len(injuries_mapped)} blessures...')
+    staging_db.table('player_injuries').delete().neq('id', 0).execute()
+    insert_batches(staging_db, 'player_injuries', [
+        {**{k: v for k, v in i.items() if k != 'id'}, 'player_id': m(i['player_id'])} for i in injuries_mapped
+    ])
+
+    if ltir_requests:
+        print(f'[INFO] Insertion de {len(ltir_requests)} demandes de LTIR...')
+        insert_batches(staging_db, 'ltir_requests', [{
+            **{k: v for k, v in r.items() if k != 'id'},
+            'pool_season_id': season_map[r['pool_season_id']],
+            'ltir_player_id': m(r['ltir_player_id']), 'new_player_id': m(r['new_player_id']),
+        } for r in ltir_requests])
+
+    if app_settings:
+        # Une colonne ajoutée en prod avant staging ferait échouer la mise à jour : non bloquant.
+        try:
+            staging_db.table('app_settings').update({k: v for k, v in app_settings.items() if k != 'id'}).eq('id', 1).execute()
+            print('[INFO] app_settings copié.')
+        except Exception as e:
+            print(f'[AVERTISSEMENT] app_settings non copié (migration manquante en staging ?) : {e}')
 
     print(f'[INFO] Mise à jour de {len(pick_map)} choix de repêchage...')
     for p in picks:

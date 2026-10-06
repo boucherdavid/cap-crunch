@@ -1,0 +1,50 @@
+name: Copie prod vers staging
+
+# Recopie les alignements réels de prod dans staging (python_script/sync_prod_to_staging.py), pour
+# tester sur de vraies données. Écrit dans staging SEULEMENT. Lancement manuel uniquement : depuis
+# l'onglet Actions, ou par le bouton de /admin/donnees sur staging (David, 2026-10-06). Jamais
+# planifié : une copie automatique effacerait les tests en cours.
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: sync-prod-to-staging
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Copie prod vers staging
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: python_script/requirements.txt
+
+      - name: Installer les dépendances
+        run: pip install -r python_script/requirements.txt
+
+      # Le script lit ses deux bases dans .env (prod, source) et .env.staging (cible).
+      - name: Préparer les accès aux deux bases
+        env:
+          PROD_URL: ${{ secrets.SUPABASE_URL }}
+          PROD_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          STAGING_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          STAGING_KEY: ${{ secrets.STAGING_SERVICE_KEY }}
+        run: |
+          printf 'SUPABASE_URL=%s\nSUPABASE_SERVICE_KEY=%s\n' "$PROD_URL" "$PROD_KEY" > python_script/.env
+          printf 'SUPABASE_URL=%s\nSUPABASE_SERVICE_KEY=%s\n' "$STAGING_URL" "$STAGING_KEY" > python_script/.env.staging
+
+      - name: Copier prod vers staging
+        working-directory: python_script
+        run: python sync_prod_to_staging.py --apply

@@ -35,6 +35,9 @@
   projet `cap-crunch` (prod) : ajouter `CRON_SECRET` (longue chaîne aléatoire) et vérifier que
   `GITHUB_WORKFLOW_TOKEN` y est. Puis promotion, et vérifier le lendemain qu'un import
   « workflow_dispatch » est parti vers 2 h-3 h ET.
+- **Copie prod → staging par bouton (2026-10-06) — sur staging** : utilisable seulement après
+  promotion sur `main` (la tâche GitHub doit y exister). Exige `GITHUB_WORKFLOW_TOKEN` dans le
+  projet Vercel `cap-crunch-staging`. Premier clic = premier vrai test.
 - Après le prochain pipeline du lundi : vérifier qu'une fiche distincte a été créée pour Elias
   Pettersson le défenseur (`nhl_id` 8483678).
 

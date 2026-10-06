@@ -128,7 +128,12 @@ python sync_staging_to_prod.py --apply   # exécution réelle — demande confir
 # (ex : 2025-26 et 2026-27) : pooler_rosters, roster_change_log, journal (transactions +
 # items), état pré-saison et réglages de pool_seasons → remplacement complet en staging ;
 # choix de repêchage mis à jour sur place (jumelés par saison/propriétaire d'origine/ronde).
+# Depuis le 2026-10-06 : aussi les blessures, les demandes de LTIR et app_settings ; les suivis de
+# retour au jeu (ltir_return_watch) sont vidés et reconstruits par l'app.
 # Pas de ballotage, d'échanges proposés ni de marché. Écrit toujours dans staging seulement.
+# Habitude de David : rafraîchir staging avant chaque séance de test. Bouton « Copier la prod vers
+# staging » sur /admin/donnees (staging et local seulement), qui lance
+# .github/workflows/sync_prod_to_staging.yml — jamais planifié, une copie effacerait les tests en cours.
 cd python_script
 python sync_prod_to_staging.py           # dry-run
 python sync_prod_to_staging.py --apply   # exécution réelle (staging), sans confirmation
@@ -204,7 +209,8 @@ Hockey_Pool_App/
 │       ├── backup_tool.yml        ← Régénère backup/pool_backup.html (dimanche 12h UTC + manuel)
 │       ├── injuries.yml           ← Scrape blessures CBS + ESPN + MoneyPuck (quotidien 16h UTC (midi ET) + manuel)
 │       ├── advanced_stats.yml     ← Stats avancées MoneyPuck (quotidien 11h UTC + manuel)
-│       └── line_combos.yml        ← Trios et paires Daily Faceoff (quotidien 15h UTC + manuel)
+│       ├── line_combos.yml        ← Trios et paires Daily Faceoff (quotidien 15h UTC + manuel)
+│       └── sync_prod_to_staging.yml ← Copie prod → staging (manuel seulement, bouton sur /admin/donnees en staging)
 ├── app/                       ← Application Next.js
 │   ├── CLAUDE.md              ← Règles spécifiques Next.js/TypeScript
 │   ├── AGENTS.md

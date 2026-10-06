@@ -21,6 +21,17 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-06
 
+**[Feat] — Copie prod → staging : blessures, demandes de LTIR et bouton** (`python_script/sync_prod_to_staging.py`,
+`.github/workflows/sync_prod_to_staging.yml`, `app/admin/donnees/StagingSyncPanel.tsx`, `staging-sync-actions.ts`,
+`lib/githubDispatch.ts`) :
+- David veut tester sur les données réelles : rafraîchir staging avant chaque séance de test.
+- Le script copie maintenant aussi `player_injuries` (staging datait du 1er octobre),
+  `ltir_requests` et `app_settings`, et vide `ltir_return_watch` (reconstruit par l'app).
+- Bouton sur `/admin/donnees`, visible hors prod seulement, avec confirmation ; lance une tâche
+  GitHub manuelle (jamais planifiée : écraserait les tests de plusieurs jours).
+- Dry-run validé (715 lignes d'alignement, 129 blessures, 13 demandes de LTIR). Mode réel et
+  bouton pas encore exercés : la tâche doit d'abord exister sur `main`.
+
 **[Fix] — Import des points déclenché par Vercel plutôt que par l'horloge de GitHub** (`app/vercel.json`,
 `app/app/api/cron/stats/route.ts`, `app/lib/githubDispatch.ts`, `app/proxy.ts`) :
 - Courriel d'échec reçu par David (stats avancées) : panne côté GitHub (« job not acquired by
