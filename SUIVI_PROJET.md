@@ -43,7 +43,9 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   matchs importés. **Prod : bloqué** par la contrainte `players_name_team_unique`, qui n'existe
   qu'en prod (absente de `schema.sql` et de staging) — à retirer par David.
 - Erreur de la veille corrigée dans les deux bases : l'attaquant a été repêché en **2017**, pas 2016.
-- Pas encore validé par un passage complet du pipeline.
+- Contrainte retirée en prod par David ; fiche du défenseur créée en prod (id 3720), matchs importés.
+- Validé par `run_pipeline_staging.ps1 --no-scrape` : « Homonymes même équipe … conservés distincts »,
+  contrats de 11,6 M$ restés sur l'attaquant.
 
 **[Feat] — Copie prod → staging : blessures, demandes de LTIR et bouton** (`python_script/sync_prod_to_staging.py`,
 `.github/workflows/sync_prod_to_staging.yml`, `app/admin/donnees/StagingSyncPanel.tsx`, `staging-sync-actions.ts`,

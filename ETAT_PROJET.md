@@ -38,11 +38,10 @@
 - Jeton `GITHUB_WORKFLOW_TOKEN` (« Cap Crunch Vercel ») : il expire — à renouveler dans les deux
   projets Vercel à l'échéance, sinon l'import de nuit retombe sur l'horaire GitHub (~8 h ET).
 - Onglet Comparaison Marqueur : en prod, pas encore validé à l'écran par David.
-- **Elias Pettersson le défenseur — bloqué en prod** : rouler dans le SQL Editor de prod
-  `ALTER TABLE players DROP CONSTRAINT players_name_team_unique;` (contrainte absente de staging),
-  puis créer sa fiche. Correctif de l'import sur staging, à valider par un pipeline staging.
-- **À valider sur staging (David)** : panneau « Mises à jour automatiques » (Admin → Mise à jour
-  de données), un bouton par tâche.
+- Elias Pettersson : deux fiches distinctes en prod (attaquant 1391, défenseur 3720) et en staging ;
+  contrainte `players_name_team_unique` retirée en prod le 2026-10-06 ; correctif de l'import
+  validé par un pipeline staging complet. À confirmer au pipeline du lundi 12 octobre.
+- Panneau « Mises à jour automatiques » et pastille sur Communauté : en prod le 2026-10-06.
 - Après le prochain pipeline du lundi : vérifier qu'une fiche distincte a été créée pour Elias
   Pettersson le défenseur (`nhl_id` 8483678).
 
