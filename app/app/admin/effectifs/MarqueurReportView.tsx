@@ -95,7 +95,7 @@ export default function MarqueurReportView({ report }: { report: MarqueurReport 
           <section>
             <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-1">Écarts de points ({pointsCount})</h2>
             <p className="text-xs text-gray-500 mb-3">
-              Joueurs actifs des deux côtés dont le total diffère. Cap Crunch suit les feuilles de match de la LNH ; vérifie le joueur sur le site de la LNH pour savoir lequel a raison.
+              Joueurs dont le total diffère. La colonne LNH donne le total selon les feuilles de match officielles, avec le détail match par match : c&apos;est la preuve à montrer si un pooler questionne un total.
             </p>
             {pointsCount === 0 ? (
               <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3">Les points concordent pour tous les joueurs actifs.</p>
@@ -108,6 +108,7 @@ export default function MarqueurReportView({ report }: { report: MarqueurReport 
                       <th className="px-4 py-2 font-medium">Joueur</th>
                       <th className="px-4 py-2 font-medium text-right">Cap Crunch</th>
                       <th className="px-4 py-2 font-medium text-right">Marqueur</th>
+                      <th className="px-4 py-2 font-medium">LNH (source officielle)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -117,6 +118,26 @@ export default function MarqueurReportView({ report }: { report: MarqueurReport 
                         <td className="px-4 py-2 font-medium text-gray-800">{g.player}</td>
                         <td className="px-4 py-2 text-right">{fmtPts(g.capCrunch)}</td>
                         <td className="px-4 py-2 text-right">{fmtPts(g.marqueur)}</td>
+                        <td className="px-4 py-2 text-xs">
+                          {!g.nhl ? (
+                            <span className="text-gray-400">Vérification impossible pour le moment</span>
+                          ) : (
+                            <>
+                              <p className={`text-sm font-semibold ${g.nhl.total === g.capCrunch ? 'text-emerald-700' : g.nhl.total === g.marqueur ? 'text-red-600' : 'text-amber-700'}`}>
+                                {fmtPts(g.nhl.total)} pt{g.nhl.total > 1 ? 's' : ''}{' '}—{' '}
+                                {g.nhl.total === g.capCrunch
+                                  ? 'Cap Crunch a raison'
+                                  : g.nhl.total === g.marqueur
+                                    ? 'Marqueur a raison : à corriger ici'
+                                    : 'total de la saison complète (le joueur n’a pas été actif tout ce temps)'}
+                              </p>
+                              <p className="text-gray-500 mt-0.5">
+                                {g.nhl.games.map(m => `${new Date(m.date + 'T12:00:00Z').toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', timeZone: 'UTC' })} : ${m.detail}`).join(' · ') || 'Aucun match joué'}
+                              </p>
+                              <a href={g.nhl.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Voir sa fiche sur nhl.com</a>
+                            </>
+                          )}
+                        </td>
                       </tr>
                     )))}
                   </tbody>

@@ -21,6 +21,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-06
 
+**[Feat] — Comparaison Marqueur : preuve LNH sur chaque écart de points** (`app/lib/marqueur.ts`, `MarqueurReportView.tsx`) :
+- Demande de David (Leonard : 1 pt selon la LNH, 2 sur Marqueur) : avoir la preuve sous la main si
+  un pooler questionne Cap Crunch. Colonne « LNH (source officielle) » : total, verdict, détail
+  match par match et lien vers la fiche nhl.com.
+
 **[Fix] — Comparaison Marqueur : joueur retiré des actifs là-bas** (`app/lib/marqueur.ts`) :
 - Faux écart signalé par David : Sanderson (désactivé le 5 octobre) apparaissait « à ajouter comme
   réserviste ». Sur Marqueur, un ancien actif reste affiché en rouge (ligne `trr`) avec sa période

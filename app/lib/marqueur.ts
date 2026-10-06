@@ -15,6 +15,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { buildStandings } from '@/lib/standings'
 import { CHANGE_LABEL } from '@/lib/rosterChangeLabels'
+import { toNhlSeasonId } from '@/lib/nhl-stats'
 
 const POOL_ID = 76938
 const BASE = 'https://www.marqueur.com/hockey/mbr/tools/pool/stats_03.php'
@@ -32,7 +33,49 @@ export type MarqueurRosterGap = {
   context: string
 }
 
-export type MarqueurPointsGap = { player: string; capCrunch: number; marqueur: number }
+/** Preuve tirée de l'API de la LNH (David, 2026-10-06) : les matchs de la saison du joueur, pour
+ * trancher un écart de points — et répondre à un pooler qui remettrait Cap Crunch en question. */
+export type NhlProof = {
+  total: number  // points du pool sur toute la saison (pointage de scoring_config)
+  games: { date: string; detail: string; points: number }[]
+  url: string    // fiche du joueur sur nhl.com
+}
+
+export type MarqueurPointsGap = {
+  player: string
+  capCrunch: number
+  marqueur: number
+  nhlId: number | null
+  /** null : joueur sans nhl_id ou LNH injoignable. */
+  nhl: NhlProof | null
+}
+
+type Scoring = { goal: number; assist: number; goalie_win: number; goalie_otl: number; goalie_shutout: number }
+
+async function fetchNhlProof(nhlId: number, nhlSeason: string, sc: Scoring): Promise<NhlProof | null> {
+  try {
+    const res = await fetch(`https://api-web.nhle.com/v1/player/${nhlId}/game-log/${nhlSeason}/2`, { cache: 'no-store' })
+    if (!res.ok) return null
+    type Game = { gameDate: string; goals?: number; assists?: number; decision?: string; shutouts?: number; gamesStarted?: number }
+    const log = ((await res.json()) as { gameLog?: Game[] }).gameLog ?? []
+    const games = log.map(g => {
+      const goals = g.goals ?? 0
+      const assists = g.assists ?? 0
+      const isGoalie = g.gamesStarted !== undefined || g.decision !== undefined
+      const win = g.decision === 'W' ? 1 : 0
+      const otl = g.decision === 'O' ? 1 : 0
+      const so = g.shutouts ?? 0
+      const points = goals * sc.goal + assists * sc.assist + (isGoalie ? win * sc.goalie_win + otl * sc.goalie_otl + so * sc.goalie_shutout : 0)
+      const detail = isGoalie
+        ? [win ? 'victoire' : otl ? 'défaite en prolongation' : 'sans décision ou défaite', so ? 'blanchissage' : null, goals + assists ? `${goals} B, ${assists} A` : null].filter(Boolean).join(', ')
+        : `${goals} B, ${assists} A`
+      return { date: g.gameDate, detail, points }
+    }).sort((a, b) => a.date.localeCompare(b.date))
+    return { total: games.reduce((s, g) => s + g.points, 0), games, url: `https://www.nhl.com/fr/player/${nhlId}` }
+  } catch {
+    return null
+  }
+}
 
 export type MarqueurPoolerReport = {
   poolerName: string
@@ -106,7 +149,7 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
   const fetchedAt = new Date().toISOString()
   const admin = createAdminClient()
   const { data: season } = await admin
-    .from('pool_seasons').select('id').eq('is_active', true).eq('is_playoff', false).maybeSingle()
+    .from('pool_seasons').select('id, season').eq('is_active', true).eq('is_playoff', false).maybeSingle()
   if (!season) return { error: 'Aucune saison régulière active.', fetchedAt, poolers: [] }
 
   let options: { no: string; label: string; selected: boolean }[]
@@ -127,7 +170,7 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
     buildStandings(admin, season.id),
     // Alignements lus directement : buildStandings() omet les recrues jamais activées.
     admin.from('pooler_rosters')
-      .select('pooler_id, player_type, added_at, players (first_name, last_name)')
+      .select('pooler_id, player_type, added_at, players (first_name, last_name, nhl_id)')
       .eq('pool_season_id', season.id).eq('is_active', true),
     admin.from('roster_change_log')
       .select('pooler_id, change_type, changed_at, players (first_name, last_name)')
@@ -145,13 +188,13 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
     lastMove.set(`${r.pooler_id}::${norm(`${r.players.first_name} ${r.players.last_name}`)}`, `${CHANGE_LABEL[r.change_type] ?? r.change_type} le ${fmtDay(r.changed_at)}`)
   }
 
-  type RosterRow = { pooler_id: string; player_type: string; added_at: string | null; players: { first_name: string; last_name: string } | null }
-  const rosterByPooler = new Map<string, { name: string; status: string }[]>()
+  type RosterRow = { pooler_id: string; player_type: string; added_at: string | null; players: { first_name: string; last_name: string; nhl_id: number | null } | null }
+  const rosterByPooler = new Map<string, { name: string; status: string; nhlId: number | null }[]>()
   for (const r of (rosterRows ?? []) as unknown as RosterRow[]) {
     if (!r.players) continue
     if (!rosterByPooler.has(r.pooler_id)) rosterByPooler.set(r.pooler_id, [])
     const name = `${r.players.first_name} ${r.players.last_name}`
-    rosterByPooler.get(r.pooler_id)!.push({ name, status: r.player_type })
+    rosterByPooler.get(r.pooler_id)!.push({ name, status: r.player_type, nhlId: r.players.nhl_id })
     // Aucun mouvement journalisé (placé avant le démarrage de la saison) : la date d'arrivée dans
     // l'alignement tient lieu de date à saisir.
     const k = `${r.pooler_id}::${norm(name)}`
@@ -164,7 +207,7 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
     if (!option) return { ...base, marqueurLabel: null, marqueurTotal: null, rosterGaps: [], pointsGaps: [] }
 
     const mq = pages.get(option.no) ?? []
-    type Ours = { name: string; status: string; points: number }
+    type Ours = { name: string; status: string; points: number; nhlId: number | null }
     const pointsByName = new Map(st.players.filter(p => p.stillRostered).map(p => [norm(`${p.firstName} ${p.lastName}`), p.poolPoints]))
     const ours: Ours[] = (rosterByPooler.get(st.poolerId) ?? []).map(r => ({ ...r, points: pointsByName.get(norm(r.name)) ?? 0 }))
     // Marqueur n'a pas de LTIR : David y place ces joueurs comme réservistes. Un joueur sur LTIR
@@ -205,7 +248,7 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
       const move = moveOf(o.name)
       if (sameStatus(m, o)) {
         // Seuls les joueurs qui ont été actifs ont des points : actifs, et anciens actifs de Marqueur.
-        if ((o.status === 'actif' || m.status === 'inactif') && m.points !== o.points) pointsGaps.push({ player: o.name, capCrunch: o.points, marqueur: m.points })
+        if ((o.status === 'actif' || m.status === 'inactif') && m.points !== o.points) pointsGaps.push({ player: o.name, capCrunch: o.points, marqueur: m.points, nhlId: o.nhlId, nhl: null })
         continue
       }
       if (!inLineup(o)) {
@@ -251,6 +294,19 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
       pointsGaps: pointsGaps.sort((a, b) => a.player.localeCompare(b.player)),
     }
   })
+
+  // Preuve LNH pour chaque écart de points (peu nombreux : un appel par joueur concerné).
+  const gaps = poolers.flatMap(p => p.pointsGaps).filter(g => g.nhlId)
+  if (gaps.length > 0) {
+    const { data: scoringRows } = await admin.from('scoring_config').select('stat_key, points').in('scope', ['regular', 'both'])
+    const sc: Record<string, number> = {}
+    for (const r of scoringRows ?? []) sc[r.stat_key] = Number(r.points)
+    const scoring: Scoring = {
+      goal: sc.goal ?? 1, assist: sc.assist ?? 1, goalie_win: sc.goalie_win ?? 2, goalie_otl: sc.goalie_otl ?? 1, goalie_shutout: sc.goalie_shutout ?? 2,
+    }
+    const nhlSeason = toNhlSeasonId(season.season)
+    await Promise.all(gaps.map(async g => { g.nhl = await fetchNhlProof(g.nhlId!, nhlSeason, scoring) }))
+  }
 
   return { fetchedAt, poolers: poolers.sort((a, b) => a.poolerName.localeCompare(b.poolerName)) }
 }
