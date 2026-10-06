@@ -1207,6 +1207,8 @@ corrigée le 2026-09-20 :**
   écrire Cap Crunch dans Marqueur : il reproduirait nos erreurs au lieu de les révéler.
 - Les écarts d'alignement servent de liste « à reporter sur Marqueur » (avec le dernier
   `roster_change_log` du joueur comme contexte) ; elle se vide seule quand les deux concordent.
+- Ligne rouge `trr` sur Marqueur = ancien actif retiré des actifs (période fermée, points gardés) :
+  concorde avec tout statut non actif ici, ou avec un joueur parti (David, 2026-10-06 — Sanderson).
 - Marqueur n'a pas de LTIR : LTIR ici ↔ réserviste là-bas = concordant. Recrues en banque non
   comparées (lues dans `pooler_rosters`, `buildStandings()` omettant les recrues jamais actives).
 - Jumelage des joueurs par nom exact, puis par nom de famille s'il est unique des deux côtés

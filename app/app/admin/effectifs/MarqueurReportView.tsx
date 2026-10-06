@@ -68,7 +68,7 @@ export default function MarqueurReportView({ report }: { report: MarqueurReport 
           <section>
             <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-1">À reporter sur Marqueur ({rosterCount})</h2>
             <p className="text-xs text-gray-500 mb-3">
-              Écarts d&apos;alignement. L&apos;action proposée aligne Marqueur sur Cap Crunch, avec la date à saisir là-bas (celle du mouvement dans Cap Crunch) ; si c&apos;est plutôt Cap Crunch qui se trompe, corrige-le ici. Un élément disparaît de la liste dès que les deux concordent. Marqueur n&apos;a pas de LTIR : un joueur sur LTIR ici doit y être réserviste. Les recrues en banque ne sont pas comparées.
+              Écarts d&apos;alignement. L&apos;action proposée aligne Marqueur sur Cap Crunch, avec la date à saisir là-bas (celle du mouvement dans Cap Crunch) ; si c&apos;est plutôt Cap Crunch qui se trompe, corrige-le ici. Un élément disparaît de la liste dès que les deux concordent. Marqueur n&apos;a pas de LTIR : un joueur sur LTIR ici doit y être réserviste. Un joueur retiré des actifs sur Marqueur (en rouge là-bas) concorde avec tout statut non actif ici. Les recrues en banque ne sont pas comparées.
             </p>
             {rosterCount === 0 ? (
               <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3">Les alignements concordent.</p>

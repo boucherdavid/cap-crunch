@@ -19,7 +19,9 @@ import { CHANGE_LABEL } from '@/lib/rosterChangeLabels'
 const POOL_ID = 76938
 const BASE = 'https://www.marqueur.com/hockey/mbr/tools/pool/stats_03.php'
 
-type Status = 'actif' | 'reserviste'
+// 'inactif' : ligne rouge (`trr`) — joueur qui a été actif puis retiré des actifs. Marqueur le garde
+// affiché avec sa période (« 29 sep - 4 oct ») et ses points, sans dire s'il est réserviste ou parti.
+type Status = 'actif' | 'reserviste' | 'inactif'
 type MarqueurPlayer = { name: string; status: Status; points: number }
 
 export type MarqueurRosterGap = {
@@ -71,18 +73,19 @@ function parsePoolerOptions(html: string): { no: string; label: string; selected
     .map(m => ({ no: m[1], selected: !!m[2], label: decodeEntities(m[3]).trim() }))
 }
 
-/** Joueurs d'une page de pooler : lignes `tr` (actifs) et `trj` (réservistes), avant le sommaire. */
+/** Joueurs d'une page de pooler, avant le sommaire : lignes `tr` (actifs), `trj` (réservistes
+ * depuis le début) et `trr` (anciens actifs, en rouge — voir Status). */
 function parsePlayers(html: string): MarqueurPlayer[] {
   const body = html.split('SOMMAIRE')[0]
   const players: MarqueurPlayer[] = []
-  for (const m of body.matchAll(/<tr class='(tr|trj)'>([\s\S]*?)<\/tr>/g)) {
+  for (const m of body.matchAll(/<tr class='(tr|trj|trr)'>([\s\S]*?)<\/tr>/g)) {
     const name = m[2].match(/\/player\/[^']*'[^>]*>([^<]+)<\/a>/)?.[1]
     if (!name) continue
     const cells = [...m[2].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(c => c[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, '').trim())
     const total = cells[cells.length - 2] ?? '-'
     players.push({
       name: decodeEntities(name).trim(),
-      status: m[1] === 'trj' ? 'reserviste' : 'actif',
+      status: m[1] === 'trj' ? 'reserviste' : m[1] === 'trr' ? 'inactif' : 'actif',
       points: total === '-' || total === '' ? 0 : Number(total.replace(',', '.')) || 0,
     })
   }
@@ -97,7 +100,7 @@ function matchPooler<T extends { label: string }>(poolerName: string, options: T
   return sameFirst.find(o => (norm(o.label).split(' ')[1] ?? '')[0] === (second ?? '')[0]) ?? null
 }
 
-const STATUS_LABEL: Record<string, string> = { actif: 'actif', reserviste: 'réserviste', recrue: 'recrue (banque)', ltir: 'LTIR' }
+const STATUS_LABEL: Record<string, string> = { actif: 'actif', reserviste: 'réserviste', inactif: 'retiré des actifs', recrue: 'recrue (banque)', ltir: 'LTIR' }
 
 export async function buildMarqueurReport(): Promise<MarqueurReport> {
   const fetchedAt = new Date().toISOString()
@@ -167,7 +170,11 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
     // Marqueur n'a pas de LTIR : David y place ces joueurs comme réservistes. Un joueur sur LTIR
     // ici et réserviste là-bas concorde donc ; s'il n'y est pas du tout, on ne le réclame pas.
     const inLineup = (o: Ours) => o.status === 'actif' || o.status === 'reserviste'
-    const sameStatus = (m: MarqueurPlayer, o: Ours) => m.status === o.status || (o.status === 'ltir' && m.status === 'reserviste')
+    // Un ancien actif de Marqueur ('inactif') concorde avec tout ce qui n'est pas actif ici
+    // (réserviste, LTIR, banque) — David, 2026-10-06 : Sanderson, désactivé le 5 octobre.
+    const sameStatus = (m: MarqueurPlayer, o: Ours) => m.status === o.status
+      || (o.status === 'ltir' && m.status === 'reserviste')
+      || (m.status === 'inactif' && o.status !== 'actif')
 
     // Jumelage par nom exact, puis par nom de famille s'il n'en reste qu'un de chaque côté
     // (« Mitch »/« Mitchell » Marner, « Zach »/« Zachary » Werenski...).
@@ -197,8 +204,8 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
     for (const { m, o } of pairs) {
       const move = moveOf(o.name)
       if (sameStatus(m, o)) {
-        // Un réserviste ne marque de points ni d'un côté ni de l'autre : comparer les actifs suffit.
-        if (o.status === 'actif' && m.points !== o.points) pointsGaps.push({ player: o.name, capCrunch: o.points, marqueur: m.points })
+        // Seuls les joueurs qui ont été actifs ont des points : actifs, et anciens actifs de Marqueur.
+        if ((o.status === 'actif' || m.status === 'inactif') && m.points !== o.points) pointsGaps.push({ player: o.name, capCrunch: o.points, marqueur: m.points })
         continue
       }
       if (!inLineup(o)) {
@@ -228,6 +235,7 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
       })
     }
     for (const m of mqLeft) {
+      if (m.status === 'inactif') continue  // ancien actif là-bas, parti d'ici : concordant
       rosterGaps.push({
         player: m.name,
         action: `Retirer de l'alignement sur Marqueur (${STATUS_LABEL[m.status]} là-bas)`,
