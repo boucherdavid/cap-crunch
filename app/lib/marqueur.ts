@@ -124,7 +124,7 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
     buildStandings(admin, season.id),
     // Alignements lus directement : buildStandings() omet les recrues jamais activées.
     admin.from('pooler_rosters')
-      .select('pooler_id, player_type, players (first_name, last_name)')
+      .select('pooler_id, player_type, added_at, players (first_name, last_name)')
       .eq('pool_season_id', season.id).eq('is_active', true),
     admin.from('roster_change_log')
       .select('pooler_id, change_type, changed_at, players (first_name, last_name)')
@@ -133,19 +133,26 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
   ])
 
   // Dernier mouvement connu par (pooler, joueur) — le journal est trié, le dernier écrase.
+  // La date compte : Marqueur demande la date de chaque changement, et c'est elle qui décide des
+  // points comptés là-bas quand un report est fait en retard.
+  const fmtDay = (iso: string) => new Date(iso).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', timeZone: 'America/Toronto' })
   const lastMove = new Map<string, string>()
   for (const r of (logRows ?? []) as unknown as { pooler_id: string; change_type: string; changed_at: string; players: { first_name: string; last_name: string } | null }[]) {
     if (!r.players) continue
-    const day = new Date(r.changed_at).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', timeZone: 'America/Toronto' })
-    lastMove.set(`${r.pooler_id}::${norm(`${r.players.first_name} ${r.players.last_name}`)}`, `${CHANGE_LABEL[r.change_type] ?? r.change_type} le ${day}`)
+    lastMove.set(`${r.pooler_id}::${norm(`${r.players.first_name} ${r.players.last_name}`)}`, `${CHANGE_LABEL[r.change_type] ?? r.change_type} le ${fmtDay(r.changed_at)}`)
   }
 
-  type RosterRow = { pooler_id: string; player_type: string; players: { first_name: string; last_name: string } | null }
+  type RosterRow = { pooler_id: string; player_type: string; added_at: string | null; players: { first_name: string; last_name: string } | null }
   const rosterByPooler = new Map<string, { name: string; status: string }[]>()
   for (const r of (rosterRows ?? []) as unknown as RosterRow[]) {
     if (!r.players) continue
     if (!rosterByPooler.has(r.pooler_id)) rosterByPooler.set(r.pooler_id, [])
-    rosterByPooler.get(r.pooler_id)!.push({ name: `${r.players.first_name} ${r.players.last_name}`, status: r.player_type })
+    const name = `${r.players.first_name} ${r.players.last_name}`
+    rosterByPooler.get(r.pooler_id)!.push({ name, status: r.player_type })
+    // Aucun mouvement journalisé (placé avant le démarrage de la saison) : la date d'arrivée dans
+    // l'alignement tient lieu de date à saisir.
+    const k = `${r.pooler_id}::${norm(name)}`
+    if (!lastMove.has(k) && r.added_at) lastMove.set(k, `dans cet état depuis le ${fmtDay(r.added_at)}`)
   }
 
   const poolers: MarqueurPoolerReport[] = standings.map(st => {
