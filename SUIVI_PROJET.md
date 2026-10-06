@@ -21,6 +21,18 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-06
 
+**[Fix] — Deux Elias Pettersson : l'import ne fusionne plus deux joueurs aux `nhl_id` différents** (`python_script/import_supabase.py`) :
+- Cause du mélange attaquant/défenseur corrigé la veille : `deduplicate_players` (cas 1) fusionnait
+  toute paire « même nom + même équipe », et la clé `nom|équipe` du rattachement des contrats ne
+  distinguait pas deux homonymes de la même équipe.
+- `distinct_people()` : deux fiches aux `nhl_id` différents ne sont jamais fusionnées. Homonymes de
+  la même équipe : ligne du CSV rattachée par l'âge (joueurs et contrats), ignorée si non concluant.
+- Fiche du défenseur (nhl_id 8483678, repêché 2022, 3e ronde, 80e) créée en **staging** (id 2842),
+  matchs importés. **Prod : bloqué** par la contrainte `players_name_team_unique`, qui n'existe
+  qu'en prod (absente de `schema.sql` et de staging) — à retirer par David.
+- Erreur de la veille corrigée dans les deux bases : l'attaquant a été repêché en **2017**, pas 2016.
+- Pas encore validé par un passage complet du pipeline.
+
 **[Feat] — Copie prod → staging : blessures, demandes de LTIR et bouton** (`python_script/sync_prod_to_staging.py`,
 `.github/workflows/sync_prod_to_staging.yml`, `app/admin/donnees/StagingSyncPanel.tsx`, `staging-sync-actions.ts`,
 `lib/githubDispatch.ts`) :

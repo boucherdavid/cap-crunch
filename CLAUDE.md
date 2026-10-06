@@ -1247,6 +1247,9 @@ corrigée le 2026-09-20 :**
   `import_supabase.py` fusionne aussi les doublons d'alias déjà en base
   (`merge_alias_duplicates`, garde la fiche avec nhl_id/contrats). Nouvel orphelin repéré →
   ajouter la variante dans `FIRST_NAME_ALIASES` plutôt que de corriger à la main.
+- Homonymes de la **même équipe** (les deux Elias Pettersson de Vancouver, 2026-10-06) : deux fiches
+  aux `nhl_id` différents ne sont jamais fusionnées (`distinct_people()`, `import_supabase.py`), et
+  une ligne du CSV est rattachée par l'âge quand la clé nom|équipe désigne deux fiches.
 - `import_drafts.py` jumelle d'abord par `playerId` de l'API NHL (= `players.nhl_id`), puis par
   nom en écartant toute fiche au `nhl_id` différent (homonymes — ex : Jack Hughes NJD/LAK), et
   efface le repêchage d'une fiche qui porte le choix d'un autre `nhl_id` (2026-10-01).
