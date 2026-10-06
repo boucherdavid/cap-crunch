@@ -95,6 +95,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Meilleurs joueurs disponibles', href: '/meilleurs-disponibles' },
       { label: 'Marché des échanges', href: '/marche-echanges' },
       { label: 'Journal des transactions', href: '/journal-transactions' },
+      { label: 'Comparaison avec Marqueur', href: '/comparaison-marqueur' },
       { label: 'Marqueur.com ↗', href: MARQUEUR_URL },
     ],
   },
