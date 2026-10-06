@@ -21,6 +21,18 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-06
 
+**[Fix] — Pastille du menu Admin : on voit maintenant où aller** (`app/components/Navbar.tsx`) :
+- Le compteur rouge du groupe Admin (retours des poolers + notifications non lus) n'indiquait pas
+  la page à ouvrir. Même pastille ajoutée sur le lien « Communauté », où ils se lisent.
+
+**[Feat] — Panneau « Mises à jour automatiques » avec un bouton par tâche** (`app/lib/dataUpdates.ts`,
+`admin/donnees/DataUpdatesPanel.tsx`, `data-update-actions.ts`, `admin/donnees/page.tsx`) :
+- Demande de David : il ouvre l'app chaque jour, un bouton par mise à jour lui suffit quand
+  l'horaire automatique a failli. Six tâches : points, blessures, stats avancées, trios,
+  salaires/contrats/repêchages, copie de secours. Dernière exécution, résultat, relance.
+- Liste blanche côté serveur, admin seulement. Visible aussi sur staging, où un clic lance la
+  vraie tâche (qui écrit en prod) — sans danger, les imports sont idempotents.
+
 **[Fix] — Deux Elias Pettersson : l'import ne fusionne plus deux joueurs aux `nhl_id` différents** (`python_script/import_supabase.py`) :
 - Cause du mélange attaquant/défenseur corrigé la veille : `deduplicate_players` (cas 1) fusionnait
   toute paire « même nom + même équipe », et la clé `nom|équipe` du rattachement des contrats ne

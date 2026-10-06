@@ -41,6 +41,8 @@
 - **Elias Pettersson le défenseur — bloqué en prod** : rouler dans le SQL Editor de prod
   `ALTER TABLE players DROP CONSTRAINT players_name_team_unique;` (contrainte absente de staging),
   puis créer sa fiche. Correctif de l'import sur staging, à valider par un pipeline staging.
+- **À valider sur staging (David)** : panneau « Mises à jour automatiques » (Admin → Mise à jour
+  de données), un bouton par tâche.
 - Après le prochain pipeline du lundi : vérifier qu'une fiche distincte a été créée pour Elias
   Pettersson le défenseur (`nhl_id` 8483678).
 

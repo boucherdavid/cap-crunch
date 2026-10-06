@@ -1221,6 +1221,9 @@ corrigée le 2026-09-20 :**
   `dispatchWorkflow()` (`lib/githubDispatch.ts`, `workflow_dispatch`, démarre en quelques
   secondes). En place pour l'import des points (`/api/cron/stats`, 6 h UTC → `regular_stats.yml`).
   Les `schedule` GitHub restent comme filet de sécurité (imports idempotents).
+- **Filet manuel** : panneau « Mises à jour automatiques » de `/admin/donnees`
+  (`DataUpdatesPanel.tsx`, liste dans `lib/dataUpdates.ts`) — dernière exécution et résultat de
+  chaque tâche, bouton « Lancer maintenant ». Toute nouvelle tâche planifiée s'y ajoute.
 - Route protégée par `CRON_SECRET` (Vercel l'envoie en `Authorization: Bearer`), exclue de
   l'authentification de `proxy.ts` (`api/cron` dans le `matcher`), et inactive hors prod
   (`getAppEnv()`) — staging déploie le même `vercel.json`. Forfait gratuit Vercel : un passage par
