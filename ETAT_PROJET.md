@@ -42,8 +42,6 @@
   contrainte `players_name_team_unique` retirée en prod le 2026-10-06 ; correctif de l'import
   validé par un pipeline staging complet. À confirmer au pipeline du lundi 12 octobre.
 - Panneau « Mises à jour automatiques » et pastille sur Communauté : en prod le 2026-10-06.
-- Après le prochain pipeline du lundi : vérifier qu'une fiche distincte a été créée pour Elias
-  Pettersson le défenseur (`nhl_id` 8483678).
 
 ## 2. Branches / déploiement
 
