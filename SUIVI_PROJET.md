@@ -21,6 +21,10 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-06
 
+**Commits du jour** (tous promus sur `main`, `2a06886`) : `6004f77` cron Vercel · `5847a01` copie
+prod → staging · `8730dc5` homonymes de la même équipe · `ff28b9c` panneau des mises à jour et
+pastille · `dcc0876`, `4efff93`, `995efbe`, `1d00de0`, `652c3b3` comparaison Marqueur.
+
 **[Feat] — Comparaison avec Marqueur ouverte aux poolers** (`app/app/comparaison-marqueur/page.tsx`, `MarqueurReportView.tsx`,
 `lib/marqueur.ts`, `Navbar.tsx`, `aide/AideTabs.tsx`, `a-propos/page.tsx`) :
 - Demande de David. Page `/comparaison-marqueur` (menu Le pool) : totaux, mouvements pas encore
@@ -89,6 +93,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - À confirmer après une première nuit : heure réelle du passage.
 
 ### 2026-10-05
+
+**Commits du jour** (tous promus sur `main`) : `23969a6`, `a69a1ec` import des points · `3ce7b06`
+disponibilité par `nhl_id` · `2316f24` meilleurs disponibles · `a18ecad` retour de LTIR · `6e08eed`,
+`a548f6a`, `9394160` bouton « À faire » et courriels de test · `5759bf6` LTIR échangeable ·
+`dceb008` règle « a rejoué » · `e97f9b6` comparaison Marqueur.
 
 **[Feat] — Comparaison avec Marqueur, liste à reporter et vidéos dans l'Aide** (`app/lib/marqueur.ts`,
 `admin/effectifs/MarqueurReportView.tsx`, `admin/effectifs/page.tsx`, `aide/AideTabs.tsx`) :
