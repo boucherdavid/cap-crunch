@@ -6,6 +6,9 @@ import AddProspectForm from '../draft-center/AddProspectForm'
 import DraftProspectActions from '../draft-center/DraftProspectActions'
 import AdminDraftYearSelect from '../draft-center/AdminDraftYearSelect'
 import { DRAFT_SOURCES_INFOONLY } from '@/lib/draft-sources'
+import { getAppEnv } from '@/lib/appEnv'
+import { canDispatchWorkflows, fetchLastWorkflowRun } from '@/lib/githubDispatch'
+import StagingSyncPanel from './StagingSyncPanel'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,6 +71,10 @@ export default async function AdminDonneesPage({
       {/* ── Pipeline ── */}
       {activeTab === 'pipeline' && (
         <div className="space-y-6">
+          {/* Copie prod → staging : jamais affichée sur le site de prod (David, 2026-10-06). */}
+          {getAppEnv() !== 'production' && (
+            <StagingSyncPanel initialRun={await fetchLastWorkflowRun('sync_prod_to_staging.yml')} canTrigger={canDispatchWorkflows()} />
+          )}
           <div>
             <h1 className="text-2xl font-bold text-gray-800">{'Mise à jour des données'}</h1>
             <p className="text-gray-500 mt-2 max-w-3xl">

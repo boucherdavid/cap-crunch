@@ -128,7 +128,12 @@ python sync_staging_to_prod.py --apply   # exécution réelle — demande confir
 # (ex : 2025-26 et 2026-27) : pooler_rosters, roster_change_log, journal (transactions +
 # items), état pré-saison et réglages de pool_seasons → remplacement complet en staging ;
 # choix de repêchage mis à jour sur place (jumelés par saison/propriétaire d'origine/ronde).
+# Depuis le 2026-10-06 : aussi les blessures, les demandes de LTIR et app_settings ; les suivis de
+# retour au jeu (ltir_return_watch) sont vidés et reconstruits par l'app.
 # Pas de ballotage, d'échanges proposés ni de marché. Écrit toujours dans staging seulement.
+# Habitude de David : rafraîchir staging avant chaque séance de test. Bouton « Copier la prod vers
+# staging » sur /admin/donnees (staging et local seulement), qui lance
+# .github/workflows/sync_prod_to_staging.yml — jamais planifié, une copie effacerait les tests en cours.
 cd python_script
 python sync_prod_to_staging.py           # dry-run
 python sync_prod_to_staging.py --apply   # exécution réelle (staging), sans confirmation
@@ -204,7 +209,8 @@ Hockey_Pool_App/
 │       ├── backup_tool.yml        ← Régénère backup/pool_backup.html (dimanche 12h UTC + manuel)
 │       ├── injuries.yml           ← Scrape blessures CBS + ESPN + MoneyPuck (quotidien 16h UTC (midi ET) + manuel)
 │       ├── advanced_stats.yml     ← Stats avancées MoneyPuck (quotidien 11h UTC + manuel)
-│       └── line_combos.yml        ← Trios et paires Daily Faceoff (quotidien 15h UTC + manuel)
+│       ├── line_combos.yml        ← Trios et paires Daily Faceoff (quotidien 15h UTC + manuel)
+│       └── sync_prod_to_staging.yml ← Copie prod → staging (manuel seulement, bouton sur /admin/donnees en staging)
 ├── app/                       ← Application Next.js
 │   ├── CLAUDE.md              ← Règles spécifiques Next.js/TypeScript
 │   ├── AGENTS.md
@@ -339,7 +345,7 @@ applique `scoring_config` aux joueurs **actifs** ; tous les pointeurs de la LNH 
 propriétaire. Calcul en cache 45 s (`unstable_cache`, client admin) ; les clients sondent
 `/en-direct/donnees` chaque minute pendant les matchs seulement (`components/live/useLiveNight.ts`),
 jamais un rechargement de page. LNH indisponible → `error`, jamais des zéros. Les points officiels
-restent `player_game_logs`, importés chaque nuit (3 passages, 1 h 23 / 3 h 23 / 5 h 23 ET — `regular_stats.yml`). Lien Marqueur.com (notre pool, suivi
+restent `player_game_logs`, importés chaque nuit vers 2 h ET par Vercel Cron (voir section 6, « Tâches planifiées »). Lien Marqueur.com (notre pool, suivi
 comparatif) : `lib/externalLinks.ts`, carte sur l'accueil et entrée externe du menu Le pool.
 
 **Recherche globale de joueurs** (David, 2026-10-01) : champ dans la barre du haut
@@ -650,7 +656,7 @@ composant, pas de `?subtab=`), donc pas d'accès par URL directe comme pour `/ad
 | `/admin/pool` | `poolers` Poolers · `config` Configuration (sous-onglets `Saisons` / `Général` / `Pointage Saison` — `Général` = ex-"Pool Saison", renommé le 2026-09-01) |
 | `/admin/communaute` | `communication` Communication (feedback + notifs) · `babillard` Babillard (publier/supprimer des communications, ajouté le 2026-09-02) · `suivi` Suivi (activité) · `planification` Planification (sondage type Doodle, admin) |
 | `/admin/init` | `rosters` Rosters initiaux · `recrues` Banque de recrues · `choix` Choix de repêchage (← réassigner le propriétaire d'un pick échangé hors-app) — réglages one-shot déjà en place pour la saison courante |
-| `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `approbation` Approbation (transactions entre poolers en attente, `TradeApprovalManager.tsx` — onglet ajouté le 2026-09-21) · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) |
+| `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `approbation` Approbation (transactions entre poolers en attente, `TradeApprovalManager.tsx` — onglet ajouté le 2026-09-21) · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) · `marqueur` Marqueur (écarts avec notre pool sur Marqueur.com, 2026-10-05) |
 | `/admin/donnees` | `pipeline` Pipeline salaires/contrats/repêchages (doc, `PlayerMerge`) · `prospects` Classement des prospects |
 | `/admin/series` | pas d'onglets — vue unique (avancement des séries), message si aucune saison séries active. Retiré du dropdown Admin le 2026-08-28 (ne servait qu'aux tests, pas d'usage normal du pool des séries) — route et code conservés, toujours atteignable directement par URL. Depuis le 2026-08-30, également retiré du sous-menu "Pool Séries" côté pooler (voir ci-dessous) — plus aucun point d'entrée dans la nav, seulement l'URL directe |
 
@@ -1193,6 +1199,33 @@ corrigée le 2026-09-20 :**
   comportement que sur `/statistiques/ahl`, qui n'a jamais masqué sa pastille selon la saison
   choisie. `fetchTakenPlayers()` est donc appelée sans condition de saison.
 
+**Comparaison avec Marqueur.com (`app/lib/marqueur.ts`) — David, 2026-10-05 :**
+- David tient les alignements à la main sur Marqueur (`MARQUEUR_URL`) pour repérer nos bogues.
+  `/admin/effectifs?tab=marqueur` (lien direct « Comparaison Marqueur » dans le menu Admin) lit les pages **publiques** du pool (`stats_03.php`, une par
+  pooler, sans connexion) et liste les écarts : alignements (actifs = lignes `tr`, réservistes =
+  lignes `trj`) et points par joueur actif. **Lecture seule, à sens unique** — ne jamais faire
+  écrire Cap Crunch dans Marqueur : il reproduirait nos erreurs au lieu de les révéler.
+- Les écarts d'alignement servent de liste « à reporter sur Marqueur » (avec le dernier
+  `roster_change_log` du joueur comme contexte) ; elle se vide seule quand les deux concordent.
+- Marqueur n'a pas de LTIR : LTIR ici ↔ réserviste là-bas = concordant. Recrues en banque non
+  comparées (lues dans `pooler_rosters`, `buildStandings()` omettant les recrues jamais actives).
+- Jumelage des joueurs par nom exact, puis par nom de famille s'il est unique des deux côtés
+  (« Mitch »/« Mitchell »). HTML d'un tiers, donc fragile : une lecture ratée donne `error`,
+  jamais de faux écarts. Calculé à chaque ouverture de l'onglet (9 requêtes), sans cache.
+
+**Tâches planifiées — GitHub est en retard, Vercel déclenche (David, 2026-10-06) :**
+- Les `schedule` de GitHub Actions partent avec 3 à 8 heures de retard pour ce dépôt, et certains
+  passages sont sautés (constaté sur toutes nos tâches ; « best effort » selon GitHub). Changer
+  l'heure du cron ne règle rien : l'import des points partait vers 8 h ET quelle que soit l'heure.
+- Pour ce qui doit être à l'heure : `crons` dans `app/vercel.json` → route `app/api/cron/*` →
+  `dispatchWorkflow()` (`lib/githubDispatch.ts`, `workflow_dispatch`, démarre en quelques
+  secondes). En place pour l'import des points (`/api/cron/stats`, 6 h UTC → `regular_stats.yml`).
+  Les `schedule` GitHub restent comme filet de sécurité (imports idempotents).
+- Route protégée par `CRON_SECRET` (Vercel l'envoie en `Authorization: Bearer`), exclue de
+  l'authentification de `proxy.ts` (`api/cron` dans le `matcher`), et inactive hors prod
+  (`getAppEnv()`) — staging déploie le même `vercel.json`. Forfait gratuit Vercel : un passage par
+  jour par cron, à l'heure près. Variables requises en prod : `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN`.
+
 **Next.js 16 :**
 - Utiliser `proxy.ts`, PAS `middleware.ts`
 - Rester compatible avec les conventions Next.js 16
@@ -1586,6 +1619,10 @@ Pages de consultation : `/`, `/joueurs`, `/statistiques`, `/statistiques/ahl`,
 
 **Règle :** lors de l'ajout ou modification d'une fonctionnalité accessible aux poolers,
 évaluer si `/aide` (Guide ou Règlements) doit être mis à jour.
+
+**Vidéos de démonstration (David, 2026-10-05)** : chaque entrée de `AideTabs.tsx` accepte
+`video: '<lien YouTube>'` (visibilité « Non répertoriée »), affichée dans un lecteur intégré
+(`youtube-nocookie.com`) sous le texte. David enregistre sur staging avec les comptes de test.
 
 ---
 

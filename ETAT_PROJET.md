@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-10-05
+**Dernière mise à jour :** 2026-10-06
 
 ---
 
@@ -29,6 +29,15 @@
 - Joueurs sur LTIR au marché et échangeables : en prod le 2026-10-05 (`5deebd1`).
 - Règle « a rejoué depuis moins de 7 jours → pas admissible au LTIR » (badge « De retour au jeu ») :
   en prod le 2026-10-05, migration roulée dans les deux bases.
+- **À valider sur staging (David)** : onglet Marqueur de Gestion des effectifs (écarts + liste à
+  reporter). Vidéos de l'Aide : envoyer les liens YouTube (non répertoriés) à ajouter par entrée.
+- **Import des points par Vercel Cron — en prod le 2026-10-06.** À vérifier le 7 au matin : un
+  import « workflow_dispatch » parti vers 2 h-3 h ET, classement à jour au réveil.
+- **Copie prod → staging par bouton — en prod le 2026-10-06** (bouton sur `/admin/donnees` de
+  staging). Premier clic de David = premier vrai test de la copie réelle.
+- Jeton `GITHUB_WORKFLOW_TOKEN` (« Cap Crunch Vercel ») : il expire — à renouveler dans les deux
+  projets Vercel à l'échéance, sinon l'import de nuit retombe sur l'horaire GitHub (~8 h ET).
+- Onglet Comparaison Marqueur : en prod, pas encore validé à l'écran par David.
 - Après le prochain pipeline du lundi : vérifier qu'une fiche distincte a été créée pour Elias
   Pettersson le défenseur (`nhl_id` 8483678).
 

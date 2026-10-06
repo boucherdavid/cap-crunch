@@ -16,7 +16,14 @@ interface Section {
   href?: string
   /** Chemin d'une capture d'écran (`/guide/xxx.png`, servie depuis `app/public/guide/`). */
   screenshot?: string
+  /** Lien YouTube d'une courte vidéo de démonstration (visibilité « Non répertoriée »). */
+  video?: string
   content: React.ReactNode
+}
+
+/** Identifiant d'une vidéo YouTube à partir de son lien (youtu.be/…, watch?v=…, /embed/…, /shorts/…). */
+function youtubeId(url: string): string | null {
+  return url.match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/)([\w-]{11})/)?.[1] ?? null
 }
 
 function SectionCard({ s, badge }: { s: Section; badge?: string }) {
@@ -35,6 +42,23 @@ function SectionCard({ s, badge }: { s: Section; badge?: string }) {
         </Link>
       )}
       {s.content}
+      {s.video && youtubeId(s.video) && (
+        <div className="mt-4">
+          <div className="aspect-video border border-gray-200 rounded-lg overflow-hidden shadow-sm bg-black">
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${youtubeId(s.video)}`}
+              title={`Vidéo : ${s.title}`}
+              loading="lazy"
+              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowFullScreen
+              className="w-full h-full"
+            />
+          </div>
+          <p className="text-xs text-gray-400 italic mt-1.5">
+            Vidéo à titre indicatif — l&apos;écran peut avoir changé depuis l&apos;enregistrement.
+          </p>
+        </div>
+      )}
       {s.screenshot && (
         <div className="mt-4">
           <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">

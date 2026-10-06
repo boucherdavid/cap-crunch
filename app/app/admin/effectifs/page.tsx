@@ -11,6 +11,8 @@ import TradeApprovalManager from './TradeApprovalManager'
 import LtirApprovalManager from './LtirApprovalManager'
 import LtirSettingsForm from './LtirSettingsForm'
 import { fetchLtirSettings } from '@/lib/injuries'
+import MarqueurReportView from './MarqueurReportView'
+import { buildMarqueurReport, type MarqueurReport } from '@/lib/marqueur'
 import type { LtirSettings } from '@/lib/ltirEligibility'
 import { loadCapWatchDataAction, getPendingTradeOffersForAdminAction, getPendingLtirRequestsForAdminAction } from './cap-watch-actions'
 
@@ -22,6 +24,7 @@ const TABS = [
   { id: 'approbation',  label: 'Approbation' },
   { id: 'historique',   label: 'Historique' },
   { id: 'conformite',   label: 'Conformité cap' },
+  { id: 'marqueur',     label: 'Marqueur' },
 ]
 
 export default async function AdminEffectifsPage({
@@ -122,9 +125,16 @@ export default async function AdminEffectifsPage({
     }
   }
 
+  // ── Comparaison avec Marqueur.com (David, 2026-10-05) ──────────────────────
+  let marqueurReport: MarqueurReport | null = null
+  if (activeTab === 'marqueur') marqueurReport = await buildMarqueurReport()
+
   return (
     <div>
       <AdminTabBar tabs={TABS} activeTab={activeTab} basePath="/admin/effectifs" />
+
+      {/* ── Marqueur ── */}
+      {activeTab === 'marqueur' && marqueurReport && <MarqueurReportView report={marqueurReport} />}
 
       {/* ── Mouvements ── */}
       {activeTab === 'mouvements' && (

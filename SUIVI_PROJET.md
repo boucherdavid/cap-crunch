@@ -19,7 +19,43 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-06
+
+**[Feat] — Copie prod → staging : blessures, demandes de LTIR et bouton** (`python_script/sync_prod_to_staging.py`,
+`.github/workflows/sync_prod_to_staging.yml`, `app/admin/donnees/StagingSyncPanel.tsx`, `staging-sync-actions.ts`,
+`lib/githubDispatch.ts`) :
+- David veut tester sur les données réelles : rafraîchir staging avant chaque séance de test.
+- Le script copie maintenant aussi `player_injuries` (staging datait du 1er octobre),
+  `ltir_requests` et `app_settings`, et vide `ltir_return_watch` (reconstruit par l'app).
+- Bouton sur `/admin/donnees`, visible hors prod seulement, avec confirmation ; lance une tâche
+  GitHub manuelle (jamais planifiée : écraserait les tests de plusieurs jours).
+- Dry-run validé (715 lignes d'alignement, 129 blessures, 13 demandes de LTIR). Mode réel et
+  bouton pas encore exercés : la tâche doit d'abord exister sur `main`.
+
+**[Fix] — Import des points déclenché par Vercel plutôt que par l'horloge de GitHub** (`app/vercel.json`,
+`app/app/api/cron/stats/route.ts`, `app/lib/githubDispatch.ts`, `app/proxy.ts`) :
+- Courriel d'échec reçu par David (stats avancées) : panne côté GitHub (« job not acquired by
+  Runner »), relancé avec succès.
+- Constat au passage : les 3 passages de nuit ajoutés la veille n'ont rien changé — un seul est
+  parti, à 8 h 06 ET. Toutes nos tâches planifiées GitHub ont 3 à 8 h de retard.
+- Vercel Cron (6 h UTC) appelle `/api/cron/stats`, qui lance `regular_stats.yml` par
+  `workflow_dispatch`. Protégé par `CRON_SECRET`, inactif hors prod. Un seul cron pour rester
+  dans les limites du forfait gratuit ; l'horaire GitHub reste en filet.
+- À confirmer après une première nuit : heure réelle du passage.
+
 ### 2026-10-05
+
+**[Feat] — Comparaison avec Marqueur, liste à reporter et vidéos dans l'Aide** (`app/lib/marqueur.ts`,
+`admin/effectifs/MarqueurReportView.tsx`, `admin/effectifs/page.tsx`, `aide/AideTabs.tsx`) :
+- David demandait d'automatiser la saisie sur Marqueur. Écarté : pas d'API, robot fragile, et
+  Marqueur perdrait son rôle de référence indépendante. Retenu : rapport d'écarts en lecture seule
+  (onglet Marqueur de Gestion des effectifs), dont les écarts d'alignement tiennent lieu de liste
+  « à reporter » — pas de table ni de case à cocher, elle se vide quand la saisie est faite.
+- Vérifié contre la prod (lecture seule) : 5 écarts d'alignement réels (Steve : Lysell, Will
+  Smith ; Vincent : Sandin Pellikka, Sanderson, Ufko — mouvements du jour) et 2 écarts de points
+  (Guentzel, Leonard — erreurs de Marqueur déjà connues).
+- Aide : champ `video` par entrée (lecteur YouTube intégré). Aucune vidéo pour l'instant.
+- Pas de courriel quotidien des écarts (demanderait une tâche planifiée) — à ajouter au besoin.
 
 **[Feat] — Admissibilité LTIR : un joueur qui a rejoué n'est plus admissible** (`lib/ltirEligibility.ts`, `lib/injuries.ts`,
 `components/InjuryBadge.tsx`, `statistiques/blessures/*`, `LtirSettingsForm.tsx`, `aide/LtirRulesContent.tsx`,
