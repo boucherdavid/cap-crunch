@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-10-05
+**Dernière mise à jour :** 2026-10-06
 
 ---
 
@@ -31,6 +31,10 @@
   en prod le 2026-10-05, migration roulée dans les deux bases.
 - **À valider sur staging (David)** : onglet Marqueur de Gestion des effectifs (écarts + liste à
   reporter). Vidéos de l'Aide : envoyer les liens YouTube (non répertoriés) à ajouter par entrée.
+- **Import des points par Vercel Cron (2026-10-06) — sur staging** : à faire par David dans Vercel,
+  projet `cap-crunch` (prod) : ajouter `CRON_SECRET` (longue chaîne aléatoire) et vérifier que
+  `GITHUB_WORKFLOW_TOKEN` y est. Puis promotion, et vérifier le lendemain qu'un import
+  « workflow_dispatch » est parti vers 2 h-3 h ET.
 - Après le prochain pipeline du lundi : vérifier qu'une fiche distincte a été créée pour Elias
   Pettersson le défenseur (`nhl_id` 8483678).
 

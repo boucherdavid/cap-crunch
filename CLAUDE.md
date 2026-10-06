@@ -339,7 +339,7 @@ applique `scoring_config` aux joueurs **actifs** ; tous les pointeurs de la LNH 
 propriétaire. Calcul en cache 45 s (`unstable_cache`, client admin) ; les clients sondent
 `/en-direct/donnees` chaque minute pendant les matchs seulement (`components/live/useLiveNight.ts`),
 jamais un rechargement de page. LNH indisponible → `error`, jamais des zéros. Les points officiels
-restent `player_game_logs`, importés chaque nuit (3 passages, 1 h 23 / 3 h 23 / 5 h 23 ET — `regular_stats.yml`). Lien Marqueur.com (notre pool, suivi
+restent `player_game_logs`, importés chaque nuit vers 2 h ET par Vercel Cron (voir section 6, « Tâches planifiées »). Lien Marqueur.com (notre pool, suivi
 comparatif) : `lib/externalLinks.ts`, carte sur l'accueil et entrée externe du menu Le pool.
 
 **Recherche globale de joueurs** (David, 2026-10-01) : champ dans la barre du haut
@@ -1206,6 +1206,19 @@ corrigée le 2026-09-20 :**
 - Jumelage des joueurs par nom exact, puis par nom de famille s'il est unique des deux côtés
   (« Mitch »/« Mitchell »). HTML d'un tiers, donc fragile : une lecture ratée donne `error`,
   jamais de faux écarts. Calculé à chaque ouverture de l'onglet (9 requêtes), sans cache.
+
+**Tâches planifiées — GitHub est en retard, Vercel déclenche (David, 2026-10-06) :**
+- Les `schedule` de GitHub Actions partent avec 3 à 8 heures de retard pour ce dépôt, et certains
+  passages sont sautés (constaté sur toutes nos tâches ; « best effort » selon GitHub). Changer
+  l'heure du cron ne règle rien : l'import des points partait vers 8 h ET quelle que soit l'heure.
+- Pour ce qui doit être à l'heure : `crons` dans `app/vercel.json` → route `app/api/cron/*` →
+  `dispatchWorkflow()` (`lib/githubDispatch.ts`, `workflow_dispatch`, démarre en quelques
+  secondes). En place pour l'import des points (`/api/cron/stats`, 6 h UTC → `regular_stats.yml`).
+  Les `schedule` GitHub restent comme filet de sécurité (imports idempotents).
+- Route protégée par `CRON_SECRET` (Vercel l'envoie en `Authorization: Bearer`), exclue de
+  l'authentification de `proxy.ts` (`api/cron` dans le `matcher`), et inactive hors prod
+  (`getAppEnv()`) — staging déploie le même `vercel.json`. Forfait gratuit Vercel : un passage par
+  jour par cron, à l'heure près. Variables requises en prod : `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN`.
 
 **Next.js 16 :**
 - Utiliser `proxy.ts`, PAS `middleware.ts`

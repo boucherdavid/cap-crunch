@@ -19,6 +19,19 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-06
+
+**[Fix] — Import des points déclenché par Vercel plutôt que par l'horloge de GitHub** (`app/vercel.json`,
+`app/app/api/cron/stats/route.ts`, `app/lib/githubDispatch.ts`, `app/proxy.ts`) :
+- Courriel d'échec reçu par David (stats avancées) : panne côté GitHub (« job not acquired by
+  Runner »), relancé avec succès.
+- Constat au passage : les 3 passages de nuit ajoutés la veille n'ont rien changé — un seul est
+  parti, à 8 h 06 ET. Toutes nos tâches planifiées GitHub ont 3 à 8 h de retard.
+- Vercel Cron (6 h UTC) appelle `/api/cron/stats`, qui lance `regular_stats.yml` par
+  `workflow_dispatch`. Protégé par `CRON_SECRET`, inactif hors prod. Un seul cron pour rester
+  dans les limites du forfait gratuit ; l'horaire GitHub reste en filet.
+- À confirmer après une première nuit : heure réelle du passage.
+
 ### 2026-10-05
 
 **[Feat] — Comparaison avec Marqueur, liste à reporter et vidéos dans l'Aide** (`app/lib/marqueur.ts`,
