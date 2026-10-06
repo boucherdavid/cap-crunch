@@ -11,6 +11,9 @@ import { usePoolerTodo } from './usePoolerTodo'
 import type { PoolerTodo } from './pooler-todo-actions'
 
 // Choses à faire du pooler (échanges, ballotage — David, 2026-10-03), partagées avec le menu.
+// Messages et notifications non lus de l'admin : affichés sur le groupe Admin ET sur le lien
+// « Communauté », où ils se lisent (David, 2026-10-06 : la pastille seule ne disait pas où aller).
+const AdminUnreadContext = createContext<{ count: number; title: string }>({ count: 0, title: '' })
 const TodoContext = createContext<PoolerTodo>({ trades: 0, waivers: 0, total: 0, items: [] })
 import { createClient } from '@/lib/supabase/client'
 import { MARQUEUR_URL } from '@/lib/externalLinks'
@@ -197,6 +200,7 @@ function TreeLeaf({ leaf, pathname, userName, onNavigate }: {
   leaf: NavLeaf; pathname: string; userName: string | null; onNavigate: () => void
 }) {
   const todo = useContext(TodoContext)
+  const adminUnread = useContext(AdminUnreadContext)
   if (leaf.auth && !userName) return null
   // Lien externe (Marqueur.com) : nouvel onglet.
   if (leaf.href.startsWith('http')) {
@@ -223,6 +227,9 @@ function TreeLeaf({ leaf, pathname, userName, onNavigate }: {
     >
       <span>{leaf.label}</span>
       {leaf.href === '/gestion-effectifs' && <TodoPills todo={todo} compact />}
+      {leaf.href === '/admin/communaute' && adminUnread.count > 0 && (
+        <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full" title={adminUnread.title}>{adminUnread.count}</span>
+      )}
     </Link>
   )
 }
@@ -479,6 +486,7 @@ export default function Navbar({
 
   return (
     <TodoContext.Provider value={todo}>
+    <AdminUnreadContext.Provider value={{ count: adminBadgeCount, title: adminBadgeTitle }}>
       {/* Barre du haut — toujours visible, pleine largeur */}
       <div className="bg-pool-navy shadow sticky top-0 z-40">
         {isPoolerView && (
@@ -631,6 +639,7 @@ export default function Navbar({
           </div>
         )}
       </aside>
+    </AdminUnreadContext.Provider>
     </TodoContext.Provider>
   )
 }

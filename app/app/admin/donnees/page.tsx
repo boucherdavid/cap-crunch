@@ -9,6 +9,8 @@ import { DRAFT_SOURCES_INFOONLY } from '@/lib/draft-sources'
 import { getAppEnv } from '@/lib/appEnv'
 import { canDispatchWorkflows, fetchLastWorkflowRun } from '@/lib/githubDispatch'
 import StagingSyncPanel from './StagingSyncPanel'
+import DataUpdatesPanel from './DataUpdatesPanel'
+import { getDataUpdateRunsAction } from './data-update-actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -75,6 +77,7 @@ export default async function AdminDonneesPage({
           {getAppEnv() !== 'production' && (
             <StagingSyncPanel initialRun={await fetchLastWorkflowRun('sync_prod_to_staging.yml')} canTrigger={canDispatchWorkflows()} />
           )}
+          <DataUpdatesPanel initialRuns={await getDataUpdateRunsAction()} canTrigger={canDispatchWorkflows()} />
           <div>
             <h1 className="text-2xl font-bold text-gray-800">{'Mise à jour des données'}</h1>
             <p className="text-gray-500 mt-2 max-w-3xl">

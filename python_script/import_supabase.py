@@ -346,6 +346,13 @@ def _merge(supabase, keep_id, dup_id):
     supabase.table('players').delete().eq('id', dup_id).execute()
 
 
+def distinct_people(a: dict, b: dict) -> bool:
+    """Deux fiches qui portent chacune un nhl_id différent sont deux personnes, même avec le même
+    nom et la même équipe (2026-10-06 : les deux Elias Pettersson de Vancouver, attaquant et
+    défenseur, avaient été fusionnés en une fiche hybride — contrats de l'un, nhl_id de l'autre)."""
+    return bool(a.get('nhl_id') and b.get('nhl_id') and a['nhl_id'] != b['nhl_id'])
+
+
 def deduplicate_players(supabase, roster_ambiguous: set | None = None, roster_by_team: set | None = None, teams_id_to_code: dict | None = None, csv_ambiguous_names: set | None = None):
     """Détecte et fusionne les doublons joueurs. Trois cas couverts :
     1. Même nom + même équipe → doublons directs.
@@ -390,19 +397,24 @@ def deduplicate_players(supabase, roster_ambiguous: set | None = None, roster_by
             by_team.setdefault(tid, []).append(p)
 
         # Cas 1 : plusieurs entrées pour la même équipe → doublons directs
+        merged_ids: set = set()
         for tid, entries in by_team.items():
             if len(entries) < 2:
                 continue
             entries_sorted = sorted(entries, key=lambda p: p['id'])
-            keep_id = entries_sorted[0]['id']
+            keep = entries_sorted[0]
+            keep_id = keep['id']
             for dup in entries_sorted[1:]:
+                if distinct_people(keep, dup):
+                    print(f'[DEDUP] Homonymes même équipe ({name_key}|{tid}) : nhl_id différents ({keep["nhl_id"]} / {dup["nhl_id"]}) — conservés distincts')
+                    continue
                 print(f'[DEDUP] Doublon même équipe ({name_key}|{tid}): conserver {keep_id}, supprimer {dup["id"]}')
                 _merge(supabase, keep_id, dup['id'])
+                merged_ids.add(dup['id'])
                 nb_fusions += 1
 
         # Reconstruire by_team après fusions éventuelles (IDs supprimés)
-        remaining = [p for p in players if p['id'] not in
-                     {dup['id'] for entries in by_team.values() for dup in entries[1:] if len(entries) > 1}]
+        remaining = [p for p in players if p['id'] not in merged_ids]
 
         # Cas 2 : une entrée sans équipe (team_id=None) + une avec équipe → fusionner
         by_team2 = {}
@@ -412,7 +424,7 @@ def deduplicate_players(supabase, roster_ambiguous: set | None = None, roster_by
         if None in by_team2:
             null_entries = sorted(by_team2[None], key=lambda p: p['id'])
             real_teams = {tid: sorted(entries, key=lambda p: p['id']) for tid, entries in by_team2.items() if tid is not None}
-            if len(real_teams) == 1:
+            if len(real_teams) == 1 and len(list(real_teams.values())[0]) == 1:
                 real_id = list(real_teams.values())[0][0]['id']
                 for dup in null_entries:
                     print(f'[DEDUP] Doublon sans équipe ({name_key}): conserver {real_id}, supprimer {dup["id"]}')
@@ -461,7 +473,9 @@ def deduplicate_players(supabase, roster_ambiguous: set | None = None, roster_by
                 # qu'un même joueur ayant changé d'équipe garde sensiblement le
                 # même âge d'un import à l'autre.
                 a, b = real_remaining
-                if a.get('age') is not None and b.get('age') is not None and abs(a['age'] - b['age']) <= AGE_MATCH_TOLERANCE:
+                if distinct_people(a, b):
+                    print(f"[DEDUP] Homonymes ({name_key}) : nhl_id différents — conservés distincts")
+                elif a.get('age') is not None and b.get('age') is not None and abs(a['age'] - b['age']) <= AGE_MATCH_TOLERANCE:
                     keep, dup = (a, b) if (a.get('nhl_id') or a['id'] < b['id']) else (b, a)
                     print(f"[DEDUP] Doublon changement équipe, départagé par âge ({name_key}, âges {a['age']}/{b['age']}): conserver {keep['id']}, supprimer {dup['id']}")
                     _merge(supabase, keep['id'], dup['id'])
@@ -607,6 +621,9 @@ def upload_vers_supabase(csv_path=None):
     existing_map = {}       # 'fn|ln|team' → {id, draft_year}
     existing_by_name = {}   # 'fn|ln'      → [{id, draft_year, team_code}, ...]
     existing_by_alias = {}  # 'prénom canonique|ln' → [...] — repli surnoms (name_aliases.py)
+    # Homonymes de la même équipe (les deux Elias Pettersson de Vancouver) : la clé nom|équipe ne
+    # suffit plus, on départage par l'âge — sinon le contrat de l'un s'écrit sur la fiche de l'autre.
+    same_team_homonyms = {}  # 'fn|ln|team' → [entries], seulement quand il y en a 2+
 
     offset = 0
     while True:
@@ -616,6 +633,8 @@ def upload_vers_supabase(csv_path=None):
             ln = normaliser_nom(p['last_name'])
             tc = teams_id_to_code.get(p.get('team_id'), '')
             entry = {'id': p['id'], 'draft_year': p.get('draft_year'), 'age': p.get('age')}
+            if f'{fn}|{ln}|{tc}' in existing_map:
+                same_team_homonyms.setdefault(f'{fn}|{ln}|{tc}', [existing_map[f'{fn}|{ln}|{tc}']]).append(entry)
             existing_map[f'{fn}|{ln}|{tc}'] = entry
             existing_by_name.setdefault(f'{fn}|{ln}', []).append({'team_code': tc, **entry})
             existing_by_alias.setdefault(f"{canonical_first(p['first_name'])}|{ln}", []).append(
@@ -687,7 +706,12 @@ def upload_vers_supabase(csv_path=None):
         key_team = f'{fn}|{ln}|{team_code}'
         key_name = f'{fn}|{ln}'
 
-        if key_team in existing_map:
+        if key_team in same_team_homonyms:
+            player_info = match_by_age(same_team_homonyms[key_team], age)
+            if player_info is None:
+                print(f'[AVERTISSEMENT] {first_name} {last_name} ({team_code}) : {len(same_team_homonyms[key_team])} homonymes dans cette équipe, âge {age} non concluant — ligne ignorée')
+                continue
+        elif key_team in existing_map:
             player_info = existing_map[key_team]
         elif f'{fn}|{ln}|' in existing_map:
             # Joueur en base sans équipe assignée (team_id null)
@@ -770,7 +794,15 @@ def upload_vers_supabase(csv_path=None):
         key_team = f'{fn}|{ln}|{team_code}'
         key_name = f'{fn}|{ln}'
 
-        if key_team in existing_map:
+        if key_team in same_team_homonyms:
+            # Même départage par l'âge qu'à la passe des joueurs plus haut.
+            try:
+                row_age = float(row.get('Age', ''))
+            except (TypeError, ValueError):
+                row_age = None
+            matched = match_by_age(same_team_homonyms[key_team], row_age)
+            player_id = matched['id'] if matched else None
+        elif key_team in existing_map:
             player_id = existing_map[key_team]['id']
         elif f'{fn}|{ln}|' in existing_map:
             player_id = existing_map[f'{fn}|{ln}|']['id']
