@@ -31,13 +31,13 @@
   en prod le 2026-10-05, migration roulée dans les deux bases.
 - **À valider sur staging (David)** : onglet Marqueur de Gestion des effectifs (écarts + liste à
   reporter). Vidéos de l'Aide : envoyer les liens YouTube (non répertoriés) à ajouter par entrée.
-- **Import des points par Vercel Cron (2026-10-06) — sur staging** : à faire par David dans Vercel,
-  projet `cap-crunch` (prod) : ajouter `CRON_SECRET` (longue chaîne aléatoire) et vérifier que
-  `GITHUB_WORKFLOW_TOKEN` y est. Puis promotion, et vérifier le lendemain qu'un import
-  « workflow_dispatch » est parti vers 2 h-3 h ET.
-- **Copie prod → staging par bouton (2026-10-06) — sur staging** : utilisable seulement après
-  promotion sur `main` (la tâche GitHub doit y exister). Exige `GITHUB_WORKFLOW_TOKEN` dans le
-  projet Vercel `cap-crunch-staging`. Premier clic = premier vrai test.
+- **Import des points par Vercel Cron — en prod le 2026-10-06.** À vérifier le 7 au matin : un
+  import « workflow_dispatch » parti vers 2 h-3 h ET, classement à jour au réveil.
+- **Copie prod → staging par bouton — en prod le 2026-10-06** (bouton sur `/admin/donnees` de
+  staging). Premier clic de David = premier vrai test de la copie réelle.
+- Jeton `GITHUB_WORKFLOW_TOKEN` (« Cap Crunch Vercel ») : il expire — à renouveler dans les deux
+  projets Vercel à l'échéance, sinon l'import de nuit retombe sur l'horaire GitHub (~8 h ET).
+- Onglet Comparaison Marqueur : en prod, pas encore validé à l'écran par David.
 - Après le prochain pipeline du lundi : vérifier qu'une fiche distincte a été créée pour Elias
   Pettersson le défenseur (`nhl_id` 8483678).
 
