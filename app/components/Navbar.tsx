@@ -159,6 +159,7 @@ const ADMIN_GROUP: NavGroup = {
       label: 'Opérations courantes',
       items: [
         { label: 'Gestion des effectifs', href: '/admin/effectifs' },
+        { label: 'Comparaison Marqueur', href: '/admin/effectifs?tab=marqueur' },
         { label: 'Communauté', href: '/admin/communaute' },
         { label: 'Gestion du pool', href: '/admin/pool' },
         { label: 'Mise à jour de données', href: '/admin/donnees' },

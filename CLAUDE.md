@@ -1195,7 +1195,7 @@ corrigée le 2026-09-20 :**
 
 **Comparaison avec Marqueur.com (`app/lib/marqueur.ts`) — David, 2026-10-05 :**
 - David tient les alignements à la main sur Marqueur (`MARQUEUR_URL`) pour repérer nos bogues.
-  `/admin/effectifs?tab=marqueur` lit les pages **publiques** du pool (`stats_03.php`, une par
+  `/admin/effectifs?tab=marqueur` (lien direct « Comparaison Marqueur » dans le menu Admin) lit les pages **publiques** du pool (`stats_03.php`, une par
   pooler, sans connexion) et liste les écarts : alignements (actifs = lignes `tr`, réservistes =
   lignes `trj`) et points par joueur actif. **Lecture seule, à sens unique** — ne jamais faire
   écrire Cap Crunch dans Marqueur : il reproduirait nos erreurs au lieu de les révéler.
