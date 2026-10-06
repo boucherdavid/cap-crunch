@@ -95,6 +95,5 @@ Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en s
 
 ## 6. Prochains chantiers possibles (backlog)
 
-- Échanges pré-saison dans l'outil pooler (aujourd'hui : filet admin `/admin/transactions`).
 - Compléter la couverture ESPN des projections (joueurs de profondeur) si jugé utile.
 - Yahoo comme 3ᵉ source de blessures (validé techniquement, pas branché).
