@@ -103,6 +103,8 @@ function norm(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
+const MIN_PLAYERS = 15
+
 async function fetchPage(no?: string): Promise<string> {
   const url = `${BASE}?nyx=${POOL_ID}${no ? `&no=${encodeURIComponent(no)}` : ''}`
   const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Cap Crunch, comparaison de pool)' }, cache: 'no-store' })
@@ -120,7 +122,13 @@ function parsePoolerOptions(html: string): { no: string; label: string; selected
 /** Joueurs d'une page de pooler, avant le sommaire : lignes `tr` (actifs), `trj` (réservistes
  * depuis le début) et `trr` (anciens actifs, en rouge — voir Status). */
 function parsePlayers(html: string): MarqueurPlayer[] {
-  const body = html.split('SOMMAIRE')[0]
+  // Sans le bloc « SOMMAIRE », la page ne contient pas l'alignement du pooler — mais elle garde
+  // le « TOP 10 en direct » de la colonne de droite, fait des mêmes lignes de tableau. Le
+  // 2026-10-06 au soir, ce top 10 a été pris pour l'alignement des 8 poolers (11 points chacun,
+  // 254 faux écarts). Mieux vaut échouer que de comparer n'importe quoi.
+  const end = html.indexOf('SOMMAIRE')
+  if (end < 0) throw new Error("la page reçue ne contient pas l'alignement du pooler")
+  const body = html.slice(0, end)
   const players: MarqueurPlayer[] = []
   for (const m of body.matchAll(/<tr class='(tr|trj|trr)'>([\s\S]*?)<\/tr>/g)) {
     const name = m[2].match(/\/player\/[^']*'[^>]*>([^<]+)<\/a>/)?.[1]
@@ -162,7 +170,12 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
     const rest = await Promise.all(options.filter(o => !o.selected).map(async o => [o.no, parsePlayers(await fetchPage(o.no))] as const))
     for (const o of options.filter(o => o.selected)) pages.set(o.no, parsePlayers(first))
     for (const [no, players] of rest) pages.set(no, players)
-    if ([...pages.values()].every(p => p.length === 0)) throw new Error('aucun joueur lu (la page a peut-être changé)')
+    // Un alignement compte au moins 20 actifs et 2 réservistes : en dessous de MIN_PLAYERS, la
+    // page est incomplète (Marqueur en mise à jour, page tronquée) et la comparaison serait fausse.
+    const incomplete = options.filter(o => (pages.get(o.no)?.length ?? 0) < MIN_PLAYERS)
+    if (incomplete.length > 0) {
+      throw new Error(`alignement incomplet pour ${incomplete.length} pooler${incomplete.length > 1 ? 's' : ''} (Marqueur est peut-être en cours de mise à jour — réessaie dans quelques minutes)`)
+    }
   } catch (e) {
     return { error: `Lecture de Marqueur impossible : ${e instanceof Error ? e.message : String(e)}`, fetchedAt, poolers: [] }
   }

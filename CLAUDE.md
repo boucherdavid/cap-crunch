@@ -1209,6 +1209,9 @@ corrigée le 2026-09-20 :**
   écrire Cap Crunch dans Marqueur : il reproduirait nos erreurs au lieu de les révéler.
 - Les écarts d'alignement servent de liste « à reporter sur Marqueur » (avec le dernier
   `roster_change_log` du joueur comme contexte) ; elle se vide seule quand les deux concordent.
+- **Garde-fous de lecture** (2026-10-06, après 254 faux écarts un soir de matchs) : une page sans
+  bloc « SOMMAIRE » ou un alignement de moins de 15 joueurs = lecture ratée (`error`, jamais mise
+  en cache). Sans ça, le « TOP 10 en direct » de la colonne de droite passait pour l'alignement.
 - Ligne rouge `trr` sur Marqueur = ancien actif retiré des actifs (période fermée, points gardés) :
   concorde avec tout statut non actif ici, ou avec un joueur parti (David, 2026-10-06 — Sanderson).
 - Chaque écart de points porte sa **preuve LNH** (`fetchNhlProof()` : total selon le pointage du
