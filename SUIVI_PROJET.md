@@ -21,6 +21,16 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-06
 
+**[Fix] — Comparaison Marqueur : 254 faux écarts un soir de matchs** (`app/lib/marqueur.ts`) :
+- Signalé par David à 17 h 57 : 11 points pour chaque pooler côté Marqueur, des joueurs comme
+  Iafallo « à retirer ». Les pages reçues de Marqueur ne contenaient pas les alignements ; le
+  lecteur a pris le « TOP 10 en direct » de la colonne de droite pour l'alignement de chacun.
+- Cause côté Marqueur non établie (la même page lue depuis le poste de David au même moment
+  était complète) : mise à jour en cours au début des matchs, ou réponse différente aux serveurs
+  de Vercel. À surveiller.
+- Garde-fous : page sans « SOMMAIRE » ou alignement de moins de 15 joueurs → message d'erreur
+  au lieu d'une comparaison fausse, et rien n'est gardé en cache.
+
 **Commits du jour** (tous promus sur `main`, `2a06886`) : `6004f77` cron Vercel · `5847a01` copie
 prod → staging · `8730dc5` homonymes de la même équipe · `ff28b9c` panneau des mises à jour et
 pastille · `dcc0876`, `4efff93`, `995efbe`, `1d00de0`, `652c3b3` comparaison Marqueur.
