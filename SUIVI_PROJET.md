@@ -31,7 +31,12 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Garde-fous : page sans « SOMMAIRE » ou alignement de moins de 15 joueurs → message d'erreur
   au lieu d'une comparaison fausse, et rien n'est gardé en cache.
 
-**Commits du jour** (tous promus sur `main`, `2a06886`) : `6004f77` cron Vercel · `5847a01` copie
+**Clôture de session (2026-10-06, soir)** : `main` = `staging` (`f3650f6`). Dernier correctif du
+jour : `ac120a6`, garde-fous de lecture de Marqueur. Inventaire des courriels envoyés aux poolers
+remis à David (ballotage, échanges, LTIR, babillard) ; deux courriels manquants relevés, à décider
+(voir `ETAT_PROJET.md`). À vérifier le 7 au matin : import des points lancé par Vercel vers 2 h ET.
+
+**Commits du jour** (tous promus sur `main`, `f3650f6`) : `6004f77` cron Vercel · `5847a01` copie
 prod → staging · `8730dc5` homonymes de la même équipe · `ff28b9c` panneau des mises à jour et
 pastille · `dcc0876`, `4efff93`, `995efbe`, `1d00de0`, `652c3b3` comparaison Marqueur.
 
