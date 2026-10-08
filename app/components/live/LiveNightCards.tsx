@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import TeamBadge from '@/components/TeamBadge'
 import type { LiveNight, LivePlayer, LivePooler } from '@/lib/liveNight'
@@ -126,6 +127,100 @@ export function ScorersTable({ scorers, showGame = false }: { scorers: LivePlaye
   )
 }
 
+const SCORER_FILTER_KEY = 'live-scorers-filter'
+const FILTER_ALL = 'tous'
+const FILTER_MINE = 'moi'
+const FILTER_AVAILABLE = 'disponibles'
+
+const noopSubscribe = () => () => {}
+function readSavedFilter(): string {
+  try { return window.localStorage.getItem(SCORER_FILTER_KEY) ?? FILTER_ALL } catch { return FILTER_ALL }
+}
+
+/**
+ * Pointeurs de la soirée avec un filtre par propriétaire (David, 2026-10-07 — demande d'un
+ * pooler : voir d'un coup d'œil qui lui a donné ses points). Le choix est gardé dans le
+ * navigateur ; « Mes joueurs » suit le pooler connecté plutôt qu'un identifiant figé.
+ */
+export function ScorersPanel({
+  scorers, poolers, myId, limit, showGame = false, emptyLabel,
+}: {
+  scorers: LivePlayer[]
+  poolers: LivePooler[]
+  myId: string | null
+  limit?: number
+  showGame?: boolean
+  emptyLabel: string
+}) {
+  // Choix gardé dans le navigateur, lu par useSyncExternalStore (même patron que
+  // YourTurnPrompt) ; `override` prend le relais dès que le pooler change le filtre.
+  const saved = useSyncExternalStore(noopSubscribe, readSavedFilter, () => FILTER_ALL)
+  const [override, setOverride] = useState<string | null>(null)
+  const filter = override ?? saved
+
+  const hasMe = !!myId && poolers.some(p => p.poolerId === myId)
+  const others = poolers.filter(p => p.poolerId !== myId).sort((a, b) => a.name.localeCompare(b.name, 'fr-CA'))
+  // Un choix gardé qui ne correspond plus à rien (autre compte, pooler parti) retombe sur « Tous ».
+  const active = filter === FILTER_AVAILABLE || (filter === FILTER_MINE && hasMe) || others.some(p => p.poolerId === filter)
+    ? filter : FILTER_ALL
+  const ownerId = active === FILTER_MINE ? myId : active
+
+  const change = (value: string) => {
+    setOverride(value)
+    try { window.localStorage.setItem(SCORER_FILTER_KEY, value) } catch { /* sans effet */ }
+  }
+
+  const filtered = active === FILTER_ALL ? scorers
+    : active === FILTER_AVAILABLE ? scorers.filter(p => !p.ownerId)
+    : scorers.filter(p => p.ownerId === ownerId)
+  // La limite ne sert qu'à la liste complète : une liste filtrée est courte et doit être entière.
+  const shown = active === FILTER_ALL && limit ? filtered.slice(0, limit) : filtered
+  const hidden = filtered.length - shown.length
+  const counted = filtered.filter(p => p.ownerType === 'actif').reduce((sum, p) => sum + p.pts, 0)
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-b border-gray-100">
+        <label className="flex items-center gap-2 text-xs text-gray-500">
+          Afficher
+          <select
+            value={active}
+            onChange={e => change(e.target.value)}
+            className="border border-gray-200 rounded-md px-2 py-1 text-sm text-gray-800 bg-white"
+          >
+            <option value={FILTER_ALL}>Tous les pointeurs</option>
+            {hasMe && <option value={FILTER_MINE}>Mes joueurs</option>}
+            {others.map(p => <option key={p.poolerId} value={p.poolerId}>{p.name}</option>)}
+            <option value={FILTER_AVAILABLE}>Joueurs disponibles</option>
+          </select>
+        </label>
+        {active !== FILTER_ALL && active !== FILTER_AVAILABLE && filtered.length > 0 && (
+          <span className="text-xs text-gray-500">
+            Total compté : <span className="font-bold text-blue-600">{fmtLivePts(counted)}</span>
+          </span>
+        )}
+      </div>
+      {shown.length === 0 ? (
+        <p className="px-5 py-4 text-sm text-gray-400">
+          {active === FILTER_ALL ? emptyLabel
+            : active === FILTER_MINE ? 'Aucun de tes joueurs n’a de point pour le moment.'
+            : active === FILTER_AVAILABLE ? 'Aucun joueur disponible n’a de point pour le moment.'
+            : 'Aucun de ses joueurs n’a de point pour le moment.'}
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <ScorersTable scorers={shown} showGame={showGame} />
+        </div>
+      )}
+      {hidden > 0 && (
+        <p className="px-5 py-2 text-xs text-gray-400 border-t border-gray-100">
+          + {hidden} autre{hidden > 1 ? 's' : ''} pointeur{hidden > 1 ? 's' : ''}
+        </p>
+      )}
+    </>
+  )
+}
+
 /** Accueil : « Classement — ce soir » et « Pointeurs — ce soir », mis à jour pendant les matchs. */
 export default function LiveNightCards({
   initial, myId, scorersLimit = 12,
@@ -152,20 +247,13 @@ export default function LiveNightCards({
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <CardHeader title="Pointeurs — ce soir" night={night} />
           {night.error && <Unavailable />}
-          {night.scorers.length === 0 ? (
-            <p className="px-5 py-4 text-sm text-gray-400">
-              {started ? 'Aucun point pour le moment.' : 'Les matchs ne sont pas encore commencés.'}
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <ScorersTable scorers={night.scorers.slice(0, scorersLimit)} />
-            </div>
-          )}
-          {night.scorers.length > scorersLimit && (
-            <p className="px-5 py-2 text-xs text-gray-400 border-t border-gray-100">
-              + {night.scorers.length - scorersLimit} autre{night.scorers.length - scorersLimit > 1 ? 's' : ''} pointeur{night.scorers.length - scorersLimit > 1 ? 's' : ''}
-            </p>
-          )}
+          <ScorersPanel
+            scorers={night.scorers}
+            poolers={night.poolers}
+            myId={myId}
+            limit={scorersLimit}
+            emptyLabel={started ? 'Aucun point pour le moment.' : 'Les matchs ne sont pas encore commencés.'}
+          />
         </div>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
