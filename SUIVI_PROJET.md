@@ -19,6 +19,26 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-07
+
+**[Feat/Fix] — Type de recrue corrigeable en cours de saison, « agent libre » par défaut**
+(`app/admin/rosters/actions.ts`, `app/admin/rosters/RosterManager.tsx`,
+`app/admin/recrues/BanqueRecruesManager.tsx`, `app/admin/transactions/actions.ts`,
+`app/gestion-effectifs/actions.ts`) :
+- Signalé par David : Ilya Protas, signé comme agent libre sous ELC, apparaît « repêché 2024 ».
+  Cause : le Mode init déduisait « repêché » dès qu'une recrue avait une année de repêchage
+  **LNH** (confirmé par David, il l'avait ajouté en Mode init). Protégé 5 saisons au lieu de
+  seulement pendant son ELC.
+- Règle confirmée par David : seul le repêchage des recrues du pool pose « repêché » ; tout le
+  reste est « agent libre » par défaut (Mode init, Banque de recrues), corrigeable à la main.
+- `updateRookieTypeAction` n'est plus bloquée après « Démarrer la saison » (l'ajout et le retrait
+  sans historique le restent) : changer l'étiquette ne touche ni `player_type` ni les dates.
+- Banque de recrues (`/admin/init?tab=recrues`) : nouvelle section « Actifs et réservistes encore
+  protégés », avec le même ✎ — un actif mal classé n'était corrigeable nulle part.
+- Signatures (Gestion d'effectifs, `/admin/transactions`) : `rookie_type`, `pool_draft_year` et
+  `draft_pick_id` remis à zéro quand un joueur est re-signé sur une ancienne ligne du même pooler.
+- Protas non corrigé en base : David le fait lui-même avec le ✎ une fois en prod.
+
 ### 2026-10-06
 
 **[Fix] — Comparaison Marqueur : 254 faux écarts un soir de matchs** (`app/lib/marqueur.ts`) :
@@ -31,7 +51,12 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Garde-fous : page sans « SOMMAIRE » ou alignement de moins de 15 joueurs → message d'erreur
   au lieu d'une comparaison fausse, et rien n'est gardé en cache.
 
-**Commits du jour** (tous promus sur `main`, `2a06886`) : `6004f77` cron Vercel · `5847a01` copie
+**Clôture de session (2026-10-06, soir)** : `main` = `staging` (`f3650f6`). Dernier correctif du
+jour : `ac120a6`, garde-fous de lecture de Marqueur. Inventaire des courriels envoyés aux poolers
+remis à David (ballotage, échanges, LTIR, babillard) ; deux courriels manquants relevés, à décider
+(voir `ETAT_PROJET.md`). À vérifier le 7 au matin : import des points lancé par Vercel vers 2 h ET.
+
+**Commits du jour** (tous promus sur `main`, `f3650f6`) : `6004f77` cron Vercel · `5847a01` copie
 prod → staging · `8730dc5` homonymes de la même équipe · `ff28b9c` panneau des mises à jour et
 pastille · `dcc0876`, `4efff93`, `995efbe`, `1d00de0`, `652c3b3` comparaison Marqueur.
 

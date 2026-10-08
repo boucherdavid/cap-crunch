@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-10-06
+**Dernière mise à jour :** 2026-10-07
 
 ---
 
@@ -22,7 +22,7 @@
 | Branche | État |
 |---|---|
 | `staging` | = `main` |
-| `main` (prod) | À jour au 2026-10-06 (`2a06886`) |
+| `main` (prod) | À jour au 2026-10-07 (correction du type de recrue) |
 
 Variables Vercel ajoutées les 5 et 6 octobre :
 - `cap-crunch` (prod) : `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN`.
@@ -48,7 +48,7 @@ Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en s
 | Joueurs sur LTIR au marché et échangeables (arrivent actif ou réserviste) | Marché, onglet Échanges | Test réel entre deux poolers |
 | Bouton « À faire » des poolers | Barre du haut | — |
 | Courriels de staging redirigés vers David | `EMAIL_REDIRECT_TO` | — |
-| Comparaison avec Marqueur (écarts, liste à reporter avec dates, preuve LNH) | Admin → Comparaison Marqueur ; menu Le pool pour les poolers | Vérifier en prod que la lecture de Marqueur passe depuis Vercel |
+| Comparaison avec Marqueur (écarts, liste à reporter avec dates, preuve LNH) | Admin → Comparaison Marqueur ; menu Le pool pour les poolers | Voir « Prochaine session » : lecture ratée le soir du 6 octobre |
 | Vidéos dans l'Aide (champ `video` par entrée) | `/aide` | David : enregistrer sur staging, envoyer les liens YouTube « non répertoriés » |
 | Deux Elias Pettersson distincts ; l'import ne fusionne plus deux `nhl_id` différents | Pipeline | **Confirmer au pipeline du lundi 12 octobre** que les deux fiches restent distinctes |
 | Pastille des non-lus sur le lien Communauté | Menu Admin | — |
@@ -57,9 +57,19 @@ Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en s
 
 ### ▶ Prochaine session — commencer ici
 
+- **Ilya Protas** : encore « repêché 2024 » en prod. David le passe en « agent libre » avec le ✎
+  de `/admin/init?tab=recrues` (validé sur staging le 2026-10-07, en prod).
 - **7 octobre au matin** : panneau « Mises à jour automatiques » → ligne « Points de la veille ».
   Si rien n'est parti vers 2 h-3 h ET, le cron Vercel ne fonctionne pas (cliquer « Lancer
   maintenant » en attendant, puis diagnostiquer).
+- **Comparaison Marqueur — à surveiller les soirs de matchs.** Le 6 octobre à 17 h 57, Marqueur a
+  renvoyé à Vercel des pages sans alignements (254 faux écarts affichés aux poolers). Garde-fou en
+  prod : la page affiche maintenant « Lecture de Marqueur impossible ». Cause non établie (page
+  complète depuis le poste de David au même moment). Si l'erreur revient chaque soir de matchs,
+  Marqueur répond autrement à Vercel le soir : lire la page autrement (autre heure, autre source).
+- **Courriels manquants, à décider** : plafond dépassé après une signature (push seulement, alors
+  qu'il y a une date limite) et proposition d'échange acceptée par l'autre pooler (aucun avis au
+  proposeur). Proposé à David le 6 octobre, sans réponse.
 - **Elias Pettersson le défenseur** (fiche 3720) n'a pas de contrat en base : PuckPedia ne liste
   qu'un seul Elias Pettersson. Sans effet tant que personne ne le possède.
 - **Tâches GitHub planifiées** : toutes partent avec 3 à 8 heures de retard. Seul l'import des

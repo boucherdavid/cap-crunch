@@ -210,19 +210,19 @@ export async function updateRookieTypeAction(
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
 
-  const { data: row } = await supabase.from('pooler_rosters').select('pool_season_id').eq('id', rosterId).single()
-  if (!row) return { error: 'Entrée introuvable.' }
-  const seasonGuard = await assertSeasonNotStarted(supabase, row.pool_season_id)
-  if (seasonGuard.error) return seasonGuard
-
-  const { error } = await supabase
+  // Pas de verrou « saison démarrée » ici, contrairement à l'ajout et au retrait (David,
+  // 2026-10-07) : corriger une étiquette de protection mal posée ne touche ni player_type ni
+  // les dates, donc ni les points ni l'historique — doit rester possible en cours de saison.
+  const { data: updated, error } = await supabase
     .from('pooler_rosters')
     .update({
       rookie_type:    rookieType,
       pool_draft_year: rookieType === 'repeche' ? (poolDraftYear ?? null) : null,
     })
     .eq('id', rosterId)
+    .select('id')
   if (error) return { error: error.message }
+  if (!updated || updated.length === 0) return { error: 'Entrée introuvable.' }
   revalidateRosterPages()
   return {}
 }

@@ -573,7 +573,13 @@ export async function applyTransactionItems(
       // Signature directe en recrue (agent libre encore sur son ELC) — évite le détour par
       // /admin/init (Banque de recrues), réservé au cas repêché-par-le-pool mais plus sur
       // ELC (protection 5 saisons, pool_draft_year requis, non déductible ici).
-      const rookieFields = new_player_type === 'recrue' ? { rookie_type: 'agent_libre' } : {}
+      // Toujours remis à zéro (David, 2026-10-07) : une ancienne ligne du même pooler (joueur
+      // libéré puis re-signé) gardait sinon son vieux type « repêché » et son année.
+      const rookieFields = {
+        rookie_type: new_player_type === 'recrue' ? 'agent_libre' : null,
+        pool_draft_year: null,
+        draft_pick_id: null,
+      }
 
       // Pas de date tant que la saison n'est pas démarrée pour de vrai (David, 2026-09-02).
       const { data: existing } = await supabase.from('pooler_rosters').select('id').eq('pooler_id', to_pooler_id!).eq('player_id', player_id!).eq('pool_season_id', saisonId).maybeSingle()
