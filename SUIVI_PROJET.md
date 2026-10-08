@@ -21,6 +21,16 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-07
 
+**[Feat] — Filtre par pooler sur les pointeurs de la soirée**
+(`app/components/live/LiveNightCards.tsx`, `app/app/en-direct/LiveNightDetail.tsx`, `/aide`) :
+- Demande d'un pooler relayée par David : voir facilement qui lui a donné ses points, surtout le
+  lendemain matin. Menu « Afficher » dans « Pointeurs — ce soir » (accueil) et « Pointeurs de la
+  LNH » (`/en-direct`) : tous, mes joueurs, un autre pooler, joueurs disponibles.
+- Composant partagé `ScorersPanel`, filtre côté client seulement (aucune requête de plus). Choix
+  gardé dans le navigateur. Liste filtrée affichée en entier (la limite de 12 de l'accueil ne
+  vaut que pour « Tous ») ; « Total compté » = points des joueurs actifs seulement.
+- Commit : `96bf7dd`
+
 **[Feat/Fix] — Type de recrue corrigeable en cours de saison, « agent libre » par défaut**
 (`app/admin/rosters/actions.ts`, `app/admin/rosters/RosterManager.tsx`,
 `app/admin/recrues/BanqueRecruesManager.tsx`, `app/admin/transactions/actions.ts`,
