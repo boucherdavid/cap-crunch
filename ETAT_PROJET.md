@@ -62,6 +62,9 @@ Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en s
   envoyé en réserve (message vert, soumission acceptée) ; sans blessé, toujours bloqué. Aussi : un
   poste vacant après une mise sur LTIR approuvée se comble par un joueur verrouillé. Puis promouvoir
   en prod.
+- **Migration à rouler** dans les deux bases (éditeur SQL de Supabase, staging puis prod) :
+  `supabase_migrations/delai_reactivation_defaut_3.sql` — délai de réactivation à 3 jours par
+  défaut pour les prochaines saisons. Sans effet sur la saison en cours.
 
 - **Types de recrue** : Protas et Kantserov corrigés en prod par David (2026-10-07). 127 recrues
   « repêché » de 2026-27 n'ont aucun choix du pool rattaché (alignements entrés en Mode init) :

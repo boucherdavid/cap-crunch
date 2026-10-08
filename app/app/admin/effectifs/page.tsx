@@ -152,7 +152,7 @@ export default async function AdminEffectifsPage({
                 saisonId={saisonMouvements.id}
                 season={saisonMouvements.season}
                 poolCap={Number(saisonMouvements.pool_cap)}
-                delaiReactivationJours={saisonMouvements.delai_reactivation_jours ?? 7}
+                delaiReactivationJours={saisonMouvements.delai_reactivation_jours ?? 3}
                 maxSignaturesAl={saisonMouvements.max_signatures_al ?? 10}
                 maxSignaturesLtir={saisonMouvements.max_signatures_ltir ?? 2}
               />

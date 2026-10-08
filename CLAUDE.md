@@ -1490,8 +1490,8 @@ la proposition en préparation (`TradeDraft`), et un scénario de `/simulation` 
 
 **Délai de réactivation (`pool_seasons.delai_reactivation_jours`) — exceptions du 2026-10-08
 (David)** : un joueur désactivé (réserve ou LTIR) ne redevient pas actif avant ce délai — réglé par
-saison, **3 jours** dans le pool (le défaut de la colonne et les replis `?? 7` du code ne
-s'appliquent pas). Admin jamais soumis. Deux exceptions dans `submitBatchAction`
+saison, **3 jours** par défaut (colonne et replis du code, migration
+`delai_reactivation_defaut_3.sql`). Admin jamais soumis. Deux exceptions dans `submitBatchAction`
 (`checkReactivationDelay`), calculées sur l'état d'avant le lot : un actif **blessé** (2 sources
 sur 3, pas `backInAction`) désactivé dans le même lot débloque une réactivation, un pour un, peu
 importe la position ; un **poste actif déjà vacant** (mise sur LTIR approuvée) peut être comblé par

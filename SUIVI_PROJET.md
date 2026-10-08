@@ -35,6 +35,12 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   jours en dur (le délai est réglé par saison).
 - Pas encore testé avec un compte pooler en staging.
 
+**[Chore] — Délai de réactivation à 3 jours par défaut**
+(`supabase_migrations/delai_reactivation_defaut_3.sql`, replis `?? 3` dans le code) :
+- Défaut de `pool_seasons.delai_reactivation_jours` passé de 7 à 3 (valeur du pool) ; les saisons
+  créées à l'avance, pas démarrées et restées à 7 passent à 3. Saisons démarrées non touchées.
+- Migration à rouler par David dans les deux bases (staging puis prod).
+
 ### 2026-10-07
 
 **[Feat] — Filtre par pooler sur les pointeurs de la soirée**

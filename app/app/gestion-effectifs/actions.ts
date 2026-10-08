@@ -113,7 +113,7 @@ export async function getActiveSaisonAction(): Promise<SaisonInfo | null> {
     id: data.id,
     season: data.season,
     poolCap: Number(data.pool_cap),
-    delaiReactivationJours: data.delai_reactivation_jours ?? 7,
+    delaiReactivationJours: data.delai_reactivation_jours ?? 3,
     maxSignaturesAl: data.max_signatures_al ?? 10,
     maxSignaturesLtir: data.max_signatures_ltir ?? 2,
     gestionEffectifsOuvert: data.gestion_effectifs_ouvert ?? true,
@@ -361,7 +361,7 @@ export async function submitBatchAction(input: {
     ? parseInt(saisonConfig.season.split('-')[0], 10) + 1 - 5
     : new Date().getFullYear() - 4
 
-  const delaiJours    = saisonConfig?.delai_reactivation_jours ?? 7
+  const delaiJours    = saisonConfig?.delai_reactivation_jours ?? 3
   const maxAl         = saisonConfig?.max_signatures_al ?? 10
   const maxLtir       = saisonConfig?.max_signatures_ltir ?? 2
 

@@ -92,7 +92,7 @@ export async function checkHistReactivationDelayAction(
   ])
 
   if (!lastRemoval?.removed_at) return { warning: null }
-  const delai = saison?.delai_reactivation_jours ?? 7
+  const delai = saison?.delai_reactivation_jours ?? 3
   const days = (new Date(ts).getTime() - new Date(lastRemoval.removed_at).getTime()) / 86_400_000
   if (days < delai) {
     return { warning: `Retiré de ce pooler il y a ${days.toFixed(1)} j (délai de réactivation configuré : ${delai} j).` }
@@ -584,7 +584,7 @@ export async function getHistLogAction(poolSeasonId: number): Promise<HistLogEnt
     return []
   }
 
-  const delai = saison?.delai_reactivation_jours ?? 7
+  const delai = saison?.delai_reactivation_jours ?? 3
   const dureeLtir = saison?.duree_min_ltir_jours ?? 21
 
   return ((data ?? []) as any[]).map(r => {
