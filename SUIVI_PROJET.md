@@ -58,6 +58,16 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Sans la migration, rien ne casse : aucun rétablissement tant que la colonne n'existe pas.
 - Pas encore testé sur un appareil.
 
+**[Docs] — Budgets de signatures d'agents libres expliqués**
+(`app/app/aide/SigningLimitsContent.tsx`, `aide/page.tsx`, `AideTabs.tsx`, `GestionEffectifsManager.tsx`) :
+- Question d'un pooler : pas clair qu'on peut dépasser le budget LTIR en cas de nombreuses
+  blessures. Le code le permettait déjà (`addNewPlayer` : une LTIR + signature prend le budget
+  LTIR, puis déborde sur le budget standard ; jamais l'inverse ; ballotage exempt) — aucune
+  règle changée, seulement le texte.
+- Nouvelle entrée Règlements « Signatures d'agents libres en saison », avec les valeurs de la
+  saison active (`max_signatures_al` / `max_signatures_ltir`), et une ligne sous les compteurs
+  de Gestion d'effectifs.
+
 ### 2026-10-07
 
 **[Feat] — Filtre par pooler sur les pointeurs de la soirée**

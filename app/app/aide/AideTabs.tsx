@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import type { LtirSettings } from '@/lib/ltirEligibility'
 import LtirRulesContent, { LtirSettingsContext } from './LtirRulesContent'
+import SigningLimitsContent, { SigningLimitsContext, type SigningLimits } from './SigningLimitsContent'
 
 type TabId = 'installation' | 'guide' | 'reglements'
 
@@ -833,6 +834,14 @@ const SECTIONS: Section[] = [
     content: <LtirRulesContent />,
   },
   {
+    id: 'regl-signatures-saison',
+    tab: 'reglements',
+    title: 'Signatures d\'agents libres en saison',
+    keywords: 'signature signatures agent libre agents libres saison budget standard ltir limite maximum combien remplacer blessure ballotage',
+    href: '/gestion-effectifs',
+    content: <SigningLimitsContent />,
+  },
+  {
     id: 'regl-recrues',
     tab: 'reglements',
     title: 'Banque de recrues & protection',
@@ -923,7 +932,7 @@ function normalize(s: string) {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
 
-export default function AideTabs({ ltirSettings }: { ltirSettings: LtirSettings }) {
+export default function AideTabs({ ltirSettings, signingLimits }: { ltirSettings: LtirSettings; signingLimits: SigningLimits | null }) {
   const [activeTab, setActiveTab] = useState<TabId>('installation')
   const [query, setQuery] = useState('')
 
@@ -944,6 +953,7 @@ export default function AideTabs({ ltirSettings }: { ltirSettings: LtirSettings 
 
   return (
     <LtirSettingsContext.Provider value={ltirSettings}>
+    <SigningLimitsContext.Provider value={signingLimits}>
     <div className="max-w-3xl mx-auto px-4 py-10">
       <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
@@ -1046,6 +1056,7 @@ export default function AideTabs({ ltirSettings }: { ltirSettings: LtirSettings 
         </>
       )}
     </div>
+    </SigningLimitsContext.Provider>
     </LtirSettingsContext.Provider>
   )
 }
