@@ -21,7 +21,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : choix « Mes réservistes » et « Mes recrues » du filtre des pointeurs (2026-10-07), à valider |
+| `staging` | = `main` |
 | `main` (prod) | À jour au 2026-10-07 (type de recrue, filtre des pointeurs en direct) |
 
 Variables Vercel ajoutées les 5 et 6 octobre :
