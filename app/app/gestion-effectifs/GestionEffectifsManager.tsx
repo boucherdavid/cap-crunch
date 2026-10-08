@@ -983,6 +983,9 @@ export default function GestionEffectifsManager({
           {!isAdmin && (
             <span className="text-xs text-gray-400 ml-auto">Délai de réactivation : {delaiReactivationJours} j</span>
           )}
+          <p className="w-full text-xs text-gray-400">
+            Standard : à utiliser comme tu veux. LTIR : pour remplacer un joueur mis sur le LTIR ; une fois ce budget épuisé, une LTIR + signature utilise ton budget standard. Le ballotage ne compte pas.
+          </p>
         </div>
       )}
 

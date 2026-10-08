@@ -21,7 +21,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | = `main` |
+| `staging` | `main` + budgets de signatures expliqués dans l'Aide et Gestion d'effectifs (2026-10-08, à valider) |
 | `main` (prod) | À jour au 2026-10-08 (délai de réactivation levé pour un blessé, notifications rétablies automatiquement) |
 
 Variables Vercel ajoutées les 5 et 6 octobre :
