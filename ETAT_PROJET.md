@@ -57,8 +57,10 @@ Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en s
 
 ### ▶ Prochaine session — commencer ici
 
-- **Ilya Protas** : encore « repêché 2024 » en prod. David le passe en « agent libre » avec le ✎
-  de `/admin/init?tab=recrues` (validé sur staging le 2026-10-07, en prod).
+- **Types de recrue** : Protas et Kantserov corrigés en prod par David (2026-10-07). 127 recrues
+  « repêché » de 2026-27 n'ont aucun choix du pool rattaché (alignements entrés en Mode init) :
+  impossible de distinguer par la base un vrai repêché d'un agent libre mal classé. David corrige
+  au cas par cas avec le ✎ de `/admin/init?tab=recrues`.
 - **7 octobre au matin** : panneau « Mises à jour automatiques » → ligne « Points de la veille ».
   Si rien n'est parti vers 2 h-3 h ET, le cron Vercel ne fonctionne pas (cliquer « Lancer
   maintenant » en attendant, puis diagnostiquer).
