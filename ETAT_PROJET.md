@@ -62,11 +62,11 @@ Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en s
   envoyé en réserve (message vert, soumission acceptée) ; sans blessé, toujours bloqué. Aussi : un
   poste vacant après une mise sur LTIR approuvée se comble par un joueur verrouillé. Puis promouvoir
   en prod.
-- **Migrations à rouler** dans les deux bases (éditeur SQL de Supabase, staging puis prod) :
+- **Migration à confirmer** dans les deux bases (éditeur SQL de Supabase) :
   `supabase_migrations/delai_reactivation_defaut_3.sql` (délai de réactivation à 3 jours par
-  défaut pour les prochaines saisons, sans effet sur la saison en cours) et
-  `supabase_migrations/poolers_notif_push.sql` (choix de notifications par compte).
-- **Notifications rétablies automatiquement** (staging seulement, après la migration) : à tester
+  défaut pour les prochaines saisons, sans effet sur la saison en cours) — David n'a pas précisé
+  si elle est roulée. `poolers_notif_push.sql` est roulée en staging et en prod (2026-10-08).
+- **Notifications rétablies automatiquement** (code sur staging seulement) : à tester
   sur un téléphone — activer, puis vider les données du site : à la reconnexion, l'abonnement
   revient seul ou le bandeau « Activer » s'affiche. Vérifier aussi que le mot de passe se remplit
   tout seul à la connexion.
