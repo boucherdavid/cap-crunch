@@ -21,8 +21,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : correction du type de recrue (2026-10-07), à valider |
-| `main` (prod) | À jour au 2026-10-06 (`f3650f6`) |
+| `staging` | = `main` |
+| `main` (prod) | À jour au 2026-10-07 (correction du type de recrue) |
 
 Variables Vercel ajoutées les 5 et 6 octobre :
 - `cap-crunch` (prod) : `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN`.
@@ -57,10 +57,8 @@ Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en s
 
 ### ▶ Prochaine session — commencer ici
 
-- **Type de recrue (sur staging, pas en prod)** : à valider sur `/admin/init?tab=recrues` — le ✎
-  fonctionne saison démarrée, section « Actifs et réservistes encore protégés », « agent libre »
-  par défaut. Une fois en prod : corriger **Ilya Protas** (David), encore « repêché 2024 ».
-
+- **Ilya Protas** : encore « repêché 2024 » en prod. David le passe en « agent libre » avec le ✎
+  de `/admin/init?tab=recrues` (validé sur staging le 2026-10-07, en prod).
 - **7 octobre au matin** : panneau « Mises à jour automatiques » → ligne « Points de la veille ».
   Si rien n'est parti vers 2 h-3 h ET, le cron Vercel ne fonctionne pas (cliquer « Lancer
   maintenant » en attendant, puis diagnostiquer).
