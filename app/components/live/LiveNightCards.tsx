@@ -130,6 +130,8 @@ export function ScorersTable({ scorers, showGame = false }: { scorers: LivePlaye
 const SCORER_FILTER_KEY = 'live-scorers-filter'
 const FILTER_ALL = 'tous'
 const FILTER_MINE = 'moi'
+const FILTER_MY_RESERVE = 'moi-reservistes'
+const FILTER_MY_ROOKIES = 'moi-recrues'
 const FILTER_AVAILABLE = 'disponibles'
 
 const noopSubscribe = () => () => {}
@@ -161,9 +163,15 @@ export function ScorersPanel({
   const hasMe = !!myId && poolers.some(p => p.poolerId === myId)
   const others = poolers.filter(p => p.poolerId !== myId).sort((a, b) => a.name.localeCompare(b.name, 'fr-CA'))
   // Un choix gardé qui ne correspond plus à rien (autre compte, pooler parti) retombe sur « Tous ».
-  const active = filter === FILTER_AVAILABLE || (filter === FILTER_MINE && hasMe) || others.some(p => p.poolerId === filter)
+  const mineFilters = [FILTER_MINE, FILTER_MY_RESERVE, FILTER_MY_ROOKIES]
+  const isMine = mineFilters.includes(filter) && hasMe
+  const active = filter === FILTER_AVAILABLE || isMine || others.some(p => p.poolerId === filter)
     ? filter : FILTER_ALL
-  const ownerId = active === FILTER_MINE ? myId : active
+  const ownerId = isMine ? myId : active
+  // Un autre pooler : ses actifs seulement. Soi-même : actifs, réservistes ou recrues, au choix
+  // (David, 2026-10-07) — les deux derniers ne donnent aucun point, d'où l'absence de total.
+  const ownerType = active === FILTER_MY_RESERVE ? 'reserviste' : active === FILTER_MY_ROOKIES ? 'recrue' : 'actif'
+  const countsForPool = ownerType === 'actif'
 
   const change = (value: string) => {
     setOverride(value)
@@ -172,8 +180,7 @@ export function ScorersPanel({
 
   const filtered = active === FILTER_ALL ? scorers
     : active === FILTER_AVAILABLE ? scorers.filter(p => !p.ownerId)
-    // Actifs seulement (David, 2026-10-07) : un réserviste qui marque ne donne rien au pooler.
-    : scorers.filter(p => p.ownerId === ownerId && p.ownerType === 'actif')
+    : scorers.filter(p => p.ownerId === ownerId && p.ownerType === ownerType)
   // La limite ne sert qu'à la liste complète : une liste filtrée est courte et doit être entière.
   const shown = active === FILTER_ALL && limit ? filtered.slice(0, limit) : filtered
   const hidden = filtered.length - shown.length
@@ -190,12 +197,14 @@ export function ScorersPanel({
             className="border border-gray-200 rounded-md px-2 py-1 text-sm text-gray-800 bg-white"
           >
             <option value={FILTER_ALL}>Tous les pointeurs</option>
-            {hasMe && <option value={FILTER_MINE}>Mes joueurs</option>}
+            {hasMe && <option value={FILTER_MINE}>Mes joueurs actifs</option>}
+            {hasMe && <option value={FILTER_MY_RESERVE}>Mes réservistes</option>}
+            {hasMe && <option value={FILTER_MY_ROOKIES}>Mes recrues</option>}
             {others.map(p => <option key={p.poolerId} value={p.poolerId}>{p.name}</option>)}
             <option value={FILTER_AVAILABLE}>Joueurs disponibles</option>
           </select>
         </label>
-        {active !== FILTER_ALL && active !== FILTER_AVAILABLE && filtered.length > 0 && (
+        {active !== FILTER_ALL && active !== FILTER_AVAILABLE && countsForPool && filtered.length > 0 && (
           <span className="text-xs text-gray-500">
             Total : <span className="font-bold text-blue-600">{fmtLivePts(counted)}</span>
           </span>
@@ -205,6 +214,8 @@ export function ScorersPanel({
         <p className="px-5 py-4 text-sm text-gray-400">
           {active === FILTER_ALL ? emptyLabel
             : active === FILTER_MINE ? 'Aucun de tes joueurs actifs n’a de point pour le moment.'
+            : active === FILTER_MY_RESERVE ? 'Aucun de tes réservistes n’a de point pour le moment.'
+            : active === FILTER_MY_ROOKIES ? 'Aucune de tes recrues n’a de point pour le moment.'
             : active === FILTER_AVAILABLE ? 'Aucun joueur disponible n’a de point pour le moment.'
             : 'Aucun de ses joueurs actifs n’a de point pour le moment.'}
         </p>
