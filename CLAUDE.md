@@ -968,6 +968,11 @@ revue le 2026-09-14 :**
   avant les 5 ans). Comme tout le libre-service pré-saison, disparaît dès que
   `season_started=true` — un joueur qui a déjà commencé la saison comme actif ne peut plus
   être renvoyé en banque par ce chemin (choix délibéré, David).
+- **Qui pose quel type (David, 2026-10-07)** : seul le repêchage des recrues du pool pose
+  `repeche` ; tout autre ajout (signature, Mode init, Banque de recrues) est `agent_libre` par
+  défaut — ne jamais le déduire du repêchage LNH (`players.draft_year`). Correction manuelle sur
+  `/admin/init?tab=recrues` (✎, aussi pour les actifs/réservistes encore protégés), permise même
+  saison démarrée (`updateRookieTypeAction`).
 - L'ancien panneau "Décisions requises — Recrues hors ELC" (résolution manuelle
   garder-actif/remettre-en-banque, `resolveElcDecisionAction`) reste retiré (2026-09-03).
 

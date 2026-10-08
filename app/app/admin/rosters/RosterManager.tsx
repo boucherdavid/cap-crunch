@@ -236,16 +236,17 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
       }
     }
     const tempId = tempIdCounter.current--
-    // Auto-détection du type recrue selon la présence d'un draft_year
-    const rookieType: 'repeche' | 'agent_libre' | null = player.is_rookie
-      ? (player.draft_year ? 'repeche' : 'agent_libre')
-      : null
+    // Toujours « agent libre » par défaut (David, 2026-10-07) : seul le repêchage des recrues du
+    // pool pose « repêché ». L'ancienne déduction à partir du repêchage LNH (draft_year) classait
+    // à tort un agent libre sous ELC comme repêché du pool (Ilya Protas) — se corrige au besoin
+    // avec le sélecteur de la ligne.
+    const rookieType: 'repeche' | 'agent_libre' | null = player.is_rookie ? 'agent_libre' : null
     const newEntry: NormalizedRosterEntry = {
       id: tempId,
       player_id: player.id,
       player_type: playerType,
       rookie_type: rookieType,
-      pool_draft_year: player.is_rookie && player.draft_year ? player.draft_year : null,
+      pool_draft_year: null,
       players: player,
     }
     setRoster(prev => [...prev, newEntry])

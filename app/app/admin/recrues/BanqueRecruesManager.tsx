@@ -32,6 +32,7 @@ type BankEntry = {
   rookie_type: 'repeche' | 'agent_libre' | null
   pool_draft_year: number | null
   players: Rookie
+  player_type?: string
 }
 type Saison = { id: number; season: string }
 type RookieCategory = 'repeche' | 'agent_libre'
@@ -65,7 +66,7 @@ const PENCIL = '\u270e'
 
 function BankRow({ entry, onRemove, onEdit, onActivate, onRelease, loading, expired = false }: {
   entry: BankEntry
-  onRemove: (id: number) => void
+  onRemove?: (id: number) => void
   onEdit: () => void
   onActivate?: () => void
   onRelease?: () => void
@@ -92,6 +93,11 @@ function BankRow({ entry, onRemove, onEdit, onActivate, onRelease, loading, expi
           {entry.players.last_name}, {entry.players.first_name}
         </span>
         <span className="text-gray-400 text-xs shrink-0">{entry.players.position ?? DASH}</span>
+        {entry.player_type && (
+          <span className="text-gray-500 text-xs shrink-0">
+            {entry.player_type === 'actif' ? 'Actif' : 'Réserviste'}
+          </span>
+        )}
         {typeLabel}
         {draftLabel(entry.players) && (
           <span className="text-gray-400 text-xs shrink-0" title="Vrai repêchage LNH (indépendant du type de protection dans le pool)">
@@ -112,13 +118,13 @@ function BankRow({ entry, onRemove, onEdit, onActivate, onRelease, loading, expi
             Libérer
           </button>
         )}
-        <div className={`flex gap-1 transition-opacity ${expired ? '' : 'opacity-0 group-hover:opacity-100'}`}>
+        <div className={`flex gap-1 transition-opacity ${expired || !onRemove ? '' : 'opacity-0 group-hover:opacity-100'}`}>
           <button onClick={onEdit} disabled={loading}
             className="text-blue-400 hover:text-blue-600 text-xs disabled:opacity-30"
             title="Modifier le type">
             {PENCIL}
           </button>
-          {!expired && (
+          {!expired && onRemove && (
             <button onClick={() => onRemove(entry.id)} disabled={loading}
               className="text-red-400 hover:text-red-600 text-xs disabled:opacity-30">
               {CROSS}
@@ -184,7 +190,9 @@ function TypePanel({ rookie, initialType, onConfirm, onCancel, loading }: {
   onCancel: () => void
   loading: boolean
 }) {
-  const [type, setType] = useState<RookieCategory>(initialType ?? 'repeche')
+  // « Agent libre » par défaut (David, 2026-10-07) : seul le repêchage des recrues du pool pose
+  // « repêché » ; ici, c'est un choix délibéré de l'admin.
+  const [type, setType] = useState<RookieCategory>(initialType ?? 'agent_libre')
 
   return (
     <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
@@ -237,6 +245,9 @@ export default function BanqueRecruesManager({
   const supabase = createClient()
   const [selectedPooler, setSelectedPooler] = useState(poolers[0]?.id ?? '')
   const [bank, setBank] = useState<BankEntry[]>([])
+  // Actifs/réservistes qui portent encore une étiquette de protection (David, 2026-10-07) —
+  // affichés seulement pour corriger leur type, jamais ajoutés/retirés d'ici.
+  const [protectedActives, setProtectedActives] = useState<BankEntry[]>([])
   const [allTakenIds, setAllTakenIds] = useState<Set<number>>(new Set())
   const [selectedTeam, setSelectedTeam] = useState('')
   const [search, setSearch] = useState('')
@@ -274,6 +285,17 @@ export default function BanqueRecruesManager({
         .eq('is_active', true)
 
       setBank((data ?? []) as unknown as BankEntry[])
+
+      const { data: actives } = await supabase
+        .from('pooler_rosters')
+        .select('id, player_id, player_type, rookie_type, pool_draft_year, players(id, first_name, last_name, position, status, draft_year, draft_round, draft_overall, teams(code))')
+        .eq('pooler_id', selectedPooler)
+        .eq('pool_season_id', saison.id)
+        .in('player_type', ['actif', 'reserviste'])
+        .not('rookie_type', 'is', null)
+        .eq('is_active', true)
+
+      setProtectedActives((actives ?? []) as unknown as BankEntry[])
     }
 
     fetchBank()
@@ -338,11 +360,13 @@ export default function BanqueRecruesManager({
     if (result.error) {
       setMessage(`Erreur : ${result.error}`)
     } else {
-      setBank((prev) => prev.map((e) =>
+      const apply = (prev: BankEntry[]) => prev.map((e) =>
         e.id === entryId
           ? { ...e, rookie_type: type, pool_draft_year: type === 'repeche' ? draftYear : null }
           : e,
-      ))
+      )
+      setBank(apply)
+      setProtectedActives(apply)
       setEditingEntryId(null)
       setMessage('Type mis à jour.')
     }
@@ -484,6 +508,34 @@ export default function BanqueRecruesManager({
                         rookie={entry.players}
                         onConfirm={(type) => confirmActivate(entry, type)}
                         onCancel={() => setActivatingEntryId(null)}
+                        loading={loading}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {protectedActives.length > 0 && (
+            <div className="bg-white rounded-lg shadow p-5">
+              <h2 className="font-semibold text-gray-700 mb-1">
+                {`Actifs et réservistes encore protégés — ${protectedActives.length} joueur(s)`}
+              </h2>
+              <p className="text-xs text-gray-400 mb-4">
+                Ces joueurs peuvent retourner en banque. Clique sur {PENCIL} pour corriger leur type de protection.
+              </p>
+              <div className="space-y-1">
+                {[...protectedActives].sort((a, b) => sortRookies(a.players, b.players)).map((entry) => (
+                  <div key={entry.id}>
+                    <BankRow entry={entry} loading={loading}
+                      onEdit={() => setEditingEntryId(editingEntryId === entry.id ? null : entry.id)} />
+                    {editingEntryId === entry.id && (
+                      <TypePanel
+                        rookie={entry.players}
+                        initialType={entry.rookie_type ?? undefined}
+                        onConfirm={(type) => confirmEdit(entry.id, type, entry.players.draft_year)}
+                        onCancel={() => setEditingEntryId(null)}
                         loading={loading}
                       />
                     )}

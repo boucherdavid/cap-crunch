@@ -577,7 +577,9 @@ export async function submitBatchAction(input: {
     // Signature directe en recrue (agent libre encore sur son ELC) — évite le détour par
     // /admin/init (Banque de recrues), qui reste nécessaire seulement pour le cas repêché-par-
     // le-pool mais plus sur ELC (protection 5 saisons, pool_draft_year requis).
-    const rookieFields: Record<string, unknown> = {}
+    // Toujours remis à zéro (David, 2026-10-07) : une ancienne ligne du même pooler (joueur
+    // libéré puis re-signé) gardait sinon son vieux type « repêché » et son année.
+    const rookieFields: Record<string, unknown> = { rookie_type: null, pool_draft_year: null, draft_pick_id: null }
     if (playerType === 'recrue') {
       const { data: player } = await db.from('players').select('is_rookie, draft_year, status').eq('id', playerId).single()
       const eligible = !!(player?.is_rookie || (player?.draft_year != null && player.draft_year >= draftYearCutoff) || player?.status === 'ELC')

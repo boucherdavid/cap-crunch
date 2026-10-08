@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-10-06
+**Dernière mise à jour :** 2026-10-07
 
 ---
 
@@ -21,7 +21,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | = `main` |
+| `staging` | En avance sur `main` : correction du type de recrue (2026-10-07), à valider |
 | `main` (prod) | À jour au 2026-10-06 (`f3650f6`) |
 
 Variables Vercel ajoutées les 5 et 6 octobre :
@@ -56,6 +56,10 @@ Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en s
 ## 4. À faire / à vérifier
 
 ### ▶ Prochaine session — commencer ici
+
+- **Type de recrue (sur staging, pas en prod)** : à valider sur `/admin/init?tab=recrues` — le ✎
+  fonctionne saison démarrée, section « Actifs et réservistes encore protégés », « agent libre »
+  par défaut. Une fois en prod : corriger **Ilya Protas** (David), encore « repêché 2024 ».
 
 - **7 octobre au matin** : panneau « Mises à jour automatiques » → ligne « Points de la veille ».
   Si rien n'est parti vers 2 h-3 h ET, le cron Vercel ne fonctionne pas (cliquer « Lancer
