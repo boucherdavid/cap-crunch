@@ -172,11 +172,12 @@ export function ScorersPanel({
 
   const filtered = active === FILTER_ALL ? scorers
     : active === FILTER_AVAILABLE ? scorers.filter(p => !p.ownerId)
-    : scorers.filter(p => p.ownerId === ownerId)
+    // Actifs seulement (David, 2026-10-07) : un réserviste qui marque ne donne rien au pooler.
+    : scorers.filter(p => p.ownerId === ownerId && p.ownerType === 'actif')
   // La limite ne sert qu'à la liste complète : une liste filtrée est courte et doit être entière.
   const shown = active === FILTER_ALL && limit ? filtered.slice(0, limit) : filtered
   const hidden = filtered.length - shown.length
-  const counted = filtered.filter(p => p.ownerType === 'actif').reduce((sum, p) => sum + p.pts, 0)
+  const counted = filtered.reduce((sum, p) => sum + p.pts, 0)
 
   return (
     <>
@@ -196,16 +197,16 @@ export function ScorersPanel({
         </label>
         {active !== FILTER_ALL && active !== FILTER_AVAILABLE && filtered.length > 0 && (
           <span className="text-xs text-gray-500">
-            Total compté : <span className="font-bold text-blue-600">{fmtLivePts(counted)}</span>
+            Total : <span className="font-bold text-blue-600">{fmtLivePts(counted)}</span>
           </span>
         )}
       </div>
       {shown.length === 0 ? (
         <p className="px-5 py-4 text-sm text-gray-400">
           {active === FILTER_ALL ? emptyLabel
-            : active === FILTER_MINE ? 'Aucun de tes joueurs n’a de point pour le moment.'
+            : active === FILTER_MINE ? 'Aucun de tes joueurs actifs n’a de point pour le moment.'
             : active === FILTER_AVAILABLE ? 'Aucun joueur disponible n’a de point pour le moment.'
-            : 'Aucun de ses joueurs n’a de point pour le moment.'}
+            : 'Aucun de ses joueurs actifs n’a de point pour le moment.'}
         </p>
       ) : (
         <div className="overflow-x-auto">

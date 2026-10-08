@@ -21,8 +21,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : filtre des pointeurs en direct (2026-10-07), à valider |
-| `main` (prod) | À jour au 2026-10-07 (correction du type de recrue) |
+| `staging` | = `main` |
+| `main` (prod) | À jour au 2026-10-07 (type de recrue, filtre des pointeurs en direct) |
 
 Variables Vercel ajoutées les 5 et 6 octobre :
 - `cap-crunch` (prod) : `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN`.
@@ -57,8 +57,6 @@ Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en s
 
 ### ▶ Prochaine session — commencer ici
 
-- **Filtre des pointeurs en direct (sur staging, pas en prod)** : menu « Afficher » dans
-  « Pointeurs — ce soir » (accueil et `/en-direct`). À valider par David.
 - **Ilya Protas** : encore « repêché 2024 » en prod. David le passe en « agent libre » avec le ✎
   de `/admin/init?tab=recrues` (validé sur staging le 2026-10-07, en prod).
 - **7 octobre au matin** : panneau « Mises à jour automatiques » → ligne « Points de la veille ».

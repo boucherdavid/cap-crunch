@@ -28,7 +28,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   LNH » (`/en-direct`) : tous, mes joueurs, un autre pooler, joueurs disponibles.
 - Composant partagé `ScorersPanel`, filtre côté client seulement (aucune requête de plus). Choix
   gardé dans le navigateur. Liste filtrée affichée en entier (la limite de 12 de l'accueil ne
-  vaut que pour « Tous ») ; « Total compté » = points des joueurs actifs seulement.
+  vaut que pour « Tous ») ; un filtre par pooler ne montre que ses joueurs **actifs** (retour de David après essai).
 - Commit : `96bf7dd`
 
 **[Feat/Fix] — Type de recrue corrigeable en cours de saison, « agent libre » par défaut**
