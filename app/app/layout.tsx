@@ -4,6 +4,7 @@ import './globals.css'
 import Navbar from '@/components/Navbar'
 import InstallBanner from '@/components/InstallBanner'
 import ServiceWorkerProvider from '@/components/ServiceWorkerProvider'
+import PushRestore from '@/components/PushRestore'
 import PlayerSlideOver from '@/components/PlayerSlideOver'
 import { createClient } from '@/lib/supabase/server'
 import { getAppEnv, getAppNameSuffix, getIconDir } from '@/lib/appEnv'
@@ -86,6 +87,7 @@ export default async function RootLayout({
             où la nav devient un tiroir superposé plutôt qu'une colonne permanente. */}
         <div className="md:pl-64">
           <InstallBanner />
+          {user && <PushRestore />}
           {/* 1800 px (ex-1280, David 2026-09-28) : sur grand écran, le contenu était très tassé ;
               chaque page garde sa propre largeur max si elle en a une (texte, formulaires). */}
           <main className="max-w-[1800px] mx-auto px-4 lg:px-6 py-6">

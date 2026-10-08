@@ -492,6 +492,7 @@ const SECTIONS: Section[] = [
         <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Notifications push</h4>
         <ul className="text-sm text-gray-700 space-y-1.5 mb-4">
           <li>• S&apos;activent par appareil (bouton <strong>Activer les notifications sur cet appareil</strong>) — à refaire sur chaque appareil utilisé.</li>
+          <li>• Ton choix est <strong>mémorisé sur ton compte</strong>. Si un appareil perd ses notifications (mise à jour, données du navigateur vidées), l&apos;app les rétablit toute seule ; quand le navigateur redemande la permission, un bandeau en haut de l&apos;écran te propose de les réactiver en un clic.</li>
           <li>• Un bouton <strong>Tester</strong> permet de vérifier que ça fonctionne sur l&apos;appareil courant.</li>
         </ul>
         <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Notifications par courriel</h4>

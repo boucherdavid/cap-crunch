@@ -24,6 +24,9 @@ export async function subscribePushAction(subscription: {
     { onConflict: 'user_id,endpoint' },
   )
   if (error) return { error: error.message }
+  // Choix mémorisé sur le compte (David, 2026-10-08) : sert à rétablir l'abonnement quand
+  // l'appareil le perd (voir PushRestore). Erreur ignorée tant que la migration n'est pas roulée.
+  await admin.from('poolers').update({ notif_push: true }).eq('id', user.id)
   return {}
 }
 
@@ -39,7 +42,32 @@ export async function unsubscribePushAction(endpoint: string) {
     .eq('user_id', user.id)
     .eq('endpoint', endpoint)
 
+  // Le compte ne garde le choix « activé » que s'il reste un autre appareil abonné.
+  const { count } = await admin
+    .from('push_subscriptions')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+  if ((count ?? 0) === 0) await admin.from('poolers').update({ notif_push: false }).eq('id', user.id)
+
   return {}
+}
+
+/** Pour PushRestore : le compte veut-il les notifications, et le serveur connaît-il encore
+ * l'abonnement de cet appareil ? */
+export async function getPushRestoreStateAction(endpoint?: string): Promise<{ wanted: boolean; known: boolean }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { wanted: false, known: false }
+
+  const admin = createAdminClient()
+  // Colonne absente (migration pas encore roulée) → `data` nul → rien à rétablir.
+  const { data: pooler } = await admin.from('poolers').select('notif_push').eq('id', user.id).maybeSingle()
+  const wanted = !!(pooler as { notif_push?: boolean } | null)?.notif_push
+  if (!wanted || !endpoint) return { wanted, known: false }
+
+  const { data } = await admin
+    .from('push_subscriptions').select('id').eq('user_id', user.id).eq('endpoint', endpoint).limit(1)
+  return { wanted, known: (data?.length ?? 0) > 0 }
 }
 
 export async function getSubscriptionStatusAction(endpoint?: string) {

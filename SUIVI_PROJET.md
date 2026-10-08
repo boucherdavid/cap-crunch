@@ -41,6 +41,23 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   créées à l'avance, pas démarrées et restées à 7 passent à 3. Saisons démarrées non touchées.
 - Migration à rouler par David dans les deux bases (staging puis prod).
 
+**[Feat] — Notifications push mémorisées sur le compte et rétablies automatiquement**
+(`app/components/PushRestore.tsx`, `app/lib/pushClient.ts`, `app/app/compte/push-actions.ts`,
+`PushToggle.tsx`, `app/app/login/page.tsx`, `supabase_migrations/poolers_notif_push.sql`) :
+- Plainte de David et de poolers : notifications et connexion perdues après une mise à jour ou
+  quand les données du navigateur sont vidées. Une PWA n'a pas de stockage séparé du navigateur :
+  impossible d'empêcher la perte, on la répare.
+- `poolers.notif_push` : choix par compte, posé à l'activation, retiré quand plus aucun appareil
+  n'est abonné. `PushRestore` (layout, utilisateurs connectés) : si le compte veut les
+  notifications et que l'appareil n'a plus d'abonnement connu du serveur, il le recrée en silence
+  quand la permission est encore accordée, sinon affiche un bandeau « Activer ». « Pas sur cet
+  appareil » (ou Désactiver dans Compte) pose un drapeau local qui bloque le rétablissement.
+- Connexion : champs du formulaire compatibles avec le remplissage automatique des mots de passe.
+  Cause des déconnexions sur Android (un pooler) non trouvée : le témoin de session est déjà
+  persistant.
+- Sans la migration, rien ne casse : aucun rétablissement tant que la colonne n'existe pas.
+- Pas encore testé sur un appareil.
+
 ### 2026-10-07
 
 **[Feat] — Filtre par pooler sur les pointeurs de la soirée**
