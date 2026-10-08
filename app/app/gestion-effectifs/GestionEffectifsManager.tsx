@@ -96,6 +96,49 @@ function unlockDate(entry: RosterEntry | undefined, delaiJours: number): string 
   return d.toLocaleDateString('fr-CA', { day: 'numeric', month: 'short' })
 }
 
+type StatusMove = { entry: RosterEntry; to: string }
+
+// Réactivations encore bloquées par le délai, une fois les exceptions appliquées (David,
+// 2026-10-08) — même règle que submitBatchAction, qui reste la source de vérité : un poste actif
+// déjà vacant (ex : après une mise sur LTIR approuvée) ou un actif blessé désactivé dans le même
+// lot permet chacun de réactiver un joueur verrouillé. `moves` = panier puis formulaire en cours.
+function blockedReactivations(roster: RosterForPooler | null, moves: StatusMove[], delaiJours: number): Set<number> {
+  const blocked = new Set<number>()
+  if (!roster) return blocked
+  const base = new Map<number, RosterEntry>()
+  for (const e of [...roster.actifs, ...roster.reservistes, ...roster.ltir, ...roster.recrues]) base.set(e.id, e)
+  const holes = { F: 12, D: 6, G: 2 }
+  for (const e of roster.actifs) holes[posCategory(e.position)]--
+  const injuredOutIds = new Set<number>()
+  for (const m of moves) {
+    const b = base.get(m.entry.id)
+    if (m.to !== 'actif' && b?.playerType === 'actif' && b.injury && !b.injury.backInAction) injuredOutIds.add(b.id)
+  }
+  let injuredOut = injuredOutIds.size
+  for (const m of moves) {
+    if (m.to !== 'actif' || !isLocked(m.entry, delaiJours)) continue
+    const cat = posCategory(m.entry.position)
+    if (holes[cat] > 0) holes[cat]--
+    else if (injuredOut > 0) injuredOut--
+    else blocked.add(m.entry.id)
+  }
+  return blocked
+}
+
+function cartMoves(cart: CartItem[]): StatusMove[] {
+  const moves: StatusMove[] = []
+  for (const item of cart) {
+    if (item.type === 'change_status') {
+      if (item.entry1 && item.newType1) moves.push({ entry: item.entry1, to: item.newType1 })
+      if (item.entry2 && item.newType2) moves.push({ entry: item.entry2, to: item.newType2 })
+    } else if (item.type === 'return_ltir') {
+      if (item.returnLtirEntry) moves.push({ entry: item.returnLtirEntry, to: item.returnNewType ?? 'actif' })
+      if (item.deactivateActifEntry) moves.push({ entry: item.deactivateActifEntry, to: item.deactivateNewType ?? 'reserviste' })
+    }
+  }
+  return moves
+}
+
 // Statuts atteignables depuis le statut courant d'une entrée — exclut le statut courant,
 // et 'recrue' si le joueur n'est plus dans la fenêtre de protection (5 saisons).
 function allowedNewStatuses(entry: RosterEntry | undefined): RosterStatus[] {
@@ -440,9 +483,23 @@ export default function GestionEffectifsManager({
   const canAddLtirSign = ltirRemaining > 0 || alRemaining > 0
 
   // Reactivation lock for currently selected entries (non-admins)
-  const returnLtirLocked  = !isAdmin && isLocked(projected ? findEntry(addReturnLtirId) : undefined, delaiReactivationJours)
-  const entry1Locked = !isAdmin && addNewType1 === 'actif' && isLocked(projected ? findEntry(addEntry1Id) : undefined, delaiReactivationJours)
-  const entry2Locked = !isAdmin && addNewType2 === 'actif' && isLocked(projected ? findEntry(addEntry2Id) : undefined, delaiReactivationJours)
+  // — moins les exceptions (poste vacant, actif blessé désactivé dans le même lot).
+  const formMoves: StatusMove[] = []
+  if (addType === 'change_status') {
+    const e1 = findEntry(addEntry1Id)
+    const e2 = findEntry(addEntry2Id)
+    if (e1 && addNewType1) formMoves.push({ entry: e1, to: addNewType1 })
+    if (e2 && addNewType2) formMoves.push({ entry: e2, to: addNewType2 })
+  } else if (addType === 'return_ltir') {
+    const ret = findEntry(addReturnLtirId)
+    const act = addReturnNewType === 'actif' ? findEntry(addDeactifId) : undefined
+    if (ret) formMoves.push({ entry: ret, to: addReturnNewType })
+    if (act) formMoves.push({ entry: act, to: addDeactifNewType })
+  }
+  const blockedIds = blockedReactivations(roster, [...cartMoves(cart), ...formMoves], delaiReactivationJours)
+  const returnLtirLocked  = !isAdmin && blockedIds.has(addReturnLtirId)
+  const entry1Locked = !isAdmin && addNewType1 === 'actif' && blockedIds.has(addEntry1Id)
+  const entry2Locked = !isAdmin && addNewType2 === 'actif' && blockedIds.has(addEntry2Id)
 
   const compositionOk = actifCounts.F === 12 && actifCounts.D === 6 && actifCounts.G === 2
   const reservistesOk = (projected?.reservistes.length ?? 0) >= 2
@@ -719,9 +776,16 @@ export default function GestionEffectifsManager({
 
   function renderLockWarning(entry: RosterEntry | undefined, label: string) {
     if (!entry || !isLocked(entry, delaiReactivationJours)) return null
+    if (!isAdmin && !blockedIds.has(entry.id)) {
+      return (
+        <p className="text-xs text-green-700 mt-1">
+          Délai de réactivation levé pour ce mouvement : {label.toLowerCase()} remplace un joueur actif blessé ou comble un poste vacant.
+        </p>
+      )
+    }
     return (
       <p className="text-xs text-orange-600 mt-1">
-        {label} ne peut pas être réactivé avant le {unlockDate(entry, delaiReactivationJours)} (délai {delaiReactivationJours} j).
+        {label} ne peut pas être réactivé avant le {unlockDate(entry, delaiReactivationJours)} (délai {delaiReactivationJours} j), sauf pour remplacer un joueur actif blessé dans le même lot.
       </p>
     )
   }
@@ -826,7 +890,7 @@ export default function GestionEffectifsManager({
               </div>
             )}
             <p className="text-xs text-gray-500">Au besoin, ajoute d&apos;autres mouvements au même lot pour garder un alignement conforme.</p>
-            {renderLockWarning(findEntry(addReturnLtirId), 'Ce joueur')}
+            {renderLockWarning(addReturnNewType === 'actif' ? findEntry(addReturnLtirId) : undefined, 'Ce joueur')}
           </div>
         )
       case 'ltir_sign':

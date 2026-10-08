@@ -19,6 +19,22 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-08
+
+**[Feat] — Exceptions au délai de réactivation : remplacement d'un blessé, poste vacant**
+(`app/app/gestion-effectifs/actions.ts`, `GestionEffectifsManager.tsx`, `app/app/aide/AideTabs.tsx`) :
+- Demande de David après avoir testé le délai de réactivation (3 jours dans le pool) : un joueur
+  désactivé doit pouvoir revenir tout de suite s'il remplace un joueur blessé.
+- `submitBatchAction` calcule deux exceptions sur l'état d'avant le lot : un actif blessé (2 sources
+  sur 3, pas « de retour au jeu ») désactivé dans le lot débloque une réactivation, un pour un,
+  sans exiger la même position ; un poste actif déjà vacant (mise sur LTIR approuvée) peut être
+  comblé par un joueur verrouillé de cette position. Blessure relue en base, jamais prise du client.
+- Écran : même calcul (`blockedReactivations`) sur le panier + le formulaire ; message vert quand
+  le délai est levé, message orange complété sinon. Le blessé qui sort prend le délai à son tour.
+- `/aide` : Guide (Gestion d'effectifs) et Règlements (Structure de l'alignement), sans nombre de
+  jours en dur (le délai est réglé par saison).
+- Pas encore testé avec un compte pooler en staging.
+
 ### 2026-10-07
 
 **[Feat] — Filtre par pooler sur les pointeurs de la soirée**

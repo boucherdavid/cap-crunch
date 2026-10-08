@@ -8,7 +8,7 @@ import { sendPushToUser } from '@/lib/push'
 import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/rosterTypeChange'
 import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
 import { getEffectiveCap } from '@/lib/capUtils'
-import { validateRosterLimits } from '@/lib/rosterLimits'
+import { validateRosterLimits, getPlayerBucket, ACTIVE_LIMITS, type Bucket } from '@/lib/rosterLimits'
 import { createWaiverClaimForRelease, isPlayerUnderActiveWaiverClaim } from '@/lib/waiverClaims'
 import { fetchInjuriesByPlayerId, type InjuryInfo } from '@/lib/injuries'
 
@@ -435,13 +435,58 @@ export async function submitBatchAction(input: {
   async function getEntry(entryId: number) {
     const { data } = await db
       .from('pooler_rosters')
-      .select('player_id, player_type, added_at, rookie_type, players (nhl_id, is_rookie, draft_year, status)')
+      .select('player_id, player_type, added_at, rookie_type, players (nhl_id, is_rookie, draft_year, status, position)')
       .eq('id', entryId)
       .single()
     return data as {
       player_id: number; player_type: string; added_at: string | null; rookie_type: string | null
-      players: { nhl_id: number | null; is_rookie: boolean | null; draft_year: number | null; status: string | null } | null
+      players: { nhl_id: number | null; is_rookie: boolean | null; draft_year: number | null; status: string | null; position: string | null } | null
     } | null
+  }
+
+  // Exceptions au délai de réactivation (David, 2026-10-08), calculées sur l'état AVANT le lot :
+  // - `injuredOutCredits` : un actif blessé (2 sources sur 3, pas « de retour au jeu ») désactivé
+  //   dans ce lot permet de réactiver un joueur encore dans son délai — un pour un, peu importe
+  //   la position (le 12/6/2 est validé de toute façon).
+  // - `holeCredits` : un poste actif déjà vacant avant le lot (un pooler n'y arrive qu'après une
+  //   mise sur LTIR approuvée ou un geste de l'admin) peut être comblé par un joueur verrouillé
+  //   de cette position — sinon le pooler resterait coincé avec un alignement incomplet.
+  let injuredOutCredits = 0
+  const holeCredits: Record<Bucket, number> = { forward: 0, defense: 0, goalie: 0 }
+  if (!isAdmin && !isPreseason) {
+    const [{ data: rosterRows }, injuries] = await Promise.all([
+      db.from('pooler_rosters')
+        .select('id, player_id, player_type, players (position)')
+        .eq('pooler_id', input.poolerId)
+        .eq('pool_season_id', input.saisonId)
+        .eq('is_active', true),
+      fetchInjuriesByPlayerId(supabase),
+    ])
+    const rows = (rosterRows ?? []) as unknown as {
+      id: number; player_id: number; player_type: string; players: { position: string | null } | null
+    }[]
+    const activeCounts: Record<Bucket, number> = { forward: 0, defense: 0, goalie: 0 }
+    for (const r of rows) {
+      if (r.player_type === 'actif') activeCounts[getPlayerBucket(r.players?.position ?? null)]++
+    }
+    for (const b of Object.keys(holeCredits) as Bucket[]) {
+      holeCredits[b] = Math.max(0, ACTIVE_LIMITS[b] - activeCounts[b])
+    }
+
+    const deactivatedIds = new Set<number>()
+    for (const a of input.actions) {
+      if (a.type === 'change_status') {
+        if (a.entry1Id && a.newType1 && a.newType1 !== 'actif') deactivatedIds.add(a.entry1Id)
+        if (a.entry2Id && a.newType2 && a.newType2 !== 'actif') deactivatedIds.add(a.entry2Id)
+      } else if (a.type === 'return_ltir' && a.deactivateActifId) {
+        deactivatedIds.add(a.deactivateActifId)
+      }
+    }
+    for (const r of rows) {
+      if (!deactivatedIds.has(r.id) || r.player_type !== 'actif') continue
+      const injury = injuries.get(r.player_id)
+      if (injury && !injury.backInAction) injuredOutCredits++
+    }
   }
 
   async function log(playerId: number, changeType: string, oldType: string | null, newType: string | null) {
@@ -454,7 +499,7 @@ export async function submitBatchAction(input: {
     })
   }
 
-  async function checkReactivationDelay(playerId: number) {
+  async function checkReactivationDelay(playerId: number, position: string | null) {
     if (isAdmin) return  // les admins ne sont pas soumis au délai
     const { data: lastDeact } = await db
       .from('roster_change_log')
@@ -469,10 +514,14 @@ export async function submitBatchAction(input: {
     if (!lastDeact) return
     const daysDiff = (Date.now() - new Date(lastDeact.changed_at).getTime()) / 86_400_000
     if (daysDiff < delaiJours) {
+      // Exceptions (voir plus haut) : poste vacant de sa position d'abord, sinon blessé qui sort.
+      const bucket = getPlayerBucket(position)
+      if (holeCredits[bucket] > 0) { holeCredits[bucket]--; return }
+      if (injuredOutCredits > 0) { injuredOutCredits--; return }
       const unlock = new Date(lastDeact.changed_at)
       unlock.setDate(unlock.getDate() + delaiJours)
       throw new Error(
-        `Ce joueur ne peut pas être réactivé avant le ${unlock.toLocaleDateString('fr-CA')} (délai de ${delaiJours} j)`,
+        `Ce joueur ne peut pas être réactivé avant le ${unlock.toLocaleDateString('fr-CA')} (délai de ${delaiJours} j), sauf pour remplacer un joueur actif blessé`,
       )
     }
   }
@@ -510,7 +559,7 @@ export async function submitBatchAction(input: {
   async function activate(entryId: number, fromType: string, withDelayCheck = false) {
     const e = await getEntry(entryId)
     if (!e) throw new Error('Entrée introuvable')
-    if (withDelayCheck) await checkReactivationDelay(e.player_id)
+    if (withDelayCheck) await checkReactivationDelay(e.player_id, e.players?.position ?? null)
     const conflict = await checkFutureRosterConflict(db, input.poolerId, e.player_id, input.saisonId, changedAt, 'actif')
     if (conflict.error) throw new Error(conflict.error)
     const { addedAtOverride, warning } = computeTypeChangeAddedAt(e.added_at, changedAt, minAddedAtTs)
