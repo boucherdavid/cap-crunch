@@ -30,7 +30,9 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Composant partagé `ScorersPanel`, filtre côté client seulement (aucune requête de plus). Choix
   gardé dans le navigateur. Liste filtrée affichée en entier (la limite de 12 de l'accueil ne
   vaut que pour « Tous ») ; un filtre par pooler ne montre que ses joueurs **actifs** (retour de David après essai).
-- Commit : `96bf7dd`
+- Ajusté après essai de David : « Mes joueurs actifs », « Mes réservistes », « Mes recrues » (pas de
+  LTIR, ils ne jouent pas) ; un autre pooler = ses actifs seulement. Total affiché pour les actifs.
+- En prod. Commits : `96bf7dd`, `a3b451b`, `011dc8c`
 
 **[Feat/Fix] — Type de recrue corrigeable en cours de saison, « agent libre » par défaut**
 (`app/admin/rosters/actions.ts`, `app/admin/rosters/RosterManager.tsx`,
@@ -48,7 +50,10 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   protégés », avec le même ✎ — un actif mal classé n'était corrigeable nulle part.
 - Signatures (Gestion d'effectifs, `/admin/transactions`) : `rookie_type`, `pool_draft_year` et
   `draft_pick_id` remis à zéro quand un joueur est re-signé sur une ancienne ligne du même pooler.
-- Protas non corrigé en base : David le fait lui-même avec le ✎ une fois en prod.
+- Validé sur staging puis mis en prod le jour même. Protas et Roman Kantserov corrigés en prod par
+  David avec le ✎. Constat : 127 « repêché » de 2026-27 sans `draft_pick_id` (Mode init), donc
+  aucun moyen de repérer automatiquement les autres erreurs — correction au cas par cas.
+- Commit : `b9e5f62`
 
 ### 2026-10-06
 
