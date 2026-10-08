@@ -21,7 +21,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | = `main` |
+| `staging` | `main` + libellé corrigé du bouton d'import des salaires (2026-10-08) |
 | `main` (prod) | À jour au 2026-10-08 (délai de réactivation levé pour un blessé, notifications rétablies automatiquement, budgets de signatures expliqués) |
 
 Variables Vercel ajoutées les 5 et 6 octobre :

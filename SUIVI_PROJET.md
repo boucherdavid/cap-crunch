@@ -68,6 +68,18 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   saison active (`max_signatures_al` / `max_signatures_ltir`), et une ligne sous les compteurs
   de Gestion d'effectifs.
 
+**[Data] — PuckPedia rafraîchi ; libellé du bouton d'import corrigé** (`app/lib/dataUpdates.ts`,
+`python_script/teams_offline/*.csv`) :
+- David : Marchenko échangé à Toronto, encore à Columbus dans l'app malgré « Lancer
+  maintenant ». Pas un bogue de jumelage : `import.yml` (bouton et tâche du lundi) ne fait que
+  réimporter les CSV du dépôt, qui dataient du 25 septembre. Le scraping (Selenium + Chrome) ne
+  tourne qu'en local (`run_pipeline_staging.ps1`).
+- Pipeline lancé contre staging : 2 erreurs Selenium (CBJ, CHI) rattrapées par la relance
+  automatique de Chrome, 1538 lignes comme avant. Marchenko vérifié en staging : une seule fiche,
+  TOR, nouveau contrat. CSV poussés sur `main` (import prod déclenché).
+- Détail du bouton « Salaires, contrats et repêchages » réécrit pour dire qu'il ne relit pas
+  PuckPedia. Scraping sur GitHub avec bouton : proposé à David, pas décidé.
+
 ### 2026-10-07
 
 **[Feat] — Filtre par pooler sur les pointeurs de la soirée**
