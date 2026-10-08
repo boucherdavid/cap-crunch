@@ -207,6 +207,7 @@ const SECTIONS: Section[] = [
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Bascule un joueur <strong>actif ↔ réserviste</strong> selon tes besoins.</li>
+          <li>• Un joueur que tu viens de désactiver ne peut pas redevenir actif avant la fin du <strong>délai de réactivation</strong> (affiché en haut de l&apos;outil). Exception : il peut revenir tout de suite pour <strong>remplacer un joueur actif blessé</strong> que tu désactives dans le même lot, ou pour combler un poste laissé vacant par une mise sur le LTIR.</li>
           <li>• <strong>Libère</strong> un joueur pour le retirer de ton alignement.</li>
           <li>• <strong>Active ou remets en banque</strong> une recrue encore protégée, à tout moment.</li>
           <li>• Tes changements doivent respecter les limites du pool (voir Règlements) : maximum 12 attaquants / 6 défenseurs / 2 gardiens actifs, minimum 2 réservistes, et ta masse salariale sous le cap.</li>
@@ -491,6 +492,7 @@ const SECTIONS: Section[] = [
         <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Notifications push</h4>
         <ul className="text-sm text-gray-700 space-y-1.5 mb-4">
           <li>• S&apos;activent par appareil (bouton <strong>Activer les notifications sur cet appareil</strong>) — à refaire sur chaque appareil utilisé.</li>
+          <li>• Ton choix est <strong>mémorisé sur ton compte</strong>. Si un appareil perd ses notifications (mise à jour, données du navigateur vidées), l&apos;app les rétablit toute seule ; quand le navigateur redemande la permission, un bandeau en haut de l&apos;écran te propose de les réactiver en un clic.</li>
           <li>• Un bouton <strong>Tester</strong> permet de vérifier que ça fonctionne sur l&apos;appareil courant.</li>
         </ul>
         <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Notifications par courriel</h4>
@@ -803,6 +805,7 @@ const SECTIONS: Section[] = [
         <li>• <strong>12 attaquants</strong>, <strong>6 défenseurs</strong> et <strong>2 gardiens</strong> actifs au maximum.</li>
         <li>• Minimum <strong>2 réservistes</strong> (toutes positions confondues).</li>
         <li>• Une fois la saison officiellement démarrée par l&apos;administrateur, tout mouvement soumis dans Gestion d&apos;effectifs doit laisser ton alignement à exactement ces nombres — un sous-effectif est tout aussi bloquant qu&apos;un dépassement (c&apos;est pour ça que les mouvements groupés existent : libérer et activer en un seul geste, sans jamais passer par un état invalide).</li>
+        <li>• <strong>Délai de réactivation</strong> : un joueur désactivé (envoyé en réserve ou sur le LTIR) doit attendre quelques jours avant de redevenir actif ; le délai en vigueur est affiché dans Gestion d&apos;effectifs. Le délai est levé quand il <strong>remplace un joueur actif blessé</strong> (badge Blessé ou Admissible LTIR, pas « De retour au jeu ») désactivé dans le même lot, un pour un, ou quand il comble un poste actif vacant après une mise sur le LTIR. Le joueur blessé qui sort est soumis au délai à son tour.</li>
       </ul>
     ),
   },

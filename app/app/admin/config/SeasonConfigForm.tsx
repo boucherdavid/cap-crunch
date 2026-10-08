@@ -42,7 +42,7 @@ export default function SeasonConfigForm({ saison }: { saison: Saison }) {
   const [nhlCap, setNhlCap] = useState(String(saison.nhl_cap))
   const [multiplier, setMultiplier] = useState(String(saison.cap_multiplier))
   const [nextNhlCap, setNextNhlCap] = useState(String(saison.next_nhl_cap ?? ''))
-  const [delaiReactivation, setDelaiReactivation] = useState(String(saison.delai_reactivation_jours ?? 7))
+  const [delaiReactivation, setDelaiReactivation] = useState(String(saison.delai_reactivation_jours ?? 3))
   const [maxAl, setMaxAl] = useState(String(saison.max_signatures_al ?? 10))
   const [maxLtir, setMaxLtir] = useState(String(saison.max_signatures_ltir ?? 2))
   const [dureeMinLtir, setDureeMinLtir] = useState(String(saison.duree_min_ltir_jours ?? 21))

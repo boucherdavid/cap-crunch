@@ -1488,6 +1488,16 @@ de `lg` ; admin : 3 colonnes (formulaire, alignement, historique) à partir de `
 Ballotage et Échanges affichent aussi l'alignement à droite ; dans Échanges, il reflète en direct
 la proposition en préparation (`TradeDraft`), et un scénario de `/simulation` peut y être chargé.
 
+**Délai de réactivation (`pool_seasons.delai_reactivation_jours`) — exceptions du 2026-10-08
+(David)** : un joueur désactivé (réserve ou LTIR) ne redevient pas actif avant ce délai — réglé par
+saison, **3 jours** par défaut (colonne et replis du code, migration
+`delai_reactivation_defaut_3.sql`). Admin jamais soumis. Deux exceptions dans `submitBatchAction`
+(`checkReactivationDelay`), calculées sur l'état d'avant le lot : un actif **blessé** (2 sources
+sur 3, pas `backInAction`) désactivé dans le même lot débloque une réactivation, un pour un, peu
+importe la position ; un **poste actif déjà vacant** (mise sur LTIR approuvée) peut être comblé par
+un joueur verrouillé de cette position. Même calcul côté écran (`blockedReactivations`,
+`GestionEffectifsManager.tsx`) — garder les deux alignés.
+
 **Retour au jeu d'un joueur sur LTIR (`app/lib/ltirReturns.ts`, `ltir_return_watch`) — David,
 2026-10-05 :**
 - Un joueur sur LTIR qui **joue un match de la LNH** (`player_game_logs`, après sa mise sur LTIR :

@@ -115,6 +115,12 @@ const result = await Promise.race([
   (session 2026-09-12). `after()` garde la fonction vivante jusqu'à la fin du callback sans
   faire attendre l'utilisateur, contrairement à un `await` direct.
 - L'admin doit activer les notifications dans `/compte` sur son appareil
+- **Choix mémorisé par compte** (David, 2026-10-08) : `poolers.notif_push`, posé par
+  `subscribePushAction`, retiré quand plus aucun appareil n'est abonné. `components/PushRestore.tsx`
+  (layout) recrée l'abonnement d'un appareil qui l'a perdu : en silence si la permission est
+  encore accordée, sinon bandeau « Activer ». Drapeau local `pushOffThisDevice` = refus sur cet
+  appareil. Abonnement côté navigateur : toujours passer par `lib/pushClient.ts`
+  (`subscribeThisDevice()`), qui lit `NEXT_PUBLIC_VAPID_PUBLIC_KEY`.
 
 ---
 

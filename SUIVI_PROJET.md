@@ -19,6 +19,45 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-08
+
+**[Feat] — Exceptions au délai de réactivation : remplacement d'un blessé, poste vacant**
+(`app/app/gestion-effectifs/actions.ts`, `GestionEffectifsManager.tsx`, `app/app/aide/AideTabs.tsx`) :
+- Demande de David après avoir testé le délai de réactivation (3 jours dans le pool) : un joueur
+  désactivé doit pouvoir revenir tout de suite s'il remplace un joueur blessé.
+- `submitBatchAction` calcule deux exceptions sur l'état d'avant le lot : un actif blessé (2 sources
+  sur 3, pas « de retour au jeu ») désactivé dans le lot débloque une réactivation, un pour un,
+  sans exiger la même position ; un poste actif déjà vacant (mise sur LTIR approuvée) peut être
+  comblé par un joueur verrouillé de cette position. Blessure relue en base, jamais prise du client.
+- Écran : même calcul (`blockedReactivations`) sur le panier + le formulaire ; message vert quand
+  le délai est levé, message orange complété sinon. Le blessé qui sort prend le délai à son tour.
+- `/aide` : Guide (Gestion d'effectifs) et Règlements (Structure de l'alignement), sans nombre de
+  jours en dur (le délai est réglé par saison).
+- Pas encore testé avec un compte pooler en staging.
+
+**[Chore] — Délai de réactivation à 3 jours par défaut**
+(`supabase_migrations/delai_reactivation_defaut_3.sql`, replis `?? 3` dans le code) :
+- Défaut de `pool_seasons.delai_reactivation_jours` passé de 7 à 3 (valeur du pool) ; les saisons
+  créées à l'avance, pas démarrées et restées à 7 passent à 3. Saisons démarrées non touchées.
+- Migration à rouler par David dans les deux bases (staging puis prod).
+
+**[Feat] — Notifications push mémorisées sur le compte et rétablies automatiquement**
+(`app/components/PushRestore.tsx`, `app/lib/pushClient.ts`, `app/app/compte/push-actions.ts`,
+`PushToggle.tsx`, `app/app/login/page.tsx`, `supabase_migrations/poolers_notif_push.sql`) :
+- Plainte de David et de poolers : notifications et connexion perdues après une mise à jour ou
+  quand les données du navigateur sont vidées. Une PWA n'a pas de stockage séparé du navigateur :
+  impossible d'empêcher la perte, on la répare.
+- `poolers.notif_push` : choix par compte, posé à l'activation, retiré quand plus aucun appareil
+  n'est abonné. `PushRestore` (layout, utilisateurs connectés) : si le compte veut les
+  notifications et que l'appareil n'a plus d'abonnement connu du serveur, il le recrée en silence
+  quand la permission est encore accordée, sinon affiche un bandeau « Activer ». « Pas sur cet
+  appareil » (ou Désactiver dans Compte) pose un drapeau local qui bloque le rétablissement.
+- Connexion : champs du formulaire compatibles avec le remplissage automatique des mots de passe.
+  Cause des déconnexions sur Android (un pooler) non trouvée : le témoin de session est déjà
+  persistant.
+- Sans la migration, rien ne casse : aucun rétablissement tant que la colonne n'existe pas.
+- Pas encore testé sur un appareil.
+
 ### 2026-10-07
 
 **[Feat] — Filtre par pooler sur les pointeurs de la soirée**

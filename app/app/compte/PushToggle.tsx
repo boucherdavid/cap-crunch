@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { subscribePushAction, unsubscribePushAction, testPushAction, getSubscriptionStatusAction } from './push-actions'
+import { setPushOffOnThisDevice, subscribeThisDevice } from '@/lib/pushClient'
 
 type State = 'loading' | 'unsupported' | 'denied' | 'subscribed' | 'desynced' | 'unsubscribed'
 
@@ -31,14 +32,9 @@ export default function PushToggle() {
     setBusy(true)
     setMsg(null)
     try {
-      const reg = await navigator.serviceWorker.ready
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!),
-      })
-      const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } }
-      const res = await subscribePushAction(json)
+      const res = await subscribePushAction(await subscribeThisDevice())
       if (res.error) { setMsg(res.error); return }
+      setPushOffOnThisDevice(false)
       setState('subscribed')
       setMsg('Notifications activées.')
     } catch {
@@ -58,6 +54,7 @@ export default function PushToggle() {
         await unsubscribePushAction(sub.endpoint)
         await sub.unsubscribe()
       }
+      setPushOffOnThisDevice(true)
       setState('unsubscribed')
       setMsg('Notifications désactivées.')
     } catch {
@@ -143,13 +140,4 @@ export default function PushToggle() {
       {msg && <p className={`text-sm ${msg.startsWith('Erreur') ? 'text-red-600' : 'text-green-600'}`}>{msg}</p>}
     </div>
   )
-}
-
-function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
-  const rawData = atob(base64)
-  const arr = new Uint8Array(rawData.length)
-  for (let i = 0; i < rawData.length; i++) arr[i] = rawData.charCodeAt(i)
-  return arr.buffer as ArrayBuffer
 }

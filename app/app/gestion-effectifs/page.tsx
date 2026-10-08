@@ -67,7 +67,7 @@ export default async function GestionEffectifsPage({
           saisonId={saison.id}
           season={saison.season}
           poolCap={Number(saison.pool_cap)}
-          delaiReactivationJours={saison.delai_reactivation_jours ?? 7}
+          delaiReactivationJours={saison.delai_reactivation_jours ?? 3}
           maxSignaturesAl={saison.max_signatures_al ?? 10}
           maxSignaturesLtir={saison.max_signatures_ltir ?? 2}
         />
@@ -103,7 +103,7 @@ export default async function GestionEffectifsPage({
         saisonId={saison.id}
         season={saison.season}
         poolCap={Number(saison.pool_cap)}
-        delaiReactivationJours={saison.delai_reactivation_jours ?? 7}
+        delaiReactivationJours={saison.delai_reactivation_jours ?? 3}
         maxSignaturesAl={saison.max_signatures_al ?? 10}
         maxSignaturesLtir={saison.max_signatures_ltir ?? 2}
       />
