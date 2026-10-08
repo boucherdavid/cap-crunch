@@ -17,6 +17,7 @@ import LiveNightCards from '@/components/live/LiveNightCards'
 import { MARQUEUR_URL } from '@/lib/externalLinks'
 import { after } from 'next/server'
 import { syncLtirReturns } from '@/lib/ltirReturns'
+import { syncNhlTransactions, loadRecentNhlTransactions, type NhlTransactionView } from '@/lib/nhlTransactions'
 
 export const dynamic = 'force-dynamic'
 
@@ -484,6 +485,35 @@ function PoolInjuriesWidget({ items }: { items: PoolInjuryItem[] }) {
   )
 }
 
+// ---------- signatures et échanges de la LNH ----------
+
+// Sources ESPN et LNH (lib/nhlTransactions.ts) — descriptions d'ESPN en anglais, telles quelles.
+function NhlTransactionsWidget({ items }: { items: NhlTransactionView[] }) {
+  if (items.length === 0) return null
+  const fmtDate = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+  return (
+    <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-slate-700 px-5 py-3 flex items-center justify-between gap-3">
+        <h2 className="text-white font-bold text-sm uppercase tracking-wide">Signatures et échanges dans la LNH</h2>
+        <span className="text-xs text-slate-300 shrink-0">Sources : ESPN, LNH</span>
+      </div>
+      <ul className="divide-y divide-gray-100">
+        {items.map(it => (
+          <li key={it.key} className={`px-4 py-2.5 ${it.owners.length > 0 ? 'bg-amber-50' : ''}`}>
+            <p className="text-xs text-gray-400">
+              <span className="font-semibold text-gray-600">{it.team}</span> · {fmtDate(it.txDate)}
+            </p>
+            <p className="text-sm text-gray-700">{it.description}</p>
+            {it.owners.length > 0 && (
+              <p className="text-xs font-semibold text-amber-700 mt-0.5">Dans le pool : {it.owners.join(', ')}</p>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 // ---------- marché des échanges ----------
 
 // Encadré « Sur le marché » (David, 2026-10-03) — derniers éléments offerts et recherches,
@@ -621,6 +651,8 @@ export default async function Home() {
 
   // Retours au jeu des joueurs sur LTIR : détection en arrière-plan, sans ralentir l'accueil.
   after(() => syncLtirReturns())
+  // Signatures et échanges de la LNH (ESPN) : même principe, avertit les admins des nouveautés.
+  after(() => syncNhlTransactions())
 
   const [{ data: saison }, { data: seriesSaison }, { data: me }] = await Promise.all([
     supabase.from('pool_seasons').select('id, season, pool_cap').eq('is_active', true).eq('is_playoff', false).single(),
@@ -634,7 +666,7 @@ export default async function Home() {
   const playingTeams = new Set(todayGames.flatMap(g => [g.awayAbbrev, g.homeAbbrev]))
   const hasGames = todayGames.length > 0
 
-  const [standings, poolActivity, poolInjuries, nhlNews, market, liveNight] = await Promise.all([
+  const [standings, poolActivity, poolInjuries, nhlNews, market, liveNight, nhlTransactions] = await Promise.all([
     saison ? buildStandings(supabase, saison.id) : Promise.resolve([]),
     saison ? fetchPoolActivity(supabase, saison.id) : Promise.resolve([]),
     saison ? fetchPoolInjuries(supabase, saison.id) : Promise.resolve([]),
@@ -642,6 +674,7 @@ export default async function Home() {
     saison ? fetchMarketSummary(saison.id) : Promise.resolve({ items: [], total: 0 }),
     // Pointage en direct (2026-10-04) — saison régulière seulement, calcul en cache 45 s.
     !seriesSaison ? getLiveNight() : Promise.resolve(null as LiveNight | null),
+    loadRecentNhlTransactions(saison?.id ?? null),
   ])
 
   // Classement séries depuis le cache BD + récap d'hier + joueurs en action séries
@@ -771,6 +804,7 @@ export default async function Home() {
           <ScheduleList todayDate={todayDate} games={todayGames} />
           {/* « Joueurs en action » remplacé par le pointage en direct en saison régulière (2026-10-04) */}
           {seriesSaison && <ActivityTable activity={activity} todayDate={todayDate} hasGames={hasGames} />}
+          <NhlTransactionsWidget items={nhlTransactions} />
           <NhlNewsWidget items={nhlNews} />
         </div>
       </div>
