@@ -25,7 +25,8 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 (`app/components/live/LiveNightCards.tsx`, `app/app/en-direct/LiveNightDetail.tsx`, `/aide`) :
 - Demande d'un pooler relayée par David : voir facilement qui lui a donné ses points, surtout le
   lendemain matin. Menu « Afficher » dans « Pointeurs — ce soir » (accueil) et « Pointeurs de la
-  LNH » (`/en-direct`) : tous, mes joueurs, un autre pooler, joueurs disponibles.
+  LNH » (`/en-direct`) : tous, mes joueurs actifs, mes réservistes, mes recrues, un autre pooler
+  (ses actifs), joueurs disponibles.
 - Composant partagé `ScorersPanel`, filtre côté client seulement (aucune requête de plus). Choix
   gardé dans le navigateur. Liste filtrée affichée en entier (la limite de 12 de l'accueil ne
   vaut que pour « Tous ») ; un filtre par pooler ne montre que ses joueurs **actifs** (retour de David après essai).
