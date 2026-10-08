@@ -22,7 +22,7 @@
 | Branche | État |
 |---|---|
 | `staging` | = `main` |
-| `main` (prod) | À jour au 2026-10-07 (correction du type de recrue) |
+| `main` (prod) | À jour au 2026-10-07 (type de recrue, filtre des pointeurs en direct) |
 
 Variables Vercel ajoutées les 5 et 6 octobre :
 - `cap-crunch` (prod) : `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN`.

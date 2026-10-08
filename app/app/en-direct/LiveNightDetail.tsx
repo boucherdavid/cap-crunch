@@ -4,7 +4,7 @@ import { useState } from 'react'
 import TeamBadge from '@/components/TeamBadge'
 import type { LiveNight, LivePooler } from '@/lib/liveNight'
 import { fmtLivePts, fmtNightDate, fmtUpdatedAt, useLiveNight } from '@/components/live/useLiveNight'
-import { LiveStatus, LiveStandingsTable, ScorersTable } from '@/components/live/LiveNightCards'
+import { LiveStatus, LiveStandingsTable, ScorersPanel } from '@/components/live/LiveNightCards'
 
 function PoolerDetail({ pooler, rank, isMe }: { pooler: LivePooler; rank: number; isMe: boolean }) {
   const [open, setOpen] = useState(isMe)
@@ -136,9 +136,13 @@ export default function LiveNightDetail({ initial, myId }: { initial: LiveNight;
                     Pointeurs de la LNH ({night.scorers.length})
                   </h2>
                 </div>
-                {night.scorers.length === 0
-                  ? <p className="px-5 py-4 text-sm text-gray-400">Aucun point pour le moment.</p>
-                  : <div className="overflow-x-auto"><ScorersTable scorers={night.scorers} showGame /></div>}
+                <ScorersPanel
+                  scorers={night.scorers}
+                  poolers={night.poolers}
+                  myId={myId}
+                  showGame
+                  emptyLabel="Aucun point pour le moment."
+                />
               </div>
             </div>
 

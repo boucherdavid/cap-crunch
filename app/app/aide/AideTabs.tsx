@@ -445,6 +445,7 @@ const SECTIONS: Section[] = [
           <li>
             • <strong>En direct</strong>{' '}: pendant les matchs, la page d&apos;accueil affiche le classement de la soirée et les pointeurs de la LNH, mis à jour chaque minute. Le détail par pooler est sur{' '}
             <Link href="/en-direct" className="text-blue-600 hover:underline font-medium">Le pool → En direct</Link>.
+            Le menu « Afficher » du tableau des pointeurs permet de ne voir que tes joueurs actifs (ou ceux d&apos;un autre pooler){' '}: pratique le lendemain matin pour savoir qui t&apos;a donné tes points.
             Ce pointage est <strong>non officiel</strong>{' '}: seuls les joueurs actifs comptent, et les points officiels sont ceux de la nuit.
           </li>
         </ul>
