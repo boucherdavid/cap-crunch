@@ -947,7 +947,7 @@ export default function GestionEffectifsManager({
     const pct = max > 0 ? used / max : 0
     const color = pct >= 1 ? 'bg-red-100 text-red-700' : pct >= 0.75 ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
     return (
-      <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${color}`}>
+      <span className={`inline-flex items-center gap-1 text-sm font-semibold px-2.5 py-0.5 rounded-full ${color}`}>
         {label} : {used}/{max}
       </span>
     )
@@ -977,15 +977,17 @@ export default function GestionEffectifsManager({
       {/* Signing budget (visible once roster loaded) */}
       {roster && (
         <div className="bg-white rounded-lg shadow px-5 py-3 flex flex-wrap items-center gap-3">
-          <span className="text-xs text-gray-500 font-medium">Agents libres cette saison :</span>
+          <span className="text-sm text-gray-800 font-semibold">Agents libres cette saison :</span>
           <BudgetPill used={totalAlUsed} max={maxSignaturesAl} label="Standard" />
           <BudgetPill used={totalLtirUsed} max={maxSignaturesLtir} label="LTIR" />
           {!isAdmin && (
             <span className="text-xs text-gray-400 ml-auto">Délai de réactivation : {delaiReactivationJours} j</span>
           )}
-          <p className="w-full text-xs text-gray-400">
-            Standard : à utiliser comme tu veux. LTIR : pour remplacer un joueur mis sur le LTIR ; une fois ce budget épuisé, une LTIR + signature utilise ton budget standard. Le ballotage ne compte pas.
-          </p>
+          <ul className="w-full bg-blue-50 border border-blue-200 rounded-md px-3 py-2 text-sm text-blue-900 space-y-1">
+            <li><strong>Standard</strong> : à utiliser comme tu veux.</li>
+            <li><strong>LTIR</strong> : pour remplacer un joueur mis sur le LTIR. Une fois ce budget épuisé, une LTIR + signature utilise ton budget standard.</li>
+            <li>Le ballotage ne compte dans aucun des deux.</li>
+          </ul>
         </div>
       )}
 
