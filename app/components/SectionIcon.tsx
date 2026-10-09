@@ -11,14 +11,14 @@ const STYLES: Record<SectionId, { text: string; border: string }> = {
   'accueil':      { text: 'text-slate-300',   border: 'border-slate-300' },
   'mon-equipe':   { text: 'text-violet-400',  border: 'border-violet-400' },
   'pool':         { text: 'text-sky-400',     border: 'border-sky-400' },
-  'calendrier':   { text: 'text-emerald-400', border: 'border-emerald-400' },
+  'calendrier':   { text: 'text-green-400', border: 'border-green-400' },
   'statistiques': { text: 'text-cyan-400',    border: 'border-cyan-400' },
   'analytique':   { text: 'text-indigo-400',  border: 'border-indigo-400' },
-  'blessures':    { text: 'text-rose-400',    border: 'border-rose-400' },
+  'blessures':    { text: 'text-red-500',    border: 'border-red-500' },
   'contrats':     { text: 'text-amber-400',   border: 'border-amber-400' },
-  'prospects':    { text: 'text-orange-400',  border: 'border-orange-400' },
+  'prospects':    { text: 'text-orange-500',  border: 'border-orange-500' },
   'repechage':    { text: 'text-teal-400',    border: 'border-teal-400' },
-  'communaute':   { text: 'text-pink-400',    border: 'border-pink-400' },
+  'communaute':   { text: 'text-pink-500',    border: 'border-pink-500' },
   'aide':         { text: 'text-slate-300',   border: 'border-slate-300' },
   'admin':        { text: 'text-gray-400',    border: 'border-gray-400' },
   'actualite':    { text: 'text-slate-400',   border: 'border-slate-400' },
@@ -44,16 +44,16 @@ const PATHS: Record<SectionId, string> = {
 
 /** Bande de couleur à gauche d'un en-tête de carte. */
 export function sectionBorderClass(section: SectionId): string {
-  return `border-l-4 ${STYLES[section].border}`
+  return `border-l-8 ${STYLES[section].border}`
 }
 
-export default function SectionIcon({ section, className = 'w-4 h-4' }: { section: SectionId; className?: string }) {
+export default function SectionIcon({ section, className = 'w-5 h-5' }: { section: SectionId; className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={2.25}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
