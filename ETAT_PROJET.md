@@ -21,7 +21,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | `main` + rechute d'un joueur sur LTIR après 2 matchs manqués (2026-10-09, à valider) |
+| `staging` | = `main` |
 | `main` (prod) | À jour au 2026-10-09 : icônes et bandeaux de titre par famille du menu, chantier mobile (accueil, Contrats LNH, Trios, Simulation), avis de signatures et d'échanges de la LNH |
 
 Variables Vercel ajoutées les 5 et 6 octobre :
@@ -57,9 +57,8 @@ Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en s
 
 ### ▶ Prochaine session — commencer ici
 
-- **Rechute d'un joueur sur LTIR** (staging seulement) : retour obligatoire annulé après 2 matchs
-  consécutifs manqués. Migration `ltir_relapse_games.sql` roulée en staging et en prod (2026-10-09). La prod a
-  encore la première version (annulation immédiate) tant que David n'a pas donné le feu vert.
+- **Rechute d'un joueur sur LTIR** (en prod depuis le 2026-10-09, jamais exécutée) : retour
+  obligatoire annulé après 2 matchs consécutifs manqués. Migration `ltir_relapse_games.sql` roulée en staging et en prod (2026-10-09).
   Marchand : délai laissé annulé, nouveau délai de 14 jours à son prochain match.
 
 - **Rechute d'un joueur sur LTIR** (en prod depuis le 2026-10-09, jamais exécutée avant) : la
