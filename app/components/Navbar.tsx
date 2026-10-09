@@ -211,23 +211,35 @@ function groupIsActive(pathname: string, group: NavGroup): boolean {
 // Repère de section en haut de chaque page (David, 2026-10-09) : même icône et même couleur que
 // le groupe du menu et que les cartes de l'accueil. Le groupe retenu est celui dont le lien est le
 // plus long à correspondre (« /statistiques/blessures » → Blessures, pas Statistiques).
-export function SectionEyebrow() {
+export function SectionEyebrow({ userId }: { userId: string | null }) {
   const pathname = usePathname()
-  let best: { group: NavGroup; length: number } | null = null
+  let best: { group: NavGroup; page: string | null; length: number } | null = null
   for (const group of [...NAV_GROUPS, ADMIN_GROUP]) {
-    for (const href of groupHrefs(group)) {
-      const path = href.split('?')[0]
+    const leaves: { label: string | null; href: string }[] = [
+      ...(group.href ? [{ label: null, href: group.href }] : []),
+      ...(group.items ?? []),
+      ...(group.subgroups?.flatMap(sg => sg.items) ?? []),
+    ]
+    for (const leaf of leaves) {
+      const path = leaf.href.split('?')[0]
       if (path.startsWith('/') && isActive(pathname, path) && (!best || path.length > best.length)) {
-        best = { group, length: path.length }
+        best = { group, page: leaf.label, length: path.length }
       }
     }
+  }
+  // Son propre alignement s'ouvre par « Mon alignement » (/dashboard → /poolers/<id>) : il relève
+  // de Mon équipe, alors que l'alignement d'un autre pooler relève du pool.
+  if (userId && isActive(pathname, `/poolers/${userId}`)) {
+    const mine = NAV_GROUPS.find(g => g.id === 'mon-equipe')
+    if (mine) best = { group: mine, page: 'Mon alignement', length: 0 }
   }
   const section = best ? GROUP_SECTION[best.group.id] : undefined
   if (!best || !section) return null
   return (
-    <div className={`inline-flex items-center gap-2 mb-4 bg-slate-700 rounded-md px-3 py-1.5 ${sectionBorderClass(section)}`}>
-      <SectionIcon section={section} className="w-4 h-4" />
-      <span className="text-white text-xs font-bold uppercase tracking-wide">{best.group.label}</span>
+    <div className={`flex items-center gap-2.5 mb-5 bg-slate-700 rounded-md px-4 py-2.5 ${sectionBorderClass(section)}`}>
+      <SectionIcon section={section} />
+      <span className="text-white text-sm font-bold uppercase tracking-wide">{best.group.label}</span>
+      {best.page && <span className="text-slate-300 text-sm">· {best.page}</span>}
     </div>
   )
 }

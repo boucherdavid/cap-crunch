@@ -91,7 +91,7 @@ export default async function RootLayout({
           {/* 1800 px (ex-1280, David 2026-09-28) : sur grand écran, le contenu était très tassé ;
               chaque page garde sa propre largeur max si elle en a une (texte, formulaires). */}
           <main className="max-w-[1800px] mx-auto px-4 lg:px-6 py-6">
-            <div><SectionEyebrow /></div>
+            <SectionEyebrow userId={user?.id ?? null} />
             {children}
           </main>
         </div>
