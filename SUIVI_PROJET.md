@@ -68,6 +68,30 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   saison active (`max_signatures_al` / `max_signatures_ltir`), et une ligne sous les compteurs
   de Gestion d'effectifs.
 
+**[Data] — PuckPedia rafraîchi ; libellé du bouton d'import corrigé** (`app/lib/dataUpdates.ts`,
+`python_script/teams_offline/*.csv`) :
+- David : Marchenko échangé à Toronto, encore à Columbus dans l'app malgré « Lancer
+  maintenant ». Pas un bogue de jumelage : `import.yml` (bouton et tâche du lundi) ne fait que
+  réimporter les CSV du dépôt, qui dataient du 25 septembre. Le scraping (Selenium + Chrome) ne
+  tourne qu'en local (`run_pipeline_staging.ps1`).
+- Pipeline lancé contre staging : 2 erreurs Selenium (CBJ, CHI) rattrapées par la relance
+  automatique de Chrome, 1538 lignes comme avant. Marchenko vérifié en staging : une seule fiche,
+  TOR, nouveau contrat. CSV poussés sur `main` (import prod déclenché).
+- Détail du bouton « Salaires, contrats et repêchages » réécrit pour dire qu'il ne relit pas
+  PuckPedia. Scraping sur GitHub : écarté, PuckPedia renvoie 403 (Cloudflare) à une requête simple.
+
+**[Feat] — Avis de signatures et d'échanges de la LNH** (`app/lib/nhlTransactions.ts`,
+`app/app/page.tsx`, `supabase_migrations/nhl_transaction_alerts.sql`) :
+- Demande de David : être averti quand rafraîchir les salaires, puisque le scraping reste manuel.
+- Deux sources : flux ESPN (signatures, prolongations, échanges) et alignements de la LNH comparés
+  à notre base (changements d'équipe). La seconde ajoutée après avoir constaté que l'échange
+  Marchenko–Knies est absent du flux ESPN (cherché jusqu'en mai).
+- Push + courriel aux admins pour chaque nouveauté ; carte sur l'accueil pour tous, joueurs du pool
+  surlignés. Première lecture sans avis.
+- Vérifié : filtre ESPN sur les 100 dernières transactions (11 gardées, pertinentes) ; essai à
+  blanc des alignements contre staging (32 équipes lues, 762 joueurs jumelés sur 770, 0 écart après
+  le pipeline du jour). Pas vu à l'écran ; la notification n'a pas été déclenchée pour de vrai.
+
 ### 2026-10-07
 
 **[Feat] — Filtre par pooler sur les pointeurs de la soirée**

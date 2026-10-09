@@ -263,6 +263,8 @@ Hockey_Pool_App/
 - `team_line_combos` (trios/paires/unités spéciales actuels, une ligne par joueur et par groupe —
   Daily Faceoff, `python_script/scrape_line_combos.py`, remplacement complet par équipe)
 - `ltir_requests` (demandes de mise sur LTIR en attente d'approbation admin — voir section 6)
+- `nhl_transaction_alerts` (signatures, échanges et changements d'équipe de la LNH déjà signalés —
+  voir section 6, « Signatures et échanges de la LNH »)
 - `ltir_return_watch` (joueurs sur LTIR de retour au jeu, avec date limite de réintégration —
   voir section 6)
 - `trade_market_listings`/`trade_market_requests` (marché des échanges, `/marche-echanges` —
@@ -1245,6 +1247,24 @@ corrigée le 2026-09-20 :**
   l'authentification de `proxy.ts` (`api/cron` dans le `matcher`), et inactive hors prod
   (`getAppEnv()`) — staging déploie le même `vercel.json`. Forfait gratuit Vercel : un passage par
   jour par cron, à l'heure près. Variables requises en prod : `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN`.
+
+**Signatures et échanges de la LNH (`app/lib/nhlTransactions.ts`, `nhl_transaction_alerts`) —
+David, 2026-10-08 :**
+- But : avertir l'admin qu'il faut rafraîchir les salaires. **Le scraping de PuckPedia ne tourne
+  qu'en local** (`run_pipeline_staging.ps1`, Selenium + Chrome) : Cloudflare refuse toute lecture
+  par un serveur (403 constaté). `import.yml` (bouton « Salaires, contrats et repêchages » et tâche
+  du lundi) ne fait que **réimporter les CSV du dépôt**, sans relire le site.
+- Deux sources lisibles par un serveur, les deux nécessaires : flux public d'ESPN
+  (`site.api.espn.com/.../nhl/transactions` — signatures, prolongations, échanges ; rappels AHL,
+  blessés, ballotage et essais écartés) et alignements de l'API de la LNH (`/v1/roster/<code>/current`)
+  comparés à `players.team_id` (clé `equipe|nhl_id|équipe`, signalé une seule fois). ESPN n'a
+  jamais listé l'échange Marchenko–Knies ; les alignements le montraient.
+- Détection paresseuse (`syncNhlTransactions()`, accueil via `after()`, au plus aux 10 min par
+  instance). Nouveautés → push + courriel aux admins, lien vers `/admin/donnees`. Première lecture
+  (table vide) : enregistrée sans avis. Aucun avis depuis un poste local.
+- Carte « Signatures et échanges dans la LNH » sur l'accueil (7 jours, 10 lignes, lue dans la
+  table), surlignée quand un joueur nommé appartient à un pooler. Descriptions d'ESPN en anglais,
+  telles quelles (choix de David).
 
 **Next.js 16 :**
 - Utiliser `proxy.ts`, PAS `middleware.ts`

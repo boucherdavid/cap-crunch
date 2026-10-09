@@ -21,7 +21,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | = `main` |
+| `staging` | `main` + avis de signatures et d'échanges de la LNH, libellé corrigé du bouton d'import (2026-10-08, à valider) |
 | `main` (prod) | À jour au 2026-10-08 (délai de réactivation levé pour un blessé, notifications rétablies automatiquement, budgets de signatures expliqués) |
 
 Variables Vercel ajoutées les 5 et 6 octobre :
@@ -56,6 +56,12 @@ Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en s
 ## 4. À faire / à vérifier
 
 ### ▶ Prochaine session — commencer ici
+
+- **Avis de signatures et d'échanges de la LNH** (staging seulement) : rouler
+  `supabase_migrations/nhl_transaction_alerts.sql` dans les deux bases, puis ouvrir l'accueil. La
+  première lecture remplit la carte sans avis ; les suivantes avertissent les admins. À valider :
+  la carte sur l'accueil et la réception d'un premier avis. Rappel : le scraping PuckPedia reste
+  manuel (`./run_pipeline_staging.ps1`), l'avis sert à savoir quand le lancer.
 
 - **Délai de réactivation levé pour remplacer un blessé** (en prod depuis le 2026-10-08) : à tester avec un
   compte pooler — désactiver un joueur, puis le réactiver dans le même lot qu'un actif blessé
