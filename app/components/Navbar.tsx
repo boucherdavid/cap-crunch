@@ -17,7 +17,7 @@ const AdminUnreadContext = createContext<{ count: number; title: string }>({ cou
 const TodoContext = createContext<PoolerTodo>({ trades: 0, waivers: 0, total: 0, items: [] })
 import { createClient } from '@/lib/supabase/client'
 import { MARQUEUR_URL } from '@/lib/externalLinks'
-import SectionIcon, { type SectionId } from './SectionIcon'
+import SectionIcon, { sectionBorderClass, type SectionId } from './SectionIcon'
 
 function HamburgerIcon() {
   return (
@@ -206,6 +206,30 @@ function groupHrefs(group: NavGroup): string[] {
 
 function groupIsActive(pathname: string, group: NavGroup): boolean {
   return groupHrefs(group).some(h => isActive(pathname, h))
+}
+
+// Repère de section en haut de chaque page (David, 2026-10-09) : même icône et même couleur que
+// le groupe du menu et que les cartes de l'accueil. Le groupe retenu est celui dont le lien est le
+// plus long à correspondre (« /statistiques/blessures » → Blessures, pas Statistiques).
+export function SectionEyebrow() {
+  const pathname = usePathname()
+  let best: { group: NavGroup; length: number } | null = null
+  for (const group of [...NAV_GROUPS, ADMIN_GROUP]) {
+    for (const href of groupHrefs(group)) {
+      const path = href.split('?')[0]
+      if (path.startsWith('/') && isActive(pathname, path) && (!best || path.length > best.length)) {
+        best = { group, length: path.length }
+      }
+    }
+  }
+  const section = best ? GROUP_SECTION[best.group.id] : undefined
+  if (!best || !section) return null
+  return (
+    <div className={`inline-flex items-center gap-2 mb-4 bg-slate-700 rounded-md px-3 py-1.5 ${sectionBorderClass(section)}`}>
+      <SectionIcon section={section} className="w-4 h-4" />
+      <span className="text-white text-xs font-bold uppercase tracking-wide">{best.group.label}</span>
+    </div>
+  )
 }
 
 // ─── Sous-composants de l'arbre ─────────────────────────────────────────────

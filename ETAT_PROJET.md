@@ -58,8 +58,8 @@ Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en s
 ### ▶ Prochaine session — commencer ici
 
 - **Icônes et bandes de couleur** (staging seulement, 2026-10-09) : menu de gauche et en-têtes des
-  cartes de l'accueil. À valider par David ; suite possible : colorer davantage, puis étendre aux
-  titres de page.
+  cartes de l'accueil (validés par David), et étiquette de section en haut de chaque page (essai,
+  à valider).
 - **Avis de signatures et d'échanges de la LNH** (en prod depuis le 2026-10-09, carte validée en
   staging) : rouler
   `supabase_migrations/nhl_transaction_alerts.sql` dans les deux bases, puis ouvrir l'accueil. La

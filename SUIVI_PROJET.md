@@ -31,6 +31,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   Contrats LNH). Portée : accueil et menu seulement ; les titres de page viendront ensuite si
   ça plaît.
 - Pas vu à l'écran avant de pousser.
+- Ajusté après le premier essai de David : bande de 8 px, icônes plus grandes, couleurs plus vives.
+- Essai pour le reste de l'app : `SectionEyebrow` (dans `Navbar.tsx`, monté dans `layout.tsx`)
+  affiche en haut de chaque page une étiquette foncée avec l'icône, la bande de couleur et le nom
+  de la famille du menu, déduite de l'adresse (lien le plus long qui correspond). Un seul endroit
+  plutôt que de retoucher chaque titre de page ; rien sur l'accueil ni sur les pages hors menu.
 
 ### 2026-10-08
 
