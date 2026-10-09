@@ -1530,6 +1530,11 @@ un joueur verrouillé de cette position. Même calcul côté écran (`blockedRea
 - Notifications push + courriel au pooler **et à tous les admins** : détection, rappel 2 jours
   avant, délai dépassé. Jamais de déplacement automatique : passé le délai, l'admin décide
   (section « Retours de LTIR » du panneau Approbations ; seuls les dépassés comptent au compteur).
+- **Rechute avant la réintégration (David, 2026-10-09)** : blessure confirmée (2 sources) apparue
+  après son dernier match, délai pas encore échu → suivi fermé, délai annulé, pooler et admins
+  avisés. Un nouveau délai complet repart au prochain match : seuls les matchs joués après la
+  fermeture d'un suivi « a rejoué » comptent comme un retour (`pastRows`, `runSync`). Délai déjà
+  dépassé : pas d'annulation, l'admin décide.
 - Joueur plus listé blessé par **aucune** source mais qui n'a pas encore joué : admins seulement
   (`reason='not_injured'`), sans date limite ; passe à `played` au premier match.
 - Détection paresseuse (`syncLtirReturns()`), pas de tâche planifiée : accueil (`after()`, au plus

@@ -57,6 +57,11 @@ Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en s
 
 ### ▶ Prochaine session — commencer ici
 
+- **Rechute d'un joueur sur LTIR** (en prod depuis le 2026-10-09, jamais exécutée avant) : la
+  rechute annule le délai de réintégration, un nouveau délai repart au prochain match. **À
+  vérifier pour Marchand (Vincent)** : avis « délai annulé » reçu, suivi fermé, puis nouveau délai
+  de 14 jours à son prochain match.
+
 - **Chantier mobile** (en prod depuis le 2026-10-09) : accueil avec cartes secondaires repliées,
   Contrats LNH (colonne Contrat, filtres repliés), Trios et paires (tableaux lisibles). À valider
   sur le téléphone de David, avec la Simulation simplifiée (validée par David ; scénarios
