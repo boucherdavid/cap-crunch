@@ -14,6 +14,7 @@ const FIELDS: { key: keyof LtirSettings; label: string; help: string }[] = [
   { key: 'removalAbsenceDays', label: 'Retrait après absence de CBS pendant', help: 'jours consécutifs (compteur remis à zéro)' },
   { key: 'recentGameDays', label: 'Pas admissible si le joueur a joué depuis moins de', help: 'jours (même encore listé blessé)' },
   { key: 'returnDeadlineDays', label: "Retour au jeu d'un joueur sur LTIR : délai de", help: "jours pour le remettre dans l'alignement" },
+  { key: 'relapseDays', label: 'Rechute avant la réintégration : retour annulé après', help: 'jours de blessure sans rejouer' },
 ]
 
 export default function LtirSettingsForm({ initialSettings }: { initialSettings: LtirSettings }) {

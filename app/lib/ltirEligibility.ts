@@ -33,6 +33,7 @@ export type LtirSettings = {
   removalAbsenceDays: number  // lu par le scraper seulement — runs quotidiens d'absence avant retrait
   returnDeadlineDays: number  // délai pour réintégrer un joueur sur LTIR qui a recommencé à jouer (lib/ltirReturns.ts)
   recentGameDays: number      // règle 0 — un match joué depuis moins de N jours annule l'admissibilité
+  relapseDays: number         // rechute d'un joueur sur LTIR : jours de blessure avant d'annuler le retour obligatoire (lib/ltirReturns.ts)
 }
 
 export const DEFAULT_LTIR_SETTINGS: LtirSettings = {
@@ -43,6 +44,7 @@ export const DEFAULT_LTIR_SETTINGS: LtirSettings = {
   removalAbsenceDays: 2,
   returnDeadlineDays: 14,
   recentGameDays: 7,
+  relapseDays: 3,
 }
 
 export type InjuryEligibilityInput = {

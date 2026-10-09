@@ -27,7 +27,7 @@ export default function LtirRulesContent() {
           <li>• Le <strong>retour du LTIR</strong> se fait par toi, depuis <strong>Gestion d&apos;effectifs</strong> → <strong>Retour LTIR</strong>, comme actif ou comme réserviste. L&apos;effet est immédiat et ton alignement doit rester conforme (12/6/2, 2 réservistes, plafond) : ajoute au besoin d&apos;autres mouvements au même lot.</li>
           <li>• Dès qu&apos;un joueur sur le LTIR <strong>rejoue un match de la LNH</strong>, tu reçois une notification (l&apos;administrateur aussi) et tu as <strong>{jours(t.returnDeadlineDays)}</strong> pour le remettre dans ton alignement. Un bandeau dans Gestion d&apos;effectifs te rappelle la date limite. Passé ce délai, c&apos;est l&apos;administrateur qui décide de la suite.</li>
           <li>• Pendant ce délai, le joueur reste sur le LTIR : il ne rapporte toujours aucun point et son salaire ne compte toujours pas.</li>
-          <li>• S&apos;il <strong>se blesse de nouveau</strong> avant que tu l&apos;aies remis dans ton alignement, le délai est annulé et il reste sur le LTIR. Un nouveau délai de <strong>{jours(t.returnDeadlineDays)}</strong> repart à son prochain match.</li>
+          <li>• S&apos;il <strong>se blesse de nouveau</strong> avant que tu l&apos;aies remis dans ton alignement et que cette blessure dure <strong>{jours(t.relapseDays)}</strong> sans qu&apos;il rejoue, le retour obligatoire est annulé et il reste sur le LTIR. Avant ce seuil, la date limite continue de courir. Un nouveau délai de <strong>{jours(t.returnDeadlineDays)}</strong> repart à son prochain match.</li>
         </ul>
       </div>
       <div>
