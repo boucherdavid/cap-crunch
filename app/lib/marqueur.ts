@@ -196,10 +196,23 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
   // La date compte : Marqueur demande la date de chaque changement, et c'est elle qui décide des
   // points comptés là-bas quand un report est fait en retard.
   const fmtDay = (iso: string) => new Date(iso).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', timeZone: 'America/Toronto' })
+  // Moment où le mouvement prend effet, heure de l'Est (David, 2026-10-09) : sert à savoir, en
+  // reportant sur Marqueur, si c'était avant ou après le match du joueur. Midi UTC pile est la
+  // convention « date sans heure » (date forcée, ou mouvement reporté au lendemain parce qu'un
+  // joueur du lot avait déjà commencé son match) : effectif pour toute la journée, donc avant
+  // les matchs de ce jour-là.
+  const fmtMoment = (iso: string) => {
+    const d = new Date(iso)
+    if (d.getUTCHours() === 12 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) {
+      return `le ${fmtDay(iso)}, avant les matchs du jour`
+    }
+    const [h, m] = d.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Toronto' }).split(/[: h]+/)
+    return `le ${fmtDay(iso)} à ${Number(h)} h ${m} (heure de l'Est)`
+  }
   const lastMove = new Map<string, string>()
   for (const r of (logRows ?? []) as unknown as { pooler_id: string; change_type: string; changed_at: string; players: { first_name: string; last_name: string } | null }[]) {
     if (!r.players) continue
-    lastMove.set(`${r.pooler_id}::${norm(`${r.players.first_name} ${r.players.last_name}`)}`, `${CHANGE_LABEL[r.change_type] ?? r.change_type} le ${fmtDay(r.changed_at)}`)
+    lastMove.set(`${r.pooler_id}::${norm(`${r.players.first_name} ${r.players.last_name}`)}`, `${CHANGE_LABEL[r.change_type] ?? r.change_type} ${fmtMoment(r.changed_at)}`)
   }
 
   type RosterRow = { pooler_id: string; player_type: string; added_at: string | null; players: { first_name: string; last_name: string; nhl_id: number | null } | null }
