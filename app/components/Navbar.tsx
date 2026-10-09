@@ -235,11 +235,21 @@ export function SectionEyebrow({ userId }: { userId: string | null }) {
   }
   const section = best ? GROUP_SECTION[best.group.id] : undefined
   if (!best || !section) return null
+  // Famille à une seule page (Calendrier LNH, Blessures, Contrats LNH) : le bandeau, plus gros,
+  // tient lieu de titre — ces pages n'ont plus de <h1> à elles.
+  if (!best.page) {
+    return (
+      <h1 className={`flex items-center gap-3 mb-5 bg-slate-700 rounded-md px-5 py-3.5 ${sectionBorderClass(section)}`}>
+        <SectionIcon section={section} className="w-7 h-7" />
+        <span className="text-white text-2xl font-bold">{best.group.label}</span>
+      </h1>
+    )
+  }
   return (
     <div className={`flex items-center gap-2.5 mb-5 bg-slate-700 rounded-md px-4 py-2.5 ${sectionBorderClass(section)}`}>
       <SectionIcon section={section} />
       {/* Nom de la page seulement : l'icône et la couleur disent déjà à quelle famille elle appartient. */}
-      <span className="text-white text-base font-bold tracking-wide">{best.page ?? best.group.label}</span>
+      <span className="text-white text-base font-bold tracking-wide">{best.page}</span>
     </div>
   )
 }

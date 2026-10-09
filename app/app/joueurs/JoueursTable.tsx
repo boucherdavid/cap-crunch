@@ -168,10 +168,8 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Contrats LNH</h1>
-        <span className="text-sm text-gray-500">{filteredPlayers.length} joueurs</span>
-      </div>
+      {/* Titre : bandeau de section du layout (SectionEyebrow). */}
+      <p className="text-sm text-gray-500 text-right mb-3">{filteredPlayers.length} joueurs</p>
 
       <div className="bg-white rounded-lg shadow p-4 mb-6">
         <div className="flex items-center justify-between gap-3 mb-3">
