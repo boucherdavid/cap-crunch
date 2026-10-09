@@ -57,6 +57,10 @@ Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en s
 
 ### ▶ Prochaine session — commencer ici
 
+- **Rechute d'un joueur sur LTIR** (en prod depuis le 2026-10-09, jamais exécutée) : retour
+  obligatoire annulé après 2 matchs consécutifs manqués. Migration `ltir_relapse_games.sql` roulée en staging et en prod (2026-10-09).
+  Marchand : délai laissé annulé, nouveau délai de 14 jours à son prochain match.
+
 - **Rechute d'un joueur sur LTIR** (en prod depuis le 2026-10-09, jamais exécutée avant) : la
   rechute annule le délai de réintégration, un nouveau délai repart au prochain match. **À
   vérifier pour Marchand (Vincent)** : avis « délai annulé » reçu, suivi fermé, puis nouveau délai

@@ -1531,8 +1531,12 @@ un joueur verrouillé de cette position. Même calcul côté écran (`blockedRea
   avant, délai dépassé. Jamais de déplacement automatique : passé le délai, l'admin décide
   (section « Retours de LTIR » du panneau Approbations ; seuls les dépassés comptent au compteur).
 - **Rechute avant la réintégration (David, 2026-10-09)** : blessure confirmée (2 sources) apparue
-  après son dernier match, délai pas encore échu → suivi fermé, délai annulé, pooler et admins
-  avisés. Un nouveau délai complet repart au prochain match : seuls les matchs joués après la
+  après son dernier match, **et `app_settings.ltir_relapse_games` matchs consécutifs de son équipe
+  manqués** (défaut 2, réglé avec les autres seuils LTIR — un nombre de matchs, pas de jours),
+  délai pas encore échu → suivi fermé, retour obligatoire annulé, pooler et admins avisés. Avant
+  ce seuil, la date limite continue de courir. Matchs comptés sur le calendrier de l'API de la LNH
+  (`countTeamGamesSince`), seulement s'ils ont commencé depuis 18 h (import de nuit des points) ;
+  calendrier indisponible → rien n'est annulé. Un nouveau délai complet repart au prochain match : seuls les matchs joués après la
   fermeture d'un suivi « a rejoué » comptent comme un retour (`pastRows`, `runSync`). Délai déjà
   dépassé : pas d'annulation, l'admin décide.
 - Joueur plus listé blessé par **aucune** source mais qui n'a pas encore joué : admins seulement

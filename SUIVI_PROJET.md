@@ -82,6 +82,19 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   avaient gardé l'ancienne blessure sans interruption (`first_seen_at` antérieur aux matchs), la
   rechute n'est pas détectée et l'admin tranche à la main.
 - Vérifié par lecture des données de prod (suivi, blessure, matchs de Marchand) ; pas exécuté.
+- Exécuté en prod le jour même : le suivi de Marchand a été fermé et David a reçu l'avis.
+- Ajustement demandé par David aussitôt après : un compteur plutôt qu'une annulation immédiate.
+  La rechute doit durer `ltir_relapse_days` jours (3 par défaut, réglable dans
+  `/admin/effectifs?tab=approbation`) sans que le joueur rejoue ; d'ici là, la date limite court
+  toujours. Règle la limite « une blessure d'un jour suffit ». Migration
+  `supabase_migrations/ltir_relapse_days.sql` (colonne lue et écrite à part : sans elle, le
+  défaut de 3 jours s'applique).
+- Critère final choisi par David : non pas des jours, mais **2 matchs consécutifs manqués** par
+  le joueur blessé de nouveau. `ltir_relapse_days` remplacé avant d'avoir été migré par
+  `ltir_relapse_games` (défaut 2, migration `ltir_relapse_games.sql`). Matchs de l'équipe lus sur
+  le calendrier de l'API de la LNH, comptés depuis le dernier match du joueur. Vérifié sur le
+  calendrier réel de la Floride (4 matchs terminés, prochains les 10 et 12 octobre) ; pas exécuté.
+- Marchand : David laisse son délai annulé (fermé par la première version de la règle).
 
 ### 2026-10-08
 
