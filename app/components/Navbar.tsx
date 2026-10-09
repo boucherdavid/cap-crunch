@@ -217,7 +217,31 @@ const PAGE_TITLES: Record<string, string> = {
   '/statistiques/ahl': 'Statistiques AHL',
 }
 
-export function SectionEyebrow({ userId }: { userId: string | null }) {
+// Largeur du bandeau, calquée sur le conteneur de la page (largeur max + marges) pour que le
+// titre s'aligne sur le contenu. `flush` : la page a déjà son espace en haut (py-8), le bandeau
+// n'ajoute pas le sien. Page absente d'ici = pleine largeur. À tenir à jour si une page change
+// de largeur.
+const NARROW = 'max-w-3xl mx-auto px-4'
+const PAGE_WIDTHS: Record<string, { box: string; flush: boolean }> = {
+  '/aide': { box: NARROW, flush: true },
+  '/a-propos': { box: NARROW, flush: true },
+  '/copie-de-secours': { box: NARROW, flush: true },
+  '/babillard': { box: 'max-w-3xl mx-auto', flush: false },
+  '/planification': { box: 'max-w-3xl mx-auto', flush: false },
+  '/classement': { box: 'max-w-4xl mx-auto px-4', flush: true },
+  '/listes': { box: 'max-w-4xl mx-auto px-4', flush: true },
+  '/poolers': { box: 'max-w-5xl mx-auto px-4', flush: true },
+  '/marche-echanges': { box: 'max-w-5xl mx-auto px-4', flush: true },
+  '/calendrier': { box: 'max-w-5xl mx-auto px-4', flush: true },
+  '/comparaison-marqueur': { box: 'max-w-5xl mx-auto px-4', flush: true },
+  '/meilleurs-disponibles': { box: 'max-w-6xl mx-auto px-4', flush: true },
+  '/en-direct': { box: 'max-w-6xl mx-auto px-2 sm:px-4', flush: true },
+  '/analytique/trios': { box: 'max-w-6xl px-2 sm:px-4', flush: true },
+  '/simulation': { box: 'max-w-7xl mx-auto px-4', flush: true },
+  '/statistiques/blessures': { box: 'max-w-7xl mx-auto px-4', flush: true },
+}
+
+export function SectionEyebrow({ userId, isAdmin }: { userId: string | null; isAdmin: boolean }) {
   const pathname = usePathname()
   let best: { group: NavGroup; page: string | null; path: string; length: number } | null = null
   for (const group of [...NAV_GROUPS, ADMIN_GROUP]) {
@@ -254,12 +278,19 @@ export function SectionEyebrow({ userId }: { userId: string | null }) {
   }
   // Partout ailleurs, le bandeau EST le titre de la page (les pages n'ont plus de <h1> à elles).
   // Exception : l'alignement d'un pooler garde son <h1> (le nom du pooler).
-  const Tag = isActive(pathname, '/poolers') && pathname !== '/poolers' ? 'div' : 'h1'
+  const onPoolerRoster = isActive(pathname, '/poolers') && pathname !== '/poolers'
+  const Tag = onPoolerRoster ? 'div' : 'h1'
+  // Gestion d'effectifs n'est limitée en largeur que pour un pooler (pleine largeur pour l'admin).
+  const width = onPoolerRoster ? undefined
+    : best.path === '/gestion-effectifs' ? (isAdmin ? undefined : { box: 'max-w-6xl mx-auto px-4', flush: true })
+    : PAGE_WIDTHS[best.path]
   return (
-    <Tag className={`flex items-center gap-3 mb-5 bg-slate-700 rounded-md px-5 py-3.5 ${sectionBorderClass(section)}`}>
-      <SectionIcon section={section} className="w-7 h-7" />
-      <span className="text-white text-2xl font-bold">{title}</span>
-    </Tag>
+    <div className={`${width?.box ?? ''} ${width?.flush ? '' : 'mb-5'}`}>
+      <Tag className={`flex items-center gap-2.5 sm:gap-3 bg-slate-700 rounded-md px-3 py-2.5 sm:px-5 sm:py-3.5 ${sectionBorderClass(section)}`}>
+        <SectionIcon section={section} className="w-5 h-5 sm:w-7 sm:h-7" />
+        <span className="text-white text-lg sm:text-2xl font-bold leading-tight">{title}</span>
+      </Tag>
+    </div>
   )
 }
 
