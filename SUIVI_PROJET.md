@@ -96,6 +96,12 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   calendrier réel de la Floride (4 matchs terminés, prochains les 10 et 12 octobre) ; pas exécuté.
 - Marchand : David laisse son délai annulé (fermé par la première version de la règle).
 
+**[Feat] — Comparaison Marqueur : heure du dernier mouvement** (`app/lib/marqueur.ts`) :
+- Demande de David : savoir, en reportant un mouvement sur Marqueur, s'il a eu lieu avant ou
+  après le match du joueur. « Activation le 8 oct. » devient « Activation le 8 oct. à 14 h 32
+  (heure de l'Est) ». Un horodatage à midi UTC pile (date forcée ou mouvement reporté au
+  lendemain) s'affiche « avant les matchs du jour », puisqu'il vaut pour toute la journée.
+
 ### 2026-10-08
 
 **[Feat] — Exceptions au délai de réactivation : remplacement d'un blessé, poste vacant**
