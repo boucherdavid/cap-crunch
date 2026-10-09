@@ -211,9 +211,15 @@ function groupIsActive(pathname: string, group: NavGroup): boolean {
 // Repère de section en haut de chaque page (David, 2026-10-09) : même icône et même couleur que
 // le groupe du menu et que les cartes de l'accueil. Le groupe retenu est celui dont le lien est le
 // plus long à correspondre (« /statistiques/blessures » → Blessures, pas Statistiques).
+// Titre du bandeau quand le libellé du menu est trop court hors de son groupe (« LNH », « AHL »).
+const PAGE_TITLES: Record<string, string> = {
+  '/statistiques': 'Statistiques LNH',
+  '/statistiques/ahl': 'Statistiques AHL',
+}
+
 export function SectionEyebrow({ userId }: { userId: string | null }) {
   const pathname = usePathname()
-  let best: { group: NavGroup; page: string | null; length: number } | null = null
+  let best: { group: NavGroup; page: string | null; path: string; length: number } | null = null
   for (const group of [...NAV_GROUPS, ADMIN_GROUP]) {
     const leaves: { label: string | null; href: string }[] = [
       ...(group.href ? [{ label: null, href: group.href }] : []),
@@ -223,7 +229,7 @@ export function SectionEyebrow({ userId }: { userId: string | null }) {
     for (const leaf of leaves) {
       const path = leaf.href.split('?')[0]
       if (path.startsWith('/') && isActive(pathname, path) && (!best || path.length > best.length)) {
-        best = { group, page: leaf.label, length: path.length }
+        best = { group, page: leaf.label, path, length: path.length }
       }
     }
   }
@@ -231,26 +237,29 @@ export function SectionEyebrow({ userId }: { userId: string | null }) {
   // de Mon équipe, alors que l'alignement d'un autre pooler relève du pool.
   if (userId && isActive(pathname, `/poolers/${userId}`)) {
     const mine = NAV_GROUPS.find(g => g.id === 'mon-equipe')
-    if (mine) best = { group: mine, page: 'Mon alignement', length: 0 }
+    if (mine) best = { group: mine, page: 'Mon alignement', path: '/dashboard', length: 0 }
   }
   const section = best ? GROUP_SECTION[best.group.id] : undefined
   if (!best || !section) return null
-  // Famille à une seule page (Calendrier LNH, Blessures, Contrats LNH) : le bandeau, plus gros,
-  // tient lieu de titre — ces pages n'ont plus de <h1> à elles.
-  if (!best.page) {
+  const title = PAGE_TITLES[best.path] ?? best.page ?? best.group.label
+
+  // Pages admin : elles gardent leur propre titre, le bandeau reste un simple repère.
+  if (best.group.id === 'admin') {
     return (
-      <h1 className={`flex items-center gap-3 mb-5 bg-slate-700 rounded-md px-5 py-3.5 ${sectionBorderClass(section)}`}>
-        <SectionIcon section={section} className="w-7 h-7" />
-        <span className="text-white text-2xl font-bold">{best.group.label}</span>
-      </h1>
+      <div className={`flex items-center gap-2.5 mb-5 bg-slate-700 rounded-md px-4 py-2.5 ${sectionBorderClass(section)}`}>
+        <SectionIcon section={section} />
+        <span className="text-white text-base font-bold tracking-wide">{title}</span>
+      </div>
     )
   }
+  // Partout ailleurs, le bandeau EST le titre de la page (les pages n'ont plus de <h1> à elles).
+  // Exception : l'alignement d'un pooler garde son <h1> (le nom du pooler).
+  const Tag = isActive(pathname, '/poolers') && pathname !== '/poolers' ? 'div' : 'h1'
   return (
-    <div className={`flex items-center gap-2.5 mb-5 bg-slate-700 rounded-md px-4 py-2.5 ${sectionBorderClass(section)}`}>
-      <SectionIcon section={section} />
-      {/* Nom de la page seulement : l'icône et la couleur disent déjà à quelle famille elle appartient. */}
-      <span className="text-white text-base font-bold tracking-wide">{best.page}</span>
-    </div>
+    <Tag className={`flex items-center gap-3 mb-5 bg-slate-700 rounded-md px-5 py-3.5 ${sectionBorderClass(section)}`}>
+      <SectionIcon section={section} className="w-7 h-7" />
+      <span className="text-white text-2xl font-bold">{title}</span>
+    </Tag>
   )
 }
 

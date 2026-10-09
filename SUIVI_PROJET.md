@@ -36,6 +36,14 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   affiche en haut de chaque page une étiquette foncée avec l'icône, la bande de couleur et le nom
   de la famille du menu, déduite de l'adresse (lien le plus long qui correspond). Un seul endroit
   plutôt que de retoucher chaque titre de page ; rien sur l'accueil ni sur les pages hors menu.
+- Après les retours de David : le bandeau n'affiche que le nom de la page, pleine largeur, et
+  devient le **titre de la page** (gros, `<h1>`) sur toutes les pages du menu. Les 39 `<h1>` des
+  pages concernées ont été retirés (sous-titres, compteurs et contrôles conservés ; un `<span />`
+  ou une ligne « Saison… » / « Repêchage… » garde la mise en page là où le titre partageait sa
+  ligne avec des contrôles). Gardent leur propre titre : l'alignement d'un pooler (son nom), les
+  pages hors menu (Compte, Signaler, séries) et les pages admin (petit bandeau repère).
+  Son propre alignement est étiqueté « Mon alignement » (violet). Changement fait à l'aveugle sur
+  une trentaine de pages : à passer en revue sur staging.
 
 ### 2026-10-08
 

@@ -1588,6 +1588,11 @@ un joueur verrouillé de cette position. Même calcul côté écran (`blockedRea
 
 ## 7. Standards de code
 
+- **Titre des pages (David, 2026-10-09)** : les pages du menu n'ont pas de `<h1>` à elles. Le
+  bandeau `SectionEyebrow` (`app/components/Navbar.tsx`, monté dans `layout.tsx`) sert de titre :
+  icône et couleur de la famille (`SectionIcon.tsx`), nom tiré de l'entrée du menu
+  (`PAGE_TITLES` pour un libellé trop court). Une nouvelle page s'ajoute au menu, sans `<h1>` ;
+  seules les pages hors menu, l'alignement d'un pooler et les pages admin gardent le leur.
 - TypeScript strict — pas de `any` sans justification
 - Tailwind CSS uniquement pour le style (pas de CSS inline)
 - Composants Server par défaut; `"use client"` seulement si nécessaire

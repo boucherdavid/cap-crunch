@@ -166,7 +166,7 @@ export default async function TriosPage({ searchParams }: { searchParams: Promis
   if (!teamCode) {
     return (
       <div className="px-2 sm:px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Trios et paires</h1>
+        {/* Titre : bandeau de section du layout (SectionEyebrow, Navbar.tsx). */}
         <p className="text-center py-10 text-gray-400 text-sm bg-white rounded-lg shadow">Aucune donnée importée pour l&apos;instant.</p>
       </div>
     )
@@ -223,7 +223,6 @@ export default async function TriosPage({ searchParams }: { searchParams: Promis
     <div className="px-2 sm:px-4 py-8 max-w-6xl">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Trios et paires</h1>
           <p className="text-xs text-gray-400 mt-1">
             Données :{' '}
             <a href="https://www.dailyfaceoff.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">Daily Faceoff</a>

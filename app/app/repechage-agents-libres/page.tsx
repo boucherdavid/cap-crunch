@@ -30,7 +30,7 @@ export default async function AgentsLibresPage() {
   if (!saison) {
     return (
       <div className="mx-auto py-8 px-4">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Signatures des agents libres</h1>
+        {/* Titre : bandeau de section du layout (SectionEyebrow, Navbar.tsx). */}
         <p className="text-gray-400">Aucune saison régulière active.</p>
       </div>
     )
@@ -110,7 +110,6 @@ export default async function AgentsLibresPage() {
   if (dataResult.error || !dataResult.poolers) {
     return (
       <div className="mx-auto py-8 px-4">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Signatures des agents libres</h1>
         <p className="text-red-500 text-sm">{dataResult.error ?? 'Erreur de chargement.'}</p>
       </div>
     )

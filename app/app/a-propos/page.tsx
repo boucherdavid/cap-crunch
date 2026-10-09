@@ -210,7 +210,7 @@ export default function AProposPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">À propos de Cap Crunch</h1>
+        {/* Titre : bandeau de section du layout (SectionEyebrow, Navbar.tsx). */}
         <p className="text-sm text-gray-500 mt-1">Un tour d&apos;horizon de tout ce qui est consultable ou faisable dans l&apos;app.</p>
       </div>
 

@@ -55,7 +55,7 @@ export default async function RepechageRecruesPage({
   if (!saison) {
     return (
       <div className="max-w-5xl mx-auto py-8 px-4">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Repêchage des recrues</h1>
+        {/* Titre : bandeau de section du layout (SectionEyebrow, Navbar.tsx). */}
         <p className="text-gray-400">Aucune saison disponible.</p>
       </div>
     )
@@ -160,7 +160,6 @@ export default async function RepechageRecruesPage({
       {isAdmin && !isNaN(parsedId) && <AdminHubBackLink saisonId={saison.id} />}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Repêchage des recrues</h1>
           <p className="text-gray-500 text-sm mt-1">
             Repêchage {poolDraftYear}
             {isDraftDone && <span className="ml-2 text-green-600 font-medium">· Complété ✓</span>}

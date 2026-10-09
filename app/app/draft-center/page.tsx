@@ -40,7 +40,7 @@ export default async function DraftCenterPage({
   return (
     <div className="mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-gray-800">{'Classement des prospects'} {draftYear}</h1>
+        <p className="text-sm text-gray-500">Repêchage {draftYear}</p>
         {years.length > 1 && <DraftYearSelect years={years} selectedYear={draftYear} />}
       </div>
       <DraftCenterTable prospects={rows} draftYear={draftYear} />

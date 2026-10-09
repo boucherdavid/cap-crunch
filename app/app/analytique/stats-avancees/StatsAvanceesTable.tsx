@@ -140,7 +140,7 @@ export default function StatsAvanceesTable({
     <div>
       <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Statistiques avancées</h1>
+          {/* Titre : bandeau de section du layout (SectionEyebrow, Navbar.tsx). */}
           <p className="text-xs text-gray-400 mt-1">
             Données :{' '}
             <a href="https://moneypuck.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">MoneyPuck.com</a>

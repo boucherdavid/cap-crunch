@@ -204,7 +204,7 @@ export default function AnalyseTool({
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Outil d&apos;analyse</h1>
+        {/* Titre : bandeau de section du layout (SectionEyebrow, Navbar.tsx). */}
         <p className="text-xs text-gray-400 mt-1">
           Stats :{' '}
           <a href="https://moneypuck.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">MoneyPuck.com</a>

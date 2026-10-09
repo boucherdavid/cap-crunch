@@ -90,7 +90,7 @@ export default function AhlStatsTable({
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
-        <h1 className="text-2xl font-bold text-gray-800">Statistiques AHL</h1>
+        <span />
         <div className="flex items-center gap-4">
           {seasons.length > 0 && (
             <select

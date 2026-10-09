@@ -36,7 +36,7 @@ export default async function GestionEffectifsPage({
   if (!saison) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Gestion d&apos;effectifs</h1>
+        {/* Titre : bandeau de section du layout (SectionEyebrow, Navbar.tsx). */}
         <p className="text-gray-500">Aucune saison active.</p>
       </div>
     )
@@ -51,7 +51,6 @@ export default async function GestionEffectifsPage({
   if (!isAdmin && !seasonStarted) {
     return (
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-1">Gestion d&apos;effectifs</h1>
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800 my-4">
           La saison n&apos;a pas encore démarré : seuls les échanges sont ouverts. Pour activer, mettre en réserve ou libérer
           un joueur, utilise <a href="/repechage-agents-libres" className="font-medium underline">Signatures des agents libres</a>.
@@ -78,7 +77,6 @@ export default async function GestionEffectifsPage({
   if (!isAdmin && !toolOuvert) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Gestion d&apos;effectifs</h1>
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-5 text-sm text-yellow-800">
           L&apos;outil de gestion d&apos;effectifs est temporairement fermé. Contacte l&apos;administrateur pour plus d&apos;informations.
         </div>
@@ -88,7 +86,6 @@ export default async function GestionEffectifsPage({
 
   return (
     <div className={`${isAdmin ? '' : 'max-w-6xl'} mx-auto px-4 py-8`}>
-      <h1 className="text-2xl font-bold text-gray-800 mb-1">Gestion d&apos;effectifs</h1>
       <p className="text-sm text-gray-500 mb-6">
         Ajoute une ou plusieurs actions, vérifie l&apos;état projeté, puis soumets le tout en une seule opération.
       </p>

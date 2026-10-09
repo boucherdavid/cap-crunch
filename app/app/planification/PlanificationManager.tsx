@@ -113,7 +113,7 @@ export default function PlanificationManager({
           className="w-full max-w-sm mx-auto rounded-xl shadow-sm"
           priority
         />
-        <h1 className="text-2xl font-bold text-gray-800 mt-3 mb-1">Planification</h1>
+        {/* Titre : bandeau de section du layout (SectionEyebrow, Navbar.tsx). */}
         <p className="text-gray-500 text-sm">
           {poll ? poll.title : 'Trouver une date pour la rencontre annuelle du pool.'}
         </p>
