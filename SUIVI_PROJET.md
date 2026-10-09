@@ -45,6 +45,23 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   Son propre alignement est étiqueté « Mon alignement » (violet). Changement fait à l'aveugle sur
   une trentaine de pages : à passer en revue sur staging.
 
+**[Style] — Mobile : accueil allégé, Contrats LNH, Trios et paires** (`app/components/MobileFold.tsx`,
+`app/app/page.tsx`, `app/app/joueurs/JoueursTable.tsx`, `app/app/analytique/trios/page.tsx`,
+`Navbar.tsx`) :
+- Demande de David : simplifier le mobile seulement, garder l'essentiel et le fonctionnel.
+- Accueil : cartes secondaires (activité, marché, blessures, signatures, actualité) repliées par
+  défaut sous `sm` via `MobileFold`, toujours ouvertes au-delà ; les matchs du jour remontent sous
+  le pointage en direct sur téléphone.
+- Contrats LNH : colonne « Contrat » (années restantes + statut à l'échéance) sous `lg`, comme
+  l'onglet Masse salariale ; filtres repliés derrière un bouton « Filtres » sur téléphone (la
+  recherche reste) ; lignes plus compactes.
+- Trios et paires : dans les tableaux de combinaisons, la colonne figée aux noms sur une ligne
+  occupait toute la largeur du téléphone et cachait les chiffres (cause probable du « comportement
+  bizarre » signalé, non confirmée) — noms sur plusieurs lignes, PJ / CF % / xB masqués sous `sm` ;
+  noms des joueurs sur deux lignes au lieu d'être coupés.
+- Bandeau de titre aligné sur la largeur de chaque page (`PAGE_WIDTHS`) et compact sur mobile.
+- Rien vu sur un téléphone avant de pousser. Simulation mobile : à décider avec David.
+
 ### 2026-10-08
 
 **[Feat] — Exceptions au délai de réactivation : remplacement d'un blessé, poste vacant**

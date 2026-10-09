@@ -164,7 +164,9 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
       .sort(sortProspects)
   }, [prospects, search])
 
-  const totalColumns = 5 + SEASONS.length
+  // +1 : colonne « Contrat », affichée seulement sous lg (les saisons futures y sont masquées).
+  const totalColumns = 6 + SEASONS.length
+  const [showFilters, setShowFilters] = useState(false)
 
   return (
     <div>
@@ -173,7 +175,15 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
 
       <div className="bg-white rounded-lg shadow p-4 mb-6">
         <div className="flex items-center justify-between gap-3 mb-3">
-          <p className="text-sm text-gray-500">{'Affine l\u2019affichage par nom, \u00e9quipe, statut ou salaire.'}</p>
+          <p className="text-sm text-gray-500 hidden md:block">{'Affine l\u2019affichage par nom, \u00e9quipe, statut ou salaire.'}</p>
+          <button
+            type="button"
+            onClick={() => setShowFilters(v => !v)}
+            aria-expanded={showFilters}
+            className="md:hidden rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600"
+          >
+            {showFilters ? 'Masquer les filtres' : 'Filtres'}
+          </button>
           <button
             type="button"
             onClick={clearFilters}
@@ -190,6 +200,8 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
             onChange={(e) => setSearch(e.target.value)}
             className="border rounded-lg px-3 py-2 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+          {/* Téléphone : repliés par défaut ; `contents` garde les champs dans la grille. */}
+          <div className={`${showFilters ? 'contents' : 'hidden'} md:contents`}>
           <select
             value={selectedTeam}
             onChange={(e) => setSelectedTeam(e.target.value)}
@@ -241,6 +253,7 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
               />
             )}
           </div>
+          </div>
         </div>
       </div>
 
@@ -256,8 +269,9 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
               <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">{'\u00c2ge'}</th>
               <th className="sticky top-0 z-10 bg-gray-50 text-left px-4 py-3 font-medium text-gray-600 hidden md:table-cell">{'Exp\u00e9rience'}</th>
               {SEASONS.map((season) => (
-                <th key={season} className={`sticky top-0 z-10 bg-gray-50 text-right px-4 py-3 font-medium text-gray-600${season !== currentSeason ? ' hidden lg:table-cell' : ''}`}>{season}</th>
+                <th key={season} className={`sticky top-0 z-10 bg-gray-50 text-right px-2 sm:px-4 py-3 font-medium text-gray-600${season !== currentSeason ? ' hidden lg:table-cell' : ''}`}>{season}</th>
               ))}
+              <th className="sticky top-0 z-10 bg-gray-50 text-right px-2 sm:px-4 py-3 font-medium text-gray-600 lg:hidden">Contrat</th>
             </tr>
           </thead>
           <tbody>
@@ -314,7 +328,7 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
                   <tr className="border-b hover:bg-gray-50 transition-colors">
                     {/* Nom figé à gauche en portrait ; la colonne Équipe y est masquée (déjà dans le
                         bandeau d'équipe au-dessus) — David, 2026-09-28. */}
-                    <td className="px-2 sm:px-4 py-3 font-medium text-gray-800 max-sm:sticky max-sm:left-0 max-sm:z-10 bg-white">
+                    <td className="px-2 sm:px-4 py-2 sm:py-3 font-medium text-gray-800 max-sm:sticky max-sm:left-0 max-sm:z-10 bg-white">
                       <span className="inline-flex items-center gap-2">
                         <span
                           title={player.is_available ? 'Disponible' : 'Dans un pool'}
@@ -328,7 +342,7 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
                     <td className="px-4 py-3 hidden sm:table-cell">
                       <TeamBadge code={player.teams?.code} />
                     </td>
-                    <td className="px-2 sm:px-4 py-3 text-gray-600">{player.position ?? DASH}</td>
+                    <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-600">{player.position ?? DASH}</td>
                     <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{player.age ?? DASH}</td>
                     <td className="px-4 py-3 hidden md:table-cell">
                       {player.status === 'ELC'
@@ -339,7 +353,7 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
                     {SEASONS.map((season) => {
                       const contract = getContract(season)
                       return (
-                        <td key={season} className={`px-2 sm:px-4 py-3 text-right${season !== currentSeason ? ' hidden lg:table-cell' : ''}`}>
+                        <td key={season} className={`px-2 sm:px-4 py-2 sm:py-3 text-right whitespace-nowrap${season !== currentSeason ? ' hidden lg:table-cell' : ''}`}>
                           {contract ? (
                             <span>
                               {contract.contract_status && contract.contract_status !== player.status && (
@@ -355,6 +369,28 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
                         </td>
                       )
                     })}
+                    <td className="px-2 sm:px-4 py-2 sm:py-3 text-right whitespace-nowrap lg:hidden">
+                      {(() => {
+                        // Saisons consécutives sous contrat à partir de la saison courante.
+                        const start = SEASONS.indexOf(currentSeason)
+                        let years = 0
+                        let endStatus: string | null = null
+                        for (let i = Math.max(start, 0); i < SEASONS.length; i++) {
+                          const c = getContract(SEASONS[i])
+                          if (c && Number(c.cap_number) > 0) { years++; continue }
+                          endStatus = c?.contract_status ?? null
+                          break
+                        }
+                        if (years === 0) return <span className="text-gray-300">{DASH}</span>
+                        const all = years === SEASONS.length - Math.max(start, 0)
+                        return (
+                          <span className="inline-flex items-center gap-1 justify-end">
+                            <span className="tabular-nums text-gray-700">{years}{all ? '+' : ''}&nbsp;an{years > 1 ? 's' : ''}</span>
+                            {endStatus && <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${statusColor(endStatus)}`}>{endStatus}</span>}
+                          </span>
+                        )
+                      })()}
+                    </td>
                   </tr>
                 </Fragment>
               )

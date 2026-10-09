@@ -17,6 +17,7 @@ import LiveNightCards from '@/components/live/LiveNightCards'
 import { MARQUEUR_URL } from '@/lib/externalLinks'
 import { after } from 'next/server'
 import SectionIcon, { sectionBorderClass, type SectionId } from '@/components/SectionIcon'
+import MobileFold from '@/components/MobileFold'
 import { syncLtirReturns } from '@/lib/ltirReturns'
 import { syncNhlTransactions, loadRecentNhlTransactions, type NhlTransactionView } from '@/lib/nhlTransactions'
 
@@ -317,7 +318,7 @@ function fmtActivityDate(iso: string): string {
 function PoolActivityWidget({ items }: { items: PoolActivityItem[] }) {
   if (items.length === 0) return null
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
+    <MobileFold>
       <div className={`bg-slate-700 px-5 py-3 flex items-center justify-between ${sectionBorderClass('pool')}`}>
         <CardTitle section="pool">Activité du pool</CardTitle>
         <Link href="/journal-transactions" className="text-xs text-slate-300 hover:text-white transition-colors">
@@ -332,7 +333,7 @@ function PoolActivityWidget({ items }: { items: PoolActivityItem[] }) {
           </li>
         ))}
       </ul>
-    </div>
+    </MobileFold>
   )
 }
 
@@ -394,7 +395,7 @@ async function fetchNhlNews(limit = 6): Promise<NewsItem[]> {
 function NhlNewsWidget({ items }: { items: NewsItem[] }) {
   if (items.length === 0) return null
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
+    <MobileFold>
       <div className={`bg-slate-700 px-5 py-3 ${sectionBorderClass('actualite')}`}>
         <CardTitle section="actualite">Actualité LNH</CardTitle>
       </div>
@@ -413,7 +414,7 @@ function NhlNewsWidget({ items }: { items: NewsItem[] }) {
           </li>
         ))}
       </ul>
-    </div>
+    </MobileFold>
   )
 }
 
@@ -467,7 +468,7 @@ async function fetchPoolInjuries(
 function PoolInjuriesWidget({ items }: { items: PoolInjuryItem[] }) {
   if (items.length === 0) return null
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
+    <MobileFold>
       <div className={`bg-slate-700 px-5 py-3 flex items-center justify-between ${sectionBorderClass('blessures')}`}>
         <CardTitle section="blessures" href="/statistiques/blessures">Blessures dans le pool</CardTitle>
         <span className="text-xs text-slate-300">Source : CBS Sports</span>
@@ -488,7 +489,7 @@ function PoolInjuriesWidget({ items }: { items: PoolInjuryItem[] }) {
           </li>
         ))}
       </ul>
-    </div>
+    </MobileFold>
   )
 }
 
@@ -499,7 +500,7 @@ function NhlTransactionsWidget({ items }: { items: NhlTransactionView[] }) {
   if (items.length === 0) return null
   const fmtDate = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', timeZone: 'UTC' })
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
+    <MobileFold>
       <div className={`bg-slate-700 px-5 py-3 flex items-center justify-between gap-3 ${sectionBorderClass('contrats')}`}>
         <CardTitle section="contrats" href="/joueurs">Signatures et échanges dans la LNH</CardTitle>
         <span className="text-xs text-slate-300 shrink-0">Sources : ESPN, LNH</span>
@@ -517,7 +518,7 @@ function NhlTransactionsWidget({ items }: { items: NhlTransactionView[] }) {
           </li>
         ))}
       </ul>
-    </div>
+    </MobileFold>
   )
 }
 
@@ -547,7 +548,7 @@ async function fetchMarketSummary(poolSeasonId: number, limit = 5) {
 function MarketWidget({ summary }: { summary: Awaited<ReturnType<typeof fetchMarketSummary>> }) {
   if (summary.items.length === 0) return null
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
+    <MobileFold>
       <div className={`bg-slate-700 px-5 py-3 flex items-center justify-between ${sectionBorderClass('pool')}`}>
         <CardTitle section="pool">Sur le marché</CardTitle>
         <Link href="/marche-echanges" className="text-xs text-slate-300 hover:text-white">
@@ -568,7 +569,7 @@ function MarketWidget({ summary }: { summary: Awaited<ReturnType<typeof fetchMar
           </li>
         ))}
       </ul>
-    </div>
+    </MobileFold>
   )
 }
 
@@ -801,6 +802,11 @@ export default async function Home() {
 
           {liveNight && <LiveNightCards initial={liveNight} myId={me?.id ?? null} />}
 
+          {/* Téléphone : les matchs remontent ici, avant les cartes repliées (colonne de droite à partir de lg). */}
+          <div className="lg:hidden">
+            <ScheduleList todayDate={todayDate} games={todayGames} />
+          </div>
+
           <PoolActivityWidget items={poolActivity} />
           <MarketWidget summary={market} />
           <PoolInjuriesWidget items={poolInjuries} />
@@ -808,7 +814,9 @@ export default async function Home() {
 
         <div className="space-y-4">
           <MarqueurCard />
-          <ScheduleList todayDate={todayDate} games={todayGames} />
+          <div className="hidden lg:block">
+            <ScheduleList todayDate={todayDate} games={todayGames} />
+          </div>
           {/* « Joueurs en action » remplacé par le pointage en direct en saison régulière (2026-10-04) */}
           {seriesSaison && <ActivityTable activity={activity} todayDate={todayDate} hasGames={hasGames} />}
           <NhlTransactionsWidget items={nhlTransactions} />

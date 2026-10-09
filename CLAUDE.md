@@ -1649,6 +1649,11 @@ téléphone : tout ce qui est masqué en portrait revient automatiquement en pay
 - Colonne latérale fixe (ex : `MovementHistoryPanel`, `w-80`) : dessous sous `lg`
   (`flex flex-col lg:flex-row`, `w-full lg:w-80`) — sinon elle écrase le contenu principal
   même en paysage.
+- **Carte secondaire repliée sur téléphone seulement** : `app/components/MobileFold.tsx`
+  (David, 2026-10-09 — accueil : activité, marché, blessures, signatures, actualité). Premier
+  enfant = en-tête, le reste se déplie d'un toucher ; toujours ouvert à partir de `sm`.
+- **Colonne figée** : jamais avec un contenu `whitespace-nowrap` plus large qu'un téléphone — elle
+  couvre alors tout l'écran et cache les colonnes qui défilent (Trios et paires, 2026-10-09).
 - Légendes et définitions de plus d'une ligne : repliées par défaut sur **tous** les écrans via
   `app/components/CollapsibleLegend.tsx` (David, 2026-10-01 — `StreakLegend`, sources du Draft
   Center, définitions des stats avancées). Ne pas compter sur une infobulle seule pour expliquer
