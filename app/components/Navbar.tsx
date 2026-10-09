@@ -238,8 +238,8 @@ export function SectionEyebrow({ userId }: { userId: string | null }) {
   return (
     <div className={`flex items-center gap-2.5 mb-5 bg-slate-700 rounded-md px-4 py-2.5 ${sectionBorderClass(section)}`}>
       <SectionIcon section={section} />
-      <span className="text-white text-sm font-bold uppercase tracking-wide">{best.group.label}</span>
-      {best.page && <span className="text-slate-300 text-sm">· {best.page}</span>}
+      {/* Nom de la page seulement : l'icône et la couleur disent déjà à quelle famille elle appartient. */}
+      <span className="text-white text-base font-bold tracking-wide">{best.page ?? best.group.label}</span>
     </div>
   )
 }
