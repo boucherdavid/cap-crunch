@@ -10,6 +10,7 @@ import {
 import { listTeamsAction } from '../repechage-agents-libres/actions'
 import { useSimState, groupRosterEntries, type RecrueOption, type SimEntry } from './useSimState'
 import SimPanel from './SimPanel'
+import SimMobile from './SimMobile'
 import WatchlistPanel from '@/components/WatchlistPanel'
 
 const fmt = (n: number) =>
@@ -220,6 +221,12 @@ export default function SimulationTool({
         </p>
       </div>
 
+      {/* Téléphone : version simplifiée (voir SimMobile.tsx), même état que la version complète. */}
+      <div className="md:hidden">
+        <SimMobile poolCap={poolCap} state={myState} recruePlayers={myRecrue} saisonId={saisonId} />
+      </div>
+
+      <div className="hidden md:block space-y-6">
       <div className="flex gap-2">
         <button onClick={() => setTab('moi')} className={tabClass('moi')}>Mon alignement</button>
         <button onClick={() => setTab('transaction')} className={tabClass('transaction')}>Transaction</button>
@@ -277,11 +284,6 @@ export default function SimulationTool({
             </div>
           </div>
 
-          {/* Listes privées (David, 2026-09-27) — « Simuler » ajoute un agent libre de la liste à
-              l'alignement simulé, même chemin que le lien "Analyser" du ballotage. */}
-          <div className="mt-6">
-            <WatchlistPanel kinds={['joueurs', 'recrues']} defaultOpen={false} onSimulate={handleSimulateFromList} />
-          </div>
         </>
       )}
 
@@ -317,6 +319,14 @@ export default function SimulationTool({
             </div>
           )}
         </div>
+      )}
+      </div>
+
+      {/* Listes privées (David, 2026-09-27) — « Simuler » ajoute un agent libre de la liste à
+          l'alignement simulé, même chemin que le lien "Analyser" du ballotage. Hors des deux blocs
+          ci-dessus pour ne monter le panneau qu'une fois (téléphone et grand écran). */}
+      {tab === 'moi' && (
+        <WatchlistPanel kinds={['joueurs', 'recrues']} defaultOpen={false} onSimulate={handleSimulateFromList} />
       )}
     </div>
   )

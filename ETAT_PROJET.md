@@ -59,8 +59,9 @@ Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en s
 
 - **Chantier mobile** (staging seulement, 2026-10-09) : accueil avec cartes secondaires repliées,
   Contrats LNH (colonne Contrat, filtres repliés), Trios et paires (tableaux lisibles). À valider
-  sur le téléphone de David. Reste : version mobile simplifiée de Simulation (en attente de son
-  choix), puis Calendrier, Statistiques AHL et les deux repêchages.
+  sur le téléphone de David, avec la Simulation simplifiée (sans échanges ni scénarios sur
+  téléphone ; version complète en étapes à faire seulement si un pooler la demande). Reste :
+  Calendrier, Statistiques AHL et les deux repêchages.
 
 - **Icônes et bandes de couleur** (staging seulement, 2026-10-09) : menu de gauche et en-têtes des
   cartes de l'accueil (validés par David), et bandeau de section qui sert de titre sur toutes les

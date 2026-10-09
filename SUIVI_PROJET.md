@@ -60,7 +60,14 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   bizarre » signalé, non confirmée) — noms sur plusieurs lignes, PJ / CF % / xB masqués sous `sm` ;
   noms des joueurs sur deux lignes au lieu d'être coupés.
 - Bandeau de titre aligné sur la largeur de chaque page (`PAGE_WIDTHS`) et compact sur mobile.
-- Rien vu sur un téléphone avant de pousser. Simulation mobile : à décider avec David.
+- Rien vu sur un téléphone avant de pousser.
+- Simulation (`app/app/simulation/SimMobile.tsx`, `SimulationTool.tsx`) : version téléphone
+  simplifiée choisie par David (option 1) — résumé collant (espace restant, verdict, décompte
+  12/6/2), alignement en liste avec un menu par joueur (Actif / Réserviste / IR / Retirer), ajout
+  d'une recrue de sa banque ou d'un joueur par son nom, réinitialisation. Même `useSimState` que la
+  version complète, affichée à partir de `md`. Échanges entre poolers et scénarios sauvegardés :
+  grand écran seulement. Option 2 gardée en réserve si un pooler la demande : afficher les blocs
+  existants sous `md` et revoir leur mise en page (rien à recalculer).
 
 ### 2026-10-08
 
