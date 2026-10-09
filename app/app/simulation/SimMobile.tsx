@@ -7,9 +7,9 @@ import { groupSimEntries, type PlayerType, type RecrueOption, type SimEntry, typ
 // Version téléphone de la simulation (David, 2026-10-09) : l'essentiel pour répondre à « est-ce
 // que ça entre sous le plafond si je fais ça ? » — son alignement, un menu par joueur, l'ajout
 // d'une recrue ou d'un joueur par son nom. Même état que la version complète (useSimState), donc
-// rien n'est dupliqué côté calcul. Les échanges entre poolers et les scénarios sauvegardés
-// restent sur grand écran ; pour les offrir aussi au téléphone, il suffit d'afficher les blocs de
-// SimulationTool.tsx sous `md` (ils fonctionnent déjà, seule la mise en page est à revoir).
+// rien n'est dupliqué côté calcul. Les scénarios sauvegardés suivent, dans SimulationTool.tsx.
+// Seule la simulation d'un échange entre poolers reste sur grand écran ; pour l'offrir aussi au
+// téléphone, il suffit d'afficher ce bloc de SimulationTool.tsx sous `md` et d'en revoir la mise en page.
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
@@ -220,7 +220,7 @@ export default function SimMobile({
       )}
 
       <p className="text-xs text-gray-400">
-        Les échanges entre poolers et les scénarios sauvegardés se font sur un écran plus large (tablette ou ordinateur).
+        La simulation d&apos;un échange avec un autre pooler se fait sur un écran plus large (tablette ou ordinateur).
       </p>
     </div>
   )

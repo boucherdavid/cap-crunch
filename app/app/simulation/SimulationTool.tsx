@@ -211,6 +211,47 @@ export default function SimulationTool({
   const tabClass = (t: Tab) =>
     `text-sm font-semibold px-3 py-1.5 rounded-lg ${tab === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
 
+  // Carte des scénarios : la même sur téléphone et sur grand écran.
+  const scenarioCard = (
+      <div className="bg-white rounded-lg shadow p-4">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Scénarios sauvegardés</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={activeScenarioId ?? ''}
+            onChange={e => handleLoadScenario(e.target.value ? Number(e.target.value) : 0)}
+            disabled={scenarioBusy}
+            className="border rounded-lg px-2 py-2 sm:py-1.5 text-sm w-full sm:w-auto focus:outline-none"
+          >
+            <option value="">— Nouveau scénario —</option>
+            {scenarios.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <input
+            value={saveAsName}
+            onChange={e => setSaveAsName(e.target.value)}
+            placeholder="Nom du scénario"
+            className="border rounded-lg px-2 py-2 sm:py-1.5 text-sm w-full sm:w-48 focus:outline-none"
+          />
+          <button
+            onClick={handleSaveScenario}
+            disabled={scenarioBusy || !myState.touched && !activeScenarioId}
+            className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
+          >
+            Sauvegarder
+          </button>
+          {activeScenarioId && (
+            <button
+              onClick={handleDeleteScenario}
+              disabled={scenarioBusy}
+              className="text-sm px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-40"
+            >
+              Supprimer
+            </button>
+          )}
+        </div>
+        {scenarioMsg && <p className="text-xs text-gray-500 mt-2">{scenarioMsg}</p>}
+      </div>
+  )
+
   return (
     <div className="space-y-6">
       <div>
@@ -224,6 +265,7 @@ export default function SimulationTool({
       {/* Téléphone : version simplifiée (voir SimMobile.tsx), même état que la version complète. */}
       <div className="md:hidden">
         <SimMobile poolCap={poolCap} state={myState} recruePlayers={myRecrue} saisonId={saisonId} />
+        <div className="mt-4">{scenarioCard}</div>
       </div>
 
       <div className="hidden md:block space-y-6">
@@ -234,43 +276,7 @@ export default function SimulationTool({
 
       {tab === 'moi' && (
         <>
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Scénarios sauvegardés</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={activeScenarioId ?? ''}
-                onChange={e => handleLoadScenario(e.target.value ? Number(e.target.value) : 0)}
-                disabled={scenarioBusy}
-                className="border rounded-lg px-2 py-1.5 text-sm focus:outline-none"
-              >
-                <option value="">— Nouveau scénario —</option>
-                {scenarios.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-              <input
-                value={saveAsName}
-                onChange={e => setSaveAsName(e.target.value)}
-                placeholder="Nom du scénario"
-                className="border rounded-lg px-2 py-1.5 text-sm w-48 focus:outline-none"
-              />
-              <button
-                onClick={handleSaveScenario}
-                disabled={scenarioBusy || !myState.touched && !activeScenarioId}
-                className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
-              >
-                Sauvegarder
-              </button>
-              {activeScenarioId && (
-                <button
-                  onClick={handleDeleteScenario}
-                  disabled={scenarioBusy}
-                  className="text-sm px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-40"
-                >
-                  Supprimer
-                </button>
-              )}
-            </div>
-            {scenarioMsg && <p className="text-xs text-gray-500 mt-2">{scenarioMsg}</p>}
-          </div>
+          {scenarioCard}
 
           <div className="bg-white rounded-lg shadow p-5">
             <p className="text-xs text-gray-400 mb-3">

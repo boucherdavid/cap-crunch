@@ -65,7 +65,8 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   simplifiée choisie par David (option 1) — résumé collant (espace restant, verdict, décompte
   12/6/2), alignement en liste avec un menu par joueur (Actif / Réserviste / IR / Retirer), ajout
   d'une recrue de sa banque ou d'un joueur par son nom, réinitialisation. Même `useSimState` que la
-  version complète, affichée à partir de `md`. Échanges entre poolers et scénarios sauvegardés :
+  version complète, affichée à partir de `md`. Scénarios sauvegardés ajoutés au téléphone à la
+  demande de David après son essai (même carte que sur grand écran). Échanges entre poolers :
   grand écran seulement. Option 2 gardée en réserve si un pooler la demande : afficher les blocs
   existants sous `md` et revoir leur mise en page (rien à recalculer).
 
