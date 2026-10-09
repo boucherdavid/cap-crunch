@@ -293,7 +293,9 @@ export default async function TriosPage({ searchParams }: { searchParams: Promis
               </p>
             </div>
             {lineSeasons.length > 1 && (
-              <div className="flex gap-1.5 text-sm">
+              {/* flex-wrap : sans lui, les saisons sur une seule ligne dépassaient l'écran du téléphone
+                  et élargissaient toute la page (contenu tassé à gauche, vide à droite). */}
+              <div className="flex flex-wrap gap-1.5 text-sm">
                 {lineSeasons.map(s => (
                   <a
                     key={s}
