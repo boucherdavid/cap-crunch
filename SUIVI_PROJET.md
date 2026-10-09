@@ -70,6 +70,19 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   grand écran seulement. Option 2 gardée en réserve si un pooler la demande : afficher les blocs
   existants sous `md` et revoir leur mise en page (rien à recalculer).
 
+**[Feat] — Retour de LTIR : une rechute annule le délai** (`app/lib/ltirReturns.ts`,
+`app/app/aide/LtirRulesContent.tsx`) :
+- Cas réel : Brad Marchand (LTIR de Vincent) a rejoué les 4 et 6 octobre (délai jusqu'au 19), puis
+  est listé blessé (jambe, day-to-day) depuis le 7, avant d'avoir été réintégré. Cas jamais prévu.
+- Règle de David : la rechute réinitialise les deux semaines. Mise en œuvre : blessure confirmée
+  apparue après le dernier match et délai non échu → suivi fermé, avis au pooler et aux admins ;
+  le prochain match ouvre un nouveau suivi avec un délai complet. Sans migration : les suivis
+  fermés servent de plancher pour ignorer les matchs d'avant la rechute.
+- Limite connue : une blessure d'un seul jour suffit à annuler le délai. Si les listes de blessés
+  avaient gardé l'ancienne blessure sans interruption (`first_seen_at` antérieur aux matchs), la
+  rechute n'est pas détectée et l'admin tranche à la main.
+- Vérifié par lecture des données de prod (suivi, blessure, matchs de Marchand) ; pas exécuté.
+
 ### 2026-10-08
 
 **[Feat] — Exceptions au délai de réactivation : remplacement d'un blessé, poste vacant**

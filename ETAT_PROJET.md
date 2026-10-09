@@ -21,7 +21,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | = `main` |
+| `staging` | `main` + rechute d'un joueur sur LTIR (2026-10-09, à valider) |
 | `main` (prod) | À jour au 2026-10-09 : icônes et bandeaux de titre par famille du menu, chantier mobile (accueil, Contrats LNH, Trios, Simulation), avis de signatures et d'échanges de la LNH |
 
 Variables Vercel ajoutées les 5 et 6 octobre :
@@ -56,6 +56,11 @@ Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en s
 ## 4. À faire / à vérifier
 
 ### ▶ Prochaine session — commencer ici
+
+- **Rechute d'un joueur sur LTIR** (staging seulement, 2026-10-09) : la rechute annule le délai de
+  réintégration, un nouveau délai repart au prochain match. **En prod, s'appliquera tout de suite
+  à Marchand (Vincent)** : avis « délai annulé » à Vincent et aux admins à la première ouverture
+  de l'accueil. Attend le feu vert de David.
 
 - **Chantier mobile** (en prod depuis le 2026-10-09) : accueil avec cartes secondaires repliées,
   Contrats LNH (colonne Contrat, filtres repliés), Trios et paires (tableaux lisibles). À valider

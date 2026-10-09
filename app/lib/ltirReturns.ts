@@ -9,6 +9,11 @@
  * après son retour. Un joueur qui n'est plus listé blessé par aucune source mais n'a pas encore
  * joué est seulement signalé aux admins (`reason='not_injured'`), sans date limite.
  *
+ * Rechute (David, 2026-10-09) : si le joueur se blesse de nouveau avant d'avoir été réintégré
+ * (blessure confirmée par 2 sources, apparue après son dernier match, délai pas encore échu), le
+ * suivi est fermé et le délai annulé. Un nouveau délai complet repart à son prochain match : seuls
+ * les matchs joués APRÈS la fermeture du suivi précédent comptent comme un retour au jeu.
+ *
  * Détection paresseuse, même patron que le ballotage (`resolveExpiredWaiverClaims`) : lancée au
  * chargement de l'accueil, de Gestion d'effectifs et du panneau Approbations — pas de tâche
  * planifiée. L'index unique partiel de `ltir_return_watch` (un seul suivi ouvert par joueur) et
@@ -24,7 +29,7 @@ import { emailLinkHtml } from '@/lib/siteUrl'
 import { getTodayET, addDaysToDate } from '@/lib/daily-recap'
 import { localMidnightUTC } from '@/lib/dateRanges'
 import { toNhlSeasonId } from '@/lib/nhl-stats'
-import { DEFAULT_LTIR_SETTINGS } from '@/lib/ltirEligibility'
+import { DEFAULT_LTIR_SETTINGS, MIN_INJURY_SOURCES, countInjurySources } from '@/lib/ltirEligibility'
 
 const MOUVEMENTS_PATH = '/gestion-effectifs'
 const APPROBATION_PATH = '/admin/effectifs?tab=approbation'
@@ -169,7 +174,7 @@ async function runSync(): Promise<void> {
 
   // 2. Depuis quand chaque joueur est sur LTIR : dernier passage journalisé, sinon la demande
   //    approuvée (les mises sur LTIR de pré-saison ne journalisent rien), sinon added_at.
-  const [{ data: logRows }, { data: requestRows }, { data: gameRows }, { data: injuryRows }, deadlineDays] = await Promise.all([
+  const [{ data: logRows }, { data: requestRows }, { data: gameRows }, { data: injuryRows }, { data: pastRows }, deadlineDays] = await Promise.all([
     admin
       .from('roster_change_log')
       .select('pooler_id, player_id, changed_at')
@@ -189,7 +194,18 @@ async function runSync(): Promise<void> {
       .eq('game_type', 2)
       .in('player_id', playerIds)
       .order('game_start_time'),
-    admin.from('player_injuries').select('player_id').in('player_id', playerIds),
+    admin
+      .from('player_injuries')
+      .select('player_id, first_seen_at, in_cbs, espn_status_desc, espn_est_return_date, mp_status, mp_return_date')
+      .in('player_id', playerIds),
+    // Suivis « a rejoué » déjà fermés : un match antérieur à leur fermeture ne rouvre rien.
+    admin
+      .from('ltir_return_watch')
+      .select('pooler_id, player_id, resolved_at')
+      .eq('pool_season_id', season.id)
+      .eq('reason', 'played')
+      .not('resolved_at', 'is', null)
+      .in('player_id', playerIds),
     fetchDeadlineDays(admin),
   ])
 
@@ -210,7 +226,19 @@ async function runSync(): Promise<void> {
     if (!gamesByPlayer.has(g.player_id)) gamesByPlayer.set(g.player_id, [])
     gamesByPlayer.get(g.player_id)!.push(g)
   }
-  const listedInjured = new Set(((injuryRows ?? []) as { player_id: number }[]).map(r => r.player_id))
+  type InjuryRow = {
+    player_id: number; first_seen_at: string; in_cbs: boolean | null
+    espn_status_desc: string | null; espn_est_return_date: string | null; mp_status: string | null; mp_return_date: string | null
+  }
+  const injuries = (injuryRows ?? []) as InjuryRow[]
+  const listedInjured = new Set(injuries.map(r => r.player_id))
+  // Blessure confirmée (2 sources sur 3) → date de sa première apparition.
+  const confirmedInjurySince = new Map(
+    injuries.filter(r => countInjurySources(r) >= MIN_INJURY_SOURCES).map(r => [r.player_id, r.first_seen_at]),
+  )
+  for (const r of (pastRows ?? []) as { pooler_id: string; player_id: number; resolved_at: string }[]) {
+    keepLatest(key(r.pooler_id, r.player_id), r.resolved_at)
+  }
 
   // Dernier jour permis = aujourd'hui (ET) + N jours, jusqu'à 23 h 59 — même convention que le
   // ballotage. Le délai part de la détection, pas du premier match : un retour repéré en retard
@@ -226,6 +254,29 @@ async function runSync(): Promise<void> {
     const existing = openByKey.get(k)
     const playerName = r.players ? `${r.players.first_name} ${r.players.last_name}` : 'Un joueur'
     const poolerName = r.poolers?.name ?? 'Un pooler'
+
+    // Rechute avant la réintégration : blessure confirmée apparue après son dernier match, délai
+    // pas encore échu → suivi fermé, délai annulé. Le prochain match ouvrira un nouveau suivi.
+    if (existing?.reason === 'played' && existing.deadline_at && Date.now() < new Date(existing.deadline_at).getTime()) {
+      const injuredSince = confirmedInjurySince.get(r.player_id)
+      const games = gamesByPlayer.get(r.player_id) ?? []
+      const lastGame = games[games.length - 1]
+      if (injuredSince && lastGame && new Date(lastGame.game_start_time).getTime() < new Date(injuredSince).getTime()) {
+        const { data: closed } = await admin.from('ltir_return_watch')
+          .update({ resolved_at: nowIso }).eq('id', existing.id).is('resolved_at', null).select('id')
+        openByKey.delete(k)
+        if (closed && closed.length > 0) {
+          const jours = `${deadlineDays} jour${deadlineDays > 1 ? 's' : ''}`
+          notifyPoolerAndAdmins(
+            admin, r.pooler_id,
+            'Cap Crunch — Retour de LTIR : délai annulé',
+            `${playerName} s'est blessé de nouveau avant d'être remis dans ton alignement : le délai est annulé et il reste sur le LTIR. Un nouveau délai de ${jours} commencera à son prochain match.`,
+            `${playerName} (LTIR de ${poolerName}) s'est blessé de nouveau avant d'être réintégré : le délai est annulé. Un nouveau délai de ${jours} commencera à son prochain match.`,
+          )
+        }
+        continue
+      }
+    }
 
     if (firstGame) {
       if (existing?.reason === 'played') continue
