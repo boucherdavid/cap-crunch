@@ -11,11 +11,11 @@
  *
  * Rechute (David, 2026-10-09) : si le joueur se blesse de nouveau avant d'avoir été réintégré
  * (blessure confirmée par 2 sources, apparue après son dernier match, délai pas encore échu) et
- * que cette blessure dure depuis `app_settings.ltir_relapse_days` jours (3 par défaut), le suivi
- * est fermé et le retour obligatoire annulé. Tant que le compteur n'est pas atteint, rien ne
- * change : un « day-to-day » d'un jour ou deux ne suffit pas. Un nouveau délai complet repart à
- * son prochain match : seuls les matchs joués APRÈS la fermeture du suivi précédent comptent
- * comme un retour au jeu.
+ * qu'il manque `app_settings.ltir_relapse_games` matchs consécutifs de son équipe (2 par défaut,
+ * calendrier de l'API de la LNH), le suivi est fermé et le retour obligatoire annulé. Tant que le
+ * compte n'est pas atteint, rien ne change : un « day-to-day » sans match manqué ne suffit pas.
+ * Un nouveau délai complet repart à son prochain match : seuls les matchs joués APRÈS la
+ * fermeture du suivi précédent comptent comme un retour au jeu.
  *
  * Détection paresseuse, même patron que le ballotage (`resolveExpiredWaiverClaims`) : lancée au
  * chargement de l'accueil, de Gestion d'effectifs et du panneau Approbations — pas de tâche
@@ -81,10 +81,36 @@ async function fetchDeadlineDays(admin: AdminDb): Promise<number> {
   return data?.ltir_return_deadline_days ?? DEFAULT_LTIR_SETTINGS.returnDeadlineDays
 }
 
-async function fetchRelapseDays(admin: AdminDb): Promise<number> {
+async function fetchRelapseGames(admin: AdminDb): Promise<number> {
   // Lu à part : avant la migration, la requête échoue et le défaut s'applique.
-  const { data } = await admin.from('app_settings').select('ltir_relapse_days').eq('id', 1).maybeSingle()
-  return (data as { ltir_relapse_days?: number } | null)?.ltir_relapse_days ?? DEFAULT_LTIR_SETTINGS.relapseDays
+  const { data } = await admin.from('app_settings').select('ltir_relapse_games').eq('id', 1).maybeSingle()
+  return (data as { ltir_relapse_games?: number } | null)?.ltir_relapse_games ?? DEFAULT_LTIR_SETTINGS.relapseGames
+}
+
+// Un match de l'équipe ne compte comme « manqué » que s'il a commencé depuis au moins 18 heures :
+// les points sont importés la nuit, et un match de la veille au soir pas encore importé ferait
+// passer un joueur qui a joué pour un absent.
+const MISSED_GAME_MIN_AGE_MS = 18 * 3_600_000
+
+/** Matchs de saison régulière terminés par l'équipe depuis `sinceIso` (le dernier match du joueur).
+ * null si le calendrier de la LNH ne répond pas : dans le doute, on n'annule rien. */
+async function countTeamGamesSince(teamCode: string, sinceIso: string): Promise<number | null> {
+  try {
+    const res = await fetch(`https://api-web.nhle.com/v1/club-schedule-season/${teamCode}/now`, {
+      cache: 'no-store', signal: AbortSignal.timeout(5000),
+    })
+    if (!res.ok) return null
+    const json = await res.json() as { games?: { gameType?: number; startTimeUTC?: string; gameState?: string }[] }
+    const since = new Date(sinceIso).getTime()
+    const latest = Date.now() - MISSED_GAME_MIN_AGE_MS
+    return (json.games ?? []).filter(g => {
+      if (g.gameType !== 2 || !g.startTimeUTC) return false
+      const start = new Date(g.startTimeUTC).getTime()
+      return start > since && start <= latest && (g.gameState === 'OFF' || g.gameState === 'FINAL')
+    }).length
+  } catch {
+    return null
+  }
 }
 
 async function adminIds(admin: AdminDb): Promise<string[]> {
@@ -146,7 +172,7 @@ async function runSync(): Promise<void> {
   const [{ data: ltirRows }, { data: openRows, error: watchError }] = await Promise.all([
     admin
       .from('pooler_rosters')
-      .select('pooler_id, player_id, added_at, poolers (name), players (first_name, last_name)')
+      .select('pooler_id, player_id, added_at, poolers (name), players (first_name, last_name, teams (code))')
       .eq('pool_season_id', season.id)
       .eq('player_type', 'ltir')
       .eq('is_active', true),
@@ -163,7 +189,7 @@ async function runSync(): Promise<void> {
     player_id: number
     added_at: string | null
     poolers: { name: string } | null
-    players: { first_name: string; last_name: string } | null
+    players: { first_name: string; last_name: string; teams: { code: string } | null } | null
   }
   const ltir = (ltirRows ?? []) as unknown as LtirRow[]
   const open = (openRows ?? []) as WatchRow[]
@@ -183,7 +209,7 @@ async function runSync(): Promise<void> {
 
   // 2. Depuis quand chaque joueur est sur LTIR : dernier passage journalisé, sinon la demande
   //    approuvée (les mises sur LTIR de pré-saison ne journalisent rien), sinon added_at.
-  const [{ data: logRows }, { data: requestRows }, { data: gameRows }, { data: injuryRows }, { data: pastRows }, deadlineDays, relapseDays] = await Promise.all([
+  const [{ data: logRows }, { data: requestRows }, { data: gameRows }, { data: injuryRows }, { data: pastRows }, deadlineDays, relapseGames] = await Promise.all([
     admin
       .from('roster_change_log')
       .select('pooler_id, player_id, changed_at')
@@ -216,7 +242,7 @@ async function runSync(): Promise<void> {
       .not('resolved_at', 'is', null)
       .in('player_id', playerIds),
     fetchDeadlineDays(admin),
-    fetchRelapseDays(admin),
+    fetchRelapseGames(admin),
   ])
 
   const sinceByKey = new Map<string, string>()
@@ -265,15 +291,17 @@ async function runSync(): Promise<void> {
     const playerName = r.players ? `${r.players.first_name} ${r.players.last_name}` : 'Un joueur'
     const poolerName = r.poolers?.name ?? 'Un pooler'
 
-    // Rechute avant la réintégration : blessure confirmée apparue après son dernier match, qui
-    // dure depuis `relapseDays` jours, délai pas encore échu → suivi fermé, retour annulé. Le
-    // prochain match ouvrira un nouveau suivi.
+    // Rechute avant la réintégration : blessure confirmée apparue après son dernier match, et
+    // `relapseGames` matchs de son équipe manqués depuis, délai pas encore échu → suivi fermé,
+    // retour annulé. Le prochain match ouvrira un nouveau suivi.
     if (existing?.reason === 'played' && existing.deadline_at && Date.now() < new Date(existing.deadline_at).getTime()) {
       const injuredSince = confirmedInjurySince.get(r.player_id)
       const games = gamesByPlayer.get(r.player_id) ?? []
       const lastGame = games[games.length - 1]
-      const injuredLongEnough = !!injuredSince && Date.now() - new Date(injuredSince).getTime() >= relapseDays * 86_400_000
-      if (injuredSince && injuredLongEnough && lastGame && new Date(lastGame.game_start_time).getTime() < new Date(injuredSince).getTime()) {
+      const teamCode = r.players?.teams?.code
+      const reinjured = !!injuredSince && !!lastGame && new Date(lastGame.game_start_time).getTime() < new Date(injuredSince).getTime()
+      const missed = reinjured && teamCode ? await countTeamGamesSince(teamCode, lastGame.game_start_time) : null
+      if (reinjured && missed !== null && missed >= relapseGames) {
         const { data: closed } = await admin.from('ltir_return_watch')
           .update({ resolved_at: nowIso }).eq('id', existing.id).is('resolved_at', null).select('id')
         openByKey.delete(k)
@@ -282,8 +310,8 @@ async function runSync(): Promise<void> {
           notifyPoolerAndAdmins(
             admin, r.pooler_id,
             'Cap Crunch — Retour de LTIR : délai annulé',
-            `${playerName} est de nouveau blessé depuis ${relapseDays} jour${relapseDays > 1 ? 's' : ''} sans avoir été remis dans ton alignement : le retour obligatoire est annulé et il reste sur le LTIR. Un nouveau délai de ${jours} commencera à son prochain match.`,
-            `${playerName} (LTIR de ${poolerName}) est de nouveau blessé depuis ${relapseDays} jour${relapseDays > 1 ? 's' : ''} sans avoir été réintégré : le retour obligatoire est annulé. Un nouveau délai de ${jours} commencera à son prochain match.`,
+            `${playerName} s'est blessé de nouveau et a manqué ${missed} match${missed > 1 ? 's' : ''} de suite avant d'être remis dans ton alignement : le retour obligatoire est annulé et il reste sur le LTIR. Un nouveau délai de ${jours} commencera à son prochain match.`,
+            `${playerName} (LTIR de ${poolerName}) s'est blessé de nouveau et a manqué ${missed} match${missed > 1 ? 's' : ''} de suite avant d'être réintégré : le retour obligatoire est annulé. Un nouveau délai de ${jours} commencera à son prochain match.`,
           )
         }
         continue

@@ -422,9 +422,9 @@ export async function updateLtirSettingsAction(settings: LtirSettings): Promise<
   // Colonne écrite à part : tant que sa migration n'est pas roulée, les autres réglages
   // s'enregistrent quand même.
   const { error: relapseError } = await supabase
-    .from('app_settings').update({ ltir_relapse_days: settings.relapseDays }).eq('id', 1)
+    .from('app_settings').update({ ltir_relapse_games: settings.relapseGames }).eq('id', 1)
   if (relapseError) {
-    return { error: `Réglages enregistrés, sauf le délai de rechute (migration ltir_relapse_days.sql à rouler) : ${relapseError.message}` }
+    return { error: `Réglages enregistrés, sauf le seuil de rechute (migration ltir_relapse_games.sql à rouler) : ${relapseError.message}` }
   }
 
   revalidatePath('/admin/effectifs')

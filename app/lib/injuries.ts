@@ -89,7 +89,7 @@ export async function fetchLtirSettings(supabase: SupabaseLike): Promise<LtirSet
       .maybeSingle(),
     supabase.from('app_settings').select('ltir_return_deadline_days').eq('id', 1).maybeSingle(),
     supabase.from('app_settings').select('ltir_recent_game_days').eq('id', 1).maybeSingle(),
-    supabase.from('app_settings').select('ltir_relapse_days').eq('id', 1).maybeSingle(),
+    supabase.from('app_settings').select('ltir_relapse_games').eq('id', 1).maybeSingle(),
   ])
   const d = DEFAULT_LTIR_SETTINGS
   return {
@@ -100,7 +100,7 @@ export async function fetchLtirSettings(supabase: SupabaseLike): Promise<LtirSet
     removalAbsenceDays: data?.injury_removal_absence_days ?? d.removalAbsenceDays,
     returnDeadlineDays: returnRow?.ltir_return_deadline_days ?? d.returnDeadlineDays,
     recentGameDays: recentRow?.ltir_recent_game_days ?? d.recentGameDays,
-    relapseDays: relapseRow?.ltir_relapse_days ?? d.relapseDays,
+    relapseGames: relapseRow?.ltir_relapse_games ?? d.relapseGames,
   }
 }
 
