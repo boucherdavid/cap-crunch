@@ -58,7 +58,7 @@ Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en s
 ### ▶ Prochaine session — commencer ici
 
 - **Rechute d'un joueur sur LTIR** (staging seulement) : retour obligatoire annulé après 2 matchs
-  consécutifs manqués. Migration `ltir_relapse_games.sql` à rouler dans les deux bases. La prod a
+  consécutifs manqués. Migration `ltir_relapse_games.sql` roulée en staging et en prod (2026-10-09). La prod a
   encore la première version (annulation immédiate) tant que David n'a pas donné le feu vert.
   Marchand : délai laissé annulé, nouveau délai de 14 jours à son prochain match.
 
