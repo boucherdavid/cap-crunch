@@ -21,8 +21,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | `main` + icônes et bandes de couleur du menu et de l'accueil (2026-10-09, à valider) |
-| `main` (prod) | À jour au 2026-10-08 (délai de réactivation levé pour un blessé, notifications rétablies automatiquement, budgets de signatures expliqués) ; 2026-10-09 : avis de signatures et d'échanges de la LNH |
+| `staging` | = `main` |
+| `main` (prod) | À jour au 2026-10-09 : icônes et bandeaux de titre par famille du menu, chantier mobile (accueil, Contrats LNH, Trios, Simulation), avis de signatures et d'échanges de la LNH |
 
 Variables Vercel ajoutées les 5 et 6 octobre :
 - `cap-crunch` (prod) : `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN`.
@@ -57,16 +57,15 @@ Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en s
 
 ### ▶ Prochaine session — commencer ici
 
-- **Chantier mobile** (staging seulement, 2026-10-09) : accueil avec cartes secondaires repliées,
+- **Chantier mobile** (en prod depuis le 2026-10-09) : accueil avec cartes secondaires repliées,
   Contrats LNH (colonne Contrat, filtres repliés), Trios et paires (tableaux lisibles). À valider
   sur le téléphone de David, avec la Simulation simplifiée (validée par David ; scénarios
   sauvegardés inclus, échanges entre poolers sur grand écran seulement ; version complète en étapes à faire seulement si un pooler la demande). Reste :
   Calendrier, Statistiques AHL et les deux repêchages.
 
-- **Icônes et bandes de couleur** (staging seulement, 2026-10-09) : menu de gauche et en-têtes des
+- **Icônes et bandes de couleur** (en prod depuis le 2026-10-09) : menu de gauche et en-têtes des
   cartes de l'accueil (validés par David), et bandeau de section qui sert de titre sur toutes les
-  pages du menu (titres d'origine retirés). **À passer en revue page par page sur staging** avant
-  la prod : mise en page sous le bandeau, surtout les pages étroites et le mobile.
+  pages du menu (titres d'origine retirés). À surveiller à l'usage, page par page : mise en page sous le bandeau, surtout les pages étroites et le mobile.
 - **Avis de signatures et d'échanges de la LNH** (en prod depuis le 2026-10-09, carte validée en
   staging) : rouler
   `supabase_migrations/nhl_transaction_alerts.sql` dans les deux bases, puis ouvrir l'accueil. La
