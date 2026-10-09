@@ -21,7 +21,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | `main` + badge de blessure uniforme sur le LTIR (2026-10-09, à valider) |
+| `staging` | = `main` |
 | `main` (prod) | À jour au 2026-10-09 : icônes et bandeaux de titre par famille du menu, chantier mobile (accueil, Contrats LNH, Trios, Simulation), avis de signatures et d'échanges de la LNH |
 
 Variables Vercel ajoutées les 5 et 6 octobre :
