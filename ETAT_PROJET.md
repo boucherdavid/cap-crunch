@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-10-09
+**Dernière mise à jour :** 2026-10-09 (fin de session)
 
 ---
 
@@ -12,138 +12,103 @@
 
 - **Saison 2026-27 démarrée en prod** le 4 octobre au soir (`season_started=true`). Gestion
   d'effectifs, ballotage, échanges et LTIR sont ouverts aux poolers.
-- **Staging** : copie de la prod faite le 2026-10-06 (14 h 45) par le nouveau bouton. À rafraîchir
-  avant chaque séance de test (Admin → Mise à jour de données, sur staging).
-- Classement validé contre Marqueur.com : alignements concordants ; seul écart de points connu,
-  Ryan Leonard (Vincent) — 1 pt selon la LNH, 2 sur Marqueur (erreur de Marqueur).
+- **Staging** : copie de la prod datant du 2026-10-06. À rafraîchir avant chaque séance de test
+  (Admin → Mise à jour de données, sur staging). Ses blessures et ses mouvements sont donc en
+  retard sur la prod.
+- **Salaires et contrats** : rafraîchis le 2026-10-08 (pipeline local, CSV poussés sur `main`).
+  Le scraping de PuckPedia reste **manuel** (`./run_pipeline_staging.ps1`) ; le bouton de l'admin
+  et la tâche du lundi ne font que réimporter les CSV du dépôt.
+- Classement validé contre Marqueur.com ; seul écart de points connu, Ryan Leonard (Vincent) —
+  1 pt selon la LNH, 2 sur Marqueur (erreur de Marqueur).
 
 ## 2. Branches / déploiement
 
 | Branche | État |
 |---|---|
 | `staging` | = `main` |
-| `main` (prod) | À jour au 2026-10-09 : icônes et bandeaux de titre par famille du menu, chantier mobile (accueil, Contrats LNH, Trios, Simulation), avis de signatures et d'échanges de la LNH |
+| `main` (prod) | À jour au 2026-10-09 — tout ce qui est décrit en section 3 est en prod |
 
-Variables Vercel ajoutées les 5 et 6 octobre :
-- `cap-crunch` (prod) : `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN`.
-- `cap-crunch-staging` : `GITHUB_WORKFLOW_TOKEN`, `EMAIL_REDIRECT_TO` (jamais en prod).
-- Le jeton GitHub « Cap Crunch Vercel » **expire** : le renouveler dans les deux projets à
-  l'échéance, sinon l'import de nuit retombe sur l'horaire GitHub (~8 h ET) et les boutons de
-  mise à jour cessent de fonctionner.
+- Variables Vercel : prod `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN` ; staging `GITHUB_WORKFLOW_TOKEN`,
+  `EMAIL_REDIRECT_TO` (jamais en prod). Le jeton GitHub « Cap Crunch Vercel » **expire** : à
+  renouveler dans les deux projets, sinon l'import de nuit et les boutons de mise à jour cessent.
+- Migrations des 8 et 9 octobre roulées en staging et en prod : `delai_reactivation_defaut_3.sql`,
+  `poolers_notif_push.sql`, `ltir_relapse_games.sql`.
+- **À confirmer** : `nhl_transaction_alerts.sql` en prod (roulée en staging, où la carte
+  s'affiche). Sans elle, la carte des signatures et les avis restent inactifs en prod.
+- Pousser des CSV sur `staging` déclenche aussi un import en prod (`import.yml` n'est pas limité à
+  `main`) : sans gravité, mais deux imports tournent alors en parallèle. Correctif proposé, pas fait.
 
-Migrations roulées dans les deux bases : `ltir_return_watch.sql`, `ltir_recent_game_days.sql`.
-Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en staging).
+## 3. Livré les 8 et 9 octobre 2026 (tout est en prod)
 
-## 3. Livré les 5 et 6 octobre 2026 (tout est en prod)
-
-| Fonctionnalité | Où | Reste à faire |
+| Fonctionnalité | Où | Validation |
 |---|---|---|
-| Import des points : lie les `nhl_id` manquants, refait les 3 derniers jours, déclenché par Vercel Cron (~2 h ET) | `/api/cron/stats` | **Vérifier le 7 au matin** qu'une exécution est partie vers 2 h-3 h ET |
-| Panneau « Mises à jour automatiques » : dernière exécution + bouton par tâche | Admin → Mise à jour de données | — |
-| Copie prod → staging par bouton (avec blessures et demandes de LTIR) | Même page, sur staging seulement | — (premier essai réussi) |
-| Pastille « disponible » par `nhl_id` ; joueurs libérés de nouveau disponibles | Statistiques, Projections, AHL | — |
-| Meilleurs joueurs disponibles | Menu Le pool | — |
-| Retour au jeu d'un joueur sur LTIR : détection, délai de 14 jours, notifications, retour par le pooler | Gestion d'effectifs, Approbations | Suivre Marchand (Vincent) et Samoskevich (Steve) : échéance vers le 19 octobre |
-| Règle « a rejoué depuis moins de 7 jours → pas admissible au LTIR » | Badges, page Blessures | — |
-| Joueurs sur LTIR au marché et échangeables (arrivent actif ou réserviste) | Marché, onglet Échanges | Test réel entre deux poolers |
-| Bouton « À faire » des poolers | Barre du haut | — |
-| Courriels de staging redirigés vers David | `EMAIL_REDIRECT_TO` | — |
-| Comparaison avec Marqueur (écarts, liste à reporter avec dates, preuve LNH) | Admin → Comparaison Marqueur ; menu Le pool pour les poolers | Voir « Prochaine session » : lecture ratée le soir du 6 octobre |
-| Vidéos dans l'Aide (champ `video` par entrée) | `/aide` | David : enregistrer sur staging, envoyer les liens YouTube « non répertoriés » |
-| Deux Elias Pettersson distincts ; l'import ne fusionne plus deux `nhl_id` différents | Pipeline | **Confirmer au pipeline du lundi 12 octobre** que les deux fiches restent distinctes |
-| Pastille des non-lus sur le lien Communauté | Menu Admin | — |
+| Délai de réactivation levé pour remplacer un actif blessé ou combler un poste vacant après un LTIR ; délai à 3 jours par défaut | Gestion d'effectifs | Pas testé avec un compte pooler |
+| Notifications mémorisées sur le compte et rétablies automatiquement ; bandeau « Activer » ; mot de passe rempli automatiquement à la connexion | Partout, `/compte`, `/login` | Pas testé sur un appareil |
+| Budgets de signatures d'agents libres expliqués (standard, LTIR, débordement) | Gestion d'effectifs, Aide → Règlements | Validé par David |
+| Avis de signatures et d'échanges de la LNH (ESPN + alignements de la LNH) : push et courriel aux admins, carte sur l'accueil | Accueil | Carte validée en staging ; aucun avis réel reçu encore |
+| Icônes et couleurs par famille du menu ; bandeau de titre sur toutes les pages du menu (titres en double retirés) | Menu, accueil, toutes les pages | Accueil et bandeaux validés ; les ~30 pages touchées n'ont pas toutes été revues |
+| Mobile : accueil avec cartes secondaires repliées, Contrats LNH (colonne Contrat, filtres repliés), Trios et paires, Simulation simplifiée avec scénarios | Téléphone | Simulation et Trios validés par David |
+| Retour de LTIR : une rechute de 2 matchs consécutifs manqués annule le retour obligatoire (seuil réglable) | Approbation → seuils LTIR | Jamais exécutée sur un cas réel |
+| Comparaison Marqueur : heure d'effet de chaque mouvement à reporter | Admin et page des poolers | Pas confirmé par David |
+| Badge « Blessé » uniforme pour les joueurs déjà sur le LTIR | Page d'un pooler | Validé par David |
 
 ## 4. À faire / à vérifier
 
 ### ▶ Prochaine session — commencer ici
 
-- **Rechute d'un joueur sur LTIR** (en prod depuis le 2026-10-09, jamais exécutée) : retour
-  obligatoire annulé après 2 matchs consécutifs manqués. Migration `ltir_relapse_games.sql` roulée en staging et en prod (2026-10-09).
-  Marchand : délai laissé annulé, nouveau délai de 14 jours à son prochain match.
-
-- **Rechute d'un joueur sur LTIR** (en prod depuis le 2026-10-09, jamais exécutée avant) : la
-  rechute annule le délai de réintégration, un nouveau délai repart au prochain match. **À
-  vérifier pour Marchand (Vincent)** : avis « délai annulé » reçu, suivi fermé, puis nouveau délai
-  de 14 jours à son prochain match.
-
-- **Chantier mobile** (en prod depuis le 2026-10-09) : accueil avec cartes secondaires repliées,
-  Contrats LNH (colonne Contrat, filtres repliés), Trios et paires (tableaux lisibles). À valider
-  sur le téléphone de David, avec la Simulation simplifiée (validée par David ; scénarios
-  sauvegardés inclus, échanges entre poolers sur grand écran seulement ; version complète en étapes à faire seulement si un pooler la demande). Reste :
-  Calendrier, Statistiques AHL et les deux repêchages.
-
-- **Icônes et bandes de couleur** (en prod depuis le 2026-10-09) : menu de gauche et en-têtes des
-  cartes de l'accueil (validés par David), et bandeau de section qui sert de titre sur toutes les
-  pages du menu (titres d'origine retirés). À surveiller à l'usage, page par page : mise en page sous le bandeau, surtout les pages étroites et le mobile.
-- **Avis de signatures et d'échanges de la LNH** (en prod depuis le 2026-10-09, carte validée en
-  staging) : rouler
-  `supabase_migrations/nhl_transaction_alerts.sql` dans les deux bases, puis ouvrir l'accueil. La
-  première lecture remplit la carte sans avis ; les suivantes avertissent les admins. À valider :
-  la carte sur l'accueil et la réception d'un premier avis. Rappel : le scraping PuckPedia reste
-  manuel (`./run_pipeline_staging.ps1`), l'avis sert à savoir quand le lancer.
-
-- **Délai de réactivation levé pour remplacer un blessé** (en prod depuis le 2026-10-08) : à tester avec un
-  compte pooler — désactiver un joueur, puis le réactiver dans le même lot qu'un actif blessé
-  envoyé en réserve (message vert, soumission acceptée) ; sans blessé, toujours bloqué. Aussi : un
-  poste vacant après une mise sur LTIR approuvée se comble par un joueur verrouillé.
-- Migrations du 2026-10-08 roulées en staging et en prod : `delai_reactivation_defaut_3.sql`
-  (délai de réactivation à 3 jours par défaut) et `poolers_notif_push.sql`. Aucune en attente.
-- **Notifications rétablies automatiquement** (en prod depuis le 2026-10-08) : à tester
-  sur un téléphone — activer, puis vider les données du site : à la reconnexion, l'abonnement
-  revient seul ou le bandeau « Activer » s'affiche. Vérifier aussi que le mot de passe se remplit
-  tout seul à la connexion.
+- **Marchand (LTIR de Vincent)** : son délai de retour a été annulé le 9 octobre par la première
+  version de la règle de rechute, et David a choisi de le laisser ainsi. Un nouveau délai de
+  14 jours doit partir à son prochain match (retour estimé le 10 octobre) : vérifier que l'avis
+  arrive. Samoskevich (Steve) : échéance de retour vers le 19 octobre, inchangée.
+- **Pipeline du lundi 12 octobre** : confirmer que les deux Elias Pettersson restent distincts.
+- **Tests à faire par David** : délai de réactivation avec un compte pooler (désactiver un joueur,
+  puis le réactiver dans le même lot qu'un actif blessé envoyé en réserve) ; notifications sur
+  téléphone après avoir vidé les données du site.
 - **Déconnexions sur Android** signalées par un pooler : cause non trouvée. Lui demander si c'est
   après avoir vidé les données du navigateur ou sans rien faire.
-
-- **Types de recrue** : Protas et Kantserov corrigés en prod par David (2026-10-07). 127 recrues
-  « repêché » de 2026-27 n'ont aucun choix du pool rattaché (alignements entrés en Mode init) :
-  impossible de distinguer par la base un vrai repêché d'un agent libre mal classé. David corrige
-  au cas par cas avec le ✎ de `/admin/init?tab=recrues`.
-- **7 octobre au matin** : panneau « Mises à jour automatiques » → ligne « Points de la veille ».
-  Si rien n'est parti vers 2 h-3 h ET, le cron Vercel ne fonctionne pas (cliquer « Lancer
-  maintenant » en attendant, puis diagnostiquer).
-- **Comparaison Marqueur — à surveiller les soirs de matchs.** Le 6 octobre à 17 h 57, Marqueur a
-  renvoyé à Vercel des pages sans alignements (254 faux écarts affichés aux poolers). Garde-fou en
-  prod : la page affiche maintenant « Lecture de Marqueur impossible ». Cause non établie (page
-  complète depuis le poste de David au même moment). Si l'erreur revient chaque soir de matchs,
-  Marqueur répond autrement à Vercel le soir : lire la page autrement (autre heure, autre source).
-- **Courriels manquants, à décider** : plafond dépassé après une signature (push seulement, alors
-  qu'il y a une date limite) et proposition d'échange acceptée par l'autre pooler (aucun avis au
-  proposeur). Proposé à David le 6 octobre, sans réponse.
-- **Elias Pettersson le défenseur** (fiche 3720) n'a pas de contrat en base : PuckPedia ne liste
-  qu'un seul Elias Pettersson. Sans effet tant que personne ne le possède.
-- **Tâches GitHub planifiées** : toutes partent avec 3 à 8 heures de retard. Seul l'import des
-  points passe par Vercel ; blessures, stats avancées et trios gardent l'horaire GitHub (boutons
-  manuels disponibles). À basculer sur Vercel si le retard dérange.
-- Courriel quotidien des écarts avec Marqueur : pas fait (demanderait une tâche planifiée).
+- **Vidéos de l'Aide** : David enregistre sur staging, téléverse sur YouTube en « Non répertoriée »
+  et envoie les liens avec la section visée.
+- **Comparaison Marqueur les soirs de matchs** : le 6 octobre, Marqueur a renvoyé des pages sans
+  alignements à Vercel. Garde-fou en place (« Lecture de Marqueur impossible ») ; cause non
+  établie. À surveiller.
+- **Import de nuit par Vercel Cron** : jamais confirmé qu'une exécution part bien vers 2 h-3 h ET
+  (panneau « Mises à jour automatiques », ligne « Points de la veille »).
+- **Courriels manquants, à décider** : plafond dépassé après une signature (push seulement) et
+  proposition d'échange acceptée (aucun avis au proposeur). Proposé le 6 octobre, sans réponse.
 
 ### Toujours ouverts (sessions précédentes)
 
-- **Charge de la base pendant le hub** : diagnostic en suspens (2026-10-04), en attente des
-  chiffres Supabase (Reports → Database, 3 oct. 21 h-23 h UTC). Envisager un plan supérieur si
-  la base sature avec 8 poolers connectés.
-- **`credentials/poolers-prod.md` périmé** pour 6 poolers ; dans `poolers-staging.md`, le mot de
-  passe de `david@staging.test` est périmé aussi.
-- **Lag du repêchage** et **file des agents libres** (correctifs du 2026-10-03, en prod) : à
-  valider au prochain repêchage avec plusieurs poolers connectés.
-- **Résumé des choix de repêchage** (`/admin/init?tab=choix`) : resynchronisation à valider.
-- **Marché des échanges** : suite possible — sauvegarder une proposition comme scénario.
-- **Outil d'analyse** : suites possibles — pointage du pool plutôt que points LNH.
-- **Facteur de plafond** : analyse faite (`calcul_salaire/resume_facteur.md`), recommandation
-  1,28 pour 2026-27. En attente de l'avis du pooler actuaire, puis décision du groupe.
-- Tests réels encore à faire avec de vrais poolers : ballotage en saison, échange complet,
-  demande de LTIR de bout en bout, courriels de commentaires (babillard / planification).
+- **Types de recrue** : 127 recrues « repêché » de 2026-27 sans choix du pool rattaché ; David
+  corrige au cas par cas avec le ✎ de `/admin/init?tab=recrues`.
+- **Elias Pettersson le défenseur** (fiche 3720) sans contrat en base. Sans effet tant que
+  personne ne le possède.
+- **Tâches GitHub planifiées** : 3 à 8 heures de retard. Seul l'import des points passe par
+  Vercel ; blessures, stats avancées et trios gardent l'horaire GitHub (boutons manuels).
+- **Charge de la base pendant le hub** : diagnostic en suspens, en attente des chiffres Supabase.
+- **`credentials/poolers-prod.md` périmé** pour 6 poolers ; mot de passe de `david@staging.test`
+  périmé dans `poolers-staging.md`.
+- **Lag du repêchage** et **file des agents libres** (correctifs du 2026-10-03) : à valider au
+  prochain repêchage.
+- **Facteur de plafond** : recommandation 1,28 pour 2026-27, en attente de l'avis du pooler
+  actuaire puis du groupe.
+- Tests réels encore à faire avec de vrais poolers : ballotage en saison, échange complet (y
+  compris un joueur sur LTIR), demande de LTIR de bout en bout, courriels de commentaires.
 - Pages pas encore passées au mobile : `/statistiques/ahl`, `/calendrier`,
-  `/repechage-agents-libres`, `/repechage-recrues`, `/simulation`.
+  `/repechage-agents-libres`, `/repechage-recrues`.
 
 ## 5. Décisions en attente de David
 
-- Délais LTIR (14 / 14 / 3 / 5 / 2 jours) : à discuter avec les poolers — ajustables dans
-  `/admin/effectifs?tab=approbation`, aucune modif de code requise.
-- Panneau d'aide contextuel pour les poolers (façon `AdminGuidePanel`) : en attente d'un
-  retour de pooler sur `/aide` et `/a-propos`.
+- Délais LTIR (14 / 14 / 3 / 5 / 2 jours, 2 matchs pour la rechute) : à discuter avec les poolers,
+  ajustables dans `/admin/effectifs?tab=approbation`.
+- Limiter `import.yml` à la branche `main` (voir section 2).
+- Panneau d'aide contextuel pour les poolers : en attente d'un retour sur `/aide` et `/a-propos`.
 
 ## 6. Prochains chantiers possibles (backlog)
 
-- Compléter la couverture ESPN des projections (joueurs de profondeur) si jugé utile.
-- Yahoo comme 3ᵉ source de blessures (validé techniquement, pas branché).
+- Simulation sur téléphone : ajouter la simulation d'un échange entre poolers, seulement si un
+  pooler la demande (les blocs existent, seule la mise en page est à revoir).
+- Lancer le scraping de PuckPedia par une tâche planifiée de Windows sur le poste de David.
+- Courriel quotidien des écarts avec Marqueur (demanderait une tâche planifiée).
+- Marché des échanges : sauvegarder une proposition comme scénario.
+- Outil d'analyse : pointage du pool plutôt que points LNH.
+- Compléter la couverture ESPN des projections ; Yahoo comme source de blessures supplémentaire.

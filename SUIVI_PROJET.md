@@ -109,6 +109,17 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Prop `onLtir` : pour un joueur sur le LTIR, toujours « Blessé » ; « De retour au jeu » reste
   affiché (réintégration à faire). Onglets Alignement et Masse salariale de `/poolers/[id]`.
 
+**[Docs] — Clôture de la session des 8 et 9 octobre** (`ETAT_PROJET.md`) :
+- Tout ce qui a été fait pendant la session est en prod ; `staging` = `main`. `ETAT_PROJET.md`
+  réécrit : livraisons avec leur niveau de validation, points à vérifier à la reprise.
+- Restent non confirmés : la migration `nhl_transaction_alerts.sql` en prod, l'avis de nouveau
+  délai pour Marchand à son prochain match, et les tests sur appareil (notifications, délai de
+  réactivation).
+- Erreur à retenir : un commit a été poussé sur staging avec une faute de syntaxe JSX
+  (`8f6680c`, page Trios), parce que la commande enchaînait la vérification des types et le
+  `git push` sans s'arrêter sur l'échec. Corrigé au commit suivant ; depuis, la vérification est
+  lue avant de pousser.
+
 ### 2026-10-08
 
 **[Feat] — Exceptions au délai de réactivation : remplacement d'un blessé, poste vacant**
