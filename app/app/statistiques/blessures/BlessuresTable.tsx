@@ -179,8 +179,8 @@ export default function BlessuresTable({ rows, myPoolerId }: { rows: InjuryRow[]
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Blessures LNH</h1>
-          <p className="text-xs text-gray-400 mt-1">Sources : CBS Sports, ESPN et MoneyPuck.com (blessure confirmée par au moins 2 sources sur 3) — mise à jour quotidienne</p>
+          {/* Titre : bandeau de section du layout (SectionEyebrow). */}
+          <p className="text-xs text-gray-400">Sources : CBS Sports, ESPN et MoneyPuck.com (blessure confirmée par au moins 2 sources sur 3) — mise à jour quotidienne</p>
         </div>
         <span className="text-sm text-gray-500">{filtered.length} joueur{filtered.length > 1 ? 's' : ''}</span>
       </div>

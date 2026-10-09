@@ -130,8 +130,7 @@ export default function CalendrierClient({
   return (
     <div className="space-y-5">
 
-      {/* Title */}
-      <h1 className="text-2xl font-bold text-gray-800">Calendrier LNH</h1>
+      {/* Titre : bandeau de section du layout (SectionEyebrow). */}
 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3">

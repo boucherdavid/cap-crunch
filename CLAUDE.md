@@ -1588,6 +1588,11 @@ un joueur verrouillé de cette position. Même calcul côté écran (`blockedRea
 
 ## 7. Standards de code
 
+- **Titre des pages (David, 2026-10-09)** : les pages du menu n'ont pas de `<h1>` à elles. Le
+  bandeau `SectionEyebrow` (`app/components/Navbar.tsx`, monté dans `layout.tsx`) sert de titre :
+  icône et couleur de la famille (`SectionIcon.tsx`), nom tiré de l'entrée du menu
+  (`PAGE_TITLES` pour un libellé trop court). Une nouvelle page s'ajoute au menu, sans `<h1>` ;
+  seules les pages hors menu, l'alignement d'un pooler et les pages admin gardent le leur.
 - TypeScript strict — pas de `any` sans justification
 - Tailwind CSS uniquement pour le style (pas de CSS inline)
 - Composants Server par défaut; `"use client"` seulement si nécessaire
@@ -1644,6 +1649,11 @@ téléphone : tout ce qui est masqué en portrait revient automatiquement en pay
 - Colonne latérale fixe (ex : `MovementHistoryPanel`, `w-80`) : dessous sous `lg`
   (`flex flex-col lg:flex-row`, `w-full lg:w-80`) — sinon elle écrase le contenu principal
   même en paysage.
+- **Carte secondaire repliée sur téléphone seulement** : `app/components/MobileFold.tsx`
+  (David, 2026-10-09 — accueil : activité, marché, blessures, signatures, actualité). Premier
+  enfant = en-tête, le reste se déplie d'un toucher ; toujours ouvert à partir de `sm`.
+- **Colonne figée** : jamais avec un contenu `whitespace-nowrap` plus large qu'un téléphone — elle
+  couvre alors tout l'écran et cache les colonnes qui défilent (Trios et paires, 2026-10-09).
 - Légendes et définitions de plus d'une ligne : repliées par défaut sur **tous** les écrans via
   `app/components/CollapsibleLegend.tsx` (David, 2026-10-01 — `StreakLegend`, sources du Draft
   Center, définitions des stats avancées). Ne pas compter sur une infobulle seule pour expliquer
@@ -1763,6 +1773,7 @@ Exemples :
 | `app/app/layout.tsx` | Layout global + Navbar |
 | `app/app/page.tsx` | Page d'accueil (classement + matchs du jour) |
 | `app/components/Navbar.tsx` | Navigation principale (dropdowns) |
+| `app/components/SectionIcon.tsx` | Icône et couleur d'accent par famille du menu — sidebar et en-têtes des cartes de l'accueil (2026-10-09) |
 | `app/lib/supabase/server.ts` | Client Supabase côté serveur |
 | `app/lib/supabase/client.ts` | Client Supabase côté client |
 | `app/lib/standings.ts` | Logique classement (`buildStandings`) |

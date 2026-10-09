@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-10-08
+**Dernière mise à jour :** 2026-10-09
 
 ---
 
@@ -21,8 +21,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | `main` + avis de signatures et d'échanges de la LNH, libellé corrigé du bouton d'import (2026-10-08, à valider) |
-| `main` (prod) | À jour au 2026-10-08 (délai de réactivation levé pour un blessé, notifications rétablies automatiquement, budgets de signatures expliqués) |
+| `staging` | = `main` |
+| `main` (prod) | À jour au 2026-10-09 : icônes et bandeaux de titre par famille du menu, chantier mobile (accueil, Contrats LNH, Trios, Simulation), avis de signatures et d'échanges de la LNH |
 
 Variables Vercel ajoutées les 5 et 6 octobre :
 - `cap-crunch` (prod) : `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN`.
@@ -57,7 +57,17 @@ Contrainte `players_name_team_unique` retirée en prod (elle n'existait pas en s
 
 ### ▶ Prochaine session — commencer ici
 
-- **Avis de signatures et d'échanges de la LNH** (staging seulement) : rouler
+- **Chantier mobile** (en prod depuis le 2026-10-09) : accueil avec cartes secondaires repliées,
+  Contrats LNH (colonne Contrat, filtres repliés), Trios et paires (tableaux lisibles). À valider
+  sur le téléphone de David, avec la Simulation simplifiée (validée par David ; scénarios
+  sauvegardés inclus, échanges entre poolers sur grand écran seulement ; version complète en étapes à faire seulement si un pooler la demande). Reste :
+  Calendrier, Statistiques AHL et les deux repêchages.
+
+- **Icônes et bandes de couleur** (en prod depuis le 2026-10-09) : menu de gauche et en-têtes des
+  cartes de l'accueil (validés par David), et bandeau de section qui sert de titre sur toutes les
+  pages du menu (titres d'origine retirés). À surveiller à l'usage, page par page : mise en page sous le bandeau, surtout les pages étroites et le mobile.
+- **Avis de signatures et d'échanges de la LNH** (en prod depuis le 2026-10-09, carte validée en
+  staging) : rouler
   `supabase_migrations/nhl_transaction_alerts.sql` dans les deux bases, puis ouvrir l'accueil. La
   première lecture remplit la carte sans avis ; les suivantes avertissent les admins. À valider :
   la carte sur l'accueil et la réception d'un premier avis. Rappel : le scraping PuckPedia reste

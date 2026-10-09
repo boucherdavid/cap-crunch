@@ -221,7 +221,7 @@ export default function TransactionsClient({
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Journal des transactions</h1>
+          {/* Titre : bandeau de section du layout (SectionEyebrow, Navbar.tsx). */}
           <p className="text-gray-500 text-sm">Saison {saison.season}</p>
         </div>
         {saisons.length > 1 && (

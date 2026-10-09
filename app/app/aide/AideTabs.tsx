@@ -957,7 +957,7 @@ export default function AideTabs({ ltirSettings, signingLimits }: { ltirSettings
     <div className="max-w-3xl mx-auto px-4 py-10">
       <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Aide &amp; Règlements</h1>
+          {/* Titre : bandeau de section du layout (SectionEyebrow, Navbar.tsx). */}
           <p className="text-sm text-gray-500 mt-1">Guide d&apos;utilisation et règlements du pool.</p>
         </div>
         <Link

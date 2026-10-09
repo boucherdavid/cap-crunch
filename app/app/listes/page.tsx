@@ -10,7 +10,7 @@ export default async function ListesPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-800 mb-2">Mes listes</h1>
+      {/* Titre : bandeau de section du layout (SectionEyebrow, Navbar.tsx). */}
       <p className="text-sm text-gray-500 mb-6">
         Aide-mémoire des joueurs qui t&apos;intéressent : agents libres à surveiller pendant la
         saison, recrues du dernier repêchage LNH à cibler au repêchage du pool. Tes listes sont

@@ -19,6 +19,57 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-09
+
+**[Style] — Icônes et bandes de couleur par famille du menu** (`app/components/SectionIcon.tsx`,
+`Navbar.tsx`, `app/app/page.tsx`, `SummaryTable.tsx`, `live/LiveNightCards.tsx`) :
+- Demande de David : repérer les sections de l'accueil et les associer au menu de gauche.
+- `SectionIcon` : une icône au trait et une couleur d'accent par famille (source unique). Même
+  icône à côté de chaque groupe du menu et dans l'en-tête des cartes de l'accueil, avec une bande
+  de couleur à gauche de l'en-tête (version discrète choisie par David, à ajuster au besoin).
+- Titres de carte cliquables vers leur page (Classement, En direct, Calendrier, Blessures,
+  Contrats LNH). Portée : accueil et menu seulement ; les titres de page viendront ensuite si
+  ça plaît.
+- Pas vu à l'écran avant de pousser.
+- Ajusté après le premier essai de David : bande de 8 px, icônes plus grandes, couleurs plus vives.
+- Essai pour le reste de l'app : `SectionEyebrow` (dans `Navbar.tsx`, monté dans `layout.tsx`)
+  affiche en haut de chaque page une étiquette foncée avec l'icône, la bande de couleur et le nom
+  de la famille du menu, déduite de l'adresse (lien le plus long qui correspond). Un seul endroit
+  plutôt que de retoucher chaque titre de page ; rien sur l'accueil ni sur les pages hors menu.
+- Après les retours de David : le bandeau n'affiche que le nom de la page, pleine largeur, et
+  devient le **titre de la page** (gros, `<h1>`) sur toutes les pages du menu. Les 39 `<h1>` des
+  pages concernées ont été retirés (sous-titres, compteurs et contrôles conservés ; un `<span />`
+  ou une ligne « Saison… » / « Repêchage… » garde la mise en page là où le titre partageait sa
+  ligne avec des contrôles). Gardent leur propre titre : l'alignement d'un pooler (son nom), les
+  pages hors menu (Compte, Signaler, séries) et les pages admin (petit bandeau repère).
+  Son propre alignement est étiqueté « Mon alignement » (violet). Changement fait à l'aveugle sur
+  une trentaine de pages : à passer en revue sur staging.
+
+**[Style] — Mobile : accueil allégé, Contrats LNH, Trios et paires** (`app/components/MobileFold.tsx`,
+`app/app/page.tsx`, `app/app/joueurs/JoueursTable.tsx`, `app/app/analytique/trios/page.tsx`,
+`Navbar.tsx`) :
+- Demande de David : simplifier le mobile seulement, garder l'essentiel et le fonctionnel.
+- Accueil : cartes secondaires (activité, marché, blessures, signatures, actualité) repliées par
+  défaut sous `sm` via `MobileFold`, toujours ouvertes au-delà ; les matchs du jour remontent sous
+  le pointage en direct sur téléphone.
+- Contrats LNH : colonne « Contrat » (années restantes + statut à l'échéance) sous `lg`, comme
+  l'onglet Masse salariale ; filtres repliés derrière un bouton « Filtres » sur téléphone (la
+  recherche reste) ; lignes plus compactes.
+- Trios et paires : dans les tableaux de combinaisons, la colonne figée aux noms sur une ligne
+  occupait toute la largeur du téléphone et cachait les chiffres (cause probable du « comportement
+  bizarre » signalé, non confirmée) — noms sur plusieurs lignes, PJ / CF % / xB masqués sous `sm` ;
+  noms des joueurs sur deux lignes au lieu d'être coupés.
+- Bandeau de titre aligné sur la largeur de chaque page (`PAGE_WIDTHS`) et compact sur mobile.
+- Rien vu sur un téléphone avant de pousser.
+- Simulation (`app/app/simulation/SimMobile.tsx`, `SimulationTool.tsx`) : version téléphone
+  simplifiée choisie par David (option 1) — résumé collant (espace restant, verdict, décompte
+  12/6/2), alignement en liste avec un menu par joueur (Actif / Réserviste / IR / Retirer), ajout
+  d'une recrue de sa banque ou d'un joueur par son nom, réinitialisation. Même `useSimState` que la
+  version complète, affichée à partir de `md`. Scénarios sauvegardés ajoutés au téléphone à la
+  demande de David après son essai (même carte que sur grand écran). Échanges entre poolers :
+  grand écran seulement. Option 2 gardée en réserve si un pooler la demande : afficher les blocs
+  existants sous `md` et revoir leur mise en page (rien à recalculer).
+
 ### 2026-10-08
 
 **[Feat] — Exceptions au délai de réactivation : remplacement d'un blessé, poste vacant**

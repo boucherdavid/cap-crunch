@@ -188,7 +188,7 @@ export default async function RepechagePage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Repêchage LNH</h1>
+        {/* Titre : bandeau de section du layout (SectionEyebrow, Navbar.tsx). */}
         <p className="text-gray-500 text-sm mt-1">
           {"Vue d'ensemble des choix au repêchage et de leur assignation dans les banques de recrues du pool."}
         </p>

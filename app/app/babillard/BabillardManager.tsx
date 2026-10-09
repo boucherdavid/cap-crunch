@@ -133,7 +133,7 @@ export default function BabillardManager({
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">Babillard</h1>
+        <span />
         {me.isAdmin && (
           <Link href="/admin/communaute?tab=babillard" className="text-sm text-blue-600 hover:text-blue-800">
             Publier une communication →

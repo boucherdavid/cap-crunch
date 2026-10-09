@@ -77,7 +77,7 @@ export default function LiveNightDetail({ initial, myId }: { initial: LiveNight;
     <>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">En direct</h1>
+          {/* Titre : bandeau de section du layout (SectionEyebrow, Navbar.tsx). */}
           <p className="text-sm text-gray-500">
             Soirée du {fmtNightDate(night.date)} · pointage non officiel
           </p>

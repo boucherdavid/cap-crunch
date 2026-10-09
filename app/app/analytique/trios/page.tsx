@@ -51,13 +51,13 @@ function PlayerCell({ row, owners }: { row: Row; owners: Map<number, Owner> }) {
   const owner = row.player_id != null ? owners.get(row.player_id) : undefined
   return (
     <div
-      className="min-w-0 rounded-lg border border-gray-100 border-l-4 bg-white px-3 py-2"
+      className="min-w-0 rounded-lg border border-gray-100 border-l-4 bg-white px-2 sm:px-3 py-2"
       style={{ borderLeftColor: teamColor(row.team_code).primary }}
     >
       <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
         {POSITION_LABEL[row.position_id ?? ''] ?? ''}
       </p>
-      <p className="text-sm font-medium text-gray-800 truncate">
+      <p className="text-[13px] sm:text-sm font-medium text-gray-800 leading-tight sm:truncate break-words">
         <PlayerLink nhlId={row.players?.nhl_id}>{row.player_name}</PlayerLink>
       </p>
       <p className="text-xs mt-0.5">
@@ -115,13 +115,13 @@ function LineStatsTable({ title, lines, currentKeys, currentLabel }: { title: st
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 text-left text-xs text-gray-500">
-              <th className="sticky left-0 bg-gray-50 px-3 py-2 font-medium">Combinaison</th>
-              <th className="px-3 py-2 font-medium text-right" title="Parties jouées ensemble">PJ</th>
-              <th className="px-3 py-2 font-medium text-right" title="Minutes jouées ensemble à 5 contre 5">Min</th>
-              <th className="px-3 py-2 font-medium text-right" title="Part des buts attendus en leur faveur quand ils sont sur la glace (50 % = neutre)">xB %</th>
-              <th className="px-3 py-2 font-medium text-right" title="Corsi : part des tentatives de tir en leur faveur">CF %</th>
-              <th className="px-3 py-2 font-medium text-right" title="Buts pour – buts contre, à 5 contre 5">Buts</th>
-              <th className="px-3 py-2 font-medium text-right" title="Buts attendus pour – contre, à 5 contre 5">xB</th>
+              <th className="sm:sticky sm:left-0 bg-gray-50 px-2 sm:px-3 py-2 font-medium">Combinaison</th>
+              <th className="px-3 py-2 font-medium text-right hidden sm:table-cell" title="Parties jouées ensemble">PJ</th>
+              <th className="px-2 sm:px-3 py-2 font-medium text-right" title="Minutes jouées ensemble à 5 contre 5">Min</th>
+              <th className="px-2 sm:px-3 py-2 font-medium text-right whitespace-nowrap" title="Part des buts attendus en leur faveur quand ils sont sur la glace (50 % = neutre)">xB %</th>
+              <th className="px-3 py-2 font-medium text-right hidden sm:table-cell" title="Corsi : part des tentatives de tir en leur faveur">CF %</th>
+              <th className="px-2 sm:px-3 py-2 font-medium text-right" title="Buts pour – buts contre, à 5 contre 5">Buts</th>
+              <th className="px-3 py-2 font-medium text-right hidden sm:table-cell" title="Buts attendus pour – contre, à 5 contre 5">xB</th>
             </tr>
           </thead>
           <tbody>
@@ -129,16 +129,16 @@ function LineStatsTable({ title, lines, currentKeys, currentLabel }: { title: st
               const isCurrent = currentKeys.has([...l.player_ids].sort((a, b) => a - b).join('-'))
               return (
                 <tr key={l.line_id} className={`border-t ${isCurrent ? 'bg-amber-50' : ''}`}>
-                  <td className={`sticky left-0 px-3 py-2 text-gray-800 whitespace-nowrap ${isCurrent ? 'bg-amber-50' : 'bg-white'}`}>
+                  <td className={`sm:sticky sm:left-0 px-2 sm:px-3 py-2 text-gray-800 sm:whitespace-nowrap ${isCurrent ? 'bg-amber-50' : 'bg-white'}`}>
                     {(l.name ?? '').replace(/-/g, ' · ')}
                     {isCurrent && <span className="ml-2 text-[10px] font-bold text-amber-800 bg-amber-200 rounded px-1.5 py-0.5">{currentLabel}</span>}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-gray-700">{l.games_played}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-gray-700">{Math.round(l.icetime / 60)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-semibold text-gray-900">{pctLabel(l.stats.xg_pct)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-gray-700">{pctLabel(l.stats.cf_pct)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-gray-700 whitespace-nowrap">{numLabel(l.stats.gf)} – {numLabel(l.stats.ga)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-gray-700 whitespace-nowrap">{numLabel(l.stats.xgf, 1)} – {numLabel(l.stats.xga, 1)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-gray-700 hidden sm:table-cell">{l.games_played}</td>
+                  <td className="px-2 sm:px-3 py-2 text-right tabular-nums text-gray-700">{Math.round(l.icetime / 60)}</td>
+                  <td className="px-2 sm:px-3 py-2 text-right tabular-nums font-semibold text-gray-900 whitespace-nowrap">{pctLabel(l.stats.xg_pct)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-gray-700 hidden sm:table-cell">{pctLabel(l.stats.cf_pct)}</td>
+                  <td className="px-2 sm:px-3 py-2 text-right tabular-nums text-gray-700 whitespace-nowrap">{numLabel(l.stats.gf)} – {numLabel(l.stats.ga)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-gray-700 whitespace-nowrap hidden sm:table-cell">{numLabel(l.stats.xgf, 1)} – {numLabel(l.stats.xga, 1)}</td>
                 </tr>
               )
             })}
@@ -166,7 +166,7 @@ export default async function TriosPage({ searchParams }: { searchParams: Promis
   if (!teamCode) {
     return (
       <div className="px-2 sm:px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Trios et paires</h1>
+        {/* Titre : bandeau de section du layout (SectionEyebrow, Navbar.tsx). */}
         <p className="text-center py-10 text-gray-400 text-sm bg-white rounded-lg shadow">Aucune donnée importée pour l&apos;instant.</p>
       </div>
     )
@@ -223,7 +223,6 @@ export default async function TriosPage({ searchParams }: { searchParams: Promis
     <div className="px-2 sm:px-4 py-8 max-w-6xl">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Trios et paires</h1>
           <p className="text-xs text-gray-400 mt-1">
             Données :{' '}
             <a href="https://www.dailyfaceoff.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">Daily Faceoff</a>
@@ -294,7 +293,9 @@ export default async function TriosPage({ searchParams }: { searchParams: Promis
               </p>
             </div>
             {lineSeasons.length > 1 && (
-              <div className="flex gap-1.5 text-sm">
+              <div className="flex flex-wrap gap-1.5 text-sm">
+                {/* flex-wrap : sans lui, les saisons sur une seule ligne dépassaient l'écran du
+                    téléphone et élargissaient toute la page (contenu tassé à gauche, vide à droite). */}
                 {lineSeasons.map(s => (
                   <a
                     key={s}

@@ -17,6 +17,7 @@ const AdminUnreadContext = createContext<{ count: number; title: string }>({ cou
 const TodoContext = createContext<PoolerTodo>({ trades: 0, waivers: 0, total: 0, items: [] })
 import { createClient } from '@/lib/supabase/client'
 import { MARQUEUR_URL } from '@/lib/externalLinks'
+import SectionIcon, { sectionBorderClass, type SectionId } from './SectionIcon'
 
 function HamburgerIcon() {
   return (
@@ -72,6 +73,18 @@ type NavGroup = {
   href?: string            // présent + pas d'items/subgroups => lien autonome (pas de chevron)
   items?: NavLeaf[]
   subgroups?: NavSubgroup[]
+}
+
+// Icône de chaque famille du menu — la même que dans l'en-tête des cartes de l'accueil.
+const GROUP_SECTION: Record<string, SectionId> = {
+  'mon-equipe': 'mon-equipe', 'le-pool': 'pool', 'calendrier': 'calendrier', 'statistiques': 'statistiques',
+  'analytique': 'analytique', 'blessures': 'blessures', 'contrats': 'contrats', 'prospects-lnh': 'prospects',
+  'repechage-annuel': 'repechage', 'communaute': 'communaute', 'aide': 'aide', 'admin': 'admin',
+}
+
+function GroupIcon({ id }: { id: string }) {
+  const section = GROUP_SECTION[id]
+  return section ? <SectionIcon section={section} /> : null
 }
 
 const NAV_GROUPS: NavGroup[] = [
@@ -195,6 +208,92 @@ function groupIsActive(pathname: string, group: NavGroup): boolean {
   return groupHrefs(group).some(h => isActive(pathname, h))
 }
 
+// Repère de section en haut de chaque page (David, 2026-10-09) : même icône et même couleur que
+// le groupe du menu et que les cartes de l'accueil. Le groupe retenu est celui dont le lien est le
+// plus long à correspondre (« /statistiques/blessures » → Blessures, pas Statistiques).
+// Titre du bandeau quand le libellé du menu est trop court hors de son groupe (« LNH », « AHL »).
+const PAGE_TITLES: Record<string, string> = {
+  '/statistiques': 'Statistiques LNH',
+  '/statistiques/ahl': 'Statistiques AHL',
+}
+
+// Largeur du bandeau, calquée sur le conteneur de la page (largeur max + marges) pour que le
+// titre s'aligne sur le contenu. `flush` : la page a déjà son espace en haut (py-8), le bandeau
+// n'ajoute pas le sien. Page absente d'ici = pleine largeur. À tenir à jour si une page change
+// de largeur.
+const NARROW = 'max-w-3xl mx-auto px-4'
+const PAGE_WIDTHS: Record<string, { box: string; flush: boolean }> = {
+  '/aide': { box: NARROW, flush: true },
+  '/a-propos': { box: NARROW, flush: true },
+  '/copie-de-secours': { box: NARROW, flush: true },
+  '/babillard': { box: 'max-w-3xl mx-auto', flush: false },
+  '/planification': { box: 'max-w-3xl mx-auto', flush: false },
+  '/classement': { box: 'max-w-4xl mx-auto px-4', flush: true },
+  '/listes': { box: 'max-w-4xl mx-auto px-4', flush: true },
+  '/poolers': { box: 'max-w-5xl mx-auto px-4', flush: true },
+  '/marche-echanges': { box: 'max-w-5xl mx-auto px-4', flush: true },
+  '/calendrier': { box: 'max-w-5xl mx-auto px-4', flush: true },
+  '/comparaison-marqueur': { box: 'max-w-5xl mx-auto px-4', flush: true },
+  '/meilleurs-disponibles': { box: 'max-w-6xl mx-auto px-4', flush: true },
+  '/en-direct': { box: 'max-w-6xl mx-auto px-2 sm:px-4', flush: true },
+  '/analytique/trios': { box: 'max-w-6xl px-2 sm:px-4', flush: true },
+  '/simulation': { box: 'max-w-7xl mx-auto px-4', flush: true },
+  '/statistiques/blessures': { box: 'max-w-7xl mx-auto px-4', flush: true },
+}
+
+export function SectionEyebrow({ userId, isAdmin }: { userId: string | null; isAdmin: boolean }) {
+  const pathname = usePathname()
+  let best: { group: NavGroup; page: string | null; path: string; length: number } | null = null
+  for (const group of [...NAV_GROUPS, ADMIN_GROUP]) {
+    const leaves: { label: string | null; href: string }[] = [
+      ...(group.href ? [{ label: null, href: group.href }] : []),
+      ...(group.items ?? []),
+      ...(group.subgroups?.flatMap(sg => sg.items) ?? []),
+    ]
+    for (const leaf of leaves) {
+      const path = leaf.href.split('?')[0]
+      if (path.startsWith('/') && isActive(pathname, path) && (!best || path.length > best.length)) {
+        best = { group, page: leaf.label, path, length: path.length }
+      }
+    }
+  }
+  // Son propre alignement s'ouvre par « Mon alignement » (/dashboard → /poolers/<id>) : il relève
+  // de Mon équipe, alors que l'alignement d'un autre pooler relève du pool.
+  if (userId && isActive(pathname, `/poolers/${userId}`)) {
+    const mine = NAV_GROUPS.find(g => g.id === 'mon-equipe')
+    if (mine) best = { group: mine, page: 'Mon alignement', path: '/dashboard', length: 0 }
+  }
+  const section = best ? GROUP_SECTION[best.group.id] : undefined
+  if (!best || !section) return null
+  const title = PAGE_TITLES[best.path] ?? best.page ?? best.group.label
+
+  // Pages admin : elles gardent leur propre titre, le bandeau reste un simple repère.
+  if (best.group.id === 'admin') {
+    return (
+      <div className={`flex items-center gap-2.5 mb-5 bg-slate-700 rounded-md px-4 py-2.5 ${sectionBorderClass(section)}`}>
+        <SectionIcon section={section} />
+        <span className="text-white text-base font-bold tracking-wide">{title}</span>
+      </div>
+    )
+  }
+  // Partout ailleurs, le bandeau EST le titre de la page (les pages n'ont plus de <h1> à elles).
+  // Exception : l'alignement d'un pooler garde son <h1> (le nom du pooler).
+  const onPoolerRoster = isActive(pathname, '/poolers') && pathname !== '/poolers'
+  const Tag = onPoolerRoster ? 'div' : 'h1'
+  // Gestion d'effectifs n'est limitée en largeur que pour un pooler (pleine largeur pour l'admin).
+  const width = onPoolerRoster ? undefined
+    : best.path === '/gestion-effectifs' ? (isAdmin ? undefined : { box: 'max-w-6xl mx-auto px-4', flush: true })
+    : PAGE_WIDTHS[best.path]
+  return (
+    <div className={`${width?.box ?? ''} ${width?.flush ? '' : 'mb-5'}`}>
+      <Tag className={`flex items-center gap-2.5 sm:gap-3 bg-slate-700 rounded-md px-3 py-2.5 sm:px-5 sm:py-3.5 ${sectionBorderClass(section)}`}>
+        <SectionIcon section={section} className="w-5 h-5 sm:w-7 sm:h-7" />
+        <span className="text-white text-lg sm:text-2xl font-bold leading-tight">{title}</span>
+      </Tag>
+    </div>
+  )
+}
+
 // ─── Sous-composants de l'arbre ─────────────────────────────────────────────
 
 function TreeLeaf({ leaf, pathname, userName, onNavigate }: {
@@ -252,10 +351,11 @@ function TreeGroup({ group, pathname, userName, expanded, onToggle, onNavigate, 
       <Link
         href={group.href}
         onClick={onNavigate}
-        className={`flex items-center px-3 py-2 rounded text-sm font-medium transition-colors ${
+        className={`flex items-center gap-2 px-3 py-2 rounded text-sm font-medium transition-colors ${
           active ? 'bg-pool-navy-light text-white' : 'text-pool-light hover:bg-pool-navy-light hover:text-white'
         }`}
       >
+        <GroupIcon id={group.id} />
         {group.label}
       </Link>
     )
@@ -272,7 +372,8 @@ function TreeGroup({ group, pathname, userName, expanded, onToggle, onNavigate, 
       >
         {/* text-left : un libellé long qui passe sur deux lignes (« Repêchage annuel des poolers »)
             serait sinon centré comme tout texte de bouton, et paraîtrait en retrait. */}
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-2">
+          <GroupIcon id={group.id} />
           {group.label}
           {!!badge && badge > 0 && (
             <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full" title={badgeTitle}>
@@ -320,10 +421,11 @@ function NavTree({
       <Link
         href="/"
         onClick={onNavigate}
-        className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+        className={`flex items-center gap-2 px-3 py-2 rounded text-sm font-medium transition-colors ${
           pathname === '/' ? 'bg-pool-navy-light text-white' : 'text-pool-light hover:bg-pool-navy-light hover:text-white'
         }`}
       >
+        <SectionIcon section="accueil" />
         Accueil
       </Link>
       {groups.map(group => (

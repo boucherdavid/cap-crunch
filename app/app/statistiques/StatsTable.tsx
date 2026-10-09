@@ -195,7 +195,7 @@ export default function StatsTable({
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
-        <h1 className="text-2xl font-bold text-gray-800">Statistiques LNH</h1>
+        <span />
         <div className="flex items-center gap-4">
           <div className="flex gap-1 rounded-lg border border-slate-300 p-0.5">
             <button

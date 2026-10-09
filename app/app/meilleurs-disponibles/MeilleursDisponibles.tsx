@@ -156,7 +156,7 @@ export default function MeilleursDisponibles({
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">Meilleurs joueurs disponibles</h1>
+        {/* Titre : bandeau de section du layout (SectionEyebrow, Navbar.tsx). */}
         <p className="text-sm text-gray-500 mt-1">
           Joueurs qui ne sont dans aucun alignement, classés selon les points qu&apos;ils auraient
           rapportés avec le pointage du pool

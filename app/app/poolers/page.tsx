@@ -61,7 +61,7 @@ export default async function PoolersPage() {
   if (!season) {
     return (
       <div className="max-w-5xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Tous les alignements</h1>
+        {/* Titre : bandeau de section du layout (SectionEyebrow, Navbar.tsx). */}
         <p className="text-gray-500">Aucune saison active.</p>
       </div>
     )
@@ -149,7 +149,6 @@ export default async function PoolersPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-800 mb-1">Tous les alignements</h1>
       <p className="text-sm text-gray-500 mb-6">
         Saison {season.season} &middot; Cap du pool : {formatCap(season.pool_cap)}
       </p>

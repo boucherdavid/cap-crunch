@@ -121,7 +121,7 @@ export default function ProjectionsTable({
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
-        <h1 className="text-2xl font-bold text-gray-800">Projections {season ?? ''}</h1>
+        <p className="text-sm text-gray-500">{season ? `Saison ${season}` : ''}</p>
         <div className="flex items-center gap-3">
           {seasonOptions.length > 0 && (
             <select
