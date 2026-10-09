@@ -193,7 +193,7 @@ function PlayerStatsRow({ p, streaks, onPeriodClick, injuriesByNhlId }: {
         <StreakBadge info={p.nhlId ? streaks[p.nhlId] : undefined} />
         <GoalieBadge info={p.nhlId ? streaks[p.nhlId] : undefined} />
         {badge && <span className="ml-2 text-xs bg-gray-100 text-gray-400 rounded px-1">{badge}</span>}
-        {injury && <InjuryBadge injury={injury} />}
+        {injury && <InjuryBadge injury={injury} onLtir={p.playerType === 'ltir' && p.stillRostered} />}
         <button
           type="button"
           onClick={() => onPeriodClick?.(p)}

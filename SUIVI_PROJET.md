@@ -102,6 +102,13 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   (heure de l'Est) ». Un horodatage à midi UTC pile (date forcée ou mouvement reporté au
   lendemain) s'affiche « avant les matchs du jour », puisqu'il vaut pour toute la journée.
 
+**[Fix] — Badge de blessure uniforme pour les joueurs déjà sur le LTIR** (`app/components/InjuryBadge.tsx`,
+`app/app/poolers/[id]/page.tsx`, `PoolerPageTabs.tsx`) :
+- Remarque d'un pooler : sur le LTIR de Vincent, Marchand affichait « Blessé » et Duchene
+  « Admissible LTIR ». Le badge calculait l'admissibilité même pour un joueur déjà sur le LTIR.
+- Prop `onLtir` : pour un joueur sur le LTIR, toujours « Blessé » ; « De retour au jeu » reste
+  affiché (réintégration à faire). Onglets Alignement et Masse salariale de `/poolers/[id]`.
+
 ### 2026-10-08
 
 **[Feat] — Exceptions au délai de réactivation : remplacement d'un blessé, poste vacant**

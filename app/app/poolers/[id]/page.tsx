@@ -189,7 +189,7 @@ function RosterTable({ rows, title, season, nextSeason, salaryCounts, showDraft,
             {player?.last_name}, {player?.first_name}
           </PlayerLink>
           <span className="sm:hidden ml-1 text-[11px] font-normal text-gray-400">{player?.teams?.code}</span>
-          {injury && <InjuryBadge injury={injury} />}
+          {injury && <InjuryBadge injury={injury} onLtir={row.player_type === 'ltir'} />}
         </td>
         <td className="px-3 py-2 w-14 hidden sm:table-cell"><TeamBadge code={player?.teams?.code} size="sm" /></td>
         <td className="px-2 sm:px-3 py-2 w-10 text-gray-500">{player?.position ?? DASH}</td>

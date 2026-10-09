@@ -4,10 +4,14 @@ import type { InjuryInfo } from '@/lib/injuries'
  * 2026-09-23) — le vert remplace le rouge dès que la blessure croise le seuil de 14 jours
  * (voir app/lib/ltirEligibility.ts), pour distinguer d'un coup d'œil un joueur qui justifie
  * une demande de LTIR d'un simple "day-to-day" tout frais. */
-export default function InjuryBadge({ injury }: { injury: InjuryInfo }) {
+/** `onLtir` : le joueur est déjà sur le LTIR de son pooler (David, 2026-10-09). L'admissibilité
+ * n'a alors plus de sens : on affiche « Blessé » pour tous, au lieu d'un mélange de « Blessé » et
+ * d'« Admissible LTIR » selon l'ancienneté de la blessure. « De retour au jeu » reste affiché,
+ * puisqu'il annonce une réintégration à faire. */
+export default function InjuryBadge({ injury, onLtir = false }: { injury: InjuryInfo; onLtir?: boolean }) {
   return (
     <>
-      <MainBadge injury={injury} />
+      <MainBadge injury={injury} onLtir={onLtir} />
       {injury.datesDisagree && <DisagreementMarker injury={injury} />}
     </>
   )
@@ -31,7 +35,7 @@ export function DisagreementMarker({ injury }: { injury: InjuryInfo }) {
   )
 }
 
-function MainBadge({ injury }: { injury: InjuryInfo }) {
+function MainBadge({ injury, onLtir }: { injury: InjuryInfo; onLtir: boolean }) {
   if (injury.backInAction) {
     return (
       <span
@@ -42,7 +46,7 @@ function MainBadge({ injury }: { injury: InjuryInfo }) {
       </span>
     )
   }
-  if (injury.eligible) {
+  if (injury.eligible && !onLtir) {
     return (
       <span
         className="ml-1.5 inline-block text-[10px] font-bold bg-emerald-100 text-emerald-700 rounded px-1 py-0.5 align-middle cursor-help"
