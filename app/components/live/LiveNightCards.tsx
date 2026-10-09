@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import TeamBadge from '@/components/TeamBadge'
+import SectionIcon, { sectionBorderClass } from '@/components/SectionIcon'
 import type { LiveNight, LivePlayer, LivePooler } from '@/lib/liveNight'
 import { fmtLivePts, fmtNightDate, fmtUpdatedAt, useLiveNight } from './useLiveNight'
 
@@ -28,9 +29,12 @@ export function LiveStatus({ night }: { night: LiveNight }) {
 
 function CardHeader({ title, night }: { title: string; night: LiveNight }) {
   return (
-    <div className="bg-slate-800 px-5 py-3">
+    <div className={`bg-slate-800 px-5 py-3 ${sectionBorderClass('pool')}`}>
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-white font-bold text-sm uppercase tracking-wide">{title}</h2>
+        <h2 className="flex items-center gap-2 text-white font-bold text-sm uppercase tracking-wide">
+          <SectionIcon section="pool" />
+          <Link href="/en-direct" className="hover:underline">{title}</Link>
+        </h2>
         <LiveStatus night={night} />
       </div>
       <p className="text-[11px] text-slate-400 mt-0.5">

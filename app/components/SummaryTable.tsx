@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import SectionIcon, { sectionBorderClass } from '@/components/SectionIcon'
 import { useRouter } from 'next/navigation'
 import { fmtPts } from '@/lib/nhl-stats'
 import type { PoolerStanding } from '@/lib/standings'
@@ -12,8 +13,11 @@ export default function SummaryTable({ standings }: { standings: PoolerStanding[
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="bg-slate-800 px-5 py-3">
-        <h2 className="text-white font-bold text-sm uppercase tracking-wide">Classement — Saison complète</h2>
+      <div className={`bg-slate-800 px-5 py-3 ${sectionBorderClass('pool')}`}>
+        <h2 className="flex items-center gap-2 text-white font-bold text-sm uppercase tracking-wide">
+          <SectionIcon section="pool" />
+          <Link href="/classement" className="hover:underline">Classement — Saison complète</Link>
+        </h2>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

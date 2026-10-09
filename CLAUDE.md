@@ -1763,6 +1763,7 @@ Exemples :
 | `app/app/layout.tsx` | Layout global + Navbar |
 | `app/app/page.tsx` | Page d'accueil (classement + matchs du jour) |
 | `app/components/Navbar.tsx` | Navigation principale (dropdowns) |
+| `app/components/SectionIcon.tsx` | Icône et couleur d'accent par famille du menu — sidebar et en-têtes des cartes de l'accueil (2026-10-09) |
 | `app/lib/supabase/server.ts` | Client Supabase côté serveur |
 | `app/lib/supabase/client.ts` | Client Supabase côté client |
 | `app/lib/standings.ts` | Logique classement (`buildStandings`) |

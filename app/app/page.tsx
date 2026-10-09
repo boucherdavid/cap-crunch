@@ -16,6 +16,7 @@ import { getLiveNight, type LiveNight } from '@/lib/liveNight'
 import LiveNightCards from '@/components/live/LiveNightCards'
 import { MARQUEUR_URL } from '@/lib/externalLinks'
 import { after } from 'next/server'
+import SectionIcon, { sectionBorderClass, type SectionId } from '@/components/SectionIcon'
 import { syncLtirReturns } from '@/lib/ltirReturns'
 import { syncNhlTransactions, loadRecentNhlTransactions, type NhlTransactionView } from '@/lib/nhlTransactions'
 
@@ -125,6 +126,16 @@ const RANK_COLOR = ['text-yellow-500', 'text-gray-400', 'text-amber-600']
 
 // ---------- composants inline ----------
 
+// Titre d'une carte : icône de la famille du menu (voir SectionIcon) et lien vers la page.
+function CardTitle({ section, href, children }: { section: SectionId; href?: string; children: React.ReactNode }) {
+  return (
+    <h2 className="flex items-center gap-2 text-white font-bold text-sm uppercase tracking-wide">
+      <SectionIcon section={section} />
+      {href ? <Link href={href} className="hover:underline">{children}</Link> : <span>{children}</span>}
+    </h2>
+  )
+}
+
 function MarqueurCard() {
   return (
     <a
@@ -153,10 +164,8 @@ function ActivityTable({
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="bg-slate-700 px-5 py-3">
-        <h2 className="text-white font-bold text-sm uppercase tracking-wide">
-          Joueurs en action — {todayDate ? fmtDateFr(todayDate) : 'ce soir'}
-        </h2>
+      <div className={`bg-slate-700 px-5 py-3 ${sectionBorderClass('pool')}`}>
+        <CardTitle section="pool">Joueurs en action — {todayDate ? fmtDateFr(todayDate) : 'ce soir'}</CardTitle>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -198,10 +207,8 @@ function ScheduleList({
 }) {
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="bg-slate-700 px-5 py-3">
-        <h2 className="text-white font-bold text-sm uppercase tracking-wide">
-          {todayDate ? `Matchs — ${fmtDateFr(todayDate)}` : 'Matchs du jour'}
-        </h2>
+      <div className={`bg-slate-700 px-5 py-3 ${sectionBorderClass('calendrier')}`}>
+        <CardTitle section="calendrier" href="/calendrier">{todayDate ? `Matchs — ${fmtDateFr(todayDate)}` : 'Matchs du jour'}</CardTitle>
       </div>
       {games.length === 0 ? (
         <p className="px-5 py-4 text-sm text-gray-400">Aucun match aujourd&apos;hui.</p>
@@ -311,8 +318,8 @@ function PoolActivityWidget({ items }: { items: PoolActivityItem[] }) {
   if (items.length === 0) return null
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="bg-slate-700 px-5 py-3 flex items-center justify-between">
-        <h2 className="text-white font-bold text-sm uppercase tracking-wide">Activité du pool</h2>
+      <div className={`bg-slate-700 px-5 py-3 flex items-center justify-between ${sectionBorderClass('pool')}`}>
+        <CardTitle section="pool">Activité du pool</CardTitle>
         <Link href="/journal-transactions" className="text-xs text-slate-300 hover:text-white transition-colors">
           Tout voir →
         </Link>
@@ -388,8 +395,8 @@ function NhlNewsWidget({ items }: { items: NewsItem[] }) {
   if (items.length === 0) return null
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="bg-slate-700 px-5 py-3">
-        <h2 className="text-white font-bold text-sm uppercase tracking-wide">Actualité LNH</h2>
+      <div className={`bg-slate-700 px-5 py-3 ${sectionBorderClass('actualite')}`}>
+        <CardTitle section="actualite">Actualité LNH</CardTitle>
       </div>
       <ul className="divide-y divide-gray-100">
         {items.map((n, i) => (
@@ -461,8 +468,8 @@ function PoolInjuriesWidget({ items }: { items: PoolInjuryItem[] }) {
   if (items.length === 0) return null
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="bg-slate-700 px-5 py-3 flex items-center justify-between">
-        <h2 className="text-white font-bold text-sm uppercase tracking-wide">Blessures dans le pool</h2>
+      <div className={`bg-slate-700 px-5 py-3 flex items-center justify-between ${sectionBorderClass('blessures')}`}>
+        <CardTitle section="blessures" href="/statistiques/blessures">Blessures dans le pool</CardTitle>
         <span className="text-xs text-slate-300">Source : CBS Sports</span>
       </div>
       <ul className="divide-y divide-gray-100">
@@ -493,8 +500,8 @@ function NhlTransactionsWidget({ items }: { items: NhlTransactionView[] }) {
   const fmtDate = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', timeZone: 'UTC' })
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="bg-slate-700 px-5 py-3 flex items-center justify-between gap-3">
-        <h2 className="text-white font-bold text-sm uppercase tracking-wide">Signatures et échanges dans la LNH</h2>
+      <div className={`bg-slate-700 px-5 py-3 flex items-center justify-between gap-3 ${sectionBorderClass('contrats')}`}>
+        <CardTitle section="contrats" href="/joueurs">Signatures et échanges dans la LNH</CardTitle>
         <span className="text-xs text-slate-300 shrink-0">Sources : ESPN, LNH</span>
       </div>
       <ul className="divide-y divide-gray-100">
@@ -541,8 +548,8 @@ function MarketWidget({ summary }: { summary: Awaited<ReturnType<typeof fetchMar
   if (summary.items.length === 0) return null
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="bg-slate-700 px-5 py-3 flex items-center justify-between">
-        <h2 className="text-white font-bold text-sm uppercase tracking-wide">Sur le marché</h2>
+      <div className={`bg-slate-700 px-5 py-3 flex items-center justify-between ${sectionBorderClass('pool')}`}>
+        <CardTitle section="pool">Sur le marché</CardTitle>
         <Link href="/marche-echanges" className="text-xs text-slate-300 hover:text-white">
           Tout voir ({summary.total}) →
         </Link>

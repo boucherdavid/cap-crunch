@@ -17,6 +17,7 @@ const AdminUnreadContext = createContext<{ count: number; title: string }>({ cou
 const TodoContext = createContext<PoolerTodo>({ trades: 0, waivers: 0, total: 0, items: [] })
 import { createClient } from '@/lib/supabase/client'
 import { MARQUEUR_URL } from '@/lib/externalLinks'
+import SectionIcon, { type SectionId } from './SectionIcon'
 
 function HamburgerIcon() {
   return (
@@ -72,6 +73,18 @@ type NavGroup = {
   href?: string            // présent + pas d'items/subgroups => lien autonome (pas de chevron)
   items?: NavLeaf[]
   subgroups?: NavSubgroup[]
+}
+
+// Icône de chaque famille du menu — la même que dans l'en-tête des cartes de l'accueil.
+const GROUP_SECTION: Record<string, SectionId> = {
+  'mon-equipe': 'mon-equipe', 'le-pool': 'pool', 'calendrier': 'calendrier', 'statistiques': 'statistiques',
+  'analytique': 'analytique', 'blessures': 'blessures', 'contrats': 'contrats', 'prospects-lnh': 'prospects',
+  'repechage-annuel': 'repechage', 'communaute': 'communaute', 'aide': 'aide', 'admin': 'admin',
+}
+
+function GroupIcon({ id }: { id: string }) {
+  const section = GROUP_SECTION[id]
+  return section ? <SectionIcon section={section} /> : null
 }
 
 const NAV_GROUPS: NavGroup[] = [
@@ -252,10 +265,11 @@ function TreeGroup({ group, pathname, userName, expanded, onToggle, onNavigate, 
       <Link
         href={group.href}
         onClick={onNavigate}
-        className={`flex items-center px-3 py-2 rounded text-sm font-medium transition-colors ${
+        className={`flex items-center gap-2 px-3 py-2 rounded text-sm font-medium transition-colors ${
           active ? 'bg-pool-navy-light text-white' : 'text-pool-light hover:bg-pool-navy-light hover:text-white'
         }`}
       >
+        <GroupIcon id={group.id} />
         {group.label}
       </Link>
     )
@@ -272,7 +286,8 @@ function TreeGroup({ group, pathname, userName, expanded, onToggle, onNavigate, 
       >
         {/* text-left : un libellé long qui passe sur deux lignes (« Repêchage annuel des poolers »)
             serait sinon centré comme tout texte de bouton, et paraîtrait en retrait. */}
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-2">
+          <GroupIcon id={group.id} />
           {group.label}
           {!!badge && badge > 0 && (
             <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full" title={badgeTitle}>
@@ -320,10 +335,11 @@ function NavTree({
       <Link
         href="/"
         onClick={onNavigate}
-        className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+        className={`flex items-center gap-2 px-3 py-2 rounded text-sm font-medium transition-colors ${
           pathname === '/' ? 'bg-pool-navy-light text-white' : 'text-pool-light hover:bg-pool-navy-light hover:text-white'
         }`}
       >
+        <SectionIcon section="accueil" />
         Accueil
       </Link>
       {groups.map(group => (

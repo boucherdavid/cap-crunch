@@ -19,6 +19,19 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-09
+
+**[Style] — Icônes et bandes de couleur par famille du menu** (`app/components/SectionIcon.tsx`,
+`Navbar.tsx`, `app/app/page.tsx`, `SummaryTable.tsx`, `live/LiveNightCards.tsx`) :
+- Demande de David : repérer les sections de l'accueil et les associer au menu de gauche.
+- `SectionIcon` : une icône au trait et une couleur d'accent par famille (source unique). Même
+  icône à côté de chaque groupe du menu et dans l'en-tête des cartes de l'accueil, avec une bande
+  de couleur à gauche de l'en-tête (version discrète choisie par David, à ajuster au besoin).
+- Titres de carte cliquables vers leur page (Classement, En direct, Calendrier, Blessures,
+  Contrats LNH). Portée : accueil et menu seulement ; les titres de page viendront ensuite si
+  ça plaît.
+- Pas vu à l'écran avant de pousser.
+
 ### 2026-10-08
 
 **[Feat] — Exceptions au délai de réactivation : remplacement d'un blessé, poste vacant**
