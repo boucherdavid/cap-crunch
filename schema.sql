@@ -1379,3 +1379,20 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 -- listé blessé. À exécuter une seule fois dans le SQL Editor Supabase (staging, puis prod).
 
 -- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS ltir_recent_game_days INTEGER NOT NULL DEFAULT 7;
+
+-- Migration 2026-10-10 : discussion, contre-offre et retrait des échanges proposés (David) —
+-- voir supabase_migrations/trade_offer_messages.sql. Table privée (RLS sans politique, comme
+-- watchlists) ; trade_offers.status gagne 'withdrawn'. Roulée en staging le 2026-10-10.
+
+-- CREATE TABLE trade_offer_messages (
+--   id SERIAL PRIMARY KEY,
+--   trade_offer_id INTEGER NOT NULL REFERENCES trade_offers(id) ON DELETE CASCADE,
+--   author_pooler_id UUID REFERENCES poolers(id) ON DELETE SET NULL,  -- NULL = ligne automatique
+--   body VARCHAR(500) NOT NULL,
+--   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- );
+-- CREATE INDEX trade_offer_messages_offer_idx ON trade_offer_messages (trade_offer_id, created_at);
+-- ALTER TABLE trade_offer_messages ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE trade_offers ADD COLUMN IF NOT EXISTS proposer_shares_chat_at TIMESTAMPTZ;
+-- ALTER TABLE trade_offers ADD COLUMN IF NOT EXISTS target_shares_chat_at TIMESTAMPTZ;
+-- ALTER TABLE trade_offers ADD COLUMN IF NOT EXISTS countered_at TIMESTAMPTZ;

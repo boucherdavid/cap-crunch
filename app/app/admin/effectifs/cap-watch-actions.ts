@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
 import { getEffectiveCap } from '@/lib/capUtils'
-import { adminDecideTradeOffer } from '@/lib/tradeOffers'
+import { adminDecideTradeOffer, loadTradeMessages, type TradeMessageView } from '@/lib/tradeOffers'
 import { listPendingLtirRequestsForAdmin, decideLtirRequest, type LtirRequestView } from '@/lib/ltirRequests'
 import type { LtirSettings } from '@/lib/ltirEligibility'
 
@@ -353,6 +353,45 @@ export async function getPendingTradeOffersForAdminAction(saisonId: number): Pro
       }
     }),
   }
+}
+
+// ─── Discussions d'échange partagées par les DEUX poolers (David, 2026-10-10) ─────────────────
+// Seule porte d'accès admin à trade_offer_messages : une discussion n'est lisible ici que si les
+// deux poolers ont cliqué « Montrer la discussion à l'admin » (pour départager un désaccord).
+
+export type SharedTradeChatView = {
+  id: number
+  proposerName: string
+  targetName: string
+  status: string
+  messages: TradeMessageView[]
+}
+
+export async function getSharedTradeChatsForAdminAction(saisonId: number): Promise<SharedTradeChatView[]> {
+  const check = await requireAdmin()
+  if ('error' in check) return []
+
+  const db = createAdminClient()
+  const { data: rows } = await db
+    .from('trade_offers')
+    .select('id, status, proposer:poolers!proposer_pooler_id (name), target:poolers!target_pooler_id (name)')
+    .eq('pool_season_id', saisonId)
+    .not('proposer_shares_chat_at', 'is', null)
+    .not('target_shares_chat_at', 'is', null)
+    .order('id', { ascending: false })
+  if (!rows || rows.length === 0) return []
+
+  const messagesByOffer = await loadTradeMessages(db, rows.map(r => r.id), null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (rows as any[])
+    .filter(r => (messagesByOffer.get(r.id) ?? []).length > 0)
+    .map(r => ({
+      id: r.id,
+      proposerName: r.proposer?.name ?? '—',
+      targetName: r.target?.name ?? '—',
+      status: r.status,
+      messages: messagesByOffer.get(r.id) ?? [],
+    }))
 }
 
 export async function adminDecideTradeOfferAction(tradeOfferId: number, approve: boolean): Promise<{ error?: string }> {

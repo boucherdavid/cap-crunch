@@ -2,7 +2,7 @@ import { emailLinkHtml } from '@/lib/siteUrl'
 import { after } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPushToUsers, sendPushToAdmins } from '@/lib/push'
-import { sendEmailToIds } from '@/lib/email'
+import { sendEmailToIds, escapeHtml } from '@/lib/email'
 import { checkFutureRosterConflict } from '@/lib/rosterTypeChange'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { validateRosterLimits, type RosterLimitEntry } from '@/lib/rosterLimits'
@@ -60,71 +60,290 @@ export type TradeItemInput = {
   pickId?: number
 }
 
-// ─── Création ───────────────────────────────────────────────────────────────
+const TRADE_MESSAGE_MAX = 500
+// Discussion conservée 7 jours après la fin de l'offre (David, 2026-10-10), puis supprimée.
+const TRADE_CHAT_RETENTION_DAYS = 7
 
-export async function createTradeOffer(
-  saisonId: number, proposerPoolerId: string, targetPoolerId: string, items: TradeItemInput[],
-): Promise<{ error?: string; id?: number }> {
-  if (proposerPoolerId === targetPoolerId) return { error: 'Tu ne peux pas proposer un échange à toi-même.' }
-  if (items.length === 0) return { error: 'Ajoute au moins un joueur ou un choix des deux côtés.' }
+type AdminDb = ReturnType<typeof createAdminClient>
 
-  const admin = createAdminClient()
-
-  const validPoolers = new Set([proposerPoolerId, targetPoolerId])
+// Vérifie que chaque élément appartient encore à son pooler (joueur actif dans l'alignement,
+// choix non utilisé) — partagé par la proposition et la contre-offre.
+async function validateTradeItems(
+  admin: AdminDb, saisonId: number, poolerA: string, poolerB: string, items: TradeItemInput[],
+): Promise<string | null> {
+  if (poolerA === poolerB) return 'Tu ne peux pas proposer un échange à toi-même.'
+  if (items.length === 0) return 'Ajoute au moins un joueur ou un choix des deux côtés.'
+  const validPoolers = new Set([poolerA, poolerB])
   for (const item of items) {
-    if (!validPoolers.has(item.fromPoolerId)) return { error: 'Élément invalide (pooler source hors échange).' }
+    if (!validPoolers.has(item.fromPoolerId)) return 'Élément invalide (pooler source hors échange).'
 
     if (item.itemType === 'player') {
-      if (!item.playerId) return { error: 'Joueur manquant sur un élément.' }
+      if (!item.playerId) return 'Joueur manquant sur un élément.'
       const { data: row } = await admin
         .from('pooler_rosters').select('player_type')
         .eq('pooler_id', item.fromPoolerId).eq('player_id', item.playerId).eq('pool_season_id', saisonId).eq('is_active', true)
         .maybeSingle()
-      if (!row) return { error: `Un joueur proposé n'appartient plus à ${await poolerName(admin, item.fromPoolerId)}.` }
+      if (!row) return `Un joueur proposé n'appartient plus à ${await poolerName(admin, item.fromPoolerId)}.`
     } else {
-      if (!item.pickId) return { error: 'Choix manquant sur un élément.' }
+      if (!item.pickId) return 'Choix manquant sur un élément.'
       const { data: pick } = await admin
         .from('pool_draft_picks').select('current_owner_id, is_used')
         .eq('id', item.pickId).maybeSingle()
       if (!pick || pick.current_owner_id !== item.fromPoolerId || pick.is_used) {
-        return { error: `Un choix proposé n'appartient plus à ${await poolerName(admin, item.fromPoolerId)} ou a déjà été utilisé.` }
+        return `Un choix proposé n'appartient plus à ${await poolerName(admin, item.fromPoolerId)} ou a déjà été utilisé.`
       }
     }
   }
+  return null
+}
 
-  const { data: tradeOffer, error } = await admin.from('trade_offers').insert({
-    pool_season_id: saisonId, proposer_pooler_id: proposerPoolerId, target_pooler_id: targetPoolerId, status: 'pending_target',
-  }).select('id').single()
-  if (error) return { error: error.message }
-
-  const itemRows = items.map(item => ({
-    trade_offer_id: tradeOffer.id,
+function itemRowsFor(tradeOfferId: number, proposerPoolerId: string, targetPoolerId: string, items: TradeItemInput[]) {
+  return items.map(item => ({
+    trade_offer_id: tradeOfferId,
     from_pooler_id: item.fromPoolerId,
     to_pooler_id: item.fromPoolerId === proposerPoolerId ? targetPoolerId : proposerPoolerId,
     item_type: item.itemType,
     player_id: item.itemType === 'player' ? item.playerId : null,
     pick_id: item.itemType === 'pick' ? item.pickId : null,
   }))
-  const { error: itemsError } = await admin.from('trade_offer_items').insert(itemRows)
+}
+
+function cleanMessage(message: string | undefined): string {
+  return (message ?? '').trim().slice(0, TRADE_MESSAGE_MAX)
+}
+
+// Message cité dans une notification : bloc HTML échappé pour le courriel, extrait pour le push.
+function quoteHtml(message: string): string {
+  return message ? `<blockquote style="border-left:3px solid #ccc;margin:8px 0;padding-left:8px;color:#444">${escapeHtml(message).replace(/\n/g, '<br>')}</blockquote>` : ''
+}
+function pushExcerpt(message: string): string {
+  return message.length > 120 ? `${message.slice(0, 117)}…` : message
+}
+
+// ─── Création ───────────────────────────────────────────────────────────────
+
+export async function createTradeOffer(
+  saisonId: number, proposerPoolerId: string, targetPoolerId: string, items: TradeItemInput[], message?: string,
+): Promise<{ error?: string; id?: number }> {
+  const admin = createAdminClient()
+  const invalid = await validateTradeItems(admin, saisonId, proposerPoolerId, targetPoolerId, items)
+  if (invalid) return { error: invalid }
+
+  const { data: tradeOffer, error } = await admin.from('trade_offers').insert({
+    pool_season_id: saisonId, proposer_pooler_id: proposerPoolerId, target_pooler_id: targetPoolerId, status: 'pending_target',
+  }).select('id').single()
+  if (error) return { error: error.message }
+
+  const { error: itemsError } = await admin.from('trade_offer_items').insert(itemRowsFor(tradeOffer.id, proposerPoolerId, targetPoolerId, items))
   if (itemsError) {
     await admin.from('trade_offers').delete().eq('id', tradeOffer.id)
     return { error: itemsError.message }
   }
 
+  const text = cleanMessage(message)
+  if (text) await admin.from('trade_offer_messages').insert({ trade_offer_id: tradeOffer.id, author_pooler_id: proposerPoolerId, body: text })
+
   const proposerLabel = await poolerName(admin, proposerPoolerId)
   after(() => Promise.all([
     sendPushToUsers([targetPoolerId], {
       title: 'Cap Crunch — Proposition de transaction',
-      body: `${proposerLabel} te propose un échange.`,
+      body: text ? `${proposerLabel} te propose un échange : « ${pushExcerpt(text)} »` : `${proposerLabel} te propose un échange.`,
       url: TRADE_TAB_PATH,
     }).catch(() => {}),
     sendEmailToIds([targetPoolerId], {
       subject: 'Cap Crunch — Proposition de transaction',
-      html: `<p><strong>${proposerLabel}</strong> te propose un échange — consulte le détail et accepte ou refuse dans l'onglet Échanges de Gestion d'effectifs.</p>${linkHtml(TRADE_TAB_PATH)}`,
+      html: `<p><strong>${proposerLabel}</strong> te propose un échange — consulte le détail et accepte, refuse ou fais une contre-offre dans l'onglet Échanges de Gestion d'effectifs.</p>${quoteHtml(text)}${linkHtml(TRADE_TAB_PATH)}`,
     }).catch(() => {}),
   ]))
 
   return { id: tradeOffer.id }
+}
+
+// ─── Contre-offre (David, 2026-10-10) ───────────────────────────────────────────
+// Seulement tant que l'offre attend la réponse du pooler visé : les éléments sont remplacés et
+// les rôles s'inversent (celui qui contre devient le proposeur, l'autre doit répondre). Même
+// offre, donc la discussion continue. Les partages de discussion suivent leur pooler.
+
+export async function counterTradeOffer(
+  tradeOfferId: number, poolerId: string, items: TradeItemInput[], message?: string,
+): Promise<{ error?: string }> {
+  const admin = createAdminClient()
+  const { data: offer } = await admin
+    .from('trade_offers')
+    .select('id, status, pool_season_id, proposer_pooler_id, target_pooler_id, proposer_shares_chat_at, target_shares_chat_at')
+    .eq('id', tradeOfferId).single()
+  if (!offer) return { error: 'Proposition introuvable.' }
+  if (offer.target_pooler_id !== poolerId) return { error: "Cette proposition ne t'est pas destinée." }
+  if (offer.status !== 'pending_target') return { error: 'Cette proposition a déjà été traitée.' }
+
+  const otherId = offer.proposer_pooler_id
+  const invalid = await validateTradeItems(admin, offer.pool_season_id, poolerId, otherId, items)
+  if (invalid) return { error: invalid }
+
+  // Mise à jour conditionnelle : si l'autre a retiré son offre entre-temps, rien ne bouge.
+  const now = new Date().toISOString()
+  const { data: swapped } = await admin.from('trade_offers').update({
+    proposer_pooler_id: poolerId, target_pooler_id: otherId,
+    proposer_shares_chat_at: offer.target_shares_chat_at, target_shares_chat_at: offer.proposer_shares_chat_at,
+    countered_at: now,
+  }).eq('id', tradeOfferId).eq('status', 'pending_target').eq('target_pooler_id', poolerId).select('id')
+  if (!swapped || swapped.length === 0) return { error: 'Cette proposition a déjà été traitée.' }
+
+  await admin.from('trade_offer_items').delete().eq('trade_offer_id', tradeOfferId)
+  const { error: itemsError } = await admin.from('trade_offer_items').insert(itemRowsFor(tradeOfferId, poolerId, otherId, items))
+  if (itemsError) return { error: itemsError.message }
+
+  const myLabel = await poolerName(admin, poolerId)
+  const text = cleanMessage(message)
+  await admin.from('trade_offer_messages').insert([
+    { trade_offer_id: tradeOfferId, author_pooler_id: null, body: `${myLabel} a fait une contre-offre.` },
+    ...(text ? [{ trade_offer_id: tradeOfferId, author_pooler_id: poolerId, body: text }] : []),
+  ])
+
+  after(() => Promise.all([
+    sendPushToUsers([otherId], {
+      title: 'Cap Crunch — Contre-offre',
+      body: text ? `${myLabel} te fait une contre-offre : « ${pushExcerpt(text)} »` : `${myLabel} te fait une contre-offre.`,
+      url: TRADE_TAB_PATH,
+    }).catch(() => {}),
+    sendEmailToIds([otherId], {
+      subject: 'Cap Crunch — Contre-offre',
+      html: `<p><strong>${myLabel}</strong> te fait une contre-offre — consulte le détail et accepte, refuse ou fais une contre-offre dans l'onglet Échanges de Gestion d'effectifs.</p>${quoteHtml(text)}${linkHtml(TRADE_TAB_PATH)}`,
+    }).catch(() => {}),
+  ]))
+  return {}
+}
+
+// ─── Retrait / abandon (David, 2026-10-10) ──────────────────────────────────────
+// En attente de réponse : seul le proposeur peut retirer son offre (l'autre refuse). Après
+// l'acceptation (chez l'admin ou en confirmation) : l'un ou l'autre peut l'abandonner — rien n'a
+// encore été transféré, comme pour un délai dépassé.
+
+export async function withdrawTradeOffer(tradeOfferId: number, poolerId: string): Promise<{ error?: string }> {
+  const admin = createAdminClient()
+  const { data: offer } = await admin
+    .from('trade_offers').select('id, status, proposer_pooler_id, target_pooler_id')
+    .eq('id', tradeOfferId).single()
+  if (!offer) return { error: 'Proposition introuvable.' }
+  const isProposer = offer.proposer_pooler_id === poolerId
+  if (!isProposer && offer.target_pooler_id !== poolerId) return { error: 'Cet échange ne te concerne pas.' }
+  const allowed = offer.status === 'pending_target' ? isProposer : ['pending_admin', 'pending_completion'].includes(offer.status)
+  if (!allowed) return { error: 'Cet échange ne peut plus être retiré.' }
+
+  const myLabel = await poolerName(admin, poolerId)
+  const now = new Date().toISOString()
+  const reason = offer.status === 'pending_target' ? `Retirée par ${myLabel}.` : `Abandonnée par ${myLabel} — rien n'a été transféré.`
+  const { data: updated } = await admin.from('trade_offers')
+    .update({ status: 'withdrawn', resolved_at: now, cancelled_reason: reason })
+    .eq('id', tradeOfferId).eq('status', offer.status).select('id')
+  if (!updated || updated.length === 0) return { error: "Cet échange vient de changer d'état, recharge la page." }
+
+  const otherId = isProposer ? offer.target_pooler_id : offer.proposer_pooler_id
+  const body = offer.status === 'pending_target'
+    ? `${myLabel} a retiré sa proposition d'échange.`
+    : `${myLabel} a abandonné votre échange — rien n'a été transféré.`
+  after(() => Promise.all([
+    sendPushToUsers([otherId], { title: 'Cap Crunch — Transaction retirée', body, url: TRADE_TAB_PATH }).catch(() => {}),
+    sendEmailToIds([otherId], { subject: 'Cap Crunch — Transaction retirée', html: `<p>${body}</p>${linkHtml(TRADE_TAB_PATH)}` }).catch(() => {}),
+  ]))
+  return {}
+}
+
+// ─── Discussion entre les deux poolers (David, 2026-10-10) ──────────────────────
+// Privée (RLS sans politique, voir supabase_migrations/trade_offer_messages.sql). Écriture tant
+// que l'offre n'est pas réglée ; lecture ensuite jusqu'à la suppression, 7 jours après la fin.
+// L'admin ne la lit que si les deux poolers l'ont partagée.
+
+const OPEN_STATUSES = ['pending_target', 'pending_admin', 'pending_completion']
+
+export async function postTradeMessage(tradeOfferId: number, poolerId: string, message: string): Promise<{ error?: string }> {
+  const text = cleanMessage(message)
+  if (!text) return { error: 'Écris un message.' }
+  const admin = createAdminClient()
+  const { data: offer } = await admin
+    .from('trade_offers').select('id, status, proposer_pooler_id, target_pooler_id')
+    .eq('id', tradeOfferId).single()
+  if (!offer) return { error: 'Échange introuvable.' }
+  if (offer.proposer_pooler_id !== poolerId && offer.target_pooler_id !== poolerId) return { error: 'Cet échange ne te concerne pas.' }
+  if (!OPEN_STATUSES.includes(offer.status)) return { error: 'Cet échange est réglé : la discussion est fermée.' }
+
+  const { error } = await admin.from('trade_offer_messages').insert({ trade_offer_id: tradeOfferId, author_pooler_id: poolerId, body: text })
+  if (error) return { error: error.message }
+
+  const otherId = offer.proposer_pooler_id === poolerId ? offer.target_pooler_id : offer.proposer_pooler_id
+  const myLabel = await poolerName(admin, poolerId)
+  after(() => sendPushToUsers([otherId], {
+    title: `Cap Crunch — Message de ${myLabel}`,
+    body: pushExcerpt(text),
+    url: TRADE_TAB_PATH,
+  }).catch(() => {}))
+  return {}
+}
+
+export async function setTradeChatShared(tradeOfferId: number, poolerId: string, share: boolean): Promise<{ error?: string }> {
+  const admin = createAdminClient()
+  const { data: offer } = await admin
+    .from('trade_offers').select('id, proposer_pooler_id, target_pooler_id, proposer_shares_chat_at, target_shares_chat_at')
+    .eq('id', tradeOfferId).single()
+  if (!offer) return { error: 'Échange introuvable.' }
+  const isProposer = offer.proposer_pooler_id === poolerId
+  if (!isProposer && offer.target_pooler_id !== poolerId) return { error: 'Cet échange ne te concerne pas.' }
+
+  const column = isProposer ? 'proposer_shares_chat_at' : 'target_shares_chat_at'
+  const { error } = await admin.from('trade_offers').update({ [column]: share ? new Date().toISOString() : null }).eq('id', tradeOfferId)
+  if (error) return { error: error.message }
+
+  if (share) {
+    const otherShares = isProposer ? offer.target_shares_chat_at : offer.proposer_shares_chat_at
+    const otherId = isProposer ? offer.target_pooler_id : offer.proposer_pooler_id
+    const myLabel = await poolerName(admin, poolerId)
+    after(() => (otherShares
+      ? sendPushToAdmins({ title: 'Cap Crunch — Discussion partagée', body: 'Deux poolers te montrent la discussion de leur échange.', url: '/admin/effectifs?tab=approbation' })
+      : sendPushToUsers([otherId], { title: 'Cap Crunch — Discussion', body: `${myLabel} demande de montrer votre discussion à l'admin.`, url: TRADE_TAB_PATH })
+    ).catch(() => {}))
+  }
+  return {}
+}
+
+/** Supprime les discussions des offres réglées depuis plus de 7 jours (paresseux). */
+export async function purgeOldTradeMessages(): Promise<void> {
+  const admin = createAdminClient()
+  const cutoff = new Date(Date.now() - TRADE_CHAT_RETENTION_DAYS * 24 * 3_600_000).toISOString()
+  const { data: old } = await admin
+    .from('trade_offer_messages')
+    .select('trade_offer_id, trade_offers!inner (resolved_at)')
+    .lt('trade_offers.resolved_at', cutoff)
+    .limit(1000)
+  const ids = [...new Set((old ?? []).map(m => m.trade_offer_id))]
+  if (ids.length > 0) await admin.from('trade_offer_messages').delete().in('trade_offer_id', ids)
+}
+
+export type TradeMessageView = { id: number; mine: boolean; system: boolean; authorName: string | null; body: string; createdAt: string }
+
+/** Messages de plusieurs offres, vus par `viewerId` (null = admin). */
+export async function loadTradeMessages(
+  admin: AdminDb, offerIds: number[], viewerId: string | null,
+): Promise<Map<number, TradeMessageView[]>> {
+  const byOffer = new Map<number, TradeMessageView[]>()
+  if (offerIds.length === 0) return byOffer
+  const { data } = await admin
+    .from('trade_offer_messages')
+    .select('id, trade_offer_id, author_pooler_id, body, created_at, author:poolers!author_pooler_id (name)')
+    .in('trade_offer_id', offerIds)
+    .order('created_at').order('id')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const m of (data ?? []) as any[]) {
+    if (!byOffer.has(m.trade_offer_id)) byOffer.set(m.trade_offer_id, [])
+    byOffer.get(m.trade_offer_id)!.push({
+      id: m.id,
+      mine: viewerId != null && m.author_pooler_id === viewerId,
+      system: m.author_pooler_id == null,
+      authorName: m.author?.name ?? null,
+      body: m.body,
+      createdAt: m.created_at,
+    })
+  }
+  return byOffer
 }
 
 // ─── Réponse du pooler visé ───────────────────────────────────────────────────

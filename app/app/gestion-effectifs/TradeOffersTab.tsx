@@ -3,13 +3,16 @@
 import { useRef, useState, useEffect, useCallback, useTransition } from 'react'
 import {
   getMyTradeOffersAction, proposeTradeOfferAction, respondToTradeOfferAction, confirmTradeReadyAction,
-  listTradeableAssetsAction,
+  listTradeableAssetsAction, counterTradeOfferAction, withdrawTradeOfferAction,
   type TradeOfferView, type TradeableItem,
 } from './trade-actions'
 import type { TradeExtraAction } from '@/lib/tradeOffers'
 import { refreshPoolerTodo } from '@/components/usePoolerTodo'
 import { listOtherPoolersAction, listScenariosAction, loadScenarioAction } from '../simulation/actions'
 import { getPlayerBucket, ACTIVE_LIMITS } from '@/lib/rosterLimits'
+import TradeChat from './TradeChat'
+
+const MESSAGE_MAX = 500
 
 const fmtCap = (n: number) =>
   new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
@@ -46,6 +49,7 @@ const STATUS_LABEL: Record<string, string> = {
   rejected_admin: 'Rejetée par l\'admin',
   completed: 'Complétée',
   cancelled_expired: 'Annulée (délai dépassé)',
+  withdrawn: 'Retirée',
 }
 
 function fmtDeadline(iso: string | null) {
@@ -157,6 +161,9 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
   const [mySelected, setMySelected] = useState<Set<string>>(new Set())
   const [theirSelected, setTheirSelected] = useState<Set<string>>(new Set())
   const [composeMsg, setComposeMsg] = useState<string | null>(null)
+  const [message, setMessage] = useState('')
+  // Contre-offre en préparation (David, 2026-10-10) : l'offre reçue qu'elle remplacera.
+  const [counterOf, setCounterOf] = useState<TradeOfferView | null>(null)
 
   useEffect(() => {
     if (!composing) return
@@ -247,18 +254,57 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
     })
   }
 
+  function resetCompose() {
+    setComposing(false); setCounterOf(null); setMessage(''); setComposeMsg(null)
+    setTargetId(''); setMySelected(new Set()); setTheirSelected(new Set())
+  }
+
   function handlePropose() {
     if (!targetId) { setComposeMsg('Choisis un pooler.'); return }
     setComposeMsg(null)
     startTransition(async () => {
-      const result = await proposeTradeOfferAction(saisonId, {
+      const input = {
         targetPoolerId: targetId,
         myItems: parseKeys(mySelected),
         theirItems: parseKeys(theirSelected),
-      })
+        message,
+      }
+      const result = counterOf
+        ? await counterTradeOfferAction(counterOf.id, input)
+        : await proposeTradeOfferAction(saisonId, input)
       if (result.error) { setComposeMsg(result.error); return }
-      setComposing(false)
-      setTargetId(''); setMySelected(new Set()); setTheirSelected(new Set())
+      resetCompose()
+      load()
+      refreshPoolerTodo()
+    })
+  }
+
+  // Ouvre le formulaire pré-rempli avec l'offre reçue : on la modifie, puis on la renvoie.
+  function startCounter(offer: TradeOfferView) {
+    const keyOf = (i: { kind: 'player' | 'pick'; id: number }) => `${i.kind}-${i.id}`
+    const receiveKeys = new Set(offer.receive.map(keyOf))
+    setCounterOf(offer)
+    setMessage('')
+    setComposeMsg(null)
+    setComposing(true)
+    setMySelected(new Set(offer.give.map(keyOf)))
+    if (offer.otherPoolerId === targetId) setTheirSelected(receiveKeys)
+    else {
+      pendingImport.current = { targetId: offer.otherPoolerId, selectKeys: assets => assets.map(itemKey).filter(k => receiveKeys.has(k)) }
+      setTargetId(offer.otherPoolerId)
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function handleWithdraw(offer: TradeOfferView) {
+    const question = offer.status === 'pending_target'
+      ? `Retirer ta proposition à ${offer.otherPoolerName} ?`
+      : `Abandonner l'échange avec ${offer.otherPoolerName} ? Rien n'a encore été transféré ; il faudra refaire une proposition au besoin.`
+    if (!window.confirm(question)) return
+    setError(null)
+    startTransition(async () => {
+      const result = await withdrawTradeOfferAction(offer.id)
+      if (result.error) setError(result.error)
       load()
       refreshPoolerTodo()
     })
@@ -376,7 +422,7 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
       <div>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold text-gray-800">Mes transactions</h2>
-          <button onClick={() => setComposing(v => !v)} className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded font-medium hover:bg-blue-700">
+          <button onClick={() => (composing ? resetCompose() : setComposing(true))} className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded font-medium hover:bg-blue-700">
             {composing ? 'Annuler' : '+ Nouvelle proposition'}
           </button>
         </div>
@@ -393,12 +439,18 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
 
         {composing && (
           <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4 space-y-3">
+            {counterOf && (
+              <p className="text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded p-2">
+                Contre-offre à {counterOf.otherPoolerName}{' '}: modifie ce que tu donnes et ce que tu reçois, puis envoie.
+                Elle remplacera l&apos;offre actuelle, et ce sera à {counterOf.otherPoolerName} de répondre.
+              </p>
+            )}
             <div className="flex flex-wrap items-center gap-2">
-              <select value={targetId} onChange={e => setTargetId(e.target.value)} className="border rounded-lg px-2 py-1.5 text-sm">
+              <select value={targetId} onChange={e => setTargetId(e.target.value)} disabled={!!counterOf} className="border rounded-lg px-2 py-1.5 text-sm disabled:bg-gray-50">
                 <option value="">— Choisir un pooler —</option>
                 {otherPoolers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
-              {scenarios.length > 0 && (
+              {scenarios.length > 0 && !counterOf && (
                 <select value="" onChange={e => handleLoadScenario(Number(e.target.value))} aria-label="Charger un scénario de simulation" className="border rounded-lg px-2 py-1.5 text-sm text-gray-600">
                   <option value="">Charger un scénario…</option>
                   {scenarios.map(sc => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
@@ -412,10 +464,24 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
                 <ItemPicker title="Tu reçois" items={theirAssets} selected={theirSelected} onToggle={k => toggle(setTheirSelected, k)} />
               </div>
             )}
+            {targetId && (
+              <div>
+                <label htmlFor="trade-message" className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Message (facultatif)</label>
+                <textarea
+                  id="trade-message"
+                  value={message}
+                  onChange={e => setMessage(e.target.value.slice(0, MESSAGE_MAX))}
+                  rows={2}
+                  placeholder="Ex. : je cherche un défenseur, je peux ajouter un choix de 2e ronde"
+                  className="w-full border rounded-lg px-2 py-1.5 text-sm resize-none"
+                />
+                <p className="text-[11px] text-gray-400 text-right">{message.length}/{MESSAGE_MAX}</p>
+              </div>
+            )}
             {composeMsg && <p className="text-sm text-red-600">{composeMsg}</p>}
             <button onClick={handlePropose} disabled={isPending || !targetId}
               className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
-              Envoyer la proposition
+              {counterOf ? 'Envoyer la contre-offre' : 'Envoyer la proposition'}
             </button>
           </div>
         )}
@@ -427,7 +493,9 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
             <div key={o.id} className="border border-gray-200 rounded-lg p-3">
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                 <p className="font-medium text-gray-800">
-                  {o.isProposer ? `Proposée à ${o.otherPoolerName}` : `Reçue de ${o.otherPoolerName}`}
+                  {o.isProposer
+                    ? `${o.countered ? 'Contre-offre envoyée' : 'Proposée'} à ${o.otherPoolerName}`
+                    : `${o.countered ? 'Contre-offre reçue' : 'Reçue'} de ${o.otherPoolerName}`}
                 </p>
                 <span className="text-xs text-gray-500">{STATUS_LABEL[o.status] ?? o.status}</span>
               </div>
@@ -455,11 +523,22 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
               </div>
 
               {o.status === 'pending_target' && !o.isProposer && (
-                <div className="flex gap-2 mt-3">
+                <div className="flex flex-wrap gap-2 mt-3">
                   <button onClick={() => handleRespond(o.id, true)} disabled={isPending}
                     className="bg-green-600 text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-green-700 disabled:opacity-50">Accepter</button>
+                  <button onClick={() => startCounter(o)} disabled={isPending}
+                    className="border border-blue-300 text-blue-700 px-3 py-1.5 rounded text-sm font-medium hover:bg-blue-50 disabled:opacity-50">Contre-offre</button>
                   <button onClick={() => handleRespond(o.id, false)} disabled={isPending}
                     className="border border-gray-300 text-gray-600 px-3 py-1.5 rounded text-sm font-medium hover:bg-gray-50 disabled:opacity-50">Refuser</button>
+                </div>
+              )}
+
+              {(o.status !== 'pending_target' || o.isProposer) && (
+                <div className="mt-2">
+                  <button onClick={() => handleWithdraw(o)} disabled={isPending}
+                    className="text-xs text-gray-500 underline hover:text-red-600 disabled:opacity-50">
+                    {o.status === 'pending_target' ? 'Retirer ma proposition' : 'Abandonner l\'échange'}
+                  </button>
                 </div>
               )}
 
@@ -561,6 +640,16 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
                     )}
                 </div>
               )}
+
+              <TradeChat
+                offerId={o.id}
+                initialMessages={o.messages}
+                writable
+                myShared={o.myShared}
+                otherShared={o.otherShared}
+                otherName={o.otherPoolerName}
+                defaultOpen={o.messages.some(m => !m.system)}
+              />
             </div>
           ))}
         </div>
@@ -573,6 +662,16 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
             {history.map(h => (
               <div key={h.id} className="text-xs text-gray-500 border-b border-gray-100 pb-1">
                 {h.otherPoolerName} — {STATUS_LABEL[h.status] ?? h.status}
+                {h.status === 'withdrawn' && h.cancelledReason && <span className="text-gray-400"> ({h.cancelledReason})</span>}
+                <TradeChat
+                  offerId={h.id}
+                  initialMessages={h.messages}
+                  writable={false}
+                  myShared={h.myShared}
+                  otherShared={h.otherShared}
+                  otherName={h.otherPoolerName}
+                  defaultOpen={false}
+                />
               </div>
             ))}
           </div>

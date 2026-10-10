@@ -8,13 +8,14 @@ import HistoriqueManager from '../historique/HistoriqueManager'
 import { getHistLogAction } from '../historique/historique-actions'
 import CapWatchManager from './CapWatchManager'
 import TradeApprovalManager from './TradeApprovalManager'
+import SharedTradeChats from './SharedTradeChats'
 import LtirApprovalManager from './LtirApprovalManager'
 import LtirSettingsForm from './LtirSettingsForm'
 import { fetchLtirSettings } from '@/lib/injuries'
 import MarqueurReportView from './MarqueurReportView'
 import { buildMarqueurReport, type MarqueurReport } from '@/lib/marqueur'
 import type { LtirSettings } from '@/lib/ltirEligibility'
-import { loadCapWatchDataAction, getPendingTradeOffersForAdminAction, getPendingLtirRequestsForAdminAction } from './cap-watch-actions'
+import { loadCapWatchDataAction, getPendingTradeOffersForAdminAction, getPendingLtirRequestsForAdminAction, getSharedTradeChatsForAdminAction, type SharedTradeChatView } from './cap-watch-actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,18 +63,21 @@ export default async function AdminEffectifsPage({
   let pendingTradeOffers: any[] = []
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let pendingLtirRequests: any[] = []
+  let sharedTradeChats: SharedTradeChatView[] = []
   let ltirSettings: LtirSettings | null = null
   if (activeTab === 'approbation') {
     ltirSettings = await fetchLtirSettings(supabase)
     const { data: sr } = await supabase.from('pool_seasons').select('id, season').eq('is_active', true).eq('is_playoff', false).single()
     saisonApprobation = sr
     if (saisonApprobation) {
-      const [to, ltir] = await Promise.all([
+      const [to, ltir, chats] = await Promise.all([
         getPendingTradeOffersForAdminAction(saisonApprobation.id),
         getPendingLtirRequestsForAdminAction(saisonApprobation.id),
+        getSharedTradeChatsForAdminAction(saisonApprobation.id),
       ])
       pendingTradeOffers = to.offers ?? []
       pendingLtirRequests = ltir
+      sharedTradeChats = chats
     }
   }
 
@@ -236,6 +240,13 @@ export default async function AdminEffectifsPage({
               <div>
                 <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Transactions entre poolers</h2>
                 <TradeApprovalManager initialOffers={pendingTradeOffers} />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-1">Discussions d&apos;échange partagées</h2>
+                <p className="text-xs text-gray-500 mb-3">
+                  Visibles seulement quand les deux poolers ont accepté de te les montrer, et supprimées 7 jours après la fin de l&apos;échange.
+                </p>
+                <SharedTradeChats chats={sharedTradeChats} />
               </div>
               <div>
                 <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Demandes de LTIR</h2>
