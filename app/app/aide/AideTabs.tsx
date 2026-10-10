@@ -255,7 +255,10 @@ const SECTIONS: Section[] = [
           (actif, réserviste ou recrue) et/ou de choix de repêchage à un autre pooler.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
-          <li>• Le pooler visé doit <strong>accepter ou refuser</strong> ta proposition.</li>
+          <li>• Tu peux joindre un <strong>court message</strong> à ta proposition.</li>
+          <li>• Le pooler visé peut <strong>accepter</strong>, <strong>refuser</strong> ou faire une <strong>contre-offre</strong> : elle remplace l&apos;offre actuelle, et c&apos;est alors à toi de répondre. Tant qu&apos;il n&apos;a pas répondu, tu peux retirer ta proposition.</li>
+          <li>• Chaque échange a sa <strong>discussion</strong>, visible seulement par vous deux. Elle se ferme quand l&apos;échange est réglé et est supprimée 7 jours plus tard. L&apos;admin ne peut la lire que si vous acceptez <strong>tous les deux</strong> de la lui montrer, par exemple pour régler un désaccord.</li>
+          <li>• Une fois l&apos;échange accepté, la contre-offre n&apos;est plus possible, mais l&apos;un ou l&apos;autre peut l&apos;<strong>abandonner</strong> tant qu&apos;il n&apos;est pas exécuté.</li>
           <li>• Si accepté, l&apos;<strong>admin doit approuver</strong> l&apos;échange avant que quoi que ce soit ne bouge.</li>
           <li>• Une fois approuvé, tu as un délai pour <strong>confirmer</strong> que le résultat entre dans ta masse salariale et ta composition (12/6/2 + réservistes) — si ça ne rentre pas encore, une section dédiée directement dans cet onglet te permet d&apos;ajuster au passage (libérer, changer actif/réserviste, activer ou remettre en banque une recrue), pas besoin d&apos;aller dans Mouvements séparément.</li>
           <li>• Un joueur <strong>sur le LTIR</strong> peut aussi être échangé. Chez le pooler qui le reçoit, il arrive comme <strong>actif ou réserviste</strong> (choix à la confirmation) et son salaire compte dans la masse salariale. S&apos;il est encore blessé, c&apos;est au nouveau propriétaire de faire sa propre demande de LTIR.</li>

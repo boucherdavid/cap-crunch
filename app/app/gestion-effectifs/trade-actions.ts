@@ -5,7 +5,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getEffectiveCap } from '@/lib/capUtils'
 import {
   createTradeOffer, respondToTradeOffer, confirmTradeReady, resolveExpiredTradeOffers,
-  type TradeItemInput, type TradeExtraAction,
+  counterTradeOffer, withdrawTradeOffer, postTradeMessage, setTradeChatShared, purgeOldTradeMessages, loadTradeMessages,
+  type TradeItemInput, type TradeExtraAction, type TradeMessageView,
 } from '@/lib/tradeOffers'
 
 // ─── Parcourir les actifs échangeables d'un pooler (soi-même ou un autre — déjà public via
@@ -74,17 +75,13 @@ export type ProposeTradeInput = {
   targetPoolerId: string
   myItems: { kind: 'player' | 'pick'; id: number }[]
   theirItems: { kind: 'player' | 'pick'; id: number }[]
+  message?: string
 }
 
-export async function proposeTradeOfferAction(saisonId: number, input: ProposeTradeInput): Promise<{ error?: string; id?: number }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Non authentifié.' }
-  if (input.myItems.length === 0 && input.theirItems.length === 0) return { error: 'Ajoute au moins un élément.' }
-
-  const items: TradeItemInput[] = [
+function toTradeItems(userId: string, input: ProposeTradeInput): TradeItemInput[] {
+  return [
     ...input.myItems.map(i => ({
-      itemType: i.kind, fromPoolerId: user.id,
+      itemType: i.kind, fromPoolerId: userId,
       playerId: i.kind === 'player' ? i.id : undefined,
       pickId: i.kind === 'pick' ? i.id : undefined,
     })),
@@ -94,8 +91,59 @@ export async function proposeTradeOfferAction(saisonId: number, input: ProposeTr
       pickId: i.kind === 'pick' ? i.id : undefined,
     })),
   ]
+}
 
-  return createTradeOffer(saisonId, user.id, input.targetPoolerId, items)
+export async function proposeTradeOfferAction(saisonId: number, input: ProposeTradeInput): Promise<{ error?: string; id?: number }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  if (input.myItems.length === 0 && input.theirItems.length === 0) return { error: 'Ajoute au moins un élément.' }
+
+  return createTradeOffer(saisonId, user.id, input.targetPoolerId, toTradeItems(user.id, input), input.message)
+}
+
+/** Contre-offre (David, 2026-10-10) : `input.targetPoolerId` = l'auteur de l'offre reçue. */
+export async function counterTradeOfferAction(tradeOfferId: number, input: ProposeTradeInput): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  if (input.myItems.length === 0 && input.theirItems.length === 0) return { error: 'Ajoute au moins un élément.' }
+  return counterTradeOffer(tradeOfferId, user.id, toTradeItems(user.id, input), input.message)
+}
+
+export async function withdrawTradeOfferAction(tradeOfferId: number): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  return withdrawTradeOffer(tradeOfferId, user.id)
+}
+
+// ─── Discussion (David, 2026-10-10) ─────────────────────────────────────────────
+
+export async function postTradeMessageAction(tradeOfferId: number, message: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  return postTradeMessage(tradeOfferId, user.id, message)
+}
+
+export async function setTradeChatSharedAction(tradeOfferId: number, share: boolean): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  return setTradeChatShared(tradeOfferId, user.id, share)
+}
+
+/** Messages d'une offre — sondé pendant que la discussion est ouverte. */
+export async function getTradeMessagesAction(tradeOfferId: number): Promise<{ error?: string; messages?: TradeMessageView[] }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  const db = createAdminClient()
+  const { data: offer } = await db.from('trade_offers').select('proposer_pooler_id, target_pooler_id').eq('id', tradeOfferId).maybeSingle()
+  if (!offer || (offer.proposer_pooler_id !== user.id && offer.target_pooler_id !== user.id)) return { error: 'Échange introuvable.' }
+  const byOffer = await loadTradeMessages(db, [tradeOfferId], user.id)
+  return { messages: byOffer.get(tradeOfferId) ?? [] }
 }
 
 // ─── Répondre / confirmer ───────────────────────────────────────────────────────
@@ -141,7 +189,13 @@ export type TradeOfferView = {
   id: number
   status: string
   isProposer: boolean
+  otherPoolerId: string
   otherPoolerName: string
+  countered: boolean
+  cancelledReason: string | null
+  messages: TradeMessageView[]
+  myShared: boolean
+  otherShared: boolean
   createdAt: string
   completionDeadline: string | null
   myReady: boolean
@@ -190,6 +244,7 @@ export async function getMyTradeOffersAction(saisonId: number): Promise<{
   const userId = user.id
 
   await resolveExpiredTradeOffers(saisonId)
+  await purgeOldTradeMessages()
 
   const db = createAdminClient()
   const [{ data: saison }, { data: settings }] = await Promise.all([
@@ -201,7 +256,7 @@ export async function getMyTradeOffersAction(saisonId: number): Promise<{
 
   const { data: rows } = await db
     .from('trade_offers')
-    .select('id, status, proposer_pooler_id, target_pooler_id, created_at, completion_deadline, proposer_ready_at, target_ready_at, proposer:poolers!proposer_pooler_id (name), target:poolers!target_pooler_id (name)')
+    .select('id, status, proposer_pooler_id, target_pooler_id, created_at, completion_deadline, proposer_ready_at, target_ready_at, countered_at, cancelled_reason, proposer_shares_chat_at, target_shares_chat_at, proposer:poolers!proposer_pooler_id (name), target:poolers!target_pooler_id (name)')
     .eq('pool_season_id', saisonId)
     .or(`proposer_pooler_id.eq.${userId},target_pooler_id.eq.${userId}`)
     .order('id', { ascending: false })
@@ -223,7 +278,10 @@ export async function getMyTradeOffersAction(saisonId: number): Promise<{
       .in('trade_offer_id', relevantIds)
     allItems = data ?? []
   }
-  const { labels, caps, positions } = await resolveItemLabels(db, allItems, season, unsignedMultiplier)
+  const [{ labels, caps, positions }, messagesByOffer] = await Promise.all([
+    resolveItemLabels(db, allItems, season, unsignedMultiplier),
+    loadTradeMessages(db, relevantIds, userId),
+  ])
   for (const item of allItems) {
     if (!itemsByOffer.has(item.trade_offer_id)) itemsByOffer.set(item.trade_offer_id, [])
     itemsByOffer.get(item.trade_offer_id)!.push(item)
@@ -263,7 +321,13 @@ export async function getMyTradeOffersAction(saisonId: number): Promise<{
       id: r.id,
       status: r.status,
       isProposer,
+      otherPoolerId: isProposer ? r.target_pooler_id : r.proposer_pooler_id,
       otherPoolerName: isProposer ? (r.target?.name ?? '—') : (r.proposer?.name ?? '—'),
+      countered: !!r.countered_at,
+      cancelledReason: r.cancelled_reason ?? null,
+      messages: messagesByOffer.get(r.id) ?? [],
+      myShared: !!(isProposer ? r.proposer_shares_chat_at : r.target_shares_chat_at),
+      otherShared: !!(isProposer ? r.target_shares_chat_at : r.proposer_shares_chat_at),
       createdAt: r.created_at,
       completionDeadline: r.completion_deadline,
       myReady: isProposer ? !!r.proposer_ready_at : !!r.target_ready_at,

@@ -128,7 +128,7 @@ export async function getPoolerTodoAction(seenSince: string | null): Promise<Poo
       items.push({
         key: `trade-${o.id}`,
         title: `Échange proposé par ${o.proposer?.name ?? 'un pooler'}`,
-        detail: 'Accepte ou refuse la proposition.',
+        detail: 'Accepte, refuse ou fais une contre-offre.',
         href: `${EFFECTIFS}?tab=echanges`,
       })
     } else if (o.status === 'pending_completion'
