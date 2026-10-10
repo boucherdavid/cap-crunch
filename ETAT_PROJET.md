@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-10-09 (fin de session)
+**Dernière mise à jour :** 2026-10-10
 
 ---
 
@@ -25,12 +25,14 @@
 
 | Branche | État |
 |---|---|
-| `staging` | = `main` |
+| `staging` | En avance sur `main` : échanges avec message, contre-offre, retrait et discussion (2026-10-10), à valider |
 | `main` (prod) | À jour au 2026-10-09 — tout ce qui est décrit en section 3 est en prod |
 
 - Variables Vercel : prod `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN` ; staging `GITHUB_WORKFLOW_TOKEN`,
   `EMAIL_REDIRECT_TO` (jamais en prod). Le jeton GitHub « Cap Crunch Vercel » **expire** : à
   renouveler dans les deux projets, sinon l'import de nuit et les boutons de mise à jour cessent.
+- **`trade_offer_messages.sql`** (2026-10-10) : roulée en staging, **à rouler en prod avant de
+  promouvoir** — sans elle, l'onglet Échanges paraît vide.
 - Migrations des 8 et 9 octobre roulées en staging et en prod : `delai_reactivation_defaut_3.sql`,
   `poolers_notif_push.sql`, `ltir_relapse_games.sql`.
 - **À confirmer** : `nhl_transaction_alerts.sql` en prod (roulée en staging, où la carte
@@ -55,6 +57,10 @@
 ## 4. À faire / à vérifier
 
 ### ▶ Prochaine session — commencer ici
+
+- **Échanges (staging)** : tester avec deux comptes pooler : proposition avec message, contre-offre,
+  retrait, abandon après acceptation, discussion et partage avec l'admin (section « Discussions
+  d'échange partagées » de l'onglet Approbation). Puis migration en prod et promotion.
 
 - **Marchand (LTIR de Vincent)** : son délai de retour a été annulé le 9 octobre par la première
   version de la règle de rechute, et David a choisi de le laisser ainsi. Un nouveau délai de

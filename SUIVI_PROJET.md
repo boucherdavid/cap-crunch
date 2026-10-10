@@ -19,6 +19,27 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-10
+
+**[Feat] — Échanges : message, contre-offre, retrait et discussion** (`app/lib/tradeOffers.ts`,
+`app/app/gestion-effectifs/TradeChat.tsx`, `TradeOffersTab.tsx`, `trade-actions.ts`,
+`app/app/admin/effectifs/SharedTradeChats.tsx`, `cap-watch-actions.ts`,
+`supabase_migrations/trade_offer_messages.sql`) — demande d'un pooler :
+- Message facultatif (500 car.) joint à une proposition, cité dans le push et le courriel.
+- Contre-offre seulement tant que l'offre attend une réponse (choix de David : une fois acceptée,
+  elle repasserait par l'admin). Même offre, éléments remplacés, proposeur/visé permutés
+  (`countered_at`), ligne automatique dans la discussion.
+- Nouveau statut `withdrawn` : retrait par le proposeur en attente de réponse, abandon par l'un ou
+  l'autre chez l'admin ou en confirmation (rien n'est encore transféré).
+- Discussion privée par offre (`trade_offer_messages`, RLS sans politique) : écriture tant que
+  l'offre est en cours, push à l'autre pooler à chaque message, sondage aux 20 s quand ouverte,
+  lecture seule ensuite, supprimée 7 jours après `resolved_at` (`purgeOldTradeMessages`, paresseux).
+- Admin : aucun accès, sauf si les deux poolers cliquent « Montrer la discussion à l'admin »
+  (choix de David, pour départager un désaccord) → section « Discussions d'échange partagées »
+  de l'onglet Approbation.
+- Aide → Échanges mise à jour. Migration roulée en staging ; à rouler en prod avant la promotion.
+- Commit : `70d1717`
+
 ### 2026-10-09
 
 **[Style] — Icônes et bandes de couleur par famille du menu** (`app/components/SectionIcon.tsx`,
