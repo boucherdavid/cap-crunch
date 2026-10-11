@@ -1402,3 +1402,8 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 
 -- ALTER TABLE ltir_requests ADD COLUMN IF NOT EXISTS new_player_type VARCHAR(20);  -- statut choisi pour l'agent libre
 -- ALTER TABLE ltir_requests ADD COLUMN IF NOT EXISTS extra_actions JSONB;          -- [{ label, action }] du reste du panier
+
+-- Migration 2026-10-11 : modifier son offre d'échange avant la réponse (David) — voir
+-- supabase_migrations/trade_offer_revised_at.sql. Roulée en staging et en prod le 2026-10-11.
+
+-- ALTER TABLE trade_offers ADD COLUMN IF NOT EXISTS revised_at TIMESTAMPTZ;  -- dernière modification = numéro de version
