@@ -11,6 +11,11 @@
  * est sautée comme pour toute action admin (même comportement que partout ailleurs dans l'app —
  * l'admin n'est jamais bloqué).
  *
+ * Reste du panier (David, 2026-10-11) : les autres mouvements du panier sont joints à la demande
+ * (`extra_actions`) et appliqués avec le LTIR dans un seul lot à l'approbation, validé sur l'état
+ * final (`enforceLimits`, même pour l'admin qui approuve) ; déjà validés à la soumission
+ * (`dryRun`). Le statut de l'agent libre signé est au choix du pooler (`new_player_type`).
+ *
  * Date effective = la date de SOUMISSION par le pooler, pas celle de l'approbation (David,
  * 2026-09-23) — passée à `submitBatchAction` via `forcedDate`, même mécanisme que les autres
  * dates historiques de l'app (voir CLAUDE.md section 6).
@@ -21,7 +26,7 @@ import { after } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPushToUser, sendPushToAdmins } from '@/lib/push'
 import { sendEmailToIds } from '@/lib/email'
-import { submitBatchAction } from '@/app/gestion-effectifs/actions'
+import { submitBatchAction, type BatchActionInput } from '@/app/gestion-effectifs/actions'
 import { fetchInjuriesByPlayerId, type InjuryInfo } from '@/lib/injuries'
 
 const APPROBATION_PATH = '/admin/effectifs?tab=approbation'
@@ -50,8 +55,27 @@ export type LtirRequestView = {
   ltirPlayerId: number
   ltirPlayerName: string
   newPlayerName: string | null
+  newPlayerType: 'actif' | 'reserviste' | null
+  extraLabels: string[]  // autres mouvements du panier, appliqués avec le LTIR
   submittedAt: string
   injury: InjuryInfo | null  // aide à la décision admin — voir app/lib/ltirEligibility.ts
+}
+
+export type LtirExtraAction = { label: string; action: BatchActionInput }
+
+function buildBatch(
+  ltirEntryId: number, newPlayerId: number | null | undefined, newPlayerType: 'actif' | 'reserviste',
+  extras: LtirExtraAction[],
+): BatchActionInput[] {
+  return [
+    {
+      type: newPlayerId ? 'ltir_sign' : 'ltir',
+      ltirEntryId,
+      newPlayerId: newPlayerId ?? undefined,
+      newPlayerType: newPlayerId ? newPlayerType : undefined,
+    },
+    ...extras.map(e => e.action),
+  ]
 }
 
 export async function createLtirRequest(
@@ -59,6 +83,8 @@ export async function createLtirRequest(
   poolerId: string,
   ltirPlayerId: number,
   newPlayerId?: number,
+  newPlayerType?: 'actif' | 'reserviste',
+  extraActions: LtirExtraAction[] = [],
 ): Promise<{ error?: string }> {
   const admin = createAdminClient()
 
@@ -95,11 +121,21 @@ export async function createLtirRequest(
     if (owned) return { error: 'Ce joueur de remplacement est déjà dans un alignement.' }
   }
 
+  // Le panier complet doit donner un alignement conforme (rien n'est écrit ici).
+  const replType = newPlayerType ?? (entry.player_type === 'reserviste' ? 'reserviste' : 'actif')
+  const check = await submitBatchAction({
+    poolerId, saisonId: poolSeasonId, dryRun: true,
+    actions: buildBatch(entry.id, newPlayerId, replType, extraActions),
+  })
+  if (check.error) return { error: check.error }
+
   const { error } = await admin.from('ltir_requests').insert({
     pool_season_id: poolSeasonId,
     pooler_id: poolerId,
     ltir_player_id: ltirPlayerId,
     new_player_id: newPlayerId ?? null,
+    new_player_type: newPlayerId ? replType : null,
+    extra_actions: extraActions.length > 0 ? extraActions : null,
     status: 'pending',
   })
   if (error) return { error: error.message }
@@ -107,7 +143,7 @@ export async function createLtirRequest(
   const [pName, lName] = await Promise.all([poolerName(admin, poolerId), playerName(admin, ltirPlayerId)])
   after(() => sendPushToAdmins({
     title: 'Cap Crunch — Demande LTIR à approuver',
-    body: `${pName} demande à mettre ${lName} sur LTIR.`,
+    body: `${pName} demande à mettre ${lName} sur LTIR${extraActions.length > 0 ? ` (avec ${extraActions.length} autre${extraActions.length > 1 ? 's' : ''} mouvement${extraActions.length > 1 ? 's' : ''})` : ''}.`,
     url: APPROBATION_PATH,
   }).catch(() => {}))
 
@@ -130,7 +166,7 @@ export async function listPendingLtirRequestsForPooler(poolSeasonId: number, poo
   const { data } = await admin
     .from('ltir_requests')
     .select(`
-      id, ltir_player_id, submitted_at,
+      id, ltir_player_id, submitted_at, new_player_type, extra_actions,
       poolers!pooler_id (name),
       ltir_player:players!ltir_player_id (first_name, last_name),
       new_player:players!new_player_id (first_name, last_name)
@@ -148,6 +184,8 @@ export async function listPendingLtirRequestsForPooler(poolSeasonId: number, poo
     ltirPlayerId: r.ltir_player_id,
     ltirPlayerName: r.ltir_player ? `${r.ltir_player.first_name} ${r.ltir_player.last_name}` : '',
     newPlayerName: r.new_player ? `${r.new_player.first_name} ${r.new_player.last_name}` : null,
+    newPlayerType: r.new_player_type ?? null,
+    extraLabels: ((r.extra_actions ?? []) as LtirExtraAction[]).map(e => e.label),
     submittedAt: r.submitted_at,
     injury: null,
   }))
@@ -159,7 +197,7 @@ export async function listPendingLtirRequestsForAdmin(poolSeasonId: number): Pro
     admin
       .from('ltir_requests')
       .select(`
-        id, pooler_id, ltir_player_id, submitted_at,
+        id, pooler_id, ltir_player_id, submitted_at, new_player_type, extra_actions,
         poolers!pooler_id (name),
         ltir_player:players!ltir_player_id (first_name, last_name),
         new_player:players!new_player_id (first_name, last_name)
@@ -179,6 +217,8 @@ export async function listPendingLtirRequestsForAdmin(poolSeasonId: number): Pro
     ltirPlayerId: r.ltir_player_id,
     ltirPlayerName: r.ltir_player ? `${r.ltir_player.first_name} ${r.ltir_player.last_name}` : '',
     newPlayerName: r.new_player ? `${r.new_player.first_name} ${r.new_player.last_name}` : null,
+    newPlayerType: r.new_player_type ?? null,
+    extraLabels: ((r.extra_actions ?? []) as LtirExtraAction[]).map(e => e.label),
     submittedAt: r.submitted_at,
     injury: injuriesByPlayerId.get(r.ltir_player_id) ?? null,
   }))
@@ -224,13 +264,14 @@ export async function decideLtirRequest(
     poolerId: req.pooler_id,
     saisonId: req.pool_season_id,
     forcedDate: effectiveDate,
-    actions: [{
-      type: req.new_player_id ? 'ltir_sign' : 'ltir',
-      ltirEntryId: entry.id,
-      newPlayerId: req.new_player_id ?? undefined,
-      // Le remplaçant prend le statut du joueur mis sur LTIR (actif ou réserviste).
-      newPlayerType: req.new_player_id ? (entry.player_type === 'reserviste' ? 'reserviste' : 'actif') : undefined,
-    }],
+    // Tout le panier d'un coup, et l'état final doit être conforme même si c'est l'admin qui
+    // approuve. Ancienne demande sans statut choisi : même statut que le joueur mis sur LTIR.
+    enforceLimits: true,
+    actions: buildBatch(
+      entry.id, req.new_player_id,
+      req.new_player_type ?? (entry.player_type === 'reserviste' ? 'reserviste' : 'actif'),
+      (req.extra_actions ?? []) as LtirExtraAction[],
+    ),
   })
   if (result.error) return { error: result.error }
 

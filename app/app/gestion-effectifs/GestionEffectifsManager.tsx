@@ -175,7 +175,7 @@ function projectRoster(roster: RosterForPooler, cart: CartItem[]): RosterForPool
         if (item.ltirEntry && map.has(item.ltirEntry.id))
           map.get(item.ltirEntry.id)!.playerType = 'ltir'
         if (item.newPlayerEntry)
-          map.set(fakeId--, { ...item.newPlayerEntry, id: fakeId, playerType: 'actif' })
+          map.set(fakeId--, { ...item.newPlayerEntry, id: fakeId, playerType: item.newPlayerType === 'reserviste' ? 'reserviste' : 'actif' })
         break
       case 'sign':
       case 'ballotage':
@@ -420,6 +420,9 @@ export default function GestionEffectifsManager({
   const [addReleaseId, setAddReleaseId]     = useState(0)
   const [addNewPlayer, setAddNewPlayer]     = useState<PlayerSearchResult | null>(null)
   const [addNewPlayerType, setAddNewPlayerType] = useState<'actif' | 'reserviste' | 'recrue'>('actif')
+  // LTIR + signature (David, 2026-10-11) : statut de l'agent libre au choix ; null = même statut
+  // que le joueur mis sur LTIR (valeur proposée par défaut).
+  const [addLtirReplType, setAddLtirReplType] = useState<'actif' | 'reserviste' | null>(null)
   const [searchKey, setSearchKey]           = useState(0)
 
   // Admin date override
@@ -430,6 +433,7 @@ export default function GestionEffectifsManager({
   const [isPending, startTransition] = useTransition()
   const [error, setError]   = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [successIsRequest, setSuccessIsRequest] = useState(false)
   const [submitWarning, setSubmitWarning] = useState<string | null>(null)
   const [historyRefresh, setHistoryRefresh] = useState(0)
 
@@ -549,6 +553,7 @@ export default function GestionEffectifsManager({
     setAddLtirId(0); setAddReturnLtirId(0); setAddReturnNewType('actif')
     setAddReleaseId(0); setAddNewPlayer(null)
     setAddNewPlayerType('actif')
+    setAddLtirReplType(null)
     setSearchKey(k => k + 1)
   }
 
@@ -559,6 +564,7 @@ export default function GestionEffectifsManager({
     setAddLtirId(0); setAddReturnLtirId(0); setAddReturnNewType('actif')
     setAddReleaseId(0); setAddNewPlayer(null)
     setAddNewPlayerType('actif')
+    setAddLtirReplType(null)
     setSearchKey(k => k + 1)
   }
 
@@ -651,8 +657,8 @@ export default function GestionEffectifsManager({
       case 'ltir_sign': {
         const e = findEntry(addLtirId)
         if (!e || !addNewPlayer) return null
-        // Le remplaçant prend le statut du joueur mis sur LTIR (actif ou réserviste).
-        const replType = e.playerType === 'reserviste' ? 'reserviste' : 'actif'
+        // Statut choisi pour le remplaçant ; par défaut, celui du joueur mis sur LTIR.
+        const replType = addLtirReplType ?? (e.playerType === 'reserviste' ? 'reserviste' : 'actif')
         return { localId, type: 'ltir_sign', label: `LTIR+Sign : ${e.lastName} → LTIR / ${addNewPlayer.lastName} → ${replType === 'actif' ? 'ACT' : 'RÉS'}`, ltirEntry: e, newPlayerEntry: makeNewEntry(replType), newPlayerId: addNewPlayer.id, newPlayerType: replType }
       }
       case 'sign': {
@@ -717,16 +723,22 @@ export default function GestionEffectifsManager({
       // d'approbation admin plutôt qu'un effet immédiat — voir bandeau "En attente d'approbation"
       // plus bas. L'admin, lui, garde l'effet immédiat habituel (jamais bloqué, comme partout
       // ailleurs dans l'app).
+      // Depuis le 2026-10-11 (David) : avec un LTIR dans le panier, TOUT le panier attend
+      // l'approbation et s'applique d'un coup, validé sur l'état final — le reste du panier
+      // dépend souvent du LTIR (ex. : activer un réserviste pour combler le poste).
       const ltirItems = !isAdmin ? cart.filter(c => c.type === 'ltir' || c.type === 'ltir_sign') : []
-      const otherItems = cart.filter(c => !ltirItems.includes(c))
+      if (ltirItems.length > 1) { setError('Une seule mise sur LTIR par demande : soumets-les séparément.'); return }
+      const ltirItem = ltirItems[0]
+      const otherItems = cart.filter(c => c !== ltirItem)
 
-      for (const item of ltirItems) {
-        if (!item.ltirEntry) continue
-        const result = await submitLtirRequestAction(saisonId, poolerId, item.ltirEntry.playerId, item.newPlayerId)
+      if (ltirItem?.ltirEntry) {
+        const result = await submitLtirRequestAction(
+          saisonId, poolerId, ltirItem.ltirEntry.playerId, ltirItem.newPlayerId,
+          ltirItem.type === 'ltir_sign' ? ltirItem.newPlayerType as 'actif' | 'reserviste' | undefined : undefined,
+          otherItems.map(c => ({ label: c.label, action: cartItemToInput(c) })),
+        )
         if (result.error) { setError(result.error); return }
-      }
-
-      if (otherItems.length > 0) {
+      } else if (otherItems.length > 0) {
         const result = await submitBatchAction({
           poolerId, saisonId,
           actions: otherItems.map(cartItemToInput),
@@ -736,6 +748,7 @@ export default function GestionEffectifsManager({
         setSubmitWarning(result.warning ?? null)
       }
 
+      setSuccessIsRequest(!!ltirItem)
       setSuccess(true)
       refreshPoolerTodo()  // ballotage complété, joueur revenu de LTIR, demande de LTIR soumise…
       setCart([])
@@ -897,7 +910,21 @@ export default function GestionEffectifsManager({
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <EntrySelect label="Joueur à mettre sur LTIR (actif ou réserviste)" entries={[...projected.actifs, ...projected.reservistes]} value={addLtirId} onChange={setAddLtirId} />
-            <PlayerSearch key={searchKey} label="Agent libre à signer (prend sa place)" season={season} saisonId={saisonId} onSelect={setAddNewPlayer} />
+            <div className="space-y-4">
+              <PlayerSearch key={searchKey} label="Agent libre à signer" season={season} saisonId={saisonId} onSelect={setAddNewPlayer} />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Statut de l&apos;agent libre</label>
+                <select
+                  value={addLtirReplType ?? (findEntry(addLtirId)?.playerType === 'reserviste' ? 'reserviste' : 'actif')}
+                  onChange={e => setAddLtirReplType(e.target.value as 'actif' | 'reserviste')}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+                  <option value="actif">Actif</option>
+                  <option value="reserviste">Réserviste</option>
+                </select>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 sm:col-span-2">Au besoin, ajoute d&apos;autres mouvements au même panier pour garder un alignement conforme.</p>
           </div>
         )
       case 'sign':
@@ -1045,8 +1072,13 @@ export default function GestionEffectifsManager({
           <div className="flex-1 min-w-0 text-sm">
             <p className="font-semibold text-sky-800">
               En attente d&apos;approbation : LTIR — {r.ltirPlayerName}
-              {r.newPlayerName && <> + signature de {r.newPlayerName}</>}
+              {r.newPlayerName && <>{' '}+ signature de {r.newPlayerName}{r.newPlayerType && ` (${r.newPlayerType === 'reserviste' ? 'réserviste' : 'actif'})`}</>}
             </p>
+            {r.extraLabels.length > 0 && (
+              <ul className="text-xs text-sky-800 mt-1 list-disc pl-4">
+                {r.extraLabels.map((l, i) => <li key={i}>{l}</li>)}
+              </ul>
+            )}
             <p className="text-xs text-sky-700 mt-0.5">
               Soumis le {new Date(r.submittedAt).toLocaleDateString('fr-CA')}{' '}— rien ne bouge tant que l&apos;admin n&apos;a pas approuvé. La date effective sera celle de la soumission.
             </p>
@@ -1133,10 +1165,28 @@ export default function GestionEffectifsManager({
       {/* Submit */}
       {cart.length > 0 && (
         <div className="bg-white rounded-lg shadow p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm text-gray-600 min-w-0">
-            <span className="font-medium">{poolerName}</span>
-            {' — '}{cart.length} action{cart.length > 1 ? 's' : ''}
-            {isAdmin && forceDateEnabled && ` — ${forcedDate}`}
+          <div className="text-sm text-gray-600 min-w-0 space-y-1.5">
+            <div>
+              <span className="font-medium">{poolerName}</span>
+              {' — '}{cart.length} action{cart.length > 1 ? 's' : ''}
+              {isAdmin && forceDateEnabled && ` — ${forcedDate}`}
+            </div>
+            {/* Composition après le panier (David, 2026-10-11) : savoir si c'est conforme avant de soumettre. */}
+            <div className="flex flex-wrap gap-1.5 text-xs">
+              {([
+                { label: 'Attaquants', n: actifCounts.F, ok: actifCounts.F === 12, target: '12' },
+                { label: 'Défenseurs', n: actifCounts.D, ok: actifCounts.D === 6, target: '6' },
+                { label: 'Gardiens', n: actifCounts.G, ok: actifCounts.G === 2, target: '2' },
+                { label: 'Réservistes', n: projected?.reservistes.length ?? 0, ok: reservistesOk, target: '2 min.' },
+              ]).map(c => (
+                <span key={c.label} className={`px-2 py-0.5 rounded-full font-medium ${c.ok ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'}`}>
+                  {c.label} : {c.n} / {c.target}
+                </span>
+              ))}
+              <span className={`px-2 py-0.5 rounded-full font-medium ${capOver ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-800'}`}>
+                Masse : {capFmt(capUsed)} / {capFmt(poolCap)}
+              </span>
+            </div>
           </div>
           <button onClick={handleSubmit} disabled={!canSubmit}
             className="bg-blue-600 text-white px-5 py-2 rounded font-medium text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shrink-0">
@@ -1146,7 +1196,13 @@ export default function GestionEffectifsManager({
       )}
 
       {error   && <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">{error}</div>}
-      {success && <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-700">✓ Mouvements appliqués avec succès.</div>}
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-700">
+          {successIsRequest
+            ? "✓ Demande envoyée à l'admin. Tout le panier s'appliquera d'un coup à l'approbation."
+            : '✓ Mouvements appliqués avec succès.'}
+        </div>
+      )}
       {submitWarning && <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-sm text-orange-700">⚠ {submitWarning}</div>}
     </div>
   )

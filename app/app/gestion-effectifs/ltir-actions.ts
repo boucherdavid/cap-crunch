@@ -12,6 +12,7 @@ import {
   cancelLtirRequest,
   listPendingLtirRequestsForPooler,
   type LtirRequestView,
+  type LtirExtraAction,
 } from '@/lib/ltirRequests'
 
 async function requireSelfOrAdmin(poolerId: string) {
@@ -28,10 +29,12 @@ export async function submitLtirRequestAction(
   poolerId: string,
   ltirPlayerId: number,
   newPlayerId?: number,
+  newPlayerType?: 'actif' | 'reserviste',
+  extraActions: LtirExtraAction[] = [],
 ): Promise<{ error?: string }> {
   const check = await requireSelfOrAdmin(poolerId)
   if ('error' in check) return check
-  return createLtirRequest(poolSeasonId, poolerId, ltirPlayerId, newPlayerId)
+  return createLtirRequest(poolSeasonId, poolerId, ltirPlayerId, newPlayerId, newPlayerType, extraActions)
 }
 
 export async function cancelLtirRequestAction(requestId: number, poolerId: string): Promise<{ error?: string }> {

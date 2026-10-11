@@ -299,6 +299,11 @@ export async function submitBatchAction(input: {
   saisonId: number
   actions: BatchActionInput[]
   forcedDate?: string
+  // Demande de LTIR avec le reste du panier (David, 2026-10-11, voir lib/ltirRequests.ts) :
+  // `dryRun` valide l'état final sans rien écrire ; `enforceLimits` impose cette validation même
+  // à l'admin (approbation d'une demande : l'admin approuve, mais le résultat doit être conforme).
+  dryRun?: boolean
+  enforceLimits?: boolean
 }): Promise<{ error?: string; warning?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -690,7 +695,7 @@ export async function submitBatchAction(input: {
   // Ne devient de toute façon atteignable qu'après "Démarrer la saison" (verrou plus haut).
   // Sautée aussi pendant le délai d'ajustement de 48h (graceAdjustmentEligible, voir plus haut)
   // — mais seulement pour un lot qui ne fait QUE basculer actif↔réserviste.
-  if (!isAdmin && !graceAdjustmentEligible) {
+  if ((!isAdmin || input.enforceLimits) && !graceAdjustmentEligible) {
     const [{ data: currentRows }, { data: settingsRow }] = await Promise.all([
       db
         .from('pooler_rosters')
@@ -790,6 +795,8 @@ export async function submitBatchAction(input: {
     const limitError = validateRosterLimits(Array.from(virtual.values()), saisonConfig?.pool_cap ?? 0)
     if (limitError) return { error: limitError }
   }
+
+  if (input.dryRun) return {}
 
   // ─── Process actions ────────────────────────────────────────────────────────
 

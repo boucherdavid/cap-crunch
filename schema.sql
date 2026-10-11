@@ -1396,3 +1396,9 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 -- ALTER TABLE trade_offers ADD COLUMN IF NOT EXISTS proposer_shares_chat_at TIMESTAMPTZ;
 -- ALTER TABLE trade_offers ADD COLUMN IF NOT EXISTS target_shares_chat_at TIMESTAMPTZ;
 -- ALTER TABLE trade_offers ADD COLUMN IF NOT EXISTS countered_at TIMESTAMPTZ;
+
+-- Migration 2026-10-11 : demande de LTIR avec le reste du panier (David) — voir
+-- supabase_migrations/ltir_requests_batch.sql. Roulée en staging et en prod le 2026-10-11.
+
+-- ALTER TABLE ltir_requests ADD COLUMN IF NOT EXISTS new_player_type VARCHAR(20);  -- statut choisi pour l'agent libre
+-- ALTER TABLE ltir_requests ADD COLUMN IF NOT EXISTS extra_actions JSONB;          -- [{ label, action }] du reste du panier
