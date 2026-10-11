@@ -21,6 +21,18 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-11
 
+**[Feat] — MJ et PTS/MJ au classement et dans l'alignement** (`app/components/SummaryTable.tsx`,
+`app/app/classement/ClassementTable.tsx`, `app/app/poolers/[id]/PoolerPageTabs.tsx`,
+`app/lib/nhl-stats.ts`) — demande d'un pooler :
+- Classement (accueil, saison, mensuel, hebdo) : MJ (caché en portrait) et PTS/MJ après PTS.
+  MJ = somme de `PlayerContrib.gamesPlayed` de tous les joueurs, comme PTS (seuls les matchs
+  joués comme actif sont comptés). Un gardien qui joue compte pour 1 MJ.
+- Détail par pooler et page d'alignement : PTS/MJ par joueur ; l'alignement a en plus un
+  sous-total par position et un total (MJ, PTS, PTS/MJ). `fmtPtsPerGame()` partagé.
+- Constat non corrigé : dans `SummaryTable`, B/A/V/DP/BL ne somment que les joueurs encore actifs,
+  alors que PTS (et maintenant MJ) comptent tous les joueurs, y compris partis ou en réserve.
+- Commit : `df4ae93`
+
 **[Feat] — Échanges : modifier son offre avant la réponse** (`app/lib/tradeOffers.ts`,
 `app/app/gestion-effectifs/trade-actions.ts`, `TradeOffersTab.tsx`, `app/app/aide/AideTabs.tsx`,
 `supabase_migrations/trade_offer_revised_at.sql`) — demande de David :

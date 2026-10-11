@@ -25,7 +25,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : modifier son offre d'échange avant la réponse (2026-10-11), à valider |
+| `staging` | En avance sur `main` : MJ et PTS/MJ au classement et dans l'alignement (2026-10-11), à valider |
 | `main` (prod) | À jour au 2026-10-11 — inclut la discussion des échanges et le LTIR avec panier complet |
 
 - Variables Vercel : prod `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN` ; staging `GITHUB_WORKFLOW_TOKEN`,
@@ -57,9 +57,10 @@
 
 ### ▶ Prochaine session — commencer ici
 
-- **Modifier son offre (staging)** : avec deux comptes, proposer, modifier l'offre, puis accepter
-  depuis l'autre compte sans recharger la page (doit être refusé : « L'offre vient d'être
-  modifiée »), recharger et accepter. Ensuite, promotion en prod.
+- **MJ et PTS/MJ (staging)** : vérifier le classement (accueil, `/classement`) et l'alignement
+  d'un pooler (sous-totaux par position), aussi sur téléphone. Ensuite, promotion en prod.
+- **À décider** : dans le classement, B/A/V/DP/BL ne comptent que les joueurs encore actifs, alors
+  que PTS et MJ comptent tous les joueurs (partis, en réserve). Aligner les deux ?
 
 - **LTIR avec panier** (statut de l'agent libre au choix, tout le panier joint à la demande,
   composition affichée près de Soumettre) : en prod depuis le 2026-10-11, validé par David en
