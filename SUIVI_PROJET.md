@@ -21,6 +21,13 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-11
 
+**[Feat] — Aviser le pooler quand sa demande est traitée** (`app/app/admin/feedback/actions.ts`,
+`FeedbackAdminView.tsx`) — demande de David, version simple :
+- « Marquer traité » ouvre une réponse facultative, puis « Marquer traité et aviser » (push +
+  courriel au pooler, avec un extrait de sa demande et la réponse) ou « sans aviser ».
+- Réponse non conservée (pas de migration). Option écartée pour l'instant : « Mes demandes » sur
+  `/signaler`, avec la réponse conservée.
+
 **[Feat] — MJ et PTS/MJ au classement et dans l'alignement** (`app/components/SummaryTable.tsx`,
 `app/app/classement/ClassementTable.tsx`, `app/app/poolers/[id]/PoolerPageTabs.tsx`,
 `app/lib/nhl-stats.ts`) — demande d'un pooler :

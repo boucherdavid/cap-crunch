@@ -25,7 +25,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | = `main` |
+| `staging` | En avance sur `main` : aviser le pooler quand sa demande (Signaler) est traitée (2026-10-11), à valider |
 | `main` (prod) | À jour au 2026-10-11 — inclut la discussion et la modification des offres d'échange, le LTIR avec panier complet, MJ et PTS/MJ |
 
 - Variables Vercel : prod `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN` ; staging `GITHUB_WORKFLOW_TOKEN`,
@@ -56,6 +56,9 @@
 ## 4. À faire / à vérifier
 
 ### ▶ Prochaine session — commencer ici
+
+- **Demande traitée (staging)** : Communauté → Communication, « Marquer traité » → « Marquer traité
+  et aviser » ; vérifier le push et le courriel (en staging, il part à l'adresse de test).
 
 
 - **LTIR avec panier** (statut de l'agent libre au choix, tout le panier joint à la demande,
@@ -122,5 +125,6 @@
 - Lancer le scraping de PuckPedia par une tâche planifiée de Windows sur le poste de David.
 - Courriel quotidien des écarts avec Marqueur (demanderait une tâche planifiée).
 - Marché des échanges : sauvegarder une proposition comme scénario.
+- `/signaler` : section « Mes demandes » avec l'état et la réponse de l'admin (version simple livrée le 2026-10-11).
 - Outil d'analyse : pointage du pool plutôt que points LNH.
 - Compléter la couverture ESPN des projections ; Yahoo comme source de blessures supplémentaire.
