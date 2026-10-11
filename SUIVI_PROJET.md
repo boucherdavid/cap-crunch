@@ -21,6 +21,16 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-11
 
+**[Feat] — Échanges : modifier son offre avant la réponse** (`app/lib/tradeOffers.ts`,
+`app/app/gestion-effectifs/trade-actions.ts`, `TradeOffersTab.tsx`, `app/app/aide/AideTabs.tsx`,
+`supabase_migrations/trade_offer_revised_at.sql`) — demande de David :
+- « Modifier mon offre » pour le proposeur tant que l'offre attend une réponse ; contre-offre et
+  révision partagent `rewriteTradeOffer()` (seule différence : les rôles s'inversent ou non).
+- `trade_offers.revised_at` = numéro de version : Accepter / Contre-offre / Modifier envoient la
+  version affichée, et les mises à jour conditionnelles refusent une version périmée (« L'offre
+  vient d'être modifiée : relis-la avant de répondre »). Évite d'accepter une offre jamais vue.
+- Commit : `e85caa0`
+
 **[Feat] — LTIR : statut de l'agent libre au choix, panier complet joint à la demande**
 (`app/lib/ltirRequests.ts`, `app/app/gestion-effectifs/actions.ts`, `ltir-actions.ts`,
 `GestionEffectifsManager.tsx`, `app/app/admin/effectifs/LtirApprovalManager.tsx`,

@@ -25,13 +25,13 @@
 
 | Branche | État |
 |---|---|
-| `staging` | = `main` |
+| `staging` | En avance sur `main` : modifier son offre d'échange avant la réponse (2026-10-11), à valider |
 | `main` (prod) | À jour au 2026-10-11 — inclut la discussion des échanges et le LTIR avec panier complet |
 
 - Variables Vercel : prod `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN` ; staging `GITHUB_WORKFLOW_TOKEN`,
   `EMAIL_REDIRECT_TO` (jamais en prod). Le jeton GitHub « Cap Crunch Vercel » **expire** : à
   renouveler dans les deux projets, sinon l'import de nuit et les boutons de mise à jour cessent.
-- `trade_offer_messages.sql` (2026-10-10) et `ltir_requests_batch.sql` (2026-10-11) roulées en staging et en prod.
+- `trade_offer_messages.sql` (2026-10-10), `ltir_requests_batch.sql` et `trade_offer_revised_at.sql` (2026-10-11) roulées en staging et en prod.
 - Migrations des 8 et 9 octobre roulées en staging et en prod : `delai_reactivation_defaut_3.sql`,
   `poolers_notif_push.sql`, `ltir_relapse_games.sql`.
 - **À confirmer** : `nhl_transaction_alerts.sql` en prod (roulée en staging, où la carte
@@ -56,6 +56,10 @@
 ## 4. À faire / à vérifier
 
 ### ▶ Prochaine session — commencer ici
+
+- **Modifier son offre (staging)** : avec deux comptes, proposer, modifier l'offre, puis accepter
+  depuis l'autre compte sans recharger la page (doit être refusé : « L'offre vient d'être
+  modifiée »), recharger et accepter. Ensuite, promotion en prod.
 
 - **LTIR avec panier** (statut de l'agent libre au choix, tout le panier joint à la demande,
   composition affichée près de Soumettre) : en prod depuis le 2026-10-11, validé par David en
