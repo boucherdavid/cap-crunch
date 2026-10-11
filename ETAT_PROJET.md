@@ -25,8 +25,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : modifier son offre d'échange avant la réponse (2026-10-11), à valider |
-| `main` (prod) | À jour au 2026-10-11 — inclut la discussion des échanges et le LTIR avec panier complet |
+| `staging` | = `main` |
+| `main` (prod) | À jour au 2026-10-11 — inclut la discussion et la modification des offres d'échange, le LTIR avec panier complet, MJ et PTS/MJ |
 
 - Variables Vercel : prod `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN` ; staging `GITHUB_WORKFLOW_TOKEN`,
   `EMAIL_REDIRECT_TO` (jamais en prod). Le jeton GitHub « Cap Crunch Vercel » **expire** : à
@@ -57,9 +57,6 @@
 
 ### ▶ Prochaine session — commencer ici
 
-- **Modifier son offre (staging)** : avec deux comptes, proposer, modifier l'offre, puis accepter
-  depuis l'autre compte sans recharger la page (doit être refusé : « L'offre vient d'être
-  modifiée »), recharger et accepter. Ensuite, promotion en prod.
 
 - **LTIR avec panier** (statut de l'agent libre au choix, tout le panier joint à la demande,
   composition affichée près de Soumettre) : en prod depuis le 2026-10-11, validé par David en
