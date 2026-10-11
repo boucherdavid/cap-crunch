@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getEffectiveCap } from '@/lib/capUtils'
 import {
   createTradeOffer, respondToTradeOffer, confirmTradeReady, resolveExpiredTradeOffers,
-  counterTradeOffer, withdrawTradeOffer, postTradeMessage, setTradeChatShared, purgeOldTradeMessages, loadTradeMessages,
+  counterTradeOffer, reviseTradeOffer, tradeOfferVersion, withdrawTradeOffer, postTradeMessage, setTradeChatShared, purgeOldTradeMessages, loadTradeMessages,
   type TradeItemInput, type TradeExtraAction, type TradeMessageView,
 } from '@/lib/tradeOffers'
 
@@ -103,12 +103,21 @@ export async function proposeTradeOfferAction(saisonId: number, input: ProposeTr
 }
 
 /** Contre-offre (David, 2026-10-10) : `input.targetPoolerId` = l'auteur de l'offre reçue. */
-export async function counterTradeOfferAction(tradeOfferId: number, input: ProposeTradeInput): Promise<{ error?: string }> {
+export async function counterTradeOfferAction(tradeOfferId: number, input: ProposeTradeInput, expectedVersion: string): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié.' }
   if (input.myItems.length === 0 && input.theirItems.length === 0) return { error: 'Ajoute au moins un élément.' }
-  return counterTradeOffer(tradeOfferId, user.id, toTradeItems(user.id, input), input.message)
+  return counterTradeOffer(tradeOfferId, user.id, toTradeItems(user.id, input), input.message, expectedVersion)
+}
+
+/** Modifier sa propre offre avant la réponse de l'autre (David, 2026-10-11). */
+export async function reviseTradeOfferAction(tradeOfferId: number, input: ProposeTradeInput, expectedVersion: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  if (input.myItems.length === 0 && input.theirItems.length === 0) return { error: 'Ajoute au moins un élément.' }
+  return reviseTradeOffer(tradeOfferId, user.id, toTradeItems(user.id, input), input.message, expectedVersion)
 }
 
 export async function withdrawTradeOfferAction(tradeOfferId: number): Promise<{ error?: string }> {
@@ -148,11 +157,11 @@ export async function getTradeMessagesAction(tradeOfferId: number): Promise<{ er
 
 // ─── Répondre / confirmer ───────────────────────────────────────────────────────
 
-export async function respondToTradeOfferAction(tradeOfferId: number, accept: boolean): Promise<{ error?: string }> {
+export async function respondToTradeOfferAction(tradeOfferId: number, accept: boolean, expectedVersion?: string): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié.' }
-  return respondToTradeOffer(tradeOfferId, user.id, accept)
+  return respondToTradeOffer(tradeOfferId, user.id, accept, expectedVersion)
 }
 
 export async function confirmTradeReadyAction(
@@ -192,6 +201,8 @@ export type TradeOfferView = {
   otherPoolerId: string
   otherPoolerName: string
   countered: boolean
+  revisedAt: string | null
+  version: string  // à renvoyer avec Accepter / Contre-offre / Modifier (voir tradeOfferVersion)
   cancelledReason: string | null
   messages: TradeMessageView[]
   myShared: boolean
@@ -256,7 +267,7 @@ export async function getMyTradeOffersAction(saisonId: number): Promise<{
 
   const { data: rows } = await db
     .from('trade_offers')
-    .select('id, status, proposer_pooler_id, target_pooler_id, created_at, completion_deadline, proposer_ready_at, target_ready_at, countered_at, cancelled_reason, proposer_shares_chat_at, target_shares_chat_at, proposer:poolers!proposer_pooler_id (name), target:poolers!target_pooler_id (name)')
+    .select('id, status, proposer_pooler_id, target_pooler_id, created_at, completion_deadline, proposer_ready_at, target_ready_at, countered_at, revised_at, cancelled_reason, proposer_shares_chat_at, target_shares_chat_at, proposer:poolers!proposer_pooler_id (name), target:poolers!target_pooler_id (name)')
     .eq('pool_season_id', saisonId)
     .or(`proposer_pooler_id.eq.${userId},target_pooler_id.eq.${userId}`)
     .order('id', { ascending: false })
@@ -324,6 +335,8 @@ export async function getMyTradeOffersAction(saisonId: number): Promise<{
       otherPoolerId: isProposer ? r.target_pooler_id : r.proposer_pooler_id,
       otherPoolerName: isProposer ? (r.target?.name ?? '—') : (r.proposer?.name ?? '—'),
       countered: !!r.countered_at,
+      revisedAt: r.revised_at ?? null,
+      version: tradeOfferVersion(r.revised_at ?? null),
       cancelledReason: r.cancelled_reason ?? null,
       messages: messagesByOffer.get(r.id) ?? [],
       myShared: !!(isProposer ? r.proposer_shares_chat_at : r.target_shares_chat_at),

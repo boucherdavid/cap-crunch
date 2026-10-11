@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect, useCallback, useTransition } from 'react'
 import {
   getMyTradeOffersAction, proposeTradeOfferAction, respondToTradeOfferAction, confirmTradeReadyAction,
-  listTradeableAssetsAction, counterTradeOfferAction, withdrawTradeOfferAction,
+  listTradeableAssetsAction, counterTradeOfferAction, reviseTradeOfferAction, withdrawTradeOfferAction,
   type TradeOfferView, type TradeableItem,
 } from './trade-actions'
 import type { TradeExtraAction } from '@/lib/tradeOffers'
@@ -162,8 +162,10 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
   const [theirSelected, setTheirSelected] = useState<Set<string>>(new Set())
   const [composeMsg, setComposeMsg] = useState<string | null>(null)
   const [message, setMessage] = useState('')
-  // Contre-offre en préparation (David, 2026-10-10) : l'offre reçue qu'elle remplacera.
+  // Contre-offre (David, 2026-10-10) ou révision de sa propre offre (David, 2026-10-11) en
+  // préparation : l'offre qu'elle remplacera.
   const [counterOf, setCounterOf] = useState<TradeOfferView | null>(null)
+  const isRevision = !!counterOf?.isProposer
 
   useEffect(() => {
     if (!composing) return
@@ -269,17 +271,19 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
         theirItems: parseKeys(theirSelected),
         message,
       }
-      const result = counterOf
-        ? await counterTradeOfferAction(counterOf.id, input)
-        : await proposeTradeOfferAction(saisonId, input)
-      if (result.error) { setComposeMsg(result.error); return }
+      const result = !counterOf
+        ? await proposeTradeOfferAction(saisonId, input)
+        : isRevision
+          ? await reviseTradeOfferAction(counterOf.id, input, counterOf.version)
+          : await counterTradeOfferAction(counterOf.id, input, counterOf.version)
+      if (result.error) { setComposeMsg(result.error); load(); return }
       resetCompose()
       load()
       refreshPoolerTodo()
     })
   }
 
-  // Ouvre le formulaire pré-rempli avec l'offre reçue : on la modifie, puis on la renvoie.
+  // Ouvre le formulaire pré-rempli avec l'offre (reçue ou la sienne) : on la modifie, puis on la renvoie.
   function startCounter(offer: TradeOfferView) {
     const keyOf = (i: { kind: 'player' | 'pick'; id: number }) => `${i.kind}-${i.id}`
     const receiveKeys = new Set(offer.receive.map(keyOf))
@@ -310,10 +314,10 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
     })
   }
 
-  function handleRespond(id: number, accept: boolean) {
+  function handleRespond(offer: TradeOfferView, accept: boolean) {
     setError(null)
     startTransition(async () => {
-      const result = await respondToTradeOfferAction(id, accept)
+      const result = await respondToTradeOfferAction(offer.id, accept, offer.version)
       if (result.error) setError(result.error)
       load()
       refreshPoolerTodo()
@@ -441,8 +445,9 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
           <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4 space-y-3">
             {counterOf && (
               <p className="text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded p-2">
-                Contre-offre à {counterOf.otherPoolerName}{' '}: modifie ce que tu donnes et ce que tu reçois, puis envoie.
-                Elle remplacera l&apos;offre actuelle, et ce sera à {counterOf.otherPoolerName} de répondre.
+                {isRevision
+                  ? <>Modification de ton offre à {counterOf.otherPoolerName}{' '}: change ce que tu donnes et ce que tu reçois, puis envoie. Elle remplacera l&apos;offre actuelle.</>
+                  : <>Contre-offre à {counterOf.otherPoolerName}{' '}: modifie ce que tu donnes et ce que tu reçois, puis envoie. Elle remplacera l&apos;offre actuelle, et ce sera à {counterOf.otherPoolerName} de répondre.</>}
               </p>
             )}
             <div className="flex flex-wrap items-center gap-2">
@@ -481,7 +486,7 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
             {composeMsg && <p className="text-sm text-red-600">{composeMsg}</p>}
             <button onClick={handlePropose} disabled={isPending || !targetId}
               className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
-              {counterOf ? 'Envoyer la contre-offre' : 'Envoyer la proposition'}
+              {!counterOf ? 'Envoyer la proposition' : isRevision ? "Envoyer l'offre modifiée" : 'Envoyer la contre-offre'}
             </button>
           </div>
         )}
@@ -497,7 +502,10 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
                     ? `${o.countered ? 'Contre-offre envoyée' : 'Proposée'} à ${o.otherPoolerName}`
                     : `${o.countered ? 'Contre-offre reçue' : 'Reçue'} de ${o.otherPoolerName}`}
                 </p>
-                <span className="text-xs text-gray-500">{STATUS_LABEL[o.status] ?? o.status}</span>
+                <span className="text-xs text-gray-500">
+                  {STATUS_LABEL[o.status] ?? o.status}
+                  {o.status === 'pending_target' && o.revisedAt && ` · modifiée le ${fmtDeadline(o.revisedAt)}`}
+                </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 text-sm">
                 {[
@@ -524,17 +532,23 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
 
               {o.status === 'pending_target' && !o.isProposer && (
                 <div className="flex flex-wrap gap-2 mt-3">
-                  <button onClick={() => handleRespond(o.id, true)} disabled={isPending}
+                  <button onClick={() => handleRespond(o, true)} disabled={isPending}
                     className="bg-green-600 text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-green-700 disabled:opacity-50">Accepter</button>
                   <button onClick={() => startCounter(o)} disabled={isPending}
                     className="border border-blue-300 text-blue-700 px-3 py-1.5 rounded text-sm font-medium hover:bg-blue-50 disabled:opacity-50">Contre-offre</button>
-                  <button onClick={() => handleRespond(o.id, false)} disabled={isPending}
+                  <button onClick={() => handleRespond(o, false)} disabled={isPending}
                     className="border border-gray-300 text-gray-600 px-3 py-1.5 rounded text-sm font-medium hover:bg-gray-50 disabled:opacity-50">Refuser</button>
                 </div>
               )}
 
               {(o.status !== 'pending_target' || o.isProposer) && (
-                <div className="mt-2">
+                <div className="mt-2 flex flex-wrap gap-3">
+                  {o.status === 'pending_target' && (
+                    <button onClick={() => startCounter(o)} disabled={isPending}
+                      className="text-xs text-blue-700 underline hover:text-blue-900 disabled:opacity-50">
+                      Modifier mon offre
+                    </button>
+                  )}
                   <button onClick={() => handleWithdraw(o)} disabled={isPending}
                     className="text-xs text-gray-500 underline hover:text-red-600 disabled:opacity-50">
                     {o.status === 'pending_target' ? 'Retirer ma proposition' : 'Abandonner l\'échange'}

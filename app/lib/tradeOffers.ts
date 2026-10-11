@@ -159,35 +159,55 @@ export async function createTradeOffer(
   return { id: tradeOffer.id }
 }
 
-// ─── Contre-offre (David, 2026-10-10) ───────────────────────────────────────────
-// Seulement tant que l'offre attend la réponse du pooler visé : les éléments sont remplacés et
-// les rôles s'inversent (celui qui contre devient le proposeur, l'autre doit répondre). Même
-// offre, donc la discussion continue. Les partages de discussion suivent leur pooler.
+// ─── Contre-offre (David, 2026-10-10) et révision (David, 2026-10-11) ───────────────
+// Seulement tant que l'offre attend la réponse du pooler visé, dans les deux cas :
+// - contre-offre, par le pooler visé : éléments remplacés et rôles inversés (celui qui contre
+//   devient le proposeur, l'autre doit répondre). Les partages de discussion suivent leur pooler ;
+// - révision, par le proposeur : éléments remplacés, rôles inchangés.
+// Même offre, donc la discussion continue. `revised_at` sert de numéro de version : une
+// contre-offre ou une acceptation sur une version périmée est refusée (`expectedVersion`).
 
-export async function counterTradeOffer(
-  tradeOfferId: number, poolerId: string, items: TradeItemInput[], message?: string,
+const STALE_OFFER_ERROR = "L'offre vient d'être modifiée : relis-la avant de répondre."
+
+/** Version d'une offre telle qu'affichée (chaîne vide = jamais modifiée). */
+export function tradeOfferVersion(revisedAt: string | null): string {
+  return revisedAt ?? ''
+}
+
+async function rewriteTradeOffer(
+  mode: 'counter' | 'revise',
+  tradeOfferId: number, poolerId: string, items: TradeItemInput[], message: string | undefined, expectedVersion?: string,
 ): Promise<{ error?: string }> {
   const admin = createAdminClient()
   const { data: offer } = await admin
     .from('trade_offers')
-    .select('id, status, pool_season_id, proposer_pooler_id, target_pooler_id, proposer_shares_chat_at, target_shares_chat_at')
+    .select('id, status, pool_season_id, proposer_pooler_id, target_pooler_id, proposer_shares_chat_at, target_shares_chat_at, revised_at')
     .eq('id', tradeOfferId).single()
   if (!offer) return { error: 'Proposition introuvable.' }
-  if (offer.target_pooler_id !== poolerId) return { error: "Cette proposition ne t'est pas destinée." }
+  const roleId = mode === 'counter' ? offer.target_pooler_id : offer.proposer_pooler_id
+  if (roleId !== poolerId) return { error: mode === 'counter' ? "Cette proposition ne t'est pas destinée." : "Ce n'est pas ta proposition." }
   if (offer.status !== 'pending_target') return { error: 'Cette proposition a déjà été traitée.' }
+  if (expectedVersion !== undefined && tradeOfferVersion(offer.revised_at) !== expectedVersion) return { error: STALE_OFFER_ERROR }
 
-  const otherId = offer.proposer_pooler_id
+  const otherId = mode === 'counter' ? offer.proposer_pooler_id : offer.target_pooler_id
   const invalid = await validateTradeItems(admin, offer.pool_season_id, poolerId, otherId, items)
   if (invalid) return { error: invalid }
 
-  // Mise à jour conditionnelle : si l'autre a retiré son offre entre-temps, rien ne bouge.
+  // Mise à jour conditionnelle : si l'offre a été traitée ou modifiée entre-temps, rien ne bouge.
   const now = new Date().toISOString()
-  const { data: swapped } = await admin.from('trade_offers').update({
-    proposer_pooler_id: poolerId, target_pooler_id: otherId,
-    proposer_shares_chat_at: offer.target_shares_chat_at, target_shares_chat_at: offer.proposer_shares_chat_at,
-    countered_at: now,
-  }).eq('id', tradeOfferId).eq('status', 'pending_target').eq('target_pooler_id', poolerId).select('id')
-  if (!swapped || swapped.length === 0) return { error: 'Cette proposition a déjà été traitée.' }
+  const patch = mode === 'counter'
+    ? {
+        proposer_pooler_id: poolerId, target_pooler_id: otherId,
+        proposer_shares_chat_at: offer.target_shares_chat_at, target_shares_chat_at: offer.proposer_shares_chat_at,
+        countered_at: now, revised_at: now,
+      }
+    : { revised_at: now }
+  let update = admin.from('trade_offers').update(patch)
+    .eq('id', tradeOfferId).eq('status', 'pending_target')
+    .eq(mode === 'counter' ? 'target_pooler_id' : 'proposer_pooler_id', poolerId)
+  update = offer.revised_at ? update.eq('revised_at', offer.revised_at) : update.is('revised_at', null)
+  const { data: updated } = await update.select('id')
+  if (!updated || updated.length === 0) return { error: STALE_OFFER_ERROR }
 
   await admin.from('trade_offer_items').delete().eq('trade_offer_id', tradeOfferId)
   const { error: itemsError } = await admin.from('trade_offer_items').insert(itemRowsFor(tradeOfferId, poolerId, otherId, items))
@@ -195,23 +215,38 @@ export async function counterTradeOffer(
 
   const myLabel = await poolerName(admin, poolerId)
   const text = cleanMessage(message)
+  const event = mode === 'counter' ? `${myLabel} a fait une contre-offre.` : `${myLabel} a modifié son offre.`
   await admin.from('trade_offer_messages').insert([
-    { trade_offer_id: tradeOfferId, author_pooler_id: null, body: `${myLabel} a fait une contre-offre.` },
+    { trade_offer_id: tradeOfferId, author_pooler_id: null, body: event },
     ...(text ? [{ trade_offer_id: tradeOfferId, author_pooler_id: poolerId, body: text }] : []),
   ])
 
+  const title = mode === 'counter' ? 'Cap Crunch — Contre-offre' : 'Cap Crunch — Offre modifiée'
+  const lead = mode === 'counter' ? `${myLabel} te fait une contre-offre` : `${myLabel} a modifié son offre`
   after(() => Promise.all([
     sendPushToUsers([otherId], {
-      title: 'Cap Crunch — Contre-offre',
-      body: text ? `${myLabel} te fait une contre-offre : « ${pushExcerpt(text)} »` : `${myLabel} te fait une contre-offre.`,
+      title,
+      body: text ? `${lead} : « ${pushExcerpt(text)} »` : `${lead}.`,
       url: TRADE_TAB_PATH,
     }).catch(() => {}),
     sendEmailToIds([otherId], {
-      subject: 'Cap Crunch — Contre-offre',
-      html: `<p><strong>${myLabel}</strong> te fait une contre-offre — consulte le détail et accepte, refuse ou fais une contre-offre dans l'onglet Échanges de Gestion d'effectifs.</p>${quoteHtml(text)}${linkHtml(TRADE_TAB_PATH)}`,
+      subject: title,
+      html: `<p><strong>${myLabel}</strong> ${mode === 'counter' ? 'te fait une contre-offre' : 'a modifié son offre'} — consulte le détail et accepte, refuse ou fais une contre-offre dans l'onglet Échanges de Gestion d'effectifs.</p>${quoteHtml(text)}${linkHtml(TRADE_TAB_PATH)}`,
     }).catch(() => {}),
   ]))
   return {}
+}
+
+export async function counterTradeOffer(
+  tradeOfferId: number, poolerId: string, items: TradeItemInput[], message?: string, expectedVersion?: string,
+): Promise<{ error?: string }> {
+  return rewriteTradeOffer('counter', tradeOfferId, poolerId, items, message, expectedVersion)
+}
+
+export async function reviseTradeOffer(
+  tradeOfferId: number, poolerId: string, items: TradeItemInput[], message?: string, expectedVersion?: string,
+): Promise<{ error?: string }> {
+  return rewriteTradeOffer('revise', tradeOfferId, poolerId, items, message, expectedVersion)
 }
 
 // ─── Retrait / abandon (David, 2026-10-10) ──────────────────────────────────────
@@ -348,12 +383,16 @@ export async function loadTradeMessages(
 
 // ─── Réponse du pooler visé ───────────────────────────────────────────────────
 
-export async function respondToTradeOffer(tradeOfferId: number, poolerId: string, accept: boolean): Promise<{ error?: string }> {
+export async function respondToTradeOffer(
+  tradeOfferId: number, poolerId: string, accept: boolean, expectedVersion?: string,
+): Promise<{ error?: string }> {
   const admin = createAdminClient()
-  const { data: offer } = await admin.from('trade_offers').select('id, status, proposer_pooler_id, target_pooler_id').eq('id', tradeOfferId).single()
+  const { data: offer } = await admin.from('trade_offers').select('id, status, proposer_pooler_id, target_pooler_id, revised_at').eq('id', tradeOfferId).single()
   if (!offer) return { error: 'Proposition introuvable.' }
   if (offer.target_pooler_id !== poolerId) return { error: "Cette proposition ne t'est pas destinée." }
   if (offer.status !== 'pending_target') return { error: 'Cette proposition a déjà été traitée.' }
+  // Accepter une version périmée (modifiée par l'autre pendant la lecture) : refusé (David, 2026-10-11).
+  if (accept && expectedVersion !== undefined && tradeOfferVersion(offer.revised_at) !== expectedVersion) return { error: STALE_OFFER_ERROR }
 
   const now = new Date().toISOString()
   if (!accept) {
@@ -366,7 +405,11 @@ export async function respondToTradeOffer(tradeOfferId: number, poolerId: string
     return {}
   }
 
-  await admin.from('trade_offers').update({ status: 'pending_admin', decided_at: now }).eq('id', tradeOfferId)
+  let accepted = admin.from('trade_offers').update({ status: 'pending_admin', decided_at: now })
+    .eq('id', tradeOfferId).eq('status', 'pending_target')
+  accepted = offer.revised_at ? accepted.eq('revised_at', offer.revised_at) : accepted.is('revised_at', null)
+  const { data: acceptedRows } = await accepted.select('id')
+  if (!acceptedRows || acceptedRows.length === 0) return { error: STALE_OFFER_ERROR }
   after(() => sendPushToAdmins({
     title: 'Cap Crunch — Transaction à approuver',
     body: 'Un échange entre poolers attend ton approbation.',

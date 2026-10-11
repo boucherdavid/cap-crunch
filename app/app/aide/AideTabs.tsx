@@ -256,7 +256,7 @@ const SECTIONS: Section[] = [
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Tu peux joindre un <strong>court message</strong> à ta proposition.</li>
-          <li>• Le pooler visé peut <strong>accepter</strong>, <strong>refuser</strong> ou faire une <strong>contre-offre</strong> : elle remplace l&apos;offre actuelle, et c&apos;est alors à toi de répondre. Tant qu&apos;il n&apos;a pas répondu, tu peux retirer ta proposition.</li>
+          <li>• Le pooler visé peut <strong>accepter</strong>, <strong>refuser</strong> ou faire une <strong>contre-offre</strong> : elle remplace l&apos;offre actuelle, et c&apos;est alors à toi de répondre. Tant qu&apos;il n&apos;a pas répondu, tu peux <strong>modifier</strong> ta proposition ou la retirer. Si l&apos;offre change pendant qu&apos;il la lit, il doit relire la nouvelle version avant de l&apos;accepter.</li>
           <li>• Chaque échange a sa <strong>discussion</strong>, visible seulement par vous deux. Elle se ferme quand l&apos;échange est réglé et est supprimée 7 jours plus tard. L&apos;admin ne peut la lire que si vous acceptez <strong>tous les deux</strong> de la lui montrer, par exemple pour régler un désaccord.</li>
           <li>• Une fois l&apos;échange accepté, la contre-offre n&apos;est plus possible, mais l&apos;un ou l&apos;autre peut l&apos;<strong>abandonner</strong> tant qu&apos;il n&apos;est pas exécuté.</li>
           <li>• Si accepté, l&apos;<strong>admin doit approuver</strong> l&apos;échange avant que quoi que ce soit ne bouge.</li>
