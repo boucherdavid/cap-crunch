@@ -910,19 +910,21 @@ export default function GestionEffectifsManager({
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <EntrySelect label="Joueur à mettre sur LTIR (actif ou réserviste)" entries={[...projected.actifs, ...projected.reservistes]} value={addLtirId} onChange={setAddLtirId} />
-            <PlayerSearch key={searchKey} label="Agent libre à signer" season={season} saisonId={saisonId} onSelect={setAddNewPlayer} />
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Statut de l&apos;agent libre</label>
-              <select
-                value={addLtirReplType ?? (findEntry(addLtirId)?.playerType === 'reserviste' ? 'reserviste' : 'actif')}
-                onChange={e => setAddLtirReplType(e.target.value as 'actif' | 'reserviste')}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-              >
-                <option value="actif">Actif</option>
-                <option value="reserviste">Réserviste</option>
-              </select>
+            <div className="space-y-4">
+              <PlayerSearch key={searchKey} label="Agent libre à signer" season={season} saisonId={saisonId} onSelect={setAddNewPlayer} />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Statut de l&apos;agent libre</label>
+                <select
+                  value={addLtirReplType ?? (findEntry(addLtirId)?.playerType === 'reserviste' ? 'reserviste' : 'actif')}
+                  onChange={e => setAddLtirReplType(e.target.value as 'actif' | 'reserviste')}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+                  <option value="actif">Actif</option>
+                  <option value="reserviste">Réserviste</option>
+                </select>
+              </div>
             </div>
-            <p className="text-xs text-gray-500 sm:col-span-2 self-end">Au besoin, ajoute d&apos;autres mouvements au même panier pour garder un alignement conforme.</p>
+            <p className="text-xs text-gray-500 sm:col-span-2">Au besoin, ajoute d&apos;autres mouvements au même panier pour garder un alignement conforme.</p>
           </div>
         )
       case 'sign':
