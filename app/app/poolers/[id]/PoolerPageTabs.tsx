@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, Fragment } from 'react'
-import { fmtPts } from '@/lib/nhl-stats'
+import { fmtPts, fmtPtsPerGame } from '@/lib/nhl-stats'
 import PlayerLink from '@/components/PlayerLink'
 import type { PlayerContrib, PeriodContrib } from '@/lib/standings'
 import type { StreakInfo, GoalieBadgeType } from '@/lib/streaks'
@@ -166,6 +166,22 @@ function PeriodPopup({ playerName, isGoalie, periods, totalPoints, onClose }: {
   )
 }
 
+// Sous-total d'un groupe (ou total général) : MJ, PTS et PTS/MJ alignés sous leurs colonnes
+// (David, 2026-10-11).
+function TotalsRow({ label, gamesPlayed, points, grand }: { label: string; gamesPlayed: number; points: number; grand?: boolean }) {
+  return (
+    <tr className={grand ? 'bg-blue-50 border-t' : 'bg-gray-50'}>
+      <td className={`px-2 sm:px-4 py-1.5 text-xs font-medium sticky left-0 z-10 ${grand ? 'bg-blue-50 text-gray-600 text-sm' : 'bg-gray-50 text-gray-500'}`}>{label}</td>
+      <td className="hidden sm:table-cell" />
+      <td className="px-2 py-1.5 text-center text-gray-600 font-medium">{gamesPlayed}</td>
+      <td colSpan={3} />
+      <td colSpan={2} className="hidden sm:table-cell" />
+      <td className={`px-2 py-1.5 text-center font-bold ${grand ? 'text-blue-600' : 'text-blue-500'}`}>{fmtPts(points)}</td>
+      <td className="px-2 py-1.5 text-center font-semibold text-gray-700">{fmtPtsPerGame(points, gamesPlayed)}</td>
+    </tr>
+  )
+}
+
 function PlayerStatsRow({ p, streaks, onPeriodClick, injuriesByNhlId }: {
   p: PlayerContrib
   streaks: Record<number, StreakInfo>
@@ -225,6 +241,7 @@ function PlayerStatsRow({ p, streaks, onPeriodClick, injuriesByNhlId }: {
       <td className={`px-2 py-2 text-center font-bold ${isActif ? 'text-blue-600' : 'text-gray-400'}`}>
         {fmtPts(p.poolPoints)}
       </td>
+      <td className="px-2 py-2 text-center text-gray-500">{fmtPtsPerGame(p.poolPoints, p.gamesPlayed)}</td>
     </tr>
   )
 }
@@ -275,6 +292,7 @@ export default function PoolerPageTabs({
   // poolPoints ne compte déjà que les matchs joués pendant les segments réellement actifs
   // (voir buildStandings) — pas besoin de refiltrer par statut actuel ici.
   const totalPts = alignementPlayers.reduce((s, p) => s + p.poolPoints, 0)
+  const totalGames = alignementPlayers.reduce((s, p) => s + p.gamesPlayed, 0)
 
   const signaturesLibres = changeLog.filter(e => e.change_type === 'signature_agent_libre' && e.old_type !== 'ltir').length
   const signaturesLtir   = changeLog.filter(e => e.change_type === 'signature_agent_libre' && e.old_type === 'ltir').length
@@ -341,32 +359,38 @@ export default function PoolerPageTabs({
                     <th className="px-2 py-2 hidden sm:table-cell">DP</th>
                     <th className="px-2 py-2 hidden sm:table-cell">BL</th>
                     <th className="px-2 py-2 text-blue-500">PTS</th>
+                    <th className="px-2 py-2 whitespace-nowrap" title="Points par match joué">PTS/MJ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {sorted.map((p, i) => {
-                    const isFirstOfGroup = i === 0 || positionGroup(p.position) !== positionGroup(sorted[i - 1].position)
+                    const group = positionGroup(p.position)
+                    const isFirstOfGroup = i === 0 || group !== positionGroup(sorted[i - 1].position)
+                    const isLastOfGroup = i === sorted.length - 1 || group !== positionGroup(sorted[i + 1].position)
+                    const groupPlayers = sorted.filter(x => positionGroup(x.position) === group)
                     return (
                       <Fragment key={p.nhlId ?? i}>
                         {isFirstOfGroup && (
                           <tr className="bg-gray-100">
-                            <td colSpan={9} className="px-4 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                              {GROUP_LABEL[positionGroup(p.position)]}
+                            <td colSpan={10} className="px-4 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                              {GROUP_LABEL[group]}
                             </td>
                           </tr>
                         )}
                         <PlayerStatsRow p={p} streaks={streaks} onPeriodClick={setPeriodPopup} injuriesByNhlId={injuriesByNhlId} />
+                        {isLastOfGroup && (
+                          <TotalsRow
+                            label={`Total ${GROUP_LABEL[group].toLowerCase()}`}
+                            gamesPlayed={groupPlayers.reduce((s, x) => s + x.gamesPlayed, 0)}
+                            points={groupPlayers.reduce((s, x) => s + x.poolPoints, 0)}
+                          />
+                        )}
                       </Fragment>
                     )
                   })}
                 </tbody>
                 <tfoot>
-                  <tr className="bg-blue-50 border-t">
-                    <td colSpan={8} className="px-4 py-2 text-sm text-gray-500 font-medium">
-                      Total
-                    </td>
-                    <td className="px-2 py-2 text-center font-bold text-blue-600">{fmtPts(totalPts)}</td>
-                  </tr>
+                  <TotalsRow label="Total" gamesPlayed={totalGames} points={totalPts} grand />
                 </tfoot>
               </table>
             </div>

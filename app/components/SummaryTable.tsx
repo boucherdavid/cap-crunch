@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import SectionIcon, { sectionBorderClass } from '@/components/SectionIcon'
 import { useRouter } from 'next/navigation'
-import { fmtPts } from '@/lib/nhl-stats'
+import { fmtPts, fmtPtsPerGame } from '@/lib/nhl-stats'
 import type { PoolerStanding } from '@/lib/standings'
 
 const RANK_COLOR = ['text-yellow-500', 'text-gray-400', 'text-amber-600']
@@ -26,6 +26,8 @@ export default function SummaryTable({ standings }: { standings: PoolerStanding[
               <th className="px-4 py-2 text-left w-8">#</th>
               <th className="px-4 py-2 text-left">Pooler</th>
               <th className="px-2 py-2 text-blue-500">PTS</th>
+              <th className="px-2 py-2 hidden sm:table-cell" title="Matchs joués par ses joueurs pendant qu'ils étaient actifs">MJ</th>
+              <th className="px-2 py-2 whitespace-nowrap" title="Points par match joué">PTS/MJ</th>
               <th className="px-2 py-2 hidden sm:table-cell">B</th>
               <th className="px-2 py-2 hidden sm:table-cell">A</th>
               <th className="px-2 py-2 hidden sm:table-cell">V</th>
@@ -41,6 +43,8 @@ export default function SummaryTable({ standings }: { standings: PoolerStanding[
               const wins     = active.reduce((s, p) => s + p.goalieWins, 0)
               const otl      = active.reduce((s, p) => s + p.goalieOtl, 0)
               const shutouts = active.reduce((s, p) => s + p.goalieShutouts, 0)
+              // MJ : tous les joueurs, comme PTS (seuls les matchs joués comme actif sont comptés).
+              const gamesPlayed = pooler.players.reduce((s, p) => s + p.gamesPlayed, 0)
               return (
                 <tr
                   key={pooler.poolerId}
@@ -60,6 +64,8 @@ export default function SummaryTable({ standings }: { standings: PoolerStanding[
                     </Link>
                   </td>
                   <td className="px-2 py-2.5 text-center font-bold text-blue-600">{fmtPts(pooler.totalPoints)}</td>
+                  <td className="px-2 py-2.5 text-center text-gray-600 hidden sm:table-cell">{gamesPlayed}</td>
+                  <td className="px-2 py-2.5 text-center text-gray-700 font-medium">{fmtPtsPerGame(pooler.totalPoints, gamesPlayed)}</td>
                   <td className="px-2 py-2.5 text-center text-gray-600 hidden sm:table-cell">{goals}</td>
                   <td className="px-2 py-2.5 text-center text-gray-600 hidden sm:table-cell">{assists}</td>
                   <td className="px-2 py-2.5 text-center text-gray-600 hidden sm:table-cell">{wins}</td>

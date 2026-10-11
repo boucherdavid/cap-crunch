@@ -205,6 +205,11 @@ export async function fetchNhlGoaliesByNhlId(gameType = 2, nhlSeason = NHL_SEASO
 }
 
 /** Formate un total de points pool : entier si .0, sinon 1 décimale. */
+/** Points par match joué, deux décimales ; « — » sans match (David, 2026-10-11). */
+export function fmtPtsPerGame(points: number, gamesPlayed: number): string {
+  return gamesPlayed > 0 ? (points / gamesPlayed).toFixed(2) : '—'
+}
+
 export function fmtPts(n: number): string {
   return n % 1 === 0 ? String(n) : n.toFixed(1)
 }

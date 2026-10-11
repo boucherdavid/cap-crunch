@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { fmtPts } from '@/lib/nhl-stats'
+import { fmtPts, fmtPtsPerGame } from '@/lib/nhl-stats'
 import SummaryTable from '@/components/SummaryTable'
 import PlayerLink from '@/components/PlayerLink'
 import type { PoolerStanding, PlayerContrib, PeriodContrib } from '@/lib/standings'
@@ -152,6 +152,7 @@ function PlayerRow({ p, onPeriodClick }: { p: PlayerContrib; onPeriodClick?: (p:
       <td className={`px-2 py-2 text-center font-bold ${isActif ? 'text-blue-600' : 'text-gray-400'}`}>
         {fmtPts(p.poolPoints)}
       </td>
+      <td className="px-2 py-2 text-center text-gray-500">{fmtPtsPerGame(p.poolPoints, p.gamesPlayed)}</td>
     </tr>
   )
 }
@@ -218,6 +219,7 @@ export default function ClassementTable({ standings }: { standings: PoolerStandi
                         <th className="px-2 py-2 hidden sm:table-cell">DP</th>
                         <th className="px-2 py-2 hidden sm:table-cell">BL</th>
                         <th className="px-2 py-2 text-blue-500">Pts</th>
+                        <th className="px-2 py-2 whitespace-nowrap">Pts/MJ</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -227,7 +229,7 @@ export default function ClassementTable({ standings }: { standings: PoolerStandi
                           <>
                             {isFirstOfGroup && (
                               <tr key={`g-${j}`} className="bg-gray-100">
-                                <td colSpan={9} className="px-4 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                                <td colSpan={10} className="px-4 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                                   {GROUP_LABEL[positionGroup(p.position)]}
                                 </td>
                               </tr>
@@ -246,6 +248,9 @@ export default function ClassementTable({ standings }: { standings: PoolerStandi
                         </td>
                         <td className="px-2 py-2 text-center font-bold text-blue-700">
                           {fmtPts(pooler.totalPoints)}
+                        </td>
+                        <td className="px-2 py-2 text-center font-semibold text-blue-700">
+                          {fmtPtsPerGame(pooler.totalPoints, pooler.players.reduce((s, p) => s + p.gamesPlayed, 0))}
                         </td>
                       </tr>
                     </tfoot>
