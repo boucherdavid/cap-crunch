@@ -40,7 +40,17 @@ export default function LtirApprovalManager({ initialRequests, onDecided }: { in
                 {r.injury && <InjuryBadge injury={r.injury} />}
               </p>
               {r.newPlayerName && (
-                <p className="text-xs text-gray-600 mt-0.5">+ signature de {r.newPlayerName}</p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  + signature de {r.newPlayerName}{r.newPlayerType && ` (${r.newPlayerType === 'reserviste' ? 'réserviste' : 'actif'})`}
+                </p>
+              )}
+              {r.extraLabels.length > 0 && (
+                <div className="text-xs text-gray-600 mt-1">
+                  <p>Autres mouvements appliqués avec le LTIR :</p>
+                  <ul className="list-disc pl-4">
+                    {r.extraLabels.map((l, i) => <li key={i}>{l}</li>)}
+                  </ul>
+                </div>
               )}
               {r.injury && (
                 <>
