@@ -37,6 +37,9 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   panier. Demandes antérieures sans `new_player_type` : ancien comportement.
 - Cas réel : demande n° 14 de Paule (Eklund sur LTIR + Tom Wilson), soumise avant ce changement,
   restée en attente pour décision de David.
+- Ajouts du même jour : statut de l'agent libre sous la recherche du joueur (`b3150ff`) ;
+  pastilles de composition (attaquants, défenseurs, gardiens, réservistes, masse) près de
+  Soumettre (`d72e17e`). Promu en prod le 2026-10-11.
 - Commit : `f17395a`
 
 ### 2026-10-10
