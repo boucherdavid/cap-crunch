@@ -1165,10 +1165,28 @@ export default function GestionEffectifsManager({
       {/* Submit */}
       {cart.length > 0 && (
         <div className="bg-white rounded-lg shadow p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm text-gray-600 min-w-0">
-            <span className="font-medium">{poolerName}</span>
-            {' — '}{cart.length} action{cart.length > 1 ? 's' : ''}
-            {isAdmin && forceDateEnabled && ` — ${forcedDate}`}
+          <div className="text-sm text-gray-600 min-w-0 space-y-1.5">
+            <div>
+              <span className="font-medium">{poolerName}</span>
+              {' — '}{cart.length} action{cart.length > 1 ? 's' : ''}
+              {isAdmin && forceDateEnabled && ` — ${forcedDate}`}
+            </div>
+            {/* Composition après le panier (David, 2026-10-11) : savoir si c'est conforme avant de soumettre. */}
+            <div className="flex flex-wrap gap-1.5 text-xs">
+              {([
+                { label: 'Attaquants', n: actifCounts.F, ok: actifCounts.F === 12, target: '12' },
+                { label: 'Défenseurs', n: actifCounts.D, ok: actifCounts.D === 6, target: '6' },
+                { label: 'Gardiens', n: actifCounts.G, ok: actifCounts.G === 2, target: '2' },
+                { label: 'Réservistes', n: projected?.reservistes.length ?? 0, ok: reservistesOk, target: '2 min.' },
+              ]).map(c => (
+                <span key={c.label} className={`px-2 py-0.5 rounded-full font-medium ${c.ok ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'}`}>
+                  {c.label} : {c.n} / {c.target}
+                </span>
+              ))}
+              <span className={`px-2 py-0.5 rounded-full font-medium ${capOver ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-800'}`}>
+                Masse : {capFmt(capUsed)} / {capFmt(poolCap)}
+              </span>
+            </div>
           </div>
           <button onClick={handleSubmit} disabled={!canSubmit}
             className="bg-blue-600 text-white px-5 py-2 rounded font-medium text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shrink-0">
