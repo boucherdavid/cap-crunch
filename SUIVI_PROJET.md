@@ -19,6 +19,26 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-11
+
+**[Feat] — LTIR : statut de l'agent libre au choix, panier complet joint à la demande**
+(`app/lib/ltirRequests.ts`, `app/app/gestion-effectifs/actions.ts`, `ltir-actions.ts`,
+`GestionEffectifsManager.tsx`, `app/app/admin/effectifs/LtirApprovalManager.tsx`,
+`app/app/aide/LtirRulesContent.tsx`, `supabase_migrations/ltir_requests_batch.sql`) — demande de David :
+- LTIR + signature : l'agent libre va actif ou réserviste au choix (défaut : statut du joueur mis
+  sur LTIR), stocké dans `ltir_requests.new_player_type`. Corrige aussi l'aperçu du panier, qui
+  plaçait toujours le remplaçant en actif.
+- Problème réglé : chez un pooler, seul le LTIR attendait l'approbation, le reste du panier
+  s'appliquait tout de suite, validé sur l'alignement d'avant le LTIR (activer un réserviste était
+  refusé). Option B retenue par David : avec un LTIR, tout le panier part avec la demande
+  (`extra_actions`, `[{ label, action }]`) et s'applique d'un coup à l'approbation.
+- `submitBatchAction` gagne `dryRun` (validation de l'état final sans écriture, à la soumission)
+  et `enforceLimits` (validation même pour l'admin, à l'approbation). Une seule mise sur LTIR par
+  panier. Demandes antérieures sans `new_player_type` : ancien comportement.
+- Cas réel : demande n° 14 de Paule (Eklund sur LTIR + Tom Wilson), soumise avant ce changement,
+  restée en attente pour décision de David.
+- Commit : `f17395a`
+
 ### 2026-10-10
 
 **[Feat] — Échanges : message, contre-offre, retrait et discussion** (`app/lib/tradeOffers.ts`,

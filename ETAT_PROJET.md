@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-10-10
+**Dernière mise à jour :** 2026-10-11
 
 ---
 
@@ -25,13 +25,13 @@
 
 | Branche | État |
 |---|---|
-| `staging` | = `main` |
+| `staging` | En avance sur `main` : LTIR avec statut de l'agent libre au choix et panier complet (2026-10-11), à valider |
 | `main` (prod) | À jour au 2026-10-10 — inclut les échanges avec message, contre-offre, retrait et discussion |
 
 - Variables Vercel : prod `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN` ; staging `GITHUB_WORKFLOW_TOKEN`,
   `EMAIL_REDIRECT_TO` (jamais en prod). Le jeton GitHub « Cap Crunch Vercel » **expire** : à
   renouveler dans les deux projets, sinon l'import de nuit et les boutons de mise à jour cessent.
-- `trade_offer_messages.sql` (2026-10-10) roulée en staging et en prod.
+- `trade_offer_messages.sql` (2026-10-10) et `ltir_requests_batch.sql` (2026-10-11) roulées en staging et en prod.
 - Migrations des 8 et 9 octobre roulées en staging et en prod : `delai_reactivation_defaut_3.sql`,
   `poolers_notif_push.sql`, `ltir_relapse_games.sql`.
 - **À confirmer** : `nhl_transaction_alerts.sql` en prod (roulée en staging, où la carte
@@ -56,6 +56,13 @@
 ## 4. À faire / à vérifier
 
 ### ▶ Prochaine session — commencer ici
+
+- **LTIR avec panier (staging)** : tester avec un compte pooler : LTIR + signature d'un agent libre
+  en réserviste, plus une activation dans le même panier ; vérifier le bandeau « En attente »,
+  l'affichage dans Approbation, puis l'approbation. Ensuite, promotion en prod.
+- **Demande n° 14 de Paule** (Eklund sur LTIR + Tom Wilson, ancienne mécanique) : à approuver telle
+  quelle (Wilson arrive réserviste, elle l'active ensuite), ou à faire annuler et refaire après la
+  promotion.
 
 - **Échanges** (message, contre-offre, retrait, discussion) : validés en staging par David et en
   prod depuis le 2026-10-10 ; à surveiller au premier vrai échange entre poolers.
