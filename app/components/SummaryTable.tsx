@@ -37,14 +37,15 @@ export default function SummaryTable({ standings }: { standings: PoolerStanding[
           </thead>
           <tbody className="divide-y divide-gray-100">
             {standings.map((pooler, i) => {
-              const active = pooler.players.filter(p => p.playerType === 'actif' && p.stillRostered)
-              const goals    = active.reduce((s, p) => s + p.goals, 0)
-              const assists  = active.reduce((s, p) => s + p.assists, 0)
-              const wins     = active.reduce((s, p) => s + p.goalieWins, 0)
-              const otl      = active.reduce((s, p) => s + p.goalieOtl, 0)
-              const shutouts = active.reduce((s, p) => s + p.goalieShutouts, 0)
-              // MJ : tous les joueurs, comme PTS (seuls les matchs joués comme actif sont comptés).
-              const gamesPlayed = pooler.players.reduce((s, p) => s + p.gamesPlayed, 0)
+              // Tous les joueurs, comme PTS (David, 2026-10-11) : les totaux de chaque joueur ne
+              // comptent déjà que ses périodes actives, y compris pour un joueur parti ou en réserve.
+              const all      = pooler.players
+              const goals    = all.reduce((s, p) => s + p.goals, 0)
+              const assists  = all.reduce((s, p) => s + p.assists, 0)
+              const wins     = all.reduce((s, p) => s + p.goalieWins, 0)
+              const otl      = all.reduce((s, p) => s + p.goalieOtl, 0)
+              const shutouts = all.reduce((s, p) => s + p.goalieShutouts, 0)
+              const gamesPlayed = all.reduce((s, p) => s + p.gamesPlayed, 0)
               return (
                 <tr
                   key={pooler.poolerId}

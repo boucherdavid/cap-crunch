@@ -29,8 +29,9 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   joués comme actif sont comptés). Un gardien qui joue compte pour 1 MJ.
 - Détail par pooler et page d'alignement : PTS/MJ par joueur ; l'alignement a en plus un
   sous-total par position et un total (MJ, PTS, PTS/MJ). `fmtPtsPerGame()` partagé.
-- Constat non corrigé : dans `SummaryTable`, B/A/V/DP/BL ne somment que les joueurs encore actifs,
-  alors que PTS (et maintenant MJ) comptent tous les joueurs, y compris partis ou en réserve.
+- Corrigé à la demande de David : dans `SummaryTable`, B/A/V/DP/BL ne sommaient que les joueurs
+  encore actifs ; ils comptent maintenant tous les joueurs, comme PTS et MJ (toutes les périodes
+  où chaque joueur était actif).
 - Commit : `df4ae93`
 
 **[Feat] — Échanges : modifier son offre avant la réponse** (`app/lib/tradeOffers.ts`,
