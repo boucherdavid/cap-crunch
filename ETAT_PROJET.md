@@ -25,8 +25,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : LTIR avec statut de l'agent libre au choix et panier complet (2026-10-11), à valider |
-| `main` (prod) | À jour au 2026-10-10 — inclut les échanges avec message, contre-offre, retrait et discussion |
+| `staging` | = `main` |
+| `main` (prod) | À jour au 2026-10-11 — inclut la discussion des échanges et le LTIR avec panier complet |
 
 - Variables Vercel : prod `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN` ; staging `GITHUB_WORKFLOW_TOKEN`,
   `EMAIL_REDIRECT_TO` (jamais en prod). Le jeton GitHub « Cap Crunch Vercel » **expire** : à
@@ -57,9 +57,9 @@
 
 ### ▶ Prochaine session — commencer ici
 
-- **LTIR avec panier (staging)** : tester avec un compte pooler : LTIR + signature d'un agent libre
-  en réserviste, plus une activation dans le même panier ; vérifier le bandeau « En attente »,
-  l'affichage dans Approbation, puis l'approbation. Ensuite, promotion en prod.
+- **LTIR avec panier** (statut de l'agent libre au choix, tout le panier joint à la demande,
+  composition affichée près de Soumettre) : en prod depuis le 2026-10-11, validé par David en
+  staging jusqu'à la soumission ; l'approbation d'une demande avec panier n'a pas encore tourné.
 - **Demande n° 14 de Paule** (Eklund sur LTIR + Tom Wilson, ancienne mécanique) : à approuver telle
   quelle (Wilson arrive réserviste, elle l'active ensuite), ou à faire annuler et refaire après la
   promotion.
