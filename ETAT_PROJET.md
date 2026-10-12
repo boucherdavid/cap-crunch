@@ -25,8 +25,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : « Activité du pool » de l'accueil basée sur les vrais mouvements de la saison, et annonce (push + courriel) à tous des signatures d'agents libres et des échanges — **à valider** |
-| `main` (prod) | À jour au 2026-10-11 — inclut la discussion et la modification des offres d'échange, le LTIR avec panier complet, MJ et PTS/MJ, l'avis de demande traitée |
+| `staging` | = `main` |
+| `main` (prod) | À jour au 2026-10-12 — inclut l'activité du pool basée sur les vrais mouvements et l'annonce à tous des signatures et échanges, la discussion et la modification des offres d'échange, le LTIR avec panier complet, MJ et PTS/MJ, l'avis de demande traitée |
 
 - Variables Vercel : prod `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN` ; staging `GITHUB_WORKFLOW_TOKEN`,
   `EMAIL_REDIRECT_TO` (jamais en prod). Le jeton GitHub « Cap Crunch Vercel » **expire** : à
