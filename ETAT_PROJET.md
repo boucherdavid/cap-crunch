@@ -22,8 +22,8 @@
   1 pt selon la LNH, 2 sur Marqueur (erreur de Marqueur).
 
 - **Limite d'I/O disque Supabase atteinte en prod (2026-10-12)** : causée par les imports qui
-  réécrivaient tout. Correctif en prod le 2026-10-12. Exécuter `select pg_stat_statements_reset();` en prod puis
-  revérifier dans 2-3 jours.
+  réécrivaient tout. Correctif en prod le 2026-10-12, statistiques remises à zéro le 2026-10-12 à 18 h 54 UTC :
+  relancer la requête de diagnostic vers le 15 octobre.
 
 ## 2. Branches / déploiement
 
