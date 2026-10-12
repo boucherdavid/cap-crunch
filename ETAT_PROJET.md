@@ -57,6 +57,9 @@
 
 ### ▶ Prochaine session — commencer ici
 
+- **Nate Danielson** ajouté à la main dans la banque de Vincent en prod le 2026-10-11 (oubli de
+  l'initialisation), comme recrue repêchée en 2023 : confirmer l'année avec Vincent.
+
 
 
 - **LTIR avec panier** (statut de l'agent libre au choix, tout le panier joint à la demande,
@@ -123,6 +126,7 @@
 - Lancer le scraping de PuckPedia par une tâche planifiée de Windows sur le poste de David.
 - Courriel quotidien des écarts avec Marqueur (demanderait une tâche planifiée).
 - Marché des échanges : sauvegarder une proposition comme scénario.
+- Banque de recrues : ajout réservé à l'admin même saison démarrée (aujourd'hui, script en prod).
 - `/signaler` : section « Mes demandes » avec l'état et la réponse de l'admin (version simple livrée le 2026-10-11).
 - Outil d'analyse : pointage du pool plutôt que points LNH.
 - Compléter la couverture ESPN des projections ; Yahoo comme source de blessures supplémentaire.
