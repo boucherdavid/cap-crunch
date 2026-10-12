@@ -241,11 +241,16 @@ function playerName(p: any): string {
   return p ? `${p.first_name} ${p.last_name}` : 'un joueur'
 }
 
-// Une ligne par transaction — reprend la même classification que TransactionsClient.tsx
-// (/journal-transactions) mais condensée en une phrase courte pour un widget d'accueil,
-// plutôt que le détail complet par item. Limité aux 3 catégories les plus "nouvelles"
-// (échanges, signatures, libérations/ballotage) — David, 2026-09-23 : le reste (promotions,
-// LTIR, changements de type) est moins pertinent pour un coup d'œil rapide.
+// Activité du pool (David, 2026-10-12) — deux sources :
+// - roster_change_log : tous les mouvements réels de la saison, peu importe l'interface
+//   (Gestion d'effectifs, approbation LTIR, ballotage, /admin/transactions). Les mouvements
+//   faits par les poolers eux-mêmes n'écrivent RIEN dans `transactions` — d'où l'ancien widget
+//   figé sur le repêchage des agents libres ;
+// - transactions : seulement les échanges (une ligne pour l'échange au complet), dont les
+//   mouvements individuels sont retirés de la première source pour éviter les doublons.
+// Une fois la saison démarrée, seul ce qui suit `season_started_at` est affiché : le repêchage
+// des agents libres et les ajustements pré-saison restent dans /journal-transactions.
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function summarizeTransaction(items: any[]): string | null {
   const transfers = items.filter(i => i.action_type === 'transfer')
@@ -265,20 +270,42 @@ function summarizeTransaction(items: any[]): string | null {
   return null
 }
 
-type PoolActivityItem = { id: number; createdAt: string; summary: string }
+// Verbe d'un mouvement de roster_change_log — null = pas affiché.
+function describeChange(changeType: string, oldType: string | null, newType: string | null, name: string): string | null {
+  switch (changeType) {
+    case 'signature_agent_libre': return `signe ${name}`
+    case 'signature_ltir':        return `signe ${name} (remplaçant LTIR)`
+    case 'ballotage':             return `obtient ${name} au ballotage`
+    case 'ltir':                  return `place ${name} sur LTIR`
+    case 'retour_ltir':           return newType === 'actif' ? `ramène ${name} du LTIR` : `ramène ${name} du LTIR en réserve`
+    case 'activation':            return oldType === 'recrue' ? `active la recrue ${name}` : `active ${name}`
+    case 'deactivation':          return newType ? `envoie ${name} en réserve` : `libère ${name}`
+    case 'retrait':               return `libère ${name}`
+    case 'ajout_reserviste':
+    case 'ajout_recrue':          return `ajoute ${name}`
+    case 'changement_type':
+      if (newType === 'recrue') return `renvoie ${name} en banque`
+      if (newType === 'reserviste') return `envoie ${name} en réserve`
+      return null
+    default: return null
+  }
+}
+
+type PoolActivityItem = { id: string; createdAt: string; summary: string }
 
 async function fetchPoolActivity(
   supabase: Awaited<ReturnType<typeof createClient>>,
   poolSeasonId: number,
-  limit = 6,
+  seasonStartedAt: string | null,
+  limit = 8,
 ): Promise<PoolActivityItem[]> {
   try {
-    const { data } = await supabase
+    let txQuery = supabase
       .from('transactions')
       .select(`
         id, created_at,
         transaction_items (
-          action_type,
+          action_type, player_id, from_pooler_id, to_pooler_id,
           from_pooler:poolers!from_pooler_id (name),
           to_pooler:poolers!to_pooler_id (name),
           players (first_name, last_name)
@@ -287,15 +314,63 @@ async function fetchPoolActivity(
       .eq('pool_season_id', poolSeasonId)
       .order('created_at', { ascending: false })
       .limit(25)
+    if (seasonStartedAt) txQuery = txQuery.gte('created_at', seasonStartedAt)
+
+    // Pré-saison : rien dans roster_change_log, l'ancien résumé des transactions suffit.
+    const logQuery = seasonStartedAt
+      ? supabase
+          .from('roster_change_log')
+          .select('id, player_id, pooler_id, change_type, old_type, new_type, changed_at, players (first_name, last_name), poolers!roster_change_log_pooler_id_fkey (name)')
+          .eq('pool_season_id', poolSeasonId)
+          .gte('changed_at', seasonStartedAt)
+          .not('change_type', 'like', 'hist_%')
+          .order('changed_at', { ascending: false })
+          .order('id', { ascending: false })
+          .limit(80)
+      : null
+
+    const [{ data: txs }, logRes] = await Promise.all([txQuery, logQuery ?? Promise.resolve({ data: [] })])
 
     const out: PoolActivityItem[] = []
+    // Mouvements déjà couverts par un échange : même joueur, même pooler, à un jour près.
+    const tradeKeys: { playerId: number; poolerIds: Set<string>; at: number }[] = []
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const tx of (data ?? []) as any[]) {
-      const summary = summarizeTransaction(tx.transaction_items ?? [])
-      if (summary) out.push({ id: tx.id, createdAt: tx.created_at, summary })
-      if (out.length >= limit) break
+    for (const tx of (txs ?? []) as any[]) {
+      const items = tx.transaction_items ?? []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const isTrade = items.some((i: any) => i.action_type === 'transfer')
+      if (seasonStartedAt && !isTrade) continue
+      const summary = summarizeTransaction(items)
+      if (summary) out.push({ id: `tx-${tx.id}`, createdAt: tx.created_at, summary })
+      if (isTrade) {
+        const poolerIds = new Set<string>(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          items.flatMap((i: any) => [i.from_pooler_id, i.to_pooler_id]).filter(Boolean),
+        )
+        const at = new Date(tx.created_at).getTime()
+        for (const i of items) if (i.player_id) tradeKeys.push({ playerId: i.player_id, poolerIds, at })
+      }
     }
-    return out
+
+    // Un lot soumis d'un coup (même pooler, même horodatage) = une seule ligne.
+    const groups = new Map<string, { poolerName: string; at: string; parts: string[] }>()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const r of (logRes.data ?? []) as any[]) {
+      const at = new Date(r.changed_at).getTime()
+      if (tradeKeys.some(k => k.playerId === r.player_id && k.poolerIds.has(r.pooler_id) && Math.abs(k.at - at) < 86_400_000)) continue
+      const part = describeChange(r.change_type, r.old_type, r.new_type, playerName(r.players))
+      if (!part) continue
+      const key = `${r.pooler_id}|${r.changed_at}`
+      const g = groups.get(key) ?? { poolerName: r.poolers?.name ?? '?', at: r.changed_at, parts: [] as string[] }
+      g.parts.push(part)
+      groups.set(key, g)
+    }
+    for (const [key, g] of groups) {
+      out.push({ id: `log-${key}`, createdAt: g.at, summary: `${g.poolerName} ${g.parts.join(', ')}` })
+    }
+
+    out.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    return out.slice(0, limit)
   } catch {
     return []
   }
@@ -663,7 +738,7 @@ export default async function Home() {
   after(() => syncNhlTransactions())
 
   const [{ data: saison }, { data: seriesSaison }, { data: me }] = await Promise.all([
-    supabase.from('pool_seasons').select('id, season, pool_cap').eq('is_active', true).eq('is_playoff', false).single(),
+    supabase.from('pool_seasons').select('id, season, pool_cap, season_started, season_started_at').eq('is_active', true).eq('is_playoff', false).single(),
     supabase.from('pool_seasons').select('id, season').eq('is_active', true).eq('is_playoff', true).maybeSingle(),
     user
       ? supabase.from('poolers').select('id, name').eq('id', user.id).single()
@@ -676,7 +751,7 @@ export default async function Home() {
 
   const [standings, poolActivity, poolInjuries, nhlNews, market, liveNight, nhlTransactions] = await Promise.all([
     saison ? buildStandings(supabase, saison.id) : Promise.resolve([]),
-    saison ? fetchPoolActivity(supabase, saison.id) : Promise.resolve([]),
+    saison ? fetchPoolActivity(supabase, saison.id, saison.season_started ? (saison.season_started_at ?? null) : null) : Promise.resolve([]),
     saison ? fetchPoolInjuries(supabase, saison.id) : Promise.resolve([]),
     fetchNhlNews(),
     saison ? fetchMarketSummary(saison.id) : Promise.resolve({ items: [], total: 0 }),

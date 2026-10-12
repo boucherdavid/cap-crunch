@@ -8,6 +8,7 @@ import { validateRosterLimits, getPlayerBucket } from '@/lib/rosterLimits'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { isRookieProtectionExpired } from '@/lib/rookieProtection'
 import { createWaiverClaimForRelease } from '@/lib/waiverClaims'
+import { announceToPool, playerNames, poolerName } from '@/lib/poolAnnouncements'
 import { DEFAULT_NHL_MINIMUM_SALARY } from '../presaison/types'
 
 const fmtCap = (n: number) =>
@@ -612,6 +613,38 @@ export async function applyTransactionItems(
       // hors saison démarrée pour une correction historique, ce n'est pas une vraie libération).
       if (!skipEnforcement) after(() => createWaiverClaimForRelease(saisonId, player_id!, from_pooler_id!).catch(() => {}))
       continue
+    }
+  }
+
+  // Annonce à tout le pool (David, 2026-10-12) — signatures et échanges en saison seulement,
+  // jamais pour une date forcée (correction d'historique).
+  if (!skipEnforcement && !transactionDate) {
+    const signs = items.filter(i => i.action_type === 'sign' && i.player_id && i.to_pooler_id)
+    const transfers = items.filter(i => i.action_type === 'transfer' && (i.player_id || i.pick_id))
+    if (signs.length > 0 || transfers.length > 0) {
+      after(async () => {
+        const names = await playerNames([...signs, ...transfers].map(i => i.player_id).filter((id): id is number => !!id))
+        for (const poolerId of Array.from(new Set(signs.map(i => i.to_pooler_id!)))) {
+          const list = signs.filter(i => i.to_pooler_id === poolerId).map(i => names.get(i.player_id!) ?? 'un joueur').join(', ')
+          const n = signs.filter(i => i.to_pooler_id === poolerId).length
+          await announceToPool({
+            title: n > 1 ? "Signatures d'agents libres" : "Signature d'un agent libre",
+            body: `${await poolerName(poolerId)} signe ${list}.`,
+            excludeIds: [poolerId],
+          }).catch(() => {})
+        }
+        const parties = Array.from(new Set(transfers.flatMap(i => [i.from_pooler_id, i.to_pooler_id]).filter((id): id is string => !!id)))
+        if (parties.length === 2) {
+          const [a, b] = await Promise.all(parties.map(id => poolerName(id)))
+          const received = (id: string) => transfers.filter(i => i.to_pooler_id === id)
+            .map(i => i.player_id ? (names.get(i.player_id) ?? 'un joueur') : 'un choix de repêchage').join(', ') || 'rien'
+          await announceToPool({
+            title: `Échange entre ${a} et ${b}`,
+            body: `${a} reçoit ${received(parties[0])} ; ${b} reçoit ${received(parties[1])}.`,
+            excludeIds: parties,
+          }).catch(() => {})
+        }
+      })
     }
   }
 
