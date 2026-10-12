@@ -21,6 +21,20 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-11
 
+**[Données] — Recrue oubliée ajoutée à la banque de Vincent (prod)** — demande de David :
+- Nate Danielson (players.id 479, DET, repêché 2023 1re ronde 9e) avait été repêché par Vincent
+  au repêchage du pool de 2023, mais n'avait pas été mis dans sa banque à l'initialisation.
+- Mode init et Banque de recrues bloqués depuis `season_started=true` : ligne insérée
+  directement en prod (script ponctuel, client service) dans `pooler_rosters` — id 3162,
+  `player_type='recrue'`, `rookie_type='repeche'`, `pool_draft_year=2023`,
+  `added_at=2026-09-29T12:00:00Z` (même format que les 28 autres recrues de Vincent). Aucune
+  ligne `roster_change_log` ni transaction, comme les recrues de l'initialisation.
+- `pool_draft_year=2023` déduit du repêchage LNH, à corriger si Vincent l'a repêché une autre
+  année. Protection valide jusqu'en 2027-28. Pas reporté en staging (rafraîchir staging depuis
+  la prod au besoin).
+- Piste si ça se reproduit : un ajout de recrue en banque réservé à l'admin, permis même saison
+  démarrée (`/admin/init?tab=recrues`), plutôt qu'un script.
+
 **[Feat] — Aviser le pooler quand sa demande est traitée** (`app/app/admin/feedback/actions.ts`,
 `FeedbackAdminView.tsx`) — demande de David, version simple :
 - « Marquer traité » ouvre une réponse facultative, puis « Marquer traité et aviser » (push +
