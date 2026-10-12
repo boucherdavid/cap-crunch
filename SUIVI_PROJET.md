@@ -21,6 +21,19 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-12
 
+**[Bilan de session]** — tout est en prod et validé par David :
+- Accueil : activité tirée des vrais mouvements (`00efa74`), mouvements annulés le jour même
+  effacés (`687817f`), échanges détaillés (`8f30fa8`) ; annonce push + courriel des signatures
+  et des échanges (`00efa74`).
+- Gestion d'effectifs : annulation le jour même d'une mise en réserve (`0092ae3`), testée en prod
+  par David (Marchenko/Hryckowian).
+- Imports Python à écriture minimale contre la limite d'I/O de Supabase (`792fb96`).
+  `pg_stat_statements` remis à zéro en prod le 2026-10-12 à 18 h 54 UTC — relancer la requête de
+  diagnostic vers le 15 octobre pour mesurer le gain.
+- Vercel a mis 15 à 50 minutes à déployer certains envois ce jour-là ; un envoi a même été ignoré
+  jusqu'au commit suivant. Vérifier le déploiement (API deployments de GitHub) avant de dire
+  qu'un changement est en ligne.
+
 **[Feat] — Accueil : un échange détaille ce que chacun reçoit** (`app/app/page.tsx`) :
 - « Échange entre A et B — A reçoit X, Y ; B reçoit Z » (joueurs et choix de repêchage), même
   contenu que la notification envoyée au pool.
