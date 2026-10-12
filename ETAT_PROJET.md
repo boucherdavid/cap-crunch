@@ -29,8 +29,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : annulation le jour même d'une mise en réserve (exception au délai de réactivation) — **à valider** |
-| `main` (prod) | À jour au 2026-10-12 — inclut l'activité du pool basée sur les vrais mouvements et l'annonce à tous des signatures et échanges, la discussion et la modification des offres d'échange, le LTIR avec panier complet, MJ et PTS/MJ, l'avis de demande traitée |
+| `staging` | = `main` |
+| `main` (prod) | À jour au 2026-10-12 — inclut l'annulation le jour même d'une mise en réserve, l'activité du pool basée sur les vrais mouvements et l'annonce à tous des signatures et échanges, la discussion et la modification des offres d'échange, le LTIR avec panier complet, MJ et PTS/MJ, l'avis de demande traitée |
 
 - Variables Vercel : prod `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN` ; staging `GITHUB_WORKFLOW_TOKEN`,
   `EMAIL_REDIRECT_TO` (jamais en prod). Le jeton GitHub « Cap Crunch Vercel » **expire** : à
