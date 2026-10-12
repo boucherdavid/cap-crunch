@@ -1522,6 +1522,10 @@ sur 3, pas `backInAction`) désactivé dans le même lot débloque une réactiva
 importe la position ; un **poste actif déjà vacant** (mise sur LTIR approuvée) peut être comblé par
 un joueur verrouillé de cette position. Même calcul côté écran (`blockedReactivations`,
 `GestionEffectifsManager.tsx`) — garder les deux alignés.
+Troisième exception (David, 2026-10-12) : **annulation le jour même** — un joueur mis en réserve
+aujourd'hui (heure de l'Est) se réactive sans délai tant qu'aucun match de son équipe n'a commencé
+depuis (`undoableDeactivations()`, `lib/gameDayLock.ts`, horaire LNH ; indisponible → refusé).
+Pas pour une mise sur LTIR. Côté écran : `RosterEntry.undoableToday`.
 
 **Retour au jeu d'un joueur sur LTIR (`app/lib/ltirReturns.ts`, `ltir_return_watch`) — David,
 2026-10-05 :**

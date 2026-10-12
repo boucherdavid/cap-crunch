@@ -21,6 +21,15 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-12
 
+**[Feat] — Annuler le jour même une mise en réserve** (`lib/gameDayLock.ts`,
+`gestion-effectifs/actions.ts`, `GestionEffectifsManager.tsx`, `aide/AideTabs.tsx`) :
+- Demande de David : un changement actif → réserviste doit pouvoir être défait dans la journée si
+  les matchs des joueurs ne sont pas commencés. Le délai de réactivation (3 jours) l'empêchait.
+- Nouvelle exception au délai : mise en réserve (pas LTIR) faite aujourd'hui (heure de l'Est),
+  déjà effective, et aucun match de l'équipe du joueur commencé depuis (horaire LNH en direct ;
+  indisponible → refusé). Le classement n'est pas touché (aucun match dans la période en réserve).
+  Serveur (`checkReactivationDelay`) et écran (`undoableToday`) alignés. Règle ajoutée à `/aide`.
+
 **[Perf] — Limite d'I/O disque de Supabase atteinte : les imports n'écrivent plus que ce qui a
 changé** (`python_script/db_diff.py`, `import_regular_stats.py`, `import_advanced_stats.py`,
 `scrape_line_combos.py`, `import_supabase.py`) :

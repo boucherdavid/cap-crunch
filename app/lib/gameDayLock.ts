@@ -87,3 +87,58 @@ export async function computeBatchEffectiveDate(playerIds: number[]): Promise<Ba
     return fallback
   }
 }
+
+// Annulation le jour même d'une mise en réserve (David, 2026-10-12) — un joueur envoyé en
+// réserve aujourd'hui (heure de l'Est) peut être réactivé malgré le délai de réactivation tant
+// qu'aucun match de son équipe n'a commencé depuis : la période en réserve ne contient alors
+// aucun match, le classement n'est pas touché. Une mise en réserve reportée au lendemain (match
+// déjà commencé, voir computeBatchEffectiveDate) a une date future : jamais annulable.
+// Horaire de la LNH indisponible → rien n'est annulable (on refuse plutôt que de risquer un abus).
+export async function undoableDeactivations(
+  items: { playerId: number; teamCode: string | null; changedAt: string }[],
+): Promise<Set<number>> {
+  const out = new Set<number>()
+  const today = todayET()
+  const nowMs = Date.now()
+  const candidates = items.filter(i => {
+    const t = new Date(i.changedAt).getTime()
+    return t <= nowMs && todayETOf(new Date(i.changedAt)) === today
+  })
+  if (candidates.length === 0) return out
+  let games: ScheduledGame[]
+  try {
+    const res = await fetch(`https://api-web.nhle.com/v1/schedule/${today}`, {
+      signal: AbortSignal.timeout(5000),
+      cache: 'no-store',
+    })
+    if (!res.ok) return out
+    const data = await res.json()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const day = (data.gameWeek ?? []).find((d: any) => d.date === today)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    games = ((day?.games ?? []) as any[]).map(g => ({
+      awayAbbrev: g.awayTeam?.abbrev ?? '',
+      homeAbbrev: g.homeTeam?.abbrev ?? '',
+      startTimeUTC: g.startTimeUTC ?? '',
+    }))
+  } catch {
+    return out
+  }
+  for (const i of candidates) {
+    const since = new Date(i.changedAt).getTime()
+    const startedSince = games.some(g =>
+      !!i.teamCode && (g.awayAbbrev === i.teamCode || g.homeAbbrev === i.teamCode) &&
+      !!g.startTimeUTC && new Date(g.startTimeUTC).getTime() <= nowMs &&
+      new Date(g.startTimeUTC).getTime() >= since,
+    )
+    if (!startedSince) out.add(i.playerId)
+  }
+  return out
+}
+
+function todayETOf(d: Date): string {
+  return new Intl.DateTimeFormat('fr-CA', {
+    timeZone: 'America/Toronto',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(d)
+}
