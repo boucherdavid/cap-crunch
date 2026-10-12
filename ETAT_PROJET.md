@@ -21,6 +21,10 @@
 - Classement validé contre Marqueur.com ; seul écart de points connu, Ryan Leonard (Vincent) —
   1 pt selon la LNH, 2 sur Marqueur (erreur de Marqueur).
 
+- **Limite d'I/O disque Supabase atteinte en prod (2026-10-12)** : causée par les imports qui
+  réécrivaient tout. Correctif en prod le 2026-10-12. Exécuter `select pg_stat_statements_reset();` en prod puis
+  revérifier dans 2-3 jours.
+
 ## 2. Branches / déploiement
 
 | Branche | État |

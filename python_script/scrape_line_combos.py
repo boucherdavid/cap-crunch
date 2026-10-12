@@ -13,7 +13,9 @@ Les joueurs sont jumelés par nom + équipe (projections_common, même logique q
 Daily Faceoff ne donne pas le nhl_id. Un joueur non jumelé est gardé avec son nom seul
 (player_id NULL) pour que la feuille de match reste complète.
 
-Remplacement complet par équipe (delete + insert). Garde-fou : une équipe dont la page ne donne
+Remplacement par équipe (delete + insert), seulement si son alignement a changé depuis la
+dernière lecture (David, 2026-10-12 — sinon aucune écriture, pour ménager le budget d'écritures
+disque de Supabase, voir db_diff.py ; `scraped_at` n'est donc plus rafraîchi tous les jours). Garde-fou : une équipe dont la page ne donne
 pas au moins 9 attaquants et 4 défenseurs est laissée telle quelle (page changée ou cassée).
 
 Usage :
@@ -36,6 +38,7 @@ from dotenv import load_dotenv
 from supabase import create_client
 
 from projections_common import build_player_lookup, match_player
+from db_diff import diff_rows, fetch_all
 
 load_dotenv()
 
@@ -107,6 +110,10 @@ def main():
 
     now_iso = datetime.now(timezone.utc).isoformat()
     total_rows = total_unmatched = teams_written = 0
+    compare = ['team_code', 'group_id', 'slot', 'category', 'position_id', 'player_id', 'player_name',
+               'injury_status', 'source_name', 'source_updated_at']
+    existing_rows = fetch_all(lambda: db.table('team_line_combos').select(', '.join(compare))
+                              .order('team_code').order('group_id').order('slot')) if args.apply else []
     skipped = []
 
     for slug in slugs:
@@ -158,6 +165,10 @@ def main():
               + (f' — non jumelé(s) : {", ".join(unique_unmatched)}' if unique_unmatched else ''))
 
         if args.apply:
+            current = [r for r in existing_rows if r['team_code'] == code]
+            to_insert, to_update, to_delete = diff_rows(rows, current, ['team_code', 'group_id', 'slot'], compare)
+            if not (to_insert or to_update or to_delete):
+                continue
             db.table('team_line_combos').delete().eq('team_code', code).execute()
             db.table('team_line_combos').insert(rows).execute()
             teams_written += 1
@@ -167,7 +178,7 @@ def main():
     if not args.apply:
         print('[DRY-RUN] Aucune écriture. Relancez avec --apply pour importer.')
     else:
-        print(f'[OK] {teams_written} équipe(s) mise(s) à jour.')
+        print(f'[OK] {teams_written} équipe(s) mise(s) à jour, les autres étaient inchangées.')
     # Trop d'équipes ignorées = page probablement changée : workflow en rouge.
     if len(skipped) > 5:
         sys.exit(1)

@@ -22,6 +22,7 @@ from supabase import create_client
 from unidecode import unidecode
 
 from name_aliases import canonical_first
+from db_diff import diff_rows, fetch_all
 
 sys.stdout.reconfigure(encoding='utf-8')
 load_dotenv()
@@ -319,11 +320,25 @@ def import_date(client, target_date: str, pool_nhl_season: int,
         print('Aucun game-log à insérer pour cette date.')
         return
 
-    print(f'{len(rows)} lignes à upsert...')
+    # N'écrire que les lignes nouvelles ou modifiées (David, 2026-10-12) : un upsert réécrit
+    # même une ligne identique, et ce script repasse plusieurs fois sur les mêmes jours — c'était
+    # la plus grosse source d'écritures disque de la base (voir db_diff.py).
+    key = ['player_id', 'game_date', 'season', 'game_type']
+    fields = list(rows[0].keys())
+    existing = fetch_all(lambda: client.table('player_game_logs')
+                         .select(', '.join(['id'] + fields))
+                         .eq('game_date', target_date).eq('season', nhl_season).eq('game_type', GAME_TYPE)
+                         .order('id'))
+    to_insert, to_update, _ = diff_rows(rows, existing, key)
+    changed = to_insert + to_update
+    if not changed:
+        print(f'✓ {len(rows)} lignes déjà à jour — aucune écriture ({errors} erreur(s)).')
+        return
+    print(f'{len(to_insert)} nouvelle(s), {len(to_update)} modifiée(s), {len(rows) - len(changed)} inchangée(s)...')
     client.table('player_game_logs').upsert(
-        rows, on_conflict='player_id,game_date,season,game_type'
+        changed, on_conflict='player_id,game_date,season,game_type'
     ).execute()
-    print(f'✓ {len(rows)} lignes mises à jour ({errors} erreur(s)).')
+    print(f'✓ {len(changed)} lignes écrites ({errors} erreur(s)).')
 
 
 def main() -> None:

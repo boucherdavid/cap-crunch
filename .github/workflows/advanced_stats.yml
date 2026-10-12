@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       seasons:
-        description: 'Années de début à importer, séparées par des espaces (ex: 2020 2021). Vide = saison courante + précédente.'
+        description: 'Années de début à importer, séparées par des espaces (ex: 2020 2021). Vide = saison courante seulement.'
         required: false
         default: ''
 
