@@ -7,7 +7,7 @@ import { after } from 'next/server'
 import { sendPushToUser } from '@/lib/push'
 import { announceToPool, playerNames, poolerName } from '@/lib/poolAnnouncements'
 import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/rosterTypeChange'
-import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
+import { computeBatchEffectiveDate, undoableDeactivations } from '@/lib/gameDayLock'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { validateRosterLimits, getPlayerBucket, ACTIVE_LIMITS, type Bucket } from '@/lib/rosterLimits'
 import { createWaiverClaimForRelease, isPlayerUnderActiveWaiverClaim } from '@/lib/waiverClaims'
@@ -38,6 +38,9 @@ export type RosterEntry = {
   capNumber: number | null
   isEstimatedCap: boolean
   lastDeactivatedAt: string | null  // ISO timestamp de la dernière désactivation (actif→res ou ltir)
+  // Mis en réserve aujourd'hui sans qu'aucun match de son équipe n'ait commencé depuis : peut
+  // être réactivé malgré le délai (annulation le jour même, David 2026-10-12, voir gameDayLock.ts).
+  undoableToday?: boolean
   recrueEligible: boolean  // is_rookie, draft_year dans la fenêtre de 5 saisons, ou statut ELC — peut retourner à la banque de recrues
   injury: InjuryInfo | null  // source CBS Sports/ESPN, voir player_injuries et app/lib/injuries.ts
 }
@@ -152,7 +155,7 @@ export async function getPoolerRosterAction(
       .order('player_type'),
     supabase
       .from('roster_change_log')
-      .select('player_id, changed_at')
+      .select('player_id, changed_at, change_type')
       .eq('pooler_id', poolerId)
       .eq('pool_season_id', saisonId)
       .in('change_type', ['deactivation', 'ltir'])
@@ -164,9 +167,19 @@ export async function getPoolerRosterAction(
 
   // most recent deactivation date per player
   const deactMap = new Map<number, string>()
+  const deactTypeMap = new Map<number, string>()
   for (const row of (deactRows ?? [])) {
-    if (!deactMap.has(row.player_id)) deactMap.set(row.player_id, row.changed_at)
+    if (!deactMap.has(row.player_id)) {
+      deactMap.set(row.player_id, row.changed_at)
+      deactTypeMap.set(row.player_id, row.change_type)
+    }
   }
+  // Mises en réserve annulables aujourd'hui (pas une mise sur LTIR).
+  const undoable = await undoableDeactivations(
+    (rosterData ?? [])
+      .filter((r: any) => r.player_type === 'reserviste' && deactTypeMap.get(r.player_id) === 'deactivation')
+      .map((r: any) => ({ playerId: r.player_id, teamCode: r.players?.teams?.code ?? null, changedAt: deactMap.get(r.player_id)! })),
+  )
 
   const entries: RosterEntry[] = (rosterData ?? []).map((r: any) => {
     const { cap, isEstimated } = getEffectiveCap(r.players?.player_contracts, season, unsignedMultiplier)
@@ -182,6 +195,7 @@ export async function getPoolerRosterAction(
       capNumber: cap || null,
       isEstimatedCap: isEstimated,
       lastDeactivatedAt: deactMap.get(r.player_id) ?? null,
+      undoableToday: undoable.has(r.player_id),
       recrueEligible: !!(r.players?.is_rookie || (r.players?.draft_year != null && r.players.draft_year >= draftYearCutoff) || r.players?.status === 'ELC'),
       injury: injuriesByPlayerId.get(r.player_id) ?? null,
     }
@@ -509,7 +523,7 @@ export async function submitBatchAction(input: {
     if (isAdmin) return  // les admins ne sont pas soumis au délai
     const { data: lastDeact } = await db
       .from('roster_change_log')
-      .select('changed_at')
+      .select('changed_at, change_type')
       .eq('player_id', playerId)
       .eq('pooler_id', input.poolerId)
       .eq('pool_season_id', input.saisonId)
@@ -518,6 +532,13 @@ export async function submitBatchAction(input: {
       .limit(1)
       .maybeSingle()
     if (!lastDeact) return
+    // Annulation le jour même d'une mise en réserve (David, 2026-10-12, voir gameDayLock.ts).
+    if (lastDeact.change_type === 'deactivation') {
+      const { data: p } = await db.from('players').select('teams (code)').eq('id', playerId).maybeSingle()
+      const teamCode = (p as { teams: { code: string } | null } | null)?.teams?.code ?? null
+      const ok = await undoableDeactivations([{ playerId, teamCode, changedAt: lastDeact.changed_at }])
+      if (ok.has(playerId)) return
+    }
     const daysDiff = (Date.now() - new Date(lastDeact.changed_at).getTime()) / 86_400_000
     if (daysDiff < delaiJours) {
       // Exceptions (voir plus haut) : poste vacant de sa position d'abord, sinon blessé qui sort.

@@ -84,7 +84,7 @@ function posCategory(pos: string | null): 'F' | 'D' | 'G' {
 }
 
 function isLocked(entry: RosterEntry | undefined, delaiJours: number): boolean {
-  if (!entry?.lastDeactivatedAt) return false
+  if (!entry?.lastDeactivatedAt || entry.undoableToday) return false
   const days = (Date.now() - new Date(entry.lastDeactivatedAt).getTime()) / 86_400_000
   return days < delaiJours
 }

@@ -209,6 +209,7 @@ const SECTIONS: Section[] = [
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Bascule un joueur <strong>actif ↔ réserviste</strong> selon tes besoins.</li>
           <li>• Un joueur que tu viens de désactiver ne peut pas redevenir actif avant la fin du <strong>délai de réactivation</strong> (affiché en haut de l&apos;outil). Exception : il peut revenir tout de suite pour <strong>remplacer un joueur actif blessé</strong> que tu désactives dans le même lot, ou pour combler un poste laissé vacant par une mise sur le LTIR.</li>
+          <li>• <strong>Changé d&apos;idée ?</strong> Un joueur envoyé en réserve aujourd&apos;hui peut redevenir actif le jour même, sans attendre le délai, tant qu&apos;aucun match de son équipe n&apos;a commencé depuis. Ça ne vaut pas pour une mise sur le LTIR.</li>
           <li>• <strong>Libère</strong> un joueur pour le retirer de ton alignement.</li>
           <li>• <strong>Active ou remets en banque</strong> une recrue encore protégée, à tout moment.</li>
           <li>• Tes changements doivent respecter les limites du pool (voir Règlements) : maximum 12 attaquants / 6 défenseurs / 2 gardiens actifs, minimum 2 réservistes, et ta masse salariale sous le cap.</li>
