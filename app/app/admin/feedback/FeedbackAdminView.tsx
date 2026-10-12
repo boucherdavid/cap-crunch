@@ -45,11 +45,14 @@ function FeedbackCard({
   onDelete,
 }: {
   f: Feedback
-  onStatusChange: (id: number, status: Status) => void
+  onStatusChange: (id: number, status: Status, notify?: { reply: string }) => void
   onDelete: (id: number) => void
 }) {
   const [pending, startTransition] = useTransition()
   const [copied, setCopied] = useState(false)
+  // Marquer traité : réponse facultative au pooler, avisé ou non (David, 2026-10-11).
+  const [replying, setReplying] = useState(false)
+  const [reply, setReply] = useState('')
 
   async function handleCopyOne() {
     const date = new Date(f.created_at).toLocaleDateString('fr-CA')
@@ -59,8 +62,10 @@ function FeedbackCard({
     setTimeout(() => setCopied(false), 2000)
   }
 
-  function handleStatus(status: Status) {
-    startTransition(() => onStatusChange(f.id, status))
+  function handleStatus(status: Status, notify?: { reply: string }) {
+    startTransition(() => onStatusChange(f.id, status, notify))
+    setReplying(false)
+    setReply('')
   }
 
   function handleDelete() {
@@ -82,9 +87,37 @@ function FeedbackCard({
 
       <p className="text-gray-700 text-sm whitespace-pre-wrap mb-4">{f.description}</p>
 
+      {replying && (
+        <div className="mb-4 space-y-2">
+          <label htmlFor={`reply-${f.id}`} className="block text-xs font-medium text-gray-600">Réponse au pooler (facultative)</label>
+          <textarea
+            id={`reply-${f.id}`}
+            value={reply}
+            onChange={e => setReply(e.target.value.slice(0, 1000))}
+            rows={3}
+            placeholder="Ex. : c'est corrigé, merci de l'avoir signalé !"
+            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+          />
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => handleStatus('traité', { reply })} disabled={pending}
+              className="px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
+              Marquer traité et aviser
+            </button>
+            <button onClick={() => handleStatus('traité')} disabled={pending}
+              className="px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 rounded hover:bg-green-200 disabled:opacity-50">
+              Marquer traité sans aviser
+            </button>
+            <button onClick={() => { setReplying(false); setReply('') }}
+              className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700">
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2">
-        {f.status !== 'traité' && (
-          <button onClick={() => handleStatus('traité')} disabled={pending}
+        {f.status !== 'traité' && !replying && (
+          <button onClick={() => setReplying(true)} disabled={pending}
             className="px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 rounded hover:bg-green-200 disabled:opacity-50 transition-colors">
             Marquer traité
           </button>
@@ -127,8 +160,8 @@ export default function FeedbackAdminView({
 
   const visible = activeTab === 'tous' ? feedbacks : feedbacks.filter(f => f.status === activeTab)
 
-  function handleStatusChange(id: number, status: Status) {
-    updateFeedbackStatusAction(id, status)
+  function handleStatusChange(id: number, status: Status, notify?: { reply: string }) {
+    updateFeedbackStatusAction(id, status, notify)
     setFeedbacks(prev => prev.map(f => f.id === id ? { ...f, status } : f))
   }
 

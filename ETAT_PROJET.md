@@ -26,7 +26,7 @@
 | Branche | État |
 |---|---|
 | `staging` | = `main` |
-| `main` (prod) | À jour au 2026-10-11 — inclut la discussion et la modification des offres d'échange, le LTIR avec panier complet, MJ et PTS/MJ |
+| `main` (prod) | À jour au 2026-10-11 — inclut la discussion et la modification des offres d'échange, le LTIR avec panier complet, MJ et PTS/MJ, l'avis de demande traitée |
 
 - Variables Vercel : prod `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN` ; staging `GITHUB_WORKFLOW_TOKEN`,
   `EMAIL_REDIRECT_TO` (jamais en prod). Le jeton GitHub « Cap Crunch Vercel » **expire** : à
@@ -56,6 +56,7 @@
 ## 4. À faire / à vérifier
 
 ### ▶ Prochaine session — commencer ici
+
 
 
 - **LTIR avec panier** (statut de l'agent libre au choix, tout le panier joint à la demande,
@@ -122,5 +123,6 @@
 - Lancer le scraping de PuckPedia par une tâche planifiée de Windows sur le poste de David.
 - Courriel quotidien des écarts avec Marqueur (demanderait une tâche planifiée).
 - Marché des échanges : sauvegarder une proposition comme scénario.
+- `/signaler` : section « Mes demandes » avec l'état et la réponse de l'admin (version simple livrée le 2026-10-11).
 - Outil d'analyse : pointage du pool plutôt que points LNH.
 - Compléter la couverture ESPN des projections ; Yahoo comme source de blessures supplémentaire.
