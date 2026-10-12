@@ -21,6 +21,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-12
 
+**[Feat] — Accueil : un mouvement annulé le jour même disparaît de l'activité** (`app/app/page.tsx`) :
+- Pour un même pooler et un même joueur, les passages actif ↔ réserviste d'une même journée (heure
+  de l'Est) qui ramènent le joueur à son statut de départ sont retirés tous ensemble de l'accueil.
+  Ils restent dans le journal des mouvements. Complète l'annulation le jour même ci-dessous.
+
 **[Feat] — Annuler le jour même une mise en réserve** (`lib/gameDayLock.ts`,
 `gestion-effectifs/actions.ts`, `GestionEffectifsManager.tsx`, `aide/AideTabs.tsx`) :
 - Demande de David : un changement actif → réserviste doit pouvoir être défait dans la journée si

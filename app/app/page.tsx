@@ -352,10 +352,31 @@ async function fetchPoolActivity(
       }
     }
 
+    // Mouvement annulé le jour même (David, 2026-10-12) : un joueur qui passe d'actif à réserviste
+    // et revient (ou l'inverse) dans la même journée, heure de l'Est, n'a rien changé — l'aller et
+    // le retour disparaissent tous les deux de l'accueil (ils restent dans le journal).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const logRows = (logRes.data ?? []) as any[]
+    const etDay = (iso: string) => new Intl.DateTimeFormat('fr-CA', {
+      timeZone: 'America/Toronto', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date(iso))
+    const swaps = new Map<string, { id: number; changed_at: string; old_type: string | null; new_type: string | null }[]>()
+    for (const r of logRows) {
+      if (r.change_type !== 'activation' && !(r.change_type === 'deactivation' && r.new_type)) continue
+      const k = `${r.pooler_id}|${r.player_id}|${etDay(r.changed_at)}`
+      swaps.set(k, [...(swaps.get(k) ?? []), r])
+    }
+    const cancelledIds = new Set<number>()
+    for (const evts of swaps.values()) {
+      if (evts.length < 2) continue
+      const sorted = [...evts].sort((a, b) => new Date(a.changed_at).getTime() - new Date(b.changed_at).getTime() || a.id - b.id)
+      if (sorted[0].old_type === sorted[sorted.length - 1].new_type) for (const e of sorted) cancelledIds.add(e.id)
+    }
+
     // Un lot soumis d'un coup (même pooler, même horodatage) = une seule ligne.
     const groups = new Map<string, { poolerName: string; at: string; parts: string[] }>()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const r of (logRes.data ?? []) as any[]) {
+    for (const r of logRows) {
+      if (cancelledIds.has(r.id)) continue
       const at = new Date(r.changed_at).getTime()
       if (tradeKeys.some(k => k.playerId === r.player_id && k.poolerIds.has(r.pooler_id) && Math.abs(k.at - at) < 86_400_000)) continue
       const part = describeChange(r.change_type, r.old_type, r.new_type, playerName(r.players))
