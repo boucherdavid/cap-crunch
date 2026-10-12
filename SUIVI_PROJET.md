@@ -21,6 +21,21 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-12
 
+**[Perf] — Limite d'I/O disque de Supabase atteinte : les imports n'écrivent plus que ce qui a
+changé** (`python_script/db_diff.py`, `import_regular_stats.py`, `import_advanced_stats.py`,
+`scrape_line_combos.py`, `import_supabase.py`) :
+- Diagnostic (`pg_stat_statements` en prod) : les lectures disque sont nulles, ce sont les
+  écritures des imports qui épuisent le budget. En tête : upsert des matchs (4 passages par jour
+  sur les 3 derniers jours, chaque match réécrit ~12 fois), effacement + réinsertion quotidiens
+  des stats avancées pour 2 saisons (dont 2025-26, figée), trios MoneyPuck, alignements Daily
+  Faceoff, puis ~6 000 contrats et ~2 500 joueurs réécrits à chaque import.
+- Correctif : chaque script relit l'existant et n'écrit que les lignes nouvelles ou modifiées
+  (et retire les disparues). Stats avancées : saison courante seulement par défaut.
+- Tests en staging : second passage = 0 écriture pour chaque script ; une ligne de match faussée
+  et une supprimée sont bien rétablies (1 modifiée, 1 nouvelle).
+- Plan Pro (25 $/mois) et migration (VM Azure, Neon) écartés : base minuscule, le problème était
+  l'écriture inutile ; le Pro n'aurait doublé que le débit.
+
 **[Fix] — « Activité du pool » de l'accueil figée sur le repêchage des agents libres**
 (`app/app/page.tsx`) :
 - Cause : le widget ne lisait que `transactions`, que Gestion d'effectifs n'alimente jamais

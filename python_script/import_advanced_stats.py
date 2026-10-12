@@ -22,11 +22,14 @@ combinaison réellement utilisée à 5 contre 5, son temps de glace et ses résu
 dans `line_advanced_stats` (page /analytique/trios, sous l'alignement actuel de Daily Faceoff).
 `lineId` = les nhl_id des joueurs collés bout à bout (7 chiffres chacun).
 
-Remplacement complet par saison (delete + insert) : MoneyPuck recalcule toute la saison à
-chaque mise à jour, il n'y a pas d'historique à préserver.
+Synchronisation par saison : MoneyPuck recalcule toute la saison à chaque mise à jour, mais seuls
+les joueurs qui ont joué depuis changent. Depuis le 2026-10-12, on compare avec la base et on
+n'écrit que les lignes nouvelles ou modifiées (et on retire celles qui ont disparu) — l'ancien
+« effacer puis réinsérer » réécrivait ~14 000 lignes par saison chaque jour et épuisait le
+budget d'écritures disque du plan gratuit de Supabase (voir db_diff.py).
 
 Usage :
-    python import_advanced_stats.py                     # saison courante + précédente
+    python import_advanced_stats.py                     # saison courante seulement
     python import_advanced_stats.py --seasons 2023 2024 # saisons précises (une saison
                                                         # terminée ne change plus : une fois suffit)
     python import_advanced_stats.py --dry-run           # aucune écriture
@@ -41,6 +44,8 @@ from datetime import datetime
 import requests
 from dotenv import load_dotenv
 from supabase import create_client
+
+from db_diff import diff_rows, fetch_all
 
 sys.stdout.reconfigure(encoding='utf-8')
 load_dotenv()
@@ -163,12 +168,23 @@ def import_lines(db, season: int) -> None:
         if existing and len(records) < existing * 0.5:
             print(f'[ATTENTION] {label} lines : {len(records)} ligne(s) contre {existing} en base — laissé tel quel.')
             return
-        db.table('line_advanced_stats').delete().eq('season', season).execute()
-        for i in range(0, len(records), BATCH_SIZE):
-            db.table('line_advanced_stats').insert(records[i:i + BATCH_SIZE]).execute()
-        print(f'[OK] {label} lines : {len(records)} ligne(s) importée(s).')
+        current = fetch_all(lambda: db.table('line_advanced_stats')
+                            .select('season, line_id, kind, team, name, player_ids, games_played, icetime, stats')
+                            .eq('season', season).order('line_id'))
+        to_insert, to_update, to_delete = diff_rows(records, current, ['season', 'line_id'])
+        sync_rows(db, 'line_advanced_stats', to_insert + to_update, 'season,line_id')
+        gone = [r['line_id'] for r in to_delete]
+        for i in range(0, len(gone), 200):
+            db.table('line_advanced_stats').delete().eq('season', season).in_('line_id', gone[i:i + 200]).execute()
+        print(f'[OK] {label} lines : {len(to_insert)} nouvelle(s), {len(to_update)} modifiée(s), '
+              f'{len(to_delete)} retirée(s), {len(records) - len(to_insert) - len(to_update)} inchangée(s).')
     except Exception as e:
         print(f'[ATTENTION] {label} lines : import ignoré ({e}).')
+
+
+def sync_rows(db, table: str, rows: list[dict], on_conflict: str) -> None:
+    for i in range(0, len(rows), BATCH_SIZE):
+        db.table(table).upsert(rows[i:i + BATCH_SIZE], on_conflict=on_conflict).execute()
 
 
 def saison_courante() -> int:
@@ -244,7 +260,8 @@ def main():
     args = parser.parse_args()
 
     cur = saison_courante()
-    seasons = args.seasons or [cur - 1, cur]
+    # Saison courante seulement : une saison terminée ne change plus (--seasons pour la réimporter).
+    seasons = args.seasons or [cur]
     db = None if args.dry_run else create_client(SUPABASE_URL, SUPABASE_KEY)
 
     for season in seasons:
@@ -287,10 +304,17 @@ def main():
                   'CSV probablement incomplet, saison laissée telle quelle.')
             sys.exit(1)
 
-        db.table('player_advanced_stats').delete().eq('season', season).execute()
-        for i in range(0, len(records), BATCH_SIZE):
-            db.table('player_advanced_stats').insert(records[i:i + BATCH_SIZE]).execute()
-        print(f'[OK] {season} : {len(records)} ligne(s) importée(s).')
+        current = fetch_all(lambda: db.table('player_advanced_stats')
+                            .select('season, nhl_id, situation, kind, name, team, position, games_played, icetime, stats')
+                            .eq('season', season).order('situation').order('nhl_id'))
+        to_insert, to_update, to_delete = diff_rows(records, current, ['season', 'situation', 'nhl_id'])
+        sync_rows(db, 'player_advanced_stats', to_insert + to_update, 'season,situation,nhl_id')
+        for situation in {r['situation'] for r in to_delete}:
+            gone = [r['nhl_id'] for r in to_delete if r['situation'] == situation]
+            for i in range(0, len(gone), 200):
+                db.table('player_advanced_stats').delete().eq('season', season)                     .eq('situation', situation).in_('nhl_id', gone[i:i + 200]).execute()
+        print(f'[OK] {season} : {len(to_insert)} nouvelle(s), {len(to_update)} modifiée(s), '
+              f'{len(to_delete)} retirée(s), {len(records) - len(to_insert) - len(to_update)} inchangée(s).')
 
 
 if __name__ == '__main__':

@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from supabase import create_client
 
 from name_aliases import canonical_first, is_alias_variant
+from db_diff import diff_rows, fetch_all, rows_differ
 
 sys.stdout.reconfigure(encoding='utf-8')
 load_dotenv()
@@ -625,10 +626,13 @@ def upload_vers_supabase(csv_path=None):
     # suffit plus, on départage par l'âge — sinon le contrat de l'un s'écrit sur la fiche de l'autre.
     same_team_homonyms = {}  # 'fn|ln|team' → [entries], seulement quand il y en a 2+
 
+    # Valeurs actuelles des fiches, pour ne réécrire que celles qui changent (voir plus bas).
+    current_players = {}    # id → ligne players
     offset = 0
     while True:
-        batch = supabase.table('players').select('id, first_name, last_name, team_id, draft_year, age').order('id').range(offset, offset + 999).execute().data
+        batch = supabase.table('players').select('id, first_name, last_name, team_id, draft_year, age, position, status, is_available, is_rookie').order('id').range(offset, offset + 999).execute().data
         for p in batch:
+            current_players[p['id']] = p
             fn = normaliser_nom(p['first_name'])
             ln = normaliser_nom(p['last_name'])
             tc = teams_id_to_code.get(p.get('team_id'), '')
@@ -776,7 +780,14 @@ def upload_vers_supabase(csv_path=None):
 
     nb_updates = 0
     updated_ids = [pid for pid, _ in players_to_update]
-    update_payloads = [{**payload, 'id': pid} for pid, payload in players_to_update]
+    # Seulement les fiches dont une valeur change (David, 2026-10-12) : un upsert réécrit même une
+    # ligne identique, et chaque passage réécrivait ainsi ~2 500 joueurs (budget d'écritures
+    # disque de Supabase, voir db_diff.py).
+    update_payloads = [
+        {**payload, 'id': pid} for pid, payload in players_to_update
+        if pid not in current_players or rows_differ(payload, current_players[pid], list(payload.keys()))
+    ]
+    print(f'[INFO] Joueurs réellement modifiés : {len(update_payloads)} sur {len(players_to_update)}')
     for i in range(0, len(update_payloads), BATCH_SIZE):
         batch = update_payloads[i:i+BATCH_SIZE]
         try:
@@ -825,6 +836,18 @@ def upload_vers_supabase(csv_path=None):
                 'contract_status': contract_status,
                 'is_elc': season in elc_saisons,
             })
+
+    # Même principe pour les contrats : ~6 000 lignes, dont seule une poignée change d'une semaine
+    # à l'autre.
+    existing_contracts = fetch_all(lambda: supabase.table('player_contracts')
+                                   .select('player_id, season, cap_number, contract_status, is_elc')
+                                   .order('player_id').order('season'))
+    # Une même clé peut sortir deux fois du CSV (fragments) : la dernière l'emporte, comme l'upsert.
+    dedup = {(c['player_id'], c['season']): c for c in contracts_to_upsert}
+    to_insert, to_update, _ = diff_rows(list(dedup.values()), existing_contracts, ['player_id', 'season'])
+    print(f'[INFO] Contrats : {len(to_insert)} nouveau(x), {len(to_update)} modifié(s), '
+          f'{len(dedup) - len(to_insert) - len(to_update)} inchangé(s)')
+    contracts_to_upsert = to_insert + to_update
 
     nb_contracts = 0
     for i in range(0, len(contracts_to_upsert), BATCH_SIZE):

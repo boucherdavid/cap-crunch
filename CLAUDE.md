@@ -174,13 +174,13 @@ python scrape_injuries.py --apply    # exécution réelle, sans confirmation (vo
 
 ```bash
 # Importe les stats avancées MoneyPuck dans player_advanced_stats (David, 2026-10-01) — pages
-# /analytique/stats-avancees et /analytique/analyse. Remplacement complet par saison (saison = année de début, 2025 =
+# /analytique/stats-avancees et /analytique/analyse. Synchronisation par saison, seules les lignes modifiées sont écrites (saison = année de début, 2025 =
 # 2025-26). Cible prod comme les autres scripts. Quotidien : .github/workflows/advanced_stats.yml
-# (11h UTC, saison courante + précédente ; entrée `seasons` pour importer d'autres saisons à la
+# (11h UTC, saison courante seulement ; entrée `seasons` pour importer d'autres saisons à la
 # main — en base : 2020-21 et suivantes). Victoires/blanchissages des gardiens ajoutés depuis
 # l'API stats de la LNH. Mention « MoneyPuck.com » obligatoire là où les données sont affichées.
 cd python_script
-python import_advanced_stats.py                      # saison courante + précédente
+python import_advanced_stats.py                      # saison courante seulement
 python import_advanced_stats.py --seasons 2023 2024  # saisons précises
 python import_advanced_stats.py --dry-run            # aucune écriture
 ```
@@ -1279,6 +1279,11 @@ David, 2026-10-08 :**
   manquantes (bug de la recherche Mode init, 2026-09-29).
 
 **Python :**
+- **N'écrire que ce qui a changé (David, 2026-10-12)** : le plan gratuit de Supabase limite les
+  écritures disque, et un upsert ou un « effacer puis réinsérer » réécrit même une ligne
+  identique. Les imports quotidiens avaient épuisé ce budget (app très lente). Tout import
+  relit l'existant et passe par `python_script/db_diff.py` (`diff_rows`, `fetch_all`,
+  `rows_differ`) — jamais de remplacement complet d'une table à chaque passage.
 - `csv_path` doit être relatif à `BASE_DIR` (requis pour GitHub Actions)
 - L'environnement virtuel est dans `python_script/venv/` (ne pas committer)
 - Surnoms/translittérations de prénoms (« Mitch »/« Mitchell », « Matt »/« Matthew »,

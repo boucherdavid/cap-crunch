@@ -21,11 +21,15 @@
 - Classement validé contre Marqueur.com ; seul écart de points connu, Ryan Leonard (Vincent) —
   1 pt selon la LNH, 2 sur Marqueur (erreur de Marqueur).
 
+- **Limite d'I/O disque Supabase atteinte en prod (2026-10-12)** : causée par les imports qui
+  réécrivaient tout. Après promotion, exécuter `select pg_stat_statements_reset();` en prod puis
+  revérifier dans 2-3 jours.
+
 ## 2. Branches / déploiement
 
 | Branche | État |
 |---|---|
-| `staging` | = `main` |
+| `staging` | En avance sur `main` : imports Python qui n'écrivent que ce qui a changé (limite d'I/O de Supabase) — testés contre la base staging, **à promouvoir** (les tâches planifiées tournent depuis `main`) |
 | `main` (prod) | À jour au 2026-10-12 — inclut l'activité du pool basée sur les vrais mouvements et l'annonce à tous des signatures et échanges, la discussion et la modification des offres d'échange, le LTIR avec panier complet, MJ et PTS/MJ, l'avis de demande traitée |
 
 - Variables Vercel : prod `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN` ; staging `GITHUB_WORKFLOW_TOKEN`,
