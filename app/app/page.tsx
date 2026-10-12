@@ -256,7 +256,14 @@ function summarizeTransaction(items: any[]): string | null {
   const transfers = items.filter(i => i.action_type === 'transfer')
   if (transfers.length > 0) {
     const names = Array.from(new Set(transfers.flatMap(i => [i.from_pooler?.name, i.to_pooler?.name]).filter(Boolean)))
-    return names.length === 2 ? `Échange entre ${names[0]} et ${names[1]}` : 'Échange entre poolers'
+    if (names.length !== 2) return 'Échange entre poolers'
+    // Ce que chacun reçoit (David, 2026-10-12) — joueurs et choix de repêchage.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const assetLabel = (i: any) => i.players
+      ? playerName(i.players)
+      : `choix de ${i.pick?.round ?? '?'}${i.pick?.round === 1 ? 're' : 'e'} ronde${i.pick?.pool_seasons?.season ? ` (${i.pick.pool_seasons.season})` : ''}`
+    const received = (name: string) => transfers.filter(i => i.to_pooler?.name === name).map(assetLabel).join(', ') || 'rien'
+    return `Échange entre ${names[0]} et ${names[1]} — ${names[0]} reçoit ${received(names[0])} ; ${names[1]} reçoit ${received(names[1])}`
   }
   const ballotage = items.find(i => i.action_type === 'ballotage')
   if (ballotage) return `${ballotage.to_pooler?.name ?? '?'} obtient ${playerName(ballotage.players)} au ballotage`
@@ -308,7 +315,8 @@ async function fetchPoolActivity(
           action_type, player_id, from_pooler_id, to_pooler_id,
           from_pooler:poolers!from_pooler_id (name),
           to_pooler:poolers!to_pooler_id (name),
-          players (first_name, last_name)
+          players (first_name, last_name),
+          pick:pool_draft_picks!pick_id (round, pool_seasons (season))
         )
       `)
       .eq('pool_season_id', poolSeasonId)

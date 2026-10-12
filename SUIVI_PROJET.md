@@ -21,6 +21,10 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-12
 
+**[Feat] — Accueil : un échange détaille ce que chacun reçoit** (`app/app/page.tsx`) :
+- « Échange entre A et B — A reçoit X, Y ; B reçoit Z » (joueurs et choix de repêchage), même
+  contenu que la notification envoyée au pool.
+
 **[Feat] — Accueil : un mouvement annulé le jour même disparaît de l'activité** (`app/app/page.tsx`) :
 - Pour un même pooler et un même joueur, les passages actif ↔ réserviste d'une même journée (heure
   de l'Est) qui ramènent le joueur à son statut de départ sont retirés tous ensemble de l'accueil.
