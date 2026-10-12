@@ -6,6 +6,7 @@ import { sendEmailToIds, escapeHtml } from '@/lib/email'
 import { checkFutureRosterConflict } from '@/lib/rosterTypeChange'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { validateRosterLimits, type RosterLimitEntry } from '@/lib/rosterLimits'
+import { announceToPool } from '@/lib/poolAnnouncements'
 import { isRookieProtectionExpired, isElcActiveForSeason } from '@/lib/rookieProtection'
 
 // Même vocabulaire roster_change_log que pickChangeType (admin/transactions/actions.ts,
@@ -627,6 +628,7 @@ export async function confirmTradeReady(
   if (bothReady) {
     const result = await executeTradeOffer(admin, tradeOfferId)
     if (result.error) return result
+    if (saison?.season_started) after(() => announceTradeToPool(admin, tradeOfferId).catch(() => {}))
   } else {
     const otherPoolerId = isProposer ? offer.target_pooler_id : offer.proposer_pooler_id
     const readyLabel = await poolerName(admin, poolerId)
@@ -638,6 +640,34 @@ export async function confirmTradeReady(
   }
 
   return {}
+}
+
+// Annonce de l'échange à tout le pool (David, 2026-10-12) — « A reçoit X ; B reçoit Y ».
+async function announceTradeToPool(admin: ReturnType<typeof createAdminClient>, tradeOfferId: number): Promise<void> {
+  const { data: offer } = await admin.from('trade_offers')
+    .select('proposer_pooler_id, target_pooler_id').eq('id', tradeOfferId).single()
+  if (!offer) return
+  const { data: items } = await admin.from('trade_offer_items')
+    .select('to_pooler_id, item_type, players (first_name, last_name), pick:pool_draft_picks!pick_id (round, pool_seasons (season))')
+    .eq('trade_offer_id', tradeOfferId)
+  const [proposerName, targetName] = await Promise.all([
+    poolerName(admin, offer.proposer_pooler_id), poolerName(admin, offer.target_pooler_id),
+  ])
+  const received = (poolerId: string) => ((items ?? []) as unknown as {
+    to_pooler_id: string; item_type: string
+    players: { first_name: string; last_name: string } | null
+    pick: { round: number; pool_seasons: { season: string } | null } | null
+  }[])
+    .filter(i => i.to_pooler_id === poolerId)
+    .map(i => i.item_type === 'pick'
+      ? `choix de ${i.pick?.round ?? '?'}${i.pick?.round === 1 ? 're' : 'e'} ronde${i.pick?.pool_seasons ? ` (${i.pick.pool_seasons.season})` : ''}`
+      : `${i.players?.first_name ?? ''} ${i.players?.last_name ?? ''}`.trim())
+    .join(', ') || 'rien'
+  await announceToPool({
+    title: `Échange entre ${proposerName} et ${targetName}`,
+    body: `${proposerName} reçoit ${received(offer.proposer_pooler_id)} ; ${targetName} reçoit ${received(offer.target_pooler_id)}.`,
+    excludeIds: [offer.proposer_pooler_id, offer.target_pooler_id],
+  })
 }
 
 // Exécute l'échange au complet (joueurs, recrues, choix) une fois les deux poolers prêts —

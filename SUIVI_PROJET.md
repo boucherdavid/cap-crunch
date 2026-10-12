@@ -19,6 +19,27 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-12
+
+**[Fix] — « Activité du pool » de l'accueil figée sur le repêchage des agents libres**
+(`app/app/page.tsx`) :
+- Cause : le widget ne lisait que `transactions`, que Gestion d'effectifs n'alimente jamais
+  (seulement `roster_change_log`). Les mouvements des poolers en saison n'apparaissaient donc pas.
+- Une fois la saison démarrée : mouvements tirés de `roster_change_log` après
+  `season_started_at` (signature, ballotage, LTIR, retour de LTIR, activation, réserve,
+  libération, retour en banque), un lot soumis d'un coup = une ligne ; échanges tirés de
+  `transactions` (une ligne par échange, mouvements individuels de l'échange retirés). 8 lignes.
+  Le repêchage des agents libres et la pré-saison restent dans `/journal-transactions`.
+  Avant le démarrage : ancien comportement.
+
+**[Feat] — Annonce à tout le pool des signatures et des échanges** (`app/lib/poolAnnouncements.ts`,
+`gestion-effectifs/actions.ts`, `lib/tradeOffers.ts`, `admin/transactions/actions.ts`) :
+- Push + courriel (selon `notif_email`) à tous les poolers sauf ceux concernés, saison démarrée
+  seulement. Signature d'agent libre (y compris remplaçant LTIR, et via l'approbation d'une
+  demande LTIR), échange entre poolers exécuté, et les mêmes gestes faits par l'admin dans
+  `/admin/transactions` (sauf date forcée). Ballotage non annoncé (déjà notifié par son propre
+  circuit). Repêchage des agents libres pré-saison non annoncé (suivi en direct).
+
 ### 2026-10-11
 
 **[Données] — Recrue oubliée ajoutée à la banque de Vincent (prod)** — demande de David :

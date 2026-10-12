@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { after } from 'next/server'
 
 import { sendPushToUser } from '@/lib/push'
+import { announceToPool, playerNames, poolerName } from '@/lib/poolAnnouncements'
 import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/rosterTypeChange'
 import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
 import { getEffectiveCap } from '@/lib/capUtils'
@@ -590,6 +591,9 @@ export async function submitBatchAction(input: {
     }
   }
 
+  // Signatures d'agents libres du lot, annoncées à tout le pool à la fin (David, 2026-10-12).
+  const signedPlayerIds: number[] = []
+
   async function addNewPlayer(playerId: number, playerType: 'actif' | 'reserviste' | 'recrue', signingType: 'al' | 'ltir' | 'ballotage', waiverClaimId?: number) {
     if (signingType === 'ballotage') {
       // Revalidation serveur (David, 2026-09-21) — l'étiquette "Ballotage" ne complète jamais
@@ -680,6 +684,7 @@ export async function submitBatchAction(input: {
     }
 
     await log(playerId, logType, null, playerType)
+    if (!isPreseason && signingType !== 'ballotage') signedPlayerIds.push(playerId)
 
     // Finalise le claim une fois le joueur réellement ajouté (David, 2026-09-21) — n'arrive
     // qu'ici, après tous les checks/écritures ci-dessus, jamais en cas d'erreur plus haut.
@@ -872,6 +877,19 @@ export async function submitBatchAction(input: {
           : `${n} mouvements ont été appliqués à ton alignement.`,
         url: `/poolers/${input.poolerId}`,
       }).catch(() => {}))
+    }
+
+    if (signedPlayerIds.length > 0) {
+      const ids = [...signedPlayerIds]
+      after(async () => {
+        const [names, who] = await Promise.all([playerNames(ids), poolerName(input.poolerId)])
+        const list = ids.map(id => names.get(id) ?? 'un joueur').join(', ')
+        await announceToPool({
+          title: ids.length > 1 ? "Signatures d'agents libres" : "Signature d'un agent libre",
+          body: `${who} signe ${list}.`,
+          excludeIds: [input.poolerId],
+        })
+      })
     }
 
     return { warning: warnings.length > 0 ? warnings.join(' ') : undefined }
