@@ -26,6 +26,15 @@ prod le jour même : faits saillants sur l'accueil, simulation pour un autre poo
 du facteur de plafond (admin + aide), notifications de l'admin par type. Aucune migration.
 Détails ci-dessous.
 
+**[Fix] — scraping PuckPedia : les fenêtres Chrome restaient ouvertes** (`python_script/scrape_puckpedia.py`) :
+- Signalé par David : le pipeline a gelé son portable, les fenêtres Chrome s'accumulaient.
+- Cause : quand un chargement bloquait, `tuer_driver()` ne tuait que `chromedriver.exe` ; sous
+  Windows, Chrome lui survit (orphelin), et `quit()` ne peut plus le fermer. Chaque relance
+  ajoutait donc une fenêtre, avec ses pubs et vidéos.
+- Correctif : `taskkill /F /T` sur l'arbre de processus de chromedriver, avant de tuer chromedriver
+  lui-même ; même nettoyage à la fin du run. Testé en local : 8 processus Chrome → 0.
+- Les CSV du run interrompu (9 équipes, BOS à LAK) ne sont pas commités : scraping à relancer.
+
 **[Feat] — notifications de l'admin classées par type** (`app/app/admin/communaute/NotificationsList.tsx`) :
 - Communauté → Communication : filtres par type (Approbations, Retours de LTIR, LNH, Retours des
   poolers, Planification, Pool des séries, Autres) avec nombre et non lues, pastille de couleur,

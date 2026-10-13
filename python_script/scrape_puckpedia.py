@@ -3,6 +3,7 @@ import re
 import sys
 import time
 import threading
+import subprocess
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
@@ -126,7 +127,23 @@ def naviguer_avec_timeout(driver, url, timeout):
 def tuer_driver(driver):
     """Tue le processus chromedriver/Chrome sous-jacent sans attendre de
     réponse — utilisé quand le driver est bloqué et qu'un .quit() normal
-    risque lui aussi de rester bloqué indéfiniment."""
+    risque lui aussi de rester bloqué indéfiniment.
+    Sous Windows, tuer chromedriver seul laisse ses fenêtres Chrome orphelines
+    (elles restent ouvertes et s'accumulent à chaque relance, jusqu'à geler la
+    machine) : on tue tout l'arbre de processus, avant chromedriver lui-même
+    (taskkill /T ne retrouve plus les enfants d'un parent déjà mort)."""
+    try:
+        pid = driver.service.process.pid
+    except Exception:
+        pid = None
+    if pid and os.name == 'nt':
+        try:
+            subprocess.run(
+                ['taskkill', '/F', '/T', '/PID', str(pid)],
+                capture_output=True, timeout=15,
+            )
+        except Exception:
+            pass
     try:
         driver.service.process.kill()
     except Exception:
@@ -593,10 +610,13 @@ def scraper_depuis_csv_source(csv_path=DEFAULT_SOURCE_CSV, headless=True):
             except Exception as e:
                 print(f"❌ Erreur avec {sigle} : {e}")
     finally:
+        # quit() d'abord (fermeture propre), puis l'arbre de processus au cas
+        # où une fenêtre aurait survécu (interruption, driver déjà mort).
         try:
             driver.quit()
         except Exception:
             pass
+        tuer_driver(driver)
 
     all_table.to_csv(OFFLINE_CSV, index=False, sep=';')
     print(f"\n📦 Fichier global sauvegardé : ./PuckPedia_offline.csv")
