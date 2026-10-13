@@ -26,6 +26,14 @@ prod le jour même : faits saillants sur l'accueil, simulation pour un autre poo
 du facteur de plafond (admin + aide), notifications de l'admin par type. Aucune migration.
 Détails ci-dessous.
 
+**[Feat] — date effective forcée : note et avertissement de rétroactivité** (`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `actions.ts`, `app/lib/gameDayLock.ts`) :
+- Question de David : faut-il pouvoir forcer une heure ? Non retenu — la règle du pool est par
+  journée, et une date forcée prend déjà effet à 8 h (heure de l'Est), avant tous les matchs.
+- À la place : une ligne sous la date (« Prend effet avant les matchs de cette date... ») et un
+  avertissement ambre nommant les joueurs du panier dont le match de cette date est déjà commencé
+  (`startedTeamsOnDate()`, horaire de la LNH ; indisponible → pas d'avertissement). Rien ne bloque.
+- Pas encore vu à l'écran : à valider par David sur staging.
+
 **[Fix] — scraping PuckPedia : les fenêtres Chrome restaient ouvertes** (`python_script/scrape_puckpedia.py`) :
 - Signalé par David : le pipeline a gelé son portable, les fenêtres Chrome s'accumulaient.
 - Cause : quand un chargement bloquait, `tuer_driver()` ne tuait que `chromedriver.exe` ; sous

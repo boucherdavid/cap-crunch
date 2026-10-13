@@ -43,6 +43,23 @@ async function fetchTodayGames(date: string): Promise<ScheduledGame[]> {
   }
 }
 
+// Équipes (parmi `teamCodes`) dont un match du jour `date` (AAAA-MM-JJ, heure de l'Est) est
+// déjà commencé. Sert à avertir l'admin qu'une date effective forcée sera rétroactive : elle
+// prend effet à T12:00:00Z, donc avant ce match. Horaire indisponible → liste vide.
+export async function startedTeamsOnDate(date: string, teamCodes: string[]): Promise<string[]> {
+  const wanted = new Set(teamCodes)
+  if (wanted.size === 0) return []
+  const games = await fetchTodayGames(date)
+  const nowMs = Date.now()
+  const started = new Set<string>()
+  for (const g of games) {
+    if (!g.startTimeUTC || new Date(g.startTimeUTC).getTime() > nowMs) continue
+    if (wanted.has(g.awayAbbrev)) started.add(g.awayAbbrev)
+    if (wanted.has(g.homeAbbrev)) started.add(g.homeAbbrev)
+  }
+  return Array.from(started)
+}
+
 export type BatchEffectiveDate = {
   effectiveAt: string
   deferred: boolean

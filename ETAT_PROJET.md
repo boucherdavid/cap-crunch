@@ -66,6 +66,9 @@
 - **Salaires de Carlo, Kadri, Gallagher et Wotherspoon** : importés réduits en prod le 2026-10-13
   (14 h 29), corrigés par les CSV du run staging de 14 h 55 poussés sur `main` — vérifier que
   l'import GitHub (`import.yml`) a bien passé et que leur cap hit est le bon en prod.
+- **Date effective forcée (admin, Gestion d'effectifs)** : note « prend effet avant les matchs de
+  cette date » et avertissement si un match d'un joueur du panier est déjà commencé — sur staging,
+  à valider par David (forcer la date d'aujourd'hui pendant ou après un match).
 - **Correctifs du scraping** (fenêtres Chrome fermées, fiche joueur relue en cas d'échec) : sur
   `staging` seulement, pas encore fusionnés dans `main` (script local, sans effet sur l'app).
 
