@@ -83,7 +83,7 @@ cd app && npm run dev
 ```
 
 ```powershell
-# Pipeline complet (depuis la racine) — cible staging ou prod selon le script
+# Pipeline complet (depuis la racine, PAS depuis python_script/) — cible staging ou prod selon le script
 ./run_pipeline_staging.ps1   # SUPABASE_URL/SUPABASE_SERVICE_KEY pris dans python_script/.env.staging
 ./run_pipeline_prod.ps1      # SUPABASE_URL/SUPABASE_SERVICE_KEY pris dans python_script/.env — demande confirmation
 
@@ -793,6 +793,11 @@ existants) — pas des pages à part entière.
   d'affichage comme `transactions.created_at`. `buildStandings()` calcule les points en
   sommant les game-logs dans la fenêtre `added_at → removed_at` ; si cette fenêtre ne reflète
   pas la vraie date du mouvement, les points sont mal attribués.
+- Une date forcée sans heure vaut `T12:00:00Z` (8 h, heure de l'Est) : elle prend effet **avant**
+  tous les matchs de cette date. Pas de saisie d'heure (David, 2026-10-13 — la règle du pool est par
+  journée). Dans Gestion d'effectifs, l'admin est averti si un match d'un joueur du panier est déjà
+  commencé à cette date (`startedTeamsOnDate()`, `lib/gameDayLock.ts`) : le changement est alors
+  rétroactif pour ce match, sans blocage.
 - Avant de "corriger" ou d'ajouter une saisie de date historique quelque part : vérifier
   d'abord si un mécanisme de surcharge existe déjà (chercher `forcedDate`, `transactionDate`,
   `changedAt`, `txTs`) avant de supposer qu'il faut le construire.
@@ -1300,6 +1305,14 @@ David, 2026-10-08 :**
   relit l'existant et passe par `python_script/db_diff.py` (`diff_rows`, `fetch_all`,
   `rows_differ`) — jamais de remplacement complet d'une table à chaque passage.
 - `csv_path` doit être relatif à `BASE_DIR` (requis pour GitHub Actions)
+- **Scraping PuckPedia et fenêtres Chrome (David, 2026-10-13)** — `scrape_puckpedia.py` : une seule
+  fenêtre à la fois. `chromedriver` plante par moments (Chrome 155) et, sous Windows, sa fenêtre
+  Chrome lui survit : toujours fermer par `tuer_driver()` (arbre de processus par ctypes,
+  `tuer_arbre()` ; PID de Chrome mémorisé par `get_driver()`), jamais `taskkill /T` (WMI, trop
+  lent sur un poste chargé) ni `quit()` seul. Une fiche joueur en échec est relue dans une fenêtre
+  fraîche (`recuperer_salaires_reels()`) : sans elle, le cap hit **réduit par la rétention** est
+  importé. Avant d'importer, vérifier la fin du scraping : aucune équipe « PÉRIMÉE », aucune fiche
+  « cap hit RÉDUIT conservé ».
 - L'environnement virtuel est dans `python_script/venv/` (ne pas committer)
 - Surnoms/translittérations de prénoms (« Mitch »/« Mitchell », « Matt »/« Matthew »,
   « Dmitriy »/« Dmitri »...) : `python_script/name_aliases.py`, partagé par `import_supabase.py`,

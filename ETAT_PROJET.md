@@ -30,7 +30,7 @@
 | Branche | État |
 |---|---|
 | `staging` | = `main` |
-| `main` (prod) | À jour au 2026-10-13 — inclut les notifications de l'admin classées par type, le calcul du facteur de plafond (admin) et son explication dans l'aide, la simulation pour un autre pooler (admin), les faits saillants sur l'accueil (bandeau sous le logo), le détail des échanges et l'effacement des mouvements annulés sur l'accueil, l'annulation le jour même d'une mise en réserve, l'activité du pool basée sur les vrais mouvements et l'annonce à tous des signatures et échanges, la discussion et la modification des offres d'échange, le LTIR avec panier complet, MJ et PTS/MJ, l'avis de demande traitée |
+| `main` (prod) | À jour au 2026-10-13 — inclut la date effective forcée (note et avertissement), les correctifs du scraping PuckPedia, les notifications de l'admin classées par type, le calcul du facteur de plafond (admin) et son explication dans l'aide, la simulation pour un autre pooler (admin), les faits saillants sur l'accueil (bandeau sous le logo), le détail des échanges et l'effacement des mouvements annulés sur l'accueil, l'annulation le jour même d'une mise en réserve, l'activité du pool basée sur les vrais mouvements et l'annonce à tous des signatures et échanges, la discussion et la modification des offres d'échange, le LTIR avec panier complet, MJ et PTS/MJ, l'avis de demande traitée |
 
 - Variables Vercel : prod `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN` ; staging `GITHUB_WORKFLOW_TOKEN`,
   `EMAIL_REDIRECT_TO` (jamais en prod). Le jeton GitHub « Cap Crunch Vercel » **expire** : à
@@ -63,14 +63,12 @@
 
 - **Nate Danielson** ajouté à la main dans la banque de Vincent en prod le 2026-10-11 (oubli de
   l'initialisation), comme recrue repêchée en 2023 : confirmer l'année avec Vincent.
-- **Salaires de Carlo, Kadri, Gallagher et Wotherspoon** : importés réduits en prod le 2026-10-13
-  (14 h 29), corrigés par les CSV du run staging de 14 h 55 poussés sur `main` — vérifier que
-  l'import GitHub (`import.yml`) a bien passé et que leur cap hit est le bon en prod.
-- **Date effective forcée (admin, Gestion d'effectifs)** : note « prend effet avant les matchs de
-  cette date » et avertissement si un match d'un joueur du panier est déjà commencé — sur staging,
-  à valider par David (forcer la date d'aujourd'hui pendant ou après un match).
-- **Correctifs du scraping** (fenêtres Chrome fermées, fiche joueur relue en cas d'échec) : sur
-  `staging` seulement, pas encore fusionnés dans `main` (script local, sans effet sur l'app).
+- **Scraping PuckPedia** : `chromedriver` 155 plante encore par moments (9 relances de fenêtre
+  au run du 2026-10-13). Le script s'en remet (fenêtres fermées, fiches joueurs relues), mais à
+  chaque run, lire la fin du scraping : aucune équipe « PÉRIMÉE », aucune fiche « cap hit RÉDUIT
+  conservé ». Sinon, ne pas importer et relancer. À revoir si une mise à jour de Chrome règle le plantage.
+- **Date effective forcée (admin, Gestion d'effectifs)** : note et avertissement de rétroactivité
+  en prod depuis le 2026-10-13, promus sans essai à l'écran — à regarder au prochain changement daté.
 
 
 
