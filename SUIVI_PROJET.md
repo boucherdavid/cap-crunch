@@ -21,6 +21,13 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-13
 
+**[Feat] — notifications de l'admin classées par type** (`app/app/admin/communaute/NotificationsList.tsx`) :
+- Communauté → Communication : filtres par type (Approbations, Retours de LTIR, LNH, Retours des
+  poolers, Planification, Pool des séries, Autres) avec nombre et non lues, pastille de couleur,
+  titre sans « Cap Crunch — », notification cliquable vers sa page.
+- Type déduit du titre (`notification_log` n'a pas de colonne de type, aucune migration) : tout
+  nouveau titre de `sendPushToAdmins` doit être ajouté à `KINDS`, sinon il tombe dans « Autres ».
+
 **[Feat] — calcul du facteur de plafond dans l'app + explication dans l'aide** (`app/lib/capFactor.ts`,
 `app/app/admin/config/CapFactorPanel.tsx`, `cap-factor-actions.ts`, `SeasonsManager.tsx`,
 `app/app/aide/CapFactorContent.tsx`) :
