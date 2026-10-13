@@ -251,60 +251,81 @@ function playerName(p: any): string {
 // Une fois la saison démarrée, seul ce qui suit `season_started_at` est affiché : le repêchage
 // des agents libres et les ajustements pré-saison restent dans /journal-transactions.
 
+// Faits saillants (David, 2026-10-13) : échanges, signatures (agent libre ou remplaçant LTIR) et
+// ballotage ressortent — bandeau sous le logo et icône dans l'activité. Le reste est de la routine.
+type ActivityKind = 'trade' | 'signing' | 'waiver' | 'routine'
+// Texte découpé en segments : `b` = nom de pooler ou de joueur, mis en gras hors routine.
+type Seg = { t: string; b?: boolean }
+const B = (t: string): Seg => ({ t, b: true })
+const segs = (...parts: (string | Seg | Seg[])[]): Seg[] =>
+  parts.flatMap(p => (typeof p === 'string' ? [{ t: p }] : Array.isArray(p) ? p : [p]))
+const joinSegs = (list: Seg[][], sep: string): Seg[] => list.flatMap((s, i) => (i === 0 ? s : [{ t: sep }, ...s]))
+
+type TradeSide = { pooler: string; assets: string[] }
+type Summary = { kind: ActivityKind; segs: Seg[]; trade?: TradeSide[] }
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function summarizeTransaction(items: any[]): string | null {
+function summarizeTransaction(items: any[]): Summary | null {
   const transfers = items.filter(i => i.action_type === 'transfer')
   if (transfers.length > 0) {
-    const names = Array.from(new Set(transfers.flatMap(i => [i.from_pooler?.name, i.to_pooler?.name]).filter(Boolean)))
-    if (names.length !== 2) return 'Échange entre poolers'
+    const names = Array.from(new Set(transfers.flatMap(i => [i.from_pooler?.name, i.to_pooler?.name]).filter(Boolean))) as string[]
+    if (names.length !== 2) return { kind: 'trade', segs: segs('Échange entre poolers') }
     // Ce que chacun reçoit (David, 2026-10-12) — joueurs et choix de repêchage.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const assetLabel = (i: any) => i.players
       ? playerName(i.players)
       : `choix de ${i.pick?.round ?? '?'}${i.pick?.round === 1 ? 're' : 'e'} ronde${i.pick?.pool_seasons?.season ? ` (${i.pick.pool_seasons.season})` : ''}`
-    const received = (name: string) => transfers.filter(i => i.to_pooler?.name === name).map(assetLabel).join(', ') || 'rien'
-    return `Échange entre ${names[0]} et ${names[1]} — ${names[0]} reçoit ${received(names[0])} ; ${names[1]} reçoit ${received(names[1])}`
+    const trade = names.map(name => ({ pooler: name, assets: transfers.filter(i => i.to_pooler?.name === name).map(assetLabel) }))
+    const received = (side: TradeSide): Seg[] => side.assets.length ? joinSegs(side.assets.map(a => [B(a)]), ', ') : [{ t: 'rien' }]
+    return {
+      kind: 'trade',
+      trade,
+      segs: segs('Échange entre ', B(names[0]), ' et ', B(names[1]), ' — ', B(names[0]), ' reçoit ', received(trade[0]),
+        ' ; ', B(names[1]), ' reçoit ', received(trade[1])),
+    }
   }
   const ballotage = items.find(i => i.action_type === 'ballotage')
-  if (ballotage) return `${ballotage.to_pooler?.name ?? '?'} obtient ${playerName(ballotage.players)} au ballotage`
+  if (ballotage) return { kind: 'waiver', segs: segs(B(ballotage.to_pooler?.name ?? '?'), ' obtient ', B(playerName(ballotage.players)), ' au ballotage') }
   const releases = items.filter(i => i.action_type === 'release')
   if (releases.length > 0) {
     const from = releases[0].from_pooler?.name ?? '?'
-    return releases.length > 1 ? `${from} libère ${releases.length} joueurs` : `${from} libère ${playerName(releases[0].players)}`
+    return { kind: 'routine', segs: segs(B(from), releases.length > 1 ? ` libère ${releases.length} joueurs` : ` libère ${playerName(releases[0].players)}`) }
   }
   const sign = items.find(i => i.action_type === 'sign')
-  if (sign) return `${sign.to_pooler?.name ?? '?'} signe ${playerName(sign.players)}`
+  if (sign) return { kind: 'signing', segs: segs(B(sign.to_pooler?.name ?? '?'), ' signe ', B(playerName(sign.players))) }
   return null
 }
 
-// Verbe d'un mouvement de roster_change_log — null = pas affiché.
-function describeChange(changeType: string, oldType: string | null, newType: string | null, name: string): string | null {
+// Mouvement de roster_change_log — null = pas affiché.
+function describeChange(changeType: string, oldType: string | null, newType: string | null, name: string): { kind: ActivityKind; segs: Seg[] } | null {
+  const routine = (...p: (string | Seg)[]) => ({ kind: 'routine' as const, segs: segs(...p) })
   switch (changeType) {
-    case 'signature_agent_libre': return `signe ${name}`
-    case 'signature_ltir':        return `signe ${name} (remplaçant LTIR)`
-    case 'ballotage':             return `obtient ${name} au ballotage`
-    case 'ltir':                  return `place ${name} sur LTIR`
-    case 'retour_ltir':           return newType === 'actif' ? `ramène ${name} du LTIR` : `ramène ${name} du LTIR en réserve`
-    case 'activation':            return oldType === 'recrue' ? `active la recrue ${name}` : `active ${name}`
-    case 'deactivation':          return newType ? `envoie ${name} en réserve` : `libère ${name}`
-    case 'retrait':               return `libère ${name}`
+    case 'signature_agent_libre': return { kind: 'signing', segs: segs('signe ', B(name)) }
+    case 'signature_ltir':        return { kind: 'signing', segs: segs('signe ', B(name), ' (remplaçant LTIR)') }
+    case 'ballotage':             return { kind: 'waiver', segs: segs('obtient ', B(name), ' au ballotage') }
+    case 'ltir':                  return routine('place ', B(name), ' sur LTIR')
+    case 'retour_ltir':           return newType === 'actif' ? routine('ramène ', B(name), ' du LTIR') : routine('ramène ', B(name), ' du LTIR en réserve')
+    case 'activation':            return oldType === 'recrue' ? routine('active la recrue ', B(name)) : routine('active ', B(name))
+    case 'deactivation':          return newType ? routine('envoie ', B(name), ' en réserve') : routine('libère ', B(name))
+    case 'retrait':               return routine('libère ', B(name))
     case 'ajout_reserviste':
-    case 'ajout_recrue':          return `ajoute ${name}`
+    case 'ajout_recrue':          return routine('ajoute ', B(name))
     case 'changement_type':
-      if (newType === 'recrue') return `renvoie ${name} en banque`
-      if (newType === 'reserviste') return `envoie ${name} en réserve`
+      if (newType === 'recrue') return routine('renvoie ', B(name), ' en banque')
+      if (newType === 'reserviste') return routine('envoie ', B(name), ' en réserve')
       return null
     default: return null
   }
 }
 
-type PoolActivityItem = { id: string; createdAt: string; summary: string }
+const KIND_RANK: Record<ActivityKind, number> = { trade: 3, signing: 2, waiver: 1, routine: 0 }
+
+type PoolActivityItem = { id: string; createdAt: string } & Summary
 
 async function fetchPoolActivity(
   supabase: Awaited<ReturnType<typeof createClient>>,
   poolSeasonId: number,
   seasonStartedAt: string | null,
-  limit = 8,
 ): Promise<PoolActivityItem[]> {
   try {
     let txQuery = supabase
@@ -349,7 +370,7 @@ async function fetchPoolActivity(
       const isTrade = items.some((i: any) => i.action_type === 'transfer')
       if (seasonStartedAt && !isTrade) continue
       const summary = summarizeTransaction(items)
-      if (summary) out.push({ id: `tx-${tx.id}`, createdAt: tx.created_at, summary })
+      if (summary) out.push({ id: `tx-${tx.id}`, createdAt: tx.created_at, ...summary })
       if (isTrade) {
         const poolerIds = new Set<string>(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -382,7 +403,8 @@ async function fetchPoolActivity(
     }
 
     // Un lot soumis d'un coup (même pooler, même horodatage) = une seule ligne.
-    const groups = new Map<string, { poolerName: string; at: string; parts: string[] }>()
+    // Le lot prend le type le plus marquant de ses mouvements (ex : LTIR + signature = signature).
+    const groups = new Map<string, { poolerName: string; at: string; kind: ActivityKind; parts: Seg[][] }>()
     for (const r of logRows) {
       if (cancelledIds.has(r.id)) continue
       const at = new Date(r.changed_at).getTime()
@@ -390,16 +412,17 @@ async function fetchPoolActivity(
       const part = describeChange(r.change_type, r.old_type, r.new_type, playerName(r.players))
       if (!part) continue
       const key = `${r.pooler_id}|${r.changed_at}`
-      const g = groups.get(key) ?? { poolerName: r.poolers?.name ?? '?', at: r.changed_at, parts: [] as string[] }
-      g.parts.push(part)
+      const g = groups.get(key) ?? { poolerName: r.poolers?.name ?? '?', at: r.changed_at, kind: 'routine' as ActivityKind, parts: [] as Seg[][] }
+      g.parts.push(part.segs)
+      if (KIND_RANK[part.kind] > KIND_RANK[g.kind]) g.kind = part.kind
       groups.set(key, g)
     }
     for (const [key, g] of groups) {
-      out.push({ id: `log-${key}`, createdAt: g.at, summary: `${g.poolerName} ${g.parts.join(', ')}` })
+      out.push({ id: `log-${key}`, createdAt: g.at, kind: g.kind, segs: segs(B(g.poolerName), ' ', joinSegs(g.parts, ', ')) })
     }
 
     out.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    return out.slice(0, limit)
+    return out
   } catch {
     return []
   }
@@ -419,6 +442,82 @@ function fmtActivityDate(iso: string): string {
   } catch { return '' }
 }
 
+// Classes écrites en entier : Tailwind ne détecte pas un nom de classe construit à la volée.
+const KIND_STYLE: Record<Exclude<ActivityKind, 'routine'>, { label: string; path: string; badge: string; border: string }> = {
+  trade:   { label: 'Échange',   path: 'M16 3l4 4-4 4M20 7H4M8 21l-4-4 4-4M4 17h16',                                              badge: 'bg-violet-100 text-violet-700',   border: 'border-violet-500' },
+  signing: { label: 'Signature', path: 'M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z',                           badge: 'bg-emerald-100 text-emerald-700', border: 'border-emerald-500' },
+  waiver:  { label: 'Ballotage', path: 'M9 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3M9 2h6v4H9V2ZM9 14l2 2 4-4', badge: 'bg-orange-100 text-orange-700',   border: 'border-orange-500' },
+}
+
+function KindIcon({ kind, className = 'w-7 h-7' }: { kind: Exclude<ActivityKind, 'routine'>; className?: string }) {
+  const s = KIND_STYLE[kind]
+  return (
+    <span className={`inline-flex items-center justify-center rounded-full shrink-0 ${s.badge} ${className}`} title={s.label}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="w-1/2 h-1/2">
+        <path d={s.path} />
+      </svg>
+    </span>
+  )
+}
+
+function SegText({ segs: list, bold }: { segs: Seg[]; bold: boolean }) {
+  return <>{list.map((s, i) => (s.b && bold ? <strong key={i} className="font-semibold text-gray-900">{s.t}</strong> : <span key={i}>{s.t}</span>))}</>
+}
+
+const HIGHLIGHT_DAYS = 7
+const NEW_HOURS = 48
+const HIGHLIGHT_MAX = 4
+
+function HighlightsBanner({ items, now }: { items: PoolActivityItem[]; now: number }) {
+  const recent = items
+    .filter(i => i.kind !== 'routine' && now - new Date(i.createdAt).getTime() < HIGHLIGHT_DAYS * 86_400_000)
+    .slice(0, HIGHLIGHT_MAX)
+  if (recent.length === 0) return null
+  return (
+    <section>
+      <div className="flex items-baseline justify-between mb-2">
+        <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500">
+          Faits saillants <span className="font-normal normal-case text-gray-400">· {HIGHLIGHT_DAYS} derniers jours</span>
+        </h2>
+        <Link href="/journal-transactions" className="text-xs text-blue-600 hover:underline">Journal des transactions →</Link>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {recent.map(item => {
+          const kind = item.kind as Exclude<ActivityKind, 'routine'>
+          const s = KIND_STYLE[kind]
+          const isNew = now - new Date(item.createdAt).getTime() < NEW_HOURS * 3_600_000
+          return (
+            <div key={item.id} className={`bg-white rounded-lg shadow border-l-4 ${s.border} p-4 ${item.trade ? 'md:col-span-2' : ''}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <KindIcon kind={kind} />
+                <span className="text-xs font-bold uppercase tracking-wide text-gray-700">{s.label}</span>
+                {isNew && <span className="text-[10px] font-bold uppercase bg-red-500 text-white rounded-full px-2 py-0.5">Nouveau</span>}
+                <span className="ml-auto text-xs text-gray-400">{fmtActivityDate(item.createdAt)}</span>
+              </div>
+              {item.trade ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {item.trade.map(side => (
+                    <div key={side.pooler} className="bg-violet-50 rounded-md px-3 py-2">
+                      <p className="text-sm text-gray-600"><strong className="text-gray-900">{side.pooler}</strong> reçoit</p>
+                      <ul className="mt-1 space-y-0.5">
+                        {side.assets.length === 0
+                          ? <li className="text-sm text-gray-400">rien</li>
+                          : side.assets.map(a => <li key={a} className="text-base font-semibold text-gray-900">{a}</li>)}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-base text-gray-700"><SegText segs={item.segs} bold /></p>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
 function PoolActivityWidget({ items }: { items: PoolActivityItem[] }) {
   if (items.length === 0) return null
   return (
@@ -430,12 +529,20 @@ function PoolActivityWidget({ items }: { items: PoolActivityItem[] }) {
         </Link>
       </div>
       <ul className="divide-y divide-gray-100">
-        {items.map(item => (
-          <li key={item.id} className="px-4 py-2.5 flex items-center justify-between gap-3">
-            <span className="text-sm text-gray-700">{item.summary}</span>
-            <span className="text-xs text-gray-400 shrink-0">{fmtActivityDate(item.createdAt)}</span>
-          </li>
-        ))}
+        {items.map(item => {
+          const highlight = item.kind !== 'routine'
+          return (
+            <li key={item.id} className="px-4 py-2.5 flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2.5 min-w-0">
+                {highlight && <KindIcon kind={item.kind as Exclude<ActivityKind, 'routine'>} className="w-6 h-6" />}
+                <span className={`text-sm ${highlight ? 'text-gray-800' : 'text-gray-500'}`}>
+                  <SegText segs={item.segs} bold={highlight} />
+                </span>
+              </span>
+              <span className="text-xs text-gray-400 shrink-0">{fmtActivityDate(item.createdAt)}</span>
+            </li>
+          )
+        })}
       </ul>
     </MobileFold>
   )
@@ -828,6 +935,8 @@ export default async function Home() {
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
       <Header name={me?.name ?? null} saison={saison} />
 
+      <HighlightsBanner items={poolActivity} now={new Date().getTime()} />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-2">
           {/* Classement Pool Séries compact */}
@@ -911,7 +1020,7 @@ export default async function Home() {
             <ScheduleList todayDate={todayDate} games={todayGames} />
           </div>
 
-          <PoolActivityWidget items={poolActivity} />
+          <PoolActivityWidget items={poolActivity.slice(0, 8)} />
           <MarketWidget summary={market} />
           <PoolInjuriesWidget items={poolInjuries} />
         </div>
