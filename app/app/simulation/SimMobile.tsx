@@ -30,12 +30,13 @@ function remove(state: SimState, e: SimEntry) {
 }
 
 export default function SimMobile({
-  poolCap, state, recruePlayers, saisonId,
+  poolCap, state, recruePlayers, saisonId, forPoolerId,
 }: {
   poolCap: number
   state: SimState
   recruePlayers: RecrueOption[]
   saisonId: number
+  forPoolerId?: string
 }) {
   const [selectedRecrueId, setSelectedRecrueId] = useState('')
   const [query, setQuery] = useState('')
@@ -50,13 +51,13 @@ export default function SimMobile({
     if (q.length < 2) return
     const timer = setTimeout(async () => {
       setSearching(true)
-      const res = await searchSimulationPlayersAction(saisonId, { query: q }).catch(() => null)
+      const res = await searchSimulationPlayersAction(saisonId, { query: q, forPoolerId }).catch(() => null)
       if (seq !== searchSeq.current) return
       setSearching(false)
       if (res) setResults(res.players ?? [])
     }, 300)
     return () => clearTimeout(timer)
-  }, [query, saisonId])
+  }, [query, saisonId, forPoolerId])
 
   // Sous 2 caractères, rien n'est cherché : on n'affiche pas les résultats de la frappe d'avant.
   const canSearch = query.trim().length >= 2

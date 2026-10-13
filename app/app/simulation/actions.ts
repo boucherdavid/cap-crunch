@@ -33,7 +33,12 @@ export type SimulationPlayerResult = {
 // pooler courant sont exclus (déjà visibles dans la colonne de gauche).
 export async function searchSimulationPlayersAction(
   saisonId: number,
-  opts: { query?: string; position?: 'forward' | 'defense' | 'goalie'; maxSalary?: number; elcOnly?: boolean; teamCode?: string },
+  opts: {
+    query?: string; position?: 'forward' | 'defense' | 'goalie'; maxSalary?: number; elcOnly?: boolean; teamCode?: string
+    // Admin qui simule pour un autre pooler (David, 2026-10-13) : exclut les joueurs de ce
+    // pooler plutôt que les siens. Ignoré (retour à soi-même) si l'appelant n'est pas admin.
+    forPoolerId?: string
+  },
 ): Promise<{ players: SimulationPlayerResult[]; truncated: boolean }> {
   const supabase = await createClient()
   // Requêtes indépendantes lancées ensemble plutôt qu'une après l'autre (David, 2026-10-02 —
@@ -46,12 +51,18 @@ export async function searchSimulationPlayersAction(
   if (!user) return { players: [], truncated: false }
   if (!saison) return { players: [], truncated: false }
 
+  let subjectId = user.id
+  if (opts.forPoolerId && opts.forPoolerId !== user.id) {
+    const { data: me } = await supabase.from('poolers').select('is_admin').eq('id', user.id).single()
+    if (me?.is_admin) subjectId = opts.forPoolerId
+  }
+
   const q = (opts.query ?? '').trim()
   const ownerByPlayer = new Map<number, string>()
   const ownIds = new Set<number>()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const r of (onRoster ?? []) as any[]) {
-    if (r.pooler_id === user.id) { ownIds.add(r.player_id); continue }
+    if (r.pooler_id === subjectId) { ownIds.add(r.player_id); continue }
     ownerByPlayer.set(r.player_id, r.poolers?.name ?? '?')
   }
 

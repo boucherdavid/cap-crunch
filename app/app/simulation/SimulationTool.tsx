@@ -59,9 +59,12 @@ function sendEntry(entry: SimEntry, from: ReturnType<typeof useSimState>, to: Re
 }
 
 export default function SimulationTool({
-  me, saisonId, season, preloadPlayerId,
+  me, isAdmin = false, saisonId, season, preloadPlayerId,
 }: {
   me: { id: string; name: string }
+  // Admin : peut simuler avec l'alignement d'un autre pooler (David, 2026-10-13) — à titre
+  // informatif seulement, pour répondre à un pooler qui n'a pas accès à l'application.
+  isAdmin?: boolean
   saisonId: number
   season: string
   // Pré-remplit "Mon alignement" avec ce joueur en simulation (lien "Analyser" depuis l'onglet
@@ -80,15 +83,20 @@ export default function SimulationTool({
 
   const myState = useSimState(myRoster, myRecrue)
 
+  // Pooler dont l'alignement est simulé : soi-même, ou un autre pooler choisi par l'admin.
+  const [subjectId, setSubjectId] = useState(me.id)
+  const isOtherSubject = subjectId !== me.id
+
   useEffect(() => {
     setLoading(true)
+    setLoadErr(null)
     Promise.all([
-      loadRosterForSimulationAction(saisonId, me.id),
-      loadRecrueBankForPoolerAction(saisonId, me.id),
+      loadRosterForSimulationAction(saisonId, subjectId),
+      loadRecrueBankForPoolerAction(saisonId, subjectId),
       listTeamsAction(),
     ]).then(([rosterRes, recrueRes, teamsRes]) => {
       if (rosterRes.error || !rosterRes.roster) {
-        setLoadErr(rosterRes.error ?? 'Impossible de charger ton alignement.')
+        setLoadErr(rosterRes.error ?? "Impossible de charger l'alignement.")
       } else {
         setMyRoster(rosterRes.roster)
         setPoolCap(rosterRes.poolCap ?? 0)
@@ -98,7 +106,7 @@ export default function SimulationTool({
       setLoading(false)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [saisonId, me.id])
+  }, [saisonId, subjectId])
 
   // Ajoute automatiquement le joueur pré-rempli (lien "Analyser" depuis Ballotage) une fois
   // l'alignement chargé — une seule fois, même si l'effet ré-exécute (David, 2026-09-21).
@@ -205,8 +213,35 @@ export default function SimulationTool({
 
   const otherName = otherPoolers.find(p => p.id === otherId)?.name ?? ''
 
-  if (loading) return <p className="text-gray-400 text-sm">Chargement...</p>
-  if (loadErr) return <p className="text-red-600 text-sm">{loadErr}</p>
+  // Tous les poolers (soi-même compris) : sélecteur de l'admin et cibles de l'onglet Transaction.
+  const allPoolers = [me, ...otherPoolers]
+  const subjectName = allPoolers.find(p => p.id === subjectId)?.name ?? me.name
+
+  const handlePickSubject = (id: string) => {
+    myState.reset()
+    setActiveScenarioId(null); setSaveAsName(''); setScenarioMsg(null)
+    if (otherId === id) handlePickOther('')
+    setSubjectId(id)
+  }
+
+  const subjectPicker = isAdmin && (
+    <div className="flex flex-wrap items-center gap-2">
+      <label htmlFor="sim-subject" className="text-sm font-semibold text-gray-700">Simuler pour</label>
+      <select
+        id="sim-subject"
+        value={subjectId}
+        onChange={e => handlePickSubject(e.target.value)}
+        disabled={loading}
+        className="border rounded-lg px-2 py-1.5 text-sm focus:outline-none"
+      >
+        {allPoolers.map(p => <option key={p.id} value={p.id}>{p.id === me.id ? `${p.name} (moi)` : p.name}</option>)}
+      </select>
+      <span className="text-xs text-gray-400">Admin seulement</span>
+    </div>
+  )
+
+  if (loading) return <div className="space-y-4">{subjectPicker}<p className="text-gray-400 text-sm">Chargement...</p></div>
+  if (loadErr) return <div className="space-y-4">{subjectPicker}<p className="text-red-600 text-sm">{loadErr}</p></div>
 
   const tabClass = (t: Tab) =>
     `text-sm font-semibold px-3 py-1.5 rounded-lg ${tab === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`
@@ -257,36 +292,45 @@ export default function SimulationTool({
       <div>
         {/* Titre : bandeau de section du layout (SectionEyebrow, Navbar.tsx). */}
         <p className="text-sm text-gray-500 mt-1">
-          Teste des ajouts/retraits sans rien changer pour de vrai — {me.name}, saison {season}.
+          Teste des ajouts/retraits sans rien changer pour de vrai — {subjectName}, saison {season}.
           Pour un vrai changement, utilise Gestion d&apos;effectifs.
         </p>
       </div>
 
+      {subjectPicker}
+      {isOtherSubject && (
+        <div className="bg-amber-50 border border-amber-300 text-amber-800 rounded-lg px-4 py-2.5 text-sm">
+          Simulation pour <strong>{subjectName}</strong>{' '}— rien n&apos;est enregistré, ni dans son alignement ni dans tes scénarios.
+        </div>
+      )}
+
       {/* Téléphone : version simplifiée (voir SimMobile.tsx), même état que la version complète. */}
       <div className="md:hidden">
-        <SimMobile poolCap={poolCap} state={myState} recruePlayers={myRecrue} saisonId={saisonId} />
-        <div className="mt-4">{scenarioCard}</div>
+        <SimMobile poolCap={poolCap} state={myState} recruePlayers={myRecrue} saisonId={saisonId} forPoolerId={subjectId} />
+        {!isOtherSubject && <div className="mt-4">{scenarioCard}</div>}
       </div>
 
       <div className="hidden md:block space-y-6">
       <div className="flex gap-2">
-        <button onClick={() => setTab('moi')} className={tabClass('moi')}>Mon alignement</button>
+        <button onClick={() => setTab('moi')} className={tabClass('moi')}>{isOtherSubject ? `Alignement de ${subjectName}` : 'Mon alignement'}</button>
         <button onClick={() => setTab('transaction')} className={tabClass('transaction')}>Transaction</button>
       </div>
 
       {tab === 'moi' && (
         <>
-          {scenarioCard}
+          {!isOtherSubject && scenarioCard}
 
           <div className="bg-white rounded-lg shadow p-5">
             <p className="text-xs text-gray-400 mb-3">
-              Ajoute ou retire librement pour tester — rien n&apos;affecte ton vrai alignement, jamais soumis d&apos;ici.
+              {isOtherSubject
+                ? <>Ajoute ou retire librement pour tester — rien n&apos;affecte le vrai alignement de {subjectName}, jamais soumis d&apos;ici.</>
+                : <>Ajoute ou retire librement pour tester — rien n&apos;affecte ton vrai alignement, jamais soumis d&apos;ici.</>}
             </p>
             {/* Colonne "Alignement actuel" en lecture seule à gauche (David, 2026-09-21) — pour
                 comparer sans se souvenir de l'état de départ derrière les lignes biffées. */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <CurrentRosterColumn roster={myRoster} />
-              <SimPanel title="Alignement simulé" poolCap={poolCap} state={myState} recruePlayers={myRecrue} teams={teams} saisonId={saisonId} />
+              <SimPanel title="Alignement simulé" poolCap={poolCap} state={myState} recruePlayers={myRecrue} teams={teams} saisonId={saisonId} forPoolerId={subjectId} />
             </div>
           </div>
 
@@ -305,7 +349,7 @@ export default function SimulationTool({
             className="border rounded-lg px-2 py-1.5 text-sm mb-4 focus:outline-none"
           >
             <option value="">— Choisir un pooler —</option>
-            {otherPoolers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {allPoolers.filter(p => p.id !== subjectId).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
 
           {!otherId && <p className="text-sm text-gray-400">Choisis un pooler ci-dessus pour commencer.</p>}
@@ -313,14 +357,16 @@ export default function SimulationTool({
           {otherId && !otherLoading && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <SimPanel
-                title={me.name} poolCap={poolCap} state={myState} recruePlayers={myRecrue} teams={teams} saisonId={saisonId}
-                onSend={e => sendEntry(e, myState, otherState, me.name)}
+                title={subjectName} poolCap={poolCap} state={myState} recruePlayers={myRecrue} teams={teams} saisonId={saisonId}
+                forPoolerId={subjectId}
+                onSend={e => sendEntry(e, myState, otherState, subjectName)}
                 sendLabel={`Envoyer à ${otherName}`}
               />
               <SimPanel
                 title={otherName} poolCap={otherPoolCap} state={otherState} recruePlayers={otherRecrue} teams={teams} saisonId={saisonId}
+                forPoolerId={subjectId}
                 onSend={e => sendEntry(e, otherState, myState, otherName)}
-                sendLabel={`Envoyer à ${me.name}`}
+                sendLabel={`Envoyer à ${subjectName}`}
               />
             </div>
           )}

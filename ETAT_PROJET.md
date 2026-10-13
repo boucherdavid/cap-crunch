@@ -29,7 +29,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | = `main` |
+| `staging` | `main` + simulation pour un autre pooler (admin, `/simulation`) — à valider par David |
 | `main` (prod) | À jour au 2026-10-13 — inclut les faits saillants sur l'accueil (bandeau sous le logo), le détail des échanges et l'effacement des mouvements annulés sur l'accueil, l'annulation le jour même d'une mise en réserve, l'activité du pool basée sur les vrais mouvements et l'annonce à tous des signatures et échanges, la discussion et la modification des offres d'échange, le LTIR avec panier complet, MJ et PTS/MJ, l'avis de demande traitée |
 
 - Variables Vercel : prod `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN` ; staging `GITHUB_WORKFLOW_TOKEN`,

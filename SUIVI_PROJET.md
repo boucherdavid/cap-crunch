@@ -21,6 +21,15 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-13
 
+**[Feat] — simulation pour un autre pooler (admin)** (`app/app/simulation/*`) :
+- Sélecteur « Simuler pour » (admin seulement) en haut de `/simulation` : charge l'alignement réel
+  et la banque de recrues du pooler choisi dans l'outil existant — pour répondre à un pooler qui
+  n'a pas accès à l'application (« est-ce que ça rentre dans ma masse ? »). Rien n'est écrit.
+- Bandeau ambre de rappel ; scénarios sauvegardés masqués (privés, liés au compte de l'admin).
+- L'onglet Transaction suit le pooler choisi (titres, cibles possibles).
+- `searchSimulationPlayersAction` : option `forPoolerId` (exclut les joueurs de ce pooler),
+  ignorée si l'appelant n'est pas admin.
+
 **[Feat] — faits saillants sur l'accueil** (`app/app/page.tsx`) :
 - Bandeau « Faits saillants · 7 derniers jours » sous le logo : échanges entre poolers,
   signatures (agent libre et remplaçant LTIR, choix de David) et ballotage, 4 au maximum,

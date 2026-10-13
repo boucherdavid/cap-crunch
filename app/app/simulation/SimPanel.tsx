@@ -30,7 +30,7 @@ function TypeToggle({ value, onChange }: { value: PlayerType; onChange: (t: Play
 }
 
 export default function SimPanel({
-  title, poolCap, state, recruePlayers, teams, saisonId, onSend, sendLabel,
+  title, poolCap, state, recruePlayers, teams, saisonId, onSend, sendLabel, forPoolerId,
 }: {
   title: string
   poolCap: number
@@ -40,6 +40,8 @@ export default function SimPanel({
   saisonId: number
   onSend?: (entry: SimEntry) => void
   sendLabel?: string
+  // Pooler dont c'est l'alignement (admin qui simule pour un autre) — exclu de la recherche.
+  forPoolerId?: string
 }) {
   const [selectedRecrueId, setSelectedRecrueId] = useState('')
   const [query, setQuery] = useState('')
@@ -69,6 +71,7 @@ export default function SimPanel({
         maxSalary: maxSalary && !Number.isNaN(maxSalary) ? maxSalary : undefined,
         elcOnly: filterElcOnly || undefined,
         teamCode: filterTeam || undefined,
+        forPoolerId,
       }).catch(() => null)  // échec de l'appel : on arrête simplement d'afficher « Recherche… »
       if (seq !== searchSeq.current) return
       setSearching(false)
@@ -77,7 +80,7 @@ export default function SimPanel({
       setResultsTruncated(res.truncated ?? false)
     }, 300)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [query, saisonId, filterPosition, filterMaxSalary, filterElcOnly, filterTeam, hasFilters])
+  }, [query, saisonId, filterPosition, filterMaxSalary, filterElcOnly, filterTeam, hasFilters, forPoolerId])
 
   const simulatedRemain = poolCap - state.capUsed
   // Sommaire compact en haut du panneau (David, 2026-09-21) — même esprit que "Sommaire des
