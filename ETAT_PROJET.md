@@ -109,8 +109,11 @@
   périmé dans `poolers-staging.md`.
 - **Lag du repêchage** et **file des agents libres** (correctifs du 2026-10-03) : à valider au
   prochain repêchage.
-- **Facteur de plafond** : recommandation 1,28 pour 2026-27, en attente de l'avis du pooler
-  actuaire puis du groupe.
+- **Facteur de plafond** : 1,28 en vigueur pour 2026-27 (134 M$). Calcul maintenant dans l'app
+  (Configuration → Saisons, « Calculer le facteur ») et expliqué dans l'aide. Le prix du marché
+  est fragile (1 à 6 contrats par palier du haut : +3,1 % sur staging, +6,2 % sur la prod) — à
+  rendre plus robuste avant l'été 2027 (2 saisons de contrats ou modèle continu). Avis du pooler
+  actuaire toujours attendu.
 - Tests réels encore à faire avec de vrais poolers : ballotage en saison, échange complet (y
   compris un joueur sur LTIR), demande de LTIR de bout en bout, courriels de commentaires.
 - Pages pas encore passées au mobile : `/statistiques/ahl`, `/calendrier`,

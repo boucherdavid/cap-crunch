@@ -374,6 +374,16 @@ et orange (ballotage) restent sur « Gestion d'effectifs » dans le menu et sur 
 (`app/components/PoolerTodoIndicator.tsx`, `usePoolerTodo.ts`). Ballotage compté en « non lu »
 (libérés depuis la dernière visite de l'onglet, date dans le navigateur) + joueurs remportés.
 
+**Simulation pour un autre pooler** (David, 2026-10-13) : sélecteur « Simuler pour » (admin
+seulement) en haut de `/simulation` — charge l'alignement et la banque d'un autre pooler, à titre
+informatif (pooler sans accès à l'app). Rien n'est écrit ; scénarios masqués (privés, liés au
+compte de l'admin). `searchSimulationPlayersAction({ forPoolerId })`, ignoré si non admin.
+
+**Faits saillants de l'accueil** (David, 2026-10-13) : bandeau sous le logo (`HighlightsBanner`,
+`app/page.tsx`) — échanges, signatures (agent libre et remplaçant LTIR) et ballotage des 7 derniers
+jours, 4 au maximum ; mêmes icônes de couleur dans « Activité du pool ». Type de chaque ligne
+(`ActivityKind`) posé par `describeChange()`/`summarizeTransaction()`.
+
 **Bouton « Approbations »** (David, 2026-10-01) : barre du haut, admin seulement
 (`app/components/AdminApprovalsPanel.tsx`) — compteur + panneau latéral pour approuver les
 transactions entre poolers et les demandes de LTIR depuis n'importe quelle page, et voir les
@@ -663,7 +673,7 @@ composant, pas de `?subtab=`), donc pas d'accès par URL directe comme pour `/ad
 | Hub | Onglets (`?tab=id` → label) |
 |---|---|
 | `/admin/pool` | `poolers` Poolers · `config` Configuration (sous-onglets `Saisons` / `Général` / `Pointage Saison` — `Général` = ex-"Pool Saison", renommé le 2026-09-01) |
-| `/admin/communaute` | `communication` Communication (feedback + notifs) · `babillard` Babillard (publier/supprimer des communications, ajouté le 2026-09-02) · `suivi` Suivi (activité) · `planification` Planification (sondage type Doodle, admin) |
+| `/admin/communaute` | `communication` Communication (feedback + notifs, filtrables par type — `NotificationsList.tsx`, type déduit du titre : tout nouveau titre de `sendPushToAdmins` s'ajoute à `KINDS`) · `babillard` Babillard (publier/supprimer des communications, ajouté le 2026-09-02) · `suivi` Suivi (activité) · `planification` Planification (sondage type Doodle, admin) |
 | `/admin/init` | `rosters` Rosters initiaux · `recrues` Banque de recrues · `choix` Choix de repêchage (← réassigner le propriétaire d'un pick échangé hors-app) — réglages one-shot déjà en place pour la saison courante |
 | `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `approbation` Approbation (transactions entre poolers en attente, `TradeApprovalManager.tsx` — onglet ajouté le 2026-09-21) · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) · `marqueur` Marqueur (écarts avec notre pool sur Marqueur.com, 2026-10-05) |
 | `/admin/donnees` | `pipeline` Pipeline salaires/contrats/repêchages (doc, `PlayerMerge`) · `prospects` Classement des prospects |
