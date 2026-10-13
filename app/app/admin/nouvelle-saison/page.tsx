@@ -80,7 +80,7 @@ export default async function NouvelleSaisonPage({
     {
       n: 1,
       title: 'Configuration & transition des rosters',
-      description: "Créer/configurer la saison (cap, dates) si besoin, puis « Transitionner les rosters → » depuis la saison encore active.",
+      description: "Créer/configurer la saison (cap, dates) si besoin, recalculer le facteur de plafond (« Calculer le facteur » sur la saison), puis « Transitionner les rosters → » depuis la saison encore active.",
       href: () => `/admin/pool?tab=config`,
       status: rosterCount && rosterCount > 0 ? `${rosterCount} joueurs déjà copiés` : 'Pas encore transitionné',
     },

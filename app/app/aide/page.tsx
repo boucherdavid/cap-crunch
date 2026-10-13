@@ -10,7 +10,7 @@ export default async function AidePage() {
     fetchLtirSettings(supabase),
     supabase
       .from('pool_seasons')
-      .select('max_signatures_al, max_signatures_ltir')
+      .select('season, nhl_cap, cap_multiplier, pool_cap, max_signatures_al, max_signatures_ltir')
       .eq('is_active', true)
       .eq('is_playoff', false)
       .maybeSingle(),
@@ -19,5 +19,8 @@ export default async function AidePage() {
   const signingLimits = saison
     ? { al: saison.max_signatures_al ?? 10, ltir: saison.max_signatures_ltir ?? 2 }
     : null
-  return <AideTabs ltirSettings={ltirSettings} signingLimits={signingLimits} />
+  const capFactor = saison
+    ? { season: saison.season, nhlCap: Number(saison.nhl_cap), factor: Number(saison.cap_multiplier), poolCap: Number(saison.pool_cap) }
+    : null
+  return <AideTabs ltirSettings={ltirSettings} signingLimits={signingLimits} capFactor={capFactor} />
 }

@@ -13,7 +13,12 @@ Application web pour gérer un pool de hockey long terme, en remplacement d'un f
 **Règles métier de base :**
 - 8 poolers
 - Alignement par pooler et par saison : 12 attaquants, 6 défenseurs, 2 gardiens (actifs) + minimum 2 réservistes
-- Cap du pool = cap NHL × facteur (configurable, typiquement 1.24–1.25), arrondi au million supérieur
+- Cap du pool = cap NHL × facteur, arrondi au million supérieur. Facteur recalculé chaque été
+  (David, 2026-10-13) : bouton « Calculer le facteur » sur chaque saison (`/admin/pool?tab=config`,
+  `CapFactorPanel.tsx`, calcul dans `app/lib/capFactor.ts` = transposition de
+  `calcul_salaire/calcul_facteur.py` + `prix_du_marche.py`), 3 scénarios λ = 0, ½, 1, variation
+  de plus de ±0,05 signalée avec la valeur bornée proposée ; toujours 8 équipes. Expliqué dans
+  `/aide` (Règlements → Calcul du facteur de plafond, `aide/CapFactorContent.tsx`)
 - La banque de recrues et les joueurs LTIR ne comptent pas dans la masse salariale
 - Transactions gérées côté admin
 - Historique conservé dans `transactions` et `transaction_items`

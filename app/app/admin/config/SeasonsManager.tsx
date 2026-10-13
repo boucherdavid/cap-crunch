@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import CapFactorPanel from './CapFactorPanel'
 import { createSeasonAction, activateSeasonAction, deactivateSeasonAction, previewTransitionAction, transitionSeasonAction, deleteSeasonAction, setSeasonVisibilityAction } from './actions'
 
 type Saison = {
@@ -43,6 +44,7 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
   const [applyingTransition, setApplyingTransition] = useState(false)
   const [deleting, setDeleting] = useState<number | null>(null)
   const [togglingVisibility, setTogglingVisibility] = useState<number | null>(null)
+  const [factorFor, setFactorFor] = useState<number | null>(null)
 
   const poolCapPreview = isPlayoff
     ? parseFloat(nhlCap) || 0
@@ -172,8 +174,8 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
       {/* Liste des saisons */}
       <div className="space-y-2 mb-4">
         {saisons.map(s => (
+          <Fragment key={s.id}>
           <div
-            key={s.id}
             className={`flex items-center justify-between px-3 py-2.5 rounded-lg border ${s.is_active ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-gray-50'}`}
           >
             <div className="flex items-center gap-2">
@@ -191,7 +193,16 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
             <div className="flex items-center gap-4">
               <span className="text-xs text-gray-500">
                 {s.is_playoff ? 'Cap séries' : 'Cap pool'}: <span className="font-medium text-gray-700">{fmt(s.pool_cap)}</span>
+                {!s.is_playoff && <> · facteur <span className="font-medium text-gray-700">{Number(s.cap_multiplier).toLocaleString('fr-CA', { minimumFractionDigits: 2 })}</span></>}
               </span>
+              {!s.is_playoff && (
+                <button
+                  onClick={() => setFactorFor(factorFor === s.id ? null : s.id)}
+                  className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                >
+                  Calculer le facteur
+                </button>
+              )}
               {(!s.is_active || s.is_playoff) && (
                 <div className="flex items-center gap-3">
                   {!s.is_active && (
@@ -241,6 +252,10 @@ export default function SeasonsManager({ saisons }: { saisons: Saison[] }) {
               )}
             </div>
           </div>
+          {factorFor === s.id && (
+            <CapFactorPanel saisonId={s.id} season={s.season} onClose={() => setFactorFor(null)} />
+          )}
+          </Fragment>
         ))}
         {saisons.length === 0 && (
           <p className="text-gray-400 text-sm">Aucune saison créée.</p>
