@@ -31,6 +31,10 @@ PUCKPEDIA_BASE_URL = "https://puckpedia.com"
 # pour éviter de re-télécharger la même fiche si plusieurs saisons sont retenues.
 SALAIRES_REELS_CACHE = {}
 
+# Joueurs dont la fiche n'a pas pu être lue malgré les nouvelles tentatives :
+# leur cap hit est resté RÉDUIT par la rétention — signalé en fin de run.
+FICHES_EN_ECHEC = []
+
 def fusionner_equipes(dossier=TEAMS_OFFLINE_DIR, fichier_sortie=OUTPUT_CSV):
     print(f"\n🔄 Fusion des fichiers CSV du dossier : {dossier}")
     fichiers = [f for f in os.listdir(dossier) if f.endswith(".csv")]
@@ -343,26 +347,17 @@ def extraire_salaires_reels(html):
     return saisons
 
 
-def recuperer_salaires_reels(player_url, name, headless=True, timeout=30, driver=None):
-    """Télécharge la fiche d'un joueur et retourne ses cap hits pleins par
-    saison (utilisé pour corriger un cap hit réduit par rétention de salaire
-    affiché sur une page d'équipe). Mise en cache mémoire pour le run courant.
-    Si `driver` est fourni, réutilise cette fenêtre Chrome au lieu d'en ouvrir
-    une nouvelle — évite l'accumulation de fenêtres sur un run complet."""
-    if player_url in SALAIRES_REELS_CACHE:
-        return SALAIRES_REELS_CACHE[player_url]
-
-    driver_local = driver is None
-    resultat = {}
+def lire_fiche_joueur(driver, player_url, name, timeout):
+    """Une tentative de lecture de la fiche d'un joueur dans `driver`.
+    Retourne ses cap hits pleins par saison, ou None si la lecture a échoué
+    (navigation bloquée, chromedriver planté, défi Cloudflare) — à distinguer
+    d'un dict vide, qui veut dire « fiche lue, aucune saison trouvée »."""
     try:
-        if driver is None:
-            driver = get_driver(headless)
         driver.set_page_load_timeout(timeout)
         driver.set_script_timeout(timeout)
         if not naviguer_avec_timeout(driver, player_url, timeout + 10):
             print(f"⚠️ Chargement de la fiche de {name} bloqué au-delà de {timeout + 10}s — abandon")
-            SALAIRES_REELS_CACHE[player_url] = resultat
-            return resultat
+            return None
 
         try:
             WebDriverWait(driver, 20).until(
@@ -377,8 +372,7 @@ def recuperer_salaires_reels(player_url, name, headless=True, timeout=30, driver
 
         if "cf-turnstile" in html.lower() or "un instant" in html.lower():
             print(f"⚠️ Défi Cloudflare non résolu pour la fiche de {name}")
-            SALAIRES_REELS_CACHE[player_url] = resultat
-            return resultat
+            return None
 
         os.makedirs(DIAGNOSTICS_PLAYERS_DIR, exist_ok=True)
         slug = player_url.rstrip("/").split("/")[-1]
@@ -389,15 +383,45 @@ def recuperer_salaires_reels(player_url, name, headless=True, timeout=30, driver
         if not resultat:
             nb_tables = html.count('pp_table-contract')
             print(f"   [diag] {name} : 0 saison extraite (pp_table-contract trouvé {nb_tables}x dans le HTML)")
+        return resultat
     except Exception as e:
-        print(f"❌ Erreur Selenium pour la fiche de {name} : {e}")
-    finally:
-        if driver_local and driver:
-            try:
-                driver.quit()
-            except Exception:
-                pass
+        print(f"❌ Erreur Selenium pour la fiche de {name} : {str(e)[:200]}")
+        return None
 
+
+def recuperer_salaires_reels(player_url, name, headless=True, timeout=30, driver=None):
+    """Télécharge la fiche d'un joueur et retourne ses cap hits pleins par
+    saison (utilisé pour corriger un cap hit réduit par rétention de salaire
+    affiché sur une page d'équipe). Mise en cache mémoire pour le run courant.
+    Si `driver` est fourni, réutilise cette fenêtre Chrome au lieu d'en ouvrir
+    une nouvelle — évite l'accumulation de fenêtres sur un run complet.
+    Si la lecture échoue (chromedriver plante parfois en quittant une page
+    d'équipe chargée de pubs), on réessaie dans une fenêtre fraîche, fermée
+    aussitôt : sans la fiche, c'est le cap hit RÉDUIT par la rétention qui
+    serait importé pour ce joueur."""
+    if player_url in SALAIRES_REELS_CACHE:
+        return SALAIRES_REELS_CACHE[player_url]
+
+    resultat = lire_fiche_joueur(driver, player_url, name, timeout) if driver is not None else None
+
+    for essai in range(2):
+        if resultat is not None:
+            break
+        if driver is not None or essai > 0:
+            print(f"🔁 Nouvelle tentative pour la fiche de {name} dans une fenêtre fraîche...")
+        driver_temp = None
+        try:
+            driver_temp = get_driver(headless)
+            resultat = lire_fiche_joueur(driver_temp, player_url, name, timeout)
+        except Exception as e:
+            print(f"❌ Impossible d'ouvrir une fenêtre pour la fiche de {name} : {str(e)[:200]}")
+        finally:
+            if driver_temp is not None:
+                tuer_driver(driver_temp)
+
+    if resultat is None:
+        resultat = {}
+        FICHES_EN_ECHEC.append(name)
     SALAIRES_REELS_CACHE[player_url] = resultat
     return resultat
 
@@ -730,6 +754,10 @@ def scraper_depuis_csv_source(csv_path=DEFAULT_SOURCE_CSV, headless=True):
     if equipes_perimees:
         print(f"\n⚠️  {len(equipes_perimees)} équipe(s) avec données potentiellement PÉRIMÉES (échec de retéléchargement) : {equipes_perimees}")
         print("    Relancer le scraping pour ces équipes avant de faire confiance aux données.")
+
+    if FICHES_EN_ECHEC:
+        print(f"\n⚠️  {len(FICHES_EN_ECHEC)} joueur(s) à salaire retenu dont la fiche n'a pas pu être lue — cap hit RÉDUIT conservé (FAUX) : {FICHES_EN_ECHEC}")
+        print("    Relancer le scraping avant d'importer ces données.")
 
     if 'Equipe' in all_table.columns:
         print(f"📊 Total équipes traitées : {len(all_table['Equipe'].unique())}")

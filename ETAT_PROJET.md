@@ -63,9 +63,12 @@
 
 - **Nate Danielson** ajouté à la main dans la banque de Vincent en prod le 2026-10-11 (oubli de
   l'initialisation), comme recrue repêchée en 2023 : confirmer l'année avec Vincent.
-- **Scraping PuckPedia à relancer** (`./run_pipeline_staging.ps1`) : le run du 2026-10-13 a gelé le
-  portable (fenêtres Chrome jamais fermées — corrigé, sur staging). Vérifier qu'une seule fenêtre
-  reste ouverte à la fois ; 9 CSV partiels (BOS à LAK) attendent, non commités.
+- **Salaires faux en prod depuis le 2026-10-13 (run de 14 h 29)** : Carlo, Kadri, Gallagher et
+  Wotherspoon ont leur cap hit réduit par la rétention (fiche joueur illisible, chromedriver
+  planté). Corrigé dans le script (nouvelle tentative en fenêtre fraîche, sur staging) : relancer
+  `./run_pipeline_staging.ps1`, vérifier qu'aucune fiche n'est signalée en échec à la fin du
+  scraping, puis pousser les CSV sur `main` (réimporte en prod). CSV actuels non commités (faux).
+- Fenêtres Chrome du scraping : fermées correctement depuis le correctif du 2026-10-13.
 
 
 

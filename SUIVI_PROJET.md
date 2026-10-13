@@ -40,6 +40,15 @@ Détails ci-dessous.
   de Chrome est mémorisé à l'ouverture (`get_driver`), pour le fermer même si chromedriver est déjà
   mort ; `fermer_chrome_orphelins()` nettoie au départ ce qu'un run tué brutalement aurait laissé.
   Testé : chromedriver tué d'abord puis `tuer_driver` → 0 processus ; run complet pas encore refait.
+- Runs complets de David (staging 13 h 46, prod 14 h 29) : terminés, aucune fenêtre laissée ouverte.
+  Mais `chromedriver` 155 plante par moments en quittant une page d'équipe (18 relances par run,
+  3 le 8 octobre), et toujours sur la première fiche joueur lue après. Conséquence : 4 salaires
+  retenus non corrigés, **importés réduits en prod** (Carlo 615 000 au lieu de 4,1 M à BOS, Kadri,
+  Gallagher, Wotherspoon). Les CSV de ce run ne sont pas commités.
+- Correctif : `recuperer_salaires_reels()` réessaie jusqu'à 2 fois dans une fenêtre fraîche, fermée
+  aussitôt (`lire_fiche_joueur()` retourne `None` en cas d'échec, distinct d'une fiche sans saison) ;
+  les fiches toujours en échec sont listées en fin de run (`FICHES_EN_ECHEC`). Testé avec un
+  chromedriver tué : la fiche de Carlo est relue, 4,1 M. Reste à refaire un run complet.
 - Les CSV du run interrompu (9 équipes, BOS à LAK) ne sont pas commités : scraping à relancer.
 
 **[Feat] — notifications de l'admin classées par type** (`app/app/admin/communaute/NotificationsList.tsx`) :
