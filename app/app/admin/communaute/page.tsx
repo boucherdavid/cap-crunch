@@ -9,6 +9,7 @@ import type { Event } from '../suivi/SuiviTable'
 import JournalExport from '../suivi/JournalExport'
 import AdminPlanificationManager from '../planification/AdminPlanificationManager'
 import AdminBabillardManager from './AdminBabillardManager'
+import NotificationsList from './NotificationsList'
 import { CHANGE_LABEL, CHANGE_COLOR } from '@/lib/rosterChangeLabels'
 
 export const dynamic = 'force-dynamic'
@@ -178,22 +179,7 @@ export default async function AdminCommunautePage({
                 </form>
               )}
             </div>
-            {notifications.length === 0
-              ? <div className="bg-white rounded-lg shadow p-8 text-center text-gray-400 text-sm">Aucune notification.</div>
-              : <div className="space-y-2">
-                  {notifications.map((n: { id: string; read_at: string | null; title: string; body: string; sent_at: string; url?: string }) => (
-                    <div key={n.id} className={`bg-white rounded-lg shadow px-4 py-3 flex items-start gap-3 border-l-4 ${!n.read_at ? 'border-blue-500' : 'border-transparent'}`}>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold ${n.read_at ? 'text-gray-600' : 'text-gray-900'}`}>{n.title}</p>
-                        <p className="text-sm text-gray-500 mt-0.5">{n.body}</p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          {new Date(n.sent_at).toLocaleString('fr-CA', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Toronto' })}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-            }
+            <NotificationsList notifications={notifications} />
           </div>
         </div>
       )}
