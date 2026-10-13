@@ -15,7 +15,7 @@ export default async function SimulationPage({
   const { data: { user } } = await supabase.auth.getUser()
 
   const { data: me } = user
-    ? await supabase.from('poolers').select('id, name').eq('id', user.id).single()
+    ? await supabase.from('poolers').select('id, name, is_admin').eq('id', user.id).single()
     : { data: null }
 
   const { data: saison } = await supabase
@@ -36,7 +36,8 @@ export default async function SimulationPage({
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <SimulationTool
-        me={me}
+        me={{ id: me.id, name: me.name }}
+        isAdmin={!!me.is_admin}
         saisonId={saison.id}
         season={saison.season}
         preloadPlayerId={preloadPlayerId}
