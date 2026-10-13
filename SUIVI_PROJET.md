@@ -21,12 +21,18 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-13
 
+**[Bilan de session]** — 4 fonctionnalités, toutes validées par David sur staging puis promues en
+prod le jour même : faits saillants sur l'accueil, simulation pour un autre pooler (admin), calcul
+du facteur de plafond (admin + aide), notifications de l'admin par type. Aucune migration.
+Détails ci-dessous.
+
 **[Feat] — notifications de l'admin classées par type** (`app/app/admin/communaute/NotificationsList.tsx`) :
 - Communauté → Communication : filtres par type (Approbations, Retours de LTIR, LNH, Retours des
   poolers, Planification, Pool des séries, Autres) avec nombre et non lues, pastille de couleur,
   titre sans « Cap Crunch — », notification cliquable vers sa page.
 - Type déduit du titre (`notification_log` n'a pas de colonne de type, aucune migration) : tout
   nouveau titre de `sendPushToAdmins` doit être ajouté à `KINDS`, sinon il tombe dans « Autres ».
+- Commit : `6959b61`, en prod le 2026-10-13 (validé par David)
 
 **[Feat] — calcul du facteur de plafond dans l'app + explication dans l'aide** (`app/lib/capFactor.ts`,
 `app/app/admin/config/CapFactorPanel.tsx`, `cap-factor-actions.ts`, `SeasonsManager.tsx`,
@@ -41,6 +47,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Aide → Règlements : « Calcul du facteur de plafond », version simple (3 étapes, 3 choix) et
   version détaillée repliable (formules + exemple 2026-27 pas à pas). Facteur et plafond en vigueur
   lus en base. Hub Nouvelle saison : rappel à l'étape de transition.
+- Commit : `af1b3fe`, en prod le 2026-10-13 (validé par David)
 
 **[Feat] — simulation pour un autre pooler (admin)** (`app/app/simulation/*`) :
 - Sélecteur « Simuler pour » (admin seulement) en haut de `/simulation` : charge l'alignement réel
@@ -50,6 +57,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - L'onglet Transaction suit le pooler choisi (titres, cibles possibles).
 - `searchSimulationPlayersAction` : option `forPoolerId` (exclut les joueurs de ce pooler),
   ignorée si l'appelant n'est pas admin.
+- Commit : `736be67`, en prod le 2026-10-13 (validé par David)
 
 **[Feat] — faits saillants sur l'accueil** (`app/app/page.tsx`) :
 - Bandeau « Faits saillants · 7 derniers jours » sous le logo : échanges entre poolers,
@@ -61,6 +69,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   marquant de ses mouvements (LTIR + signature = signature).
 - Texte de l'activité découpé en segments (`Seg`) pour le gras ; `fetchPoolActivity` renvoie
   toute la liste, l'accueil en garde 8 pour la carte.
+- Commit : `2b6d710`, en prod le 2026-10-13 (validé par David)
 
 ### 2026-10-12
 
