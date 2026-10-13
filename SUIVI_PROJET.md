@@ -33,6 +33,13 @@ Détails ci-dessous.
   ajoutait donc une fenêtre, avec ses pubs et vidéos.
 - Correctif : `taskkill /F /T` sur l'arbre de processus de chromedriver, avant de tuer chromedriver
   lui-même ; même nettoyage à la fin du run. Testé en local : 8 processus Chrome → 0.
+- Deuxième passe le même jour : le run suivant laissait encore 7 fenêtres (685 processus Chrome).
+  `taskkill /T` passe par WMI, qui prenait des minutes sur le poste déjà chargé : délai dépassé,
+  chromedriver tué seul, Chrome orphelin. Remplacé par un arrêt direct de l'arbre de processus
+  (`lister_processus()`/`tuer_arbre()`, instantané Toolhelp32 par ctypes, sans dépendance). Le PID
+  de Chrome est mémorisé à l'ouverture (`get_driver`), pour le fermer même si chromedriver est déjà
+  mort ; `fermer_chrome_orphelins()` nettoie au départ ce qu'un run tué brutalement aurait laissé.
+  Testé : chromedriver tué d'abord puis `tuer_driver` → 0 processus ; run complet pas encore refait.
 - Les CSV du run interrompu (9 équipes, BOS à LAK) ne sont pas commités : scraping à relancer.
 
 **[Feat] — notifications de l'admin classées par type** (`app/app/admin/communaute/NotificationsList.tsx`) :

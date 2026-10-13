@@ -3,7 +3,6 @@ import re
 import sys
 import time
 import threading
-import subprocess
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
@@ -92,7 +91,112 @@ def get_driver(headless=True):
 
     chrome_path = which("chromedriver")
     service = Service(executable_path=chrome_path)
-    return webdriver.Chrome(service=service, options=options)
+    driver = webdriver.Chrome(service=service, options=options)
+    # PID de Chrome mémorisé tout de suite : si chromedriver meurt avant le
+    # nettoyage (tué ou planté), on ne peut plus retrouver sa fenêtre par
+    # l'arbre de processus — voir tuer_driver().
+    try:
+        pid_service = service.process.pid
+        driver._pids_chrome = [pid for pid, parent, _ in lister_processus() if parent == pid_service]
+    except Exception:
+        driver._pids_chrome = []
+    return driver
+
+
+def lister_processus():
+    """Liste (pid, pid_parent, nom) de tous les processus (Windows seulement,
+    liste vide ailleurs). Instantané Toolhelp32 par ctypes : immédiat et sans
+    dépendance, contrairement à WMI (et donc à `taskkill /T`), qui prend des
+    minutes sur un poste chargé par des centaines de processus Chrome."""
+    if os.name != 'nt':
+        return []
+    import ctypes
+    from ctypes import wintypes
+
+    class PROCESSENTRY32(ctypes.Structure):
+        _fields_ = [
+            ('dwSize', wintypes.DWORD),
+            ('cntUsage', wintypes.DWORD),
+            ('th32ProcessID', wintypes.DWORD),
+            ('th32DefaultHeapID', ctypes.c_size_t),
+            ('th32ModuleID', wintypes.DWORD),
+            ('cntThreads', wintypes.DWORD),
+            ('th32ParentProcessID', wintypes.DWORD),
+            ('pcPriClassBase', ctypes.c_long),
+            ('dwFlags', wintypes.DWORD),
+            ('szExeFile', ctypes.c_char * 260),
+        ]
+
+    k32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    k32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    k32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+    k32.Process32First.argtypes = [wintypes.HANDLE, ctypes.POINTER(PROCESSENTRY32)]
+    k32.Process32Next.argtypes = [wintypes.HANDLE, ctypes.POINTER(PROCESSENTRY32)]
+    k32.CloseHandle.argtypes = [wintypes.HANDLE]
+
+    snap = k32.CreateToolhelp32Snapshot(0x00000002, 0)  # TH32CS_SNAPPROCESS
+    if not snap or snap == wintypes.HANDLE(-1).value:
+        return []
+    processus = []
+    try:
+        entree = PROCESSENTRY32()
+        entree.dwSize = ctypes.sizeof(PROCESSENTRY32)
+        suite = k32.Process32First(snap, ctypes.byref(entree))
+        while suite:
+            nom = entree.szExeFile.decode('mbcs', errors='replace').lower()
+            processus.append((entree.th32ProcessID, entree.th32ParentProcessID, nom))
+            suite = k32.Process32Next(snap, ctypes.byref(entree))
+    finally:
+        k32.CloseHandle(snap)
+    return processus
+
+
+def tuer_arbre(pids_racines):
+    """Tue les processus donnés et tous leurs descendants (Windows seulement).
+    Retourne le nombre de processus tués."""
+    if os.name != 'nt' or not pids_racines:
+        return 0
+    import ctypes
+    from ctypes import wintypes
+
+    enfants = {}
+    for pid, parent, _ in lister_processus():
+        enfants.setdefault(parent, []).append(pid)
+    vivants = {pid for liste in enfants.values() for pid in liste}
+
+    cibles, pile = [], [pid for pid in pids_racines if pid in vivants]
+    while pile:
+        pid = pile.pop()
+        if pid in cibles:
+            continue
+        cibles.append(pid)
+        pile.extend(enfants.get(pid, []))
+
+    k32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    k32.OpenProcess.restype = wintypes.HANDLE
+    k32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    k32.TerminateProcess.argtypes = [wintypes.HANDLE, wintypes.UINT]
+    k32.CloseHandle.argtypes = [wintypes.HANDLE]
+    tues = 0
+    for pid in cibles:
+        poignee = k32.OpenProcess(0x0001, False, pid)  # PROCESS_TERMINATE
+        if not poignee:
+            continue
+        if k32.TerminateProcess(poignee, 1):
+            tues += 1
+        k32.CloseHandle(poignee)
+    return tues
+
+
+def fermer_chrome_orphelins():
+    """Ferme ce qu'un run précédent, arrêté brutalement, a pu laisser ouvert :
+    les chromedriver encore vivants et leurs fenêtres Chrome. Le Chrome
+    personnel n'est jamais visé (son parent n'est pas chromedriver)."""
+    racines = [pid for pid, _, nom in lister_processus() if nom == 'chromedriver.exe']
+    tues = tuer_arbre(racines)
+    if tues:
+        print(f"🧹 {tues} processus Chrome/chromedriver d'un run précédent fermés")
+    return tues
 
 
 def naviguer_avec_timeout(driver, url, timeout):
@@ -131,19 +235,20 @@ def tuer_driver(driver):
     Sous Windows, tuer chromedriver seul laisse ses fenêtres Chrome orphelines
     (elles restent ouvertes et s'accumulent à chaque relance, jusqu'à geler la
     machine) : on tue tout l'arbre de processus, avant chromedriver lui-même
-    (taskkill /T ne retrouve plus les enfants d'un parent déjà mort)."""
+    (un enfant ne se retrouve plus une fois son parent mort). Le PID de Chrome
+    mémorisé par get_driver() est visé aussi, pour le cas où chromedriver est
+    déjà mort à ce moment-là. Pas de `taskkill /T` : il passe par WMI, trop
+    lent sur un poste chargé (délai dépassé, donc fenêtres jamais fermées)."""
+    pids = []
     try:
-        pid = driver.service.process.pid
+        pids.append(driver.service.process.pid)
     except Exception:
-        pid = None
-    if pid and os.name == 'nt':
-        try:
-            subprocess.run(
-                ['taskkill', '/F', '/T', '/PID', str(pid)],
-                capture_output=True, timeout=15,
-            )
-        except Exception:
-            pass
+        pass
+    pids += getattr(driver, '_pids_chrome', [])
+    try:
+        tuer_arbre(pids)
+    except Exception:
+        pass
     try:
         driver.service.process.kill()
     except Exception:
@@ -570,6 +675,7 @@ def scraper_depuis_csv_source(csv_path=DEFAULT_SOURCE_CSV, headless=True):
 
     # Une seule fenêtre Chrome réutilisée pour tout le run (équipes + fiches
     # joueurs pour les salaires retenus) — évite l'accumulation de fenêtres.
+    fermer_chrome_orphelins()
     driver = get_driver(headless)
     equipes_perimees = []
     try:
