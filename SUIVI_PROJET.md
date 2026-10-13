@@ -26,13 +26,19 @@ prod le jour même : faits saillants sur l'accueil, simulation pour un autre poo
 du facteur de plafond (admin + aide), notifications de l'admin par type. Aucune migration.
 Détails ci-dessous.
 
+**[Bilan de session, suite — après-midi]** — scraping PuckPedia réparé (fenêtres Chrome qui
+gelaient le portable, fiches joueurs perdues quand `chromedriver` plante), 4 salaires faux en prod
+corrigés et vérifiés en base, CSV du 2026-10-13 poussés sur `main`, et note + avertissement sur la
+date effective forcée. Tout est en prod (`a3f4ff7`). Aucune migration. Reste ouvert : `chromedriver`
+155 plante encore (9 relances par run) — le script s'en remet, la cause n'est pas réglée.
+
 **[Feat] — date effective forcée : note et avertissement de rétroactivité** (`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `actions.ts`, `app/lib/gameDayLock.ts`) :
 - Question de David : faut-il pouvoir forcer une heure ? Non retenu — la règle du pool est par
   journée, et une date forcée prend déjà effet à 8 h (heure de l'Est), avant tous les matchs.
 - À la place : une ligne sous la date (« Prend effet avant les matchs de cette date... ») et un
   avertissement ambre nommant les joueurs du panier dont le match de cette date est déjà commencé
   (`startedTeamsOnDate()`, horaire de la LNH ; indisponible → pas d'avertissement). Rien ne bloque.
-- Pas encore vu à l'écran : à valider par David sur staging.
+- Promu en prod à la demande de David le jour même (`a3f4ff7`).
 
 **[Fix] — scraping PuckPedia : les fenêtres Chrome restaient ouvertes** (`python_script/scrape_puckpedia.py`) :
 - Signalé par David : le pipeline a gelé son portable, les fenêtres Chrome s'accumulaient.
@@ -60,6 +66,11 @@ Détails ci-dessous.
 - Run staging de 14 h 55 avec ce correctif : 32 équipes, aucune périmée, 9 relances de fenêtre,
   5 fiches relues avec succès, aucune en échec, aucune fenêtre laissée ouverte. Les 4 salaires
   retenus sont redevenus exacts. CSV commités et poussés sur `main` (réimport en prod).
+- Import GitHub (`import.yml`) réussi ; cap hit 2026-27 relu en prod : Carlo 4 100 000, Kadri
+  7 000 000, Gallagher 6 500 000, Wotherspoon 1 000 000.
+- À retenir : David avait d'abord lancé `python run_pipeline.py` directement (cible prod) ; les
+  scripts `run_pipeline_staging.ps1`/`run_pipeline_prod.ps1` sont à la racine, pas dans
+  `python_script/`.
 - Les CSV du run interrompu (9 équipes, BOS à LAK) ne sont pas commités : scraping à relancer.
 
 **[Feat] — notifications de l'admin classées par type** (`app/app/admin/communaute/NotificationsList.tsx`) :
