@@ -49,6 +49,9 @@ Détails ci-dessous.
   aussitôt (`lire_fiche_joueur()` retourne `None` en cas d'échec, distinct d'une fiche sans saison) ;
   les fiches toujours en échec sont listées en fin de run (`FICHES_EN_ECHEC`). Testé avec un
   chromedriver tué : la fiche de Carlo est relue, 4,1 M. Reste à refaire un run complet.
+- Run staging de 14 h 55 avec ce correctif : 32 équipes, aucune périmée, 9 relances de fenêtre,
+  5 fiches relues avec succès, aucune en échec, aucune fenêtre laissée ouverte. Les 4 salaires
+  retenus sont redevenus exacts. CSV commités et poussés sur `main` (réimport en prod).
 - Les CSV du run interrompu (9 équipes, BOS à LAK) ne sont pas commités : scraping à relancer.
 
 **[Feat] — notifications de l'admin classées par type** (`app/app/admin/communaute/NotificationsList.tsx`) :

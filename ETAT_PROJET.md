@@ -15,7 +15,7 @@
 - **Staging** : copie de la prod datant du 2026-10-06. À rafraîchir avant chaque séance de test
   (Admin → Mise à jour de données, sur staging). Ses blessures et ses mouvements sont donc en
   retard sur la prod.
-- **Salaires et contrats** : rafraîchis le 2026-10-08 (pipeline local, CSV poussés sur `main`).
+- **Salaires et contrats** : rafraîchis le 2026-10-13 (pipeline local, CSV poussés sur `main`).
   Le scraping de PuckPedia reste **manuel** (`./run_pipeline_staging.ps1`) ; le bouton de l'admin
   et la tâche du lundi ne font que réimporter les CSV du dépôt.
 - Classement validé contre Marqueur.com ; seul écart de points connu, Ryan Leonard (Vincent) —
@@ -63,12 +63,11 @@
 
 - **Nate Danielson** ajouté à la main dans la banque de Vincent en prod le 2026-10-11 (oubli de
   l'initialisation), comme recrue repêchée en 2023 : confirmer l'année avec Vincent.
-- **Salaires faux en prod depuis le 2026-10-13 (run de 14 h 29)** : Carlo, Kadri, Gallagher et
-  Wotherspoon ont leur cap hit réduit par la rétention (fiche joueur illisible, chromedriver
-  planté). Corrigé dans le script (nouvelle tentative en fenêtre fraîche, sur staging) : relancer
-  `./run_pipeline_staging.ps1`, vérifier qu'aucune fiche n'est signalée en échec à la fin du
-  scraping, puis pousser les CSV sur `main` (réimporte en prod). CSV actuels non commités (faux).
-- Fenêtres Chrome du scraping : fermées correctement depuis le correctif du 2026-10-13.
+- **Salaires de Carlo, Kadri, Gallagher et Wotherspoon** : importés réduits en prod le 2026-10-13
+  (14 h 29), corrigés par les CSV du run staging de 14 h 55 poussés sur `main` — vérifier que
+  l'import GitHub (`import.yml`) a bien passé et que leur cap hit est le bon en prod.
+- **Correctifs du scraping** (fenêtres Chrome fermées, fiche joueur relue en cas d'échec) : sur
+  `staging` seulement, pas encore fusionnés dans `main` (script local, sans effet sur l'app).
 
 
 
