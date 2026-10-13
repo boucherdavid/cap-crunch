@@ -19,6 +19,19 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-13
+
+**[Feat] — faits saillants sur l'accueil** (`app/app/page.tsx`) :
+- Bandeau « Faits saillants · 7 derniers jours » sous le logo : échanges entre poolers,
+  signatures (agent libre et remplaçant LTIR, choix de David) et ballotage, 4 au maximum,
+  pastille « Nouveau » pendant 48 h. Un échange prend toute la largeur, avec ce que chaque
+  pooler reçoit en deux colonnes. Disparaît s'il n'y a rien depuis 7 jours.
+- « Activité du pool » : icône de couleur (violet échange, vert signature, orange ballotage) et
+  noms en gras pour ces mouvements ; la routine reste en gris. Un lot prend le type le plus
+  marquant de ses mouvements (LTIR + signature = signature).
+- Texte de l'activité découpé en segments (`Seg`) pour le gras ; `fetchPoolActivity` renvoie
+  toute la liste, l'accueil en garde 8 pour la carte.
+
 ### 2026-10-12
 
 **[Bilan de session]** — tout est en prod et validé par David :
