@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import type { LtirSettings } from '@/lib/ltirEligibility'
 import LtirRulesContent, { LtirSettingsContext } from './LtirRulesContent'
+import CapFactorContent, { CapFactorContext, type CapFactorInfo } from './CapFactorContent'
 import SigningLimitsContent, { SigningLimitsContext, type SigningLimits } from './SigningLimitsContent'
 
 type TabId = 'installation' | 'guide' | 'reglements'
@@ -821,13 +822,20 @@ const SECTIONS: Section[] = [
     keywords: 'cap plafond salarial nhl facteur million admin ajustable ltir recrue masse',
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
-        <li>• Le cap du pool est fixé par l&apos;administrateur. Il est calculé à partir du plafond salarial LNH de la saison, multiplié par un facteur (généralement 1,24–1,25) et arrondi au million supérieur.</li>
+        <li>• Le cap du pool est fixé par l&apos;administrateur. Il est calculé à partir du plafond salarial LNH de la saison, multiplié par un facteur et arrondi au million supérieur. Le facteur est recalculé chaque été (voir « Calcul du facteur de plafond » ci-dessous).</li>
         <li>• Le facteur et le plafond LNH peuvent être ajustés par l&apos;administrateur avant ou pendant une saison.</li>
         <li>• Seuls les joueurs <strong>actifs</strong> et <strong>réservistes</strong> comptent dans la masse salariale.</li>
         <li>• Les joueurs en <strong>LTIR</strong> et dans la <strong>banque de recrues</strong> ne comptent <em>pas</em> dans la masse.</li>
         <li>• Un joueur <strong>RFA</strong> sans contrat pour la saison compte une masse <strong>estimée</strong> (dernier contrat connu × un facteur, généralement 1,20), affichée « RFA (estimé) », pour éviter qu&apos;il compte 0 $ en attendant sa signature. Un joueur <strong>UFA</strong> sans contrat ne compte pas dans la masse (« UFA (sans contrat) ») — si ce joueur signe ensuite un vrai contrat qui te fait dépasser le cap, tu as un délai (par défaut 7 jours) pour t&apos;ajuster toi-même avant que l&apos;administrateur ne doive intervenir.</li>
       </ul>
     ),
+  },
+  {
+    id: 'regl-facteur',
+    tab: 'reglements',
+    title: 'Calcul du facteur de plafond',
+    keywords: 'facteur plafond cap calcul formule equipe de reve pression marche hausse salaires lambda exemple',
+    content: <CapFactorContent />,
   },
   {
     id: 'regl-ltir',
@@ -936,7 +944,7 @@ function normalize(s: string) {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
 
-export default function AideTabs({ ltirSettings, signingLimits }: { ltirSettings: LtirSettings; signingLimits: SigningLimits | null }) {
+export default function AideTabs({ ltirSettings, signingLimits, capFactor }: { ltirSettings: LtirSettings; signingLimits: SigningLimits | null; capFactor: CapFactorInfo | null }) {
   const [activeTab, setActiveTab] = useState<TabId>('installation')
   const [query, setQuery] = useState('')
 
@@ -958,6 +966,7 @@ export default function AideTabs({ ltirSettings, signingLimits }: { ltirSettings
   return (
     <LtirSettingsContext.Provider value={ltirSettings}>
     <SigningLimitsContext.Provider value={signingLimits}>
+    <CapFactorContext.Provider value={capFactor}>
     <div className="max-w-3xl mx-auto px-4 py-10">
       <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
@@ -1060,6 +1069,7 @@ export default function AideTabs({ ltirSettings, signingLimits }: { ltirSettings
         </>
       )}
     </div>
+    </CapFactorContext.Provider>
     </SigningLimitsContext.Provider>
     </LtirSettingsContext.Provider>
   )

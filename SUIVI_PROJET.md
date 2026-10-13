@@ -21,6 +21,20 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-13
 
+**[Feat] — calcul du facteur de plafond dans l'app + explication dans l'aide** (`app/lib/capFactor.ts`,
+`app/app/admin/config/CapFactorPanel.tsx`, `cap-factor-actions.ts`, `SeasonsManager.tsx`,
+`app/app/aide/CapFactorContent.tsx`) :
+- Bouton « Calculer le facteur » sur chaque saison régulière (Configuration → Saisons) : équipe de
+  rêve (N), prix du marché (N*), P̄ × N, puis 3 scénarios (λ = 0, ½, 1) avec plafond du pool et écart
+  avec la saison précédente. Au-delà de ±0,05 : signalé + bouton pour la valeur bornée (choix de
+  David). Toujours 8 équipes. « Utiliser » met à jour `cap_multiplier` (plafond = colonne générée).
+- Vérifié : sur staging, mêmes chiffres que `prix_du_marche.py` (N 1,640 → N* 1,691, +3,1 %). Sur la
+  prod, le script Python donne +6,2 % : un seul nouveau contrat de plus dans un palier du haut
+  double la hausse — fragilité déjà notée au point 2 de `resume_facteur.md`.
+- Aide → Règlements : « Calcul du facteur de plafond », version simple (3 étapes, 3 choix) et
+  version détaillée repliable (formules + exemple 2026-27 pas à pas). Facteur et plafond en vigueur
+  lus en base. Hub Nouvelle saison : rappel à l'étape de transition.
+
 **[Feat] — simulation pour un autre pooler (admin)** (`app/app/simulation/*`) :
 - Sélecteur « Simuler pour » (admin seulement) en haut de `/simulation` : charge l'alignement réel
   et la banque de recrues du pooler choisi dans l'outil existant — pour répondre à un pooler qui
