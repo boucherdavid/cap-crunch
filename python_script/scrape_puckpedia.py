@@ -31,6 +31,10 @@ PUCKPEDIA_BASE_URL = "https://puckpedia.com"
 # pour éviter de re-télécharger la même fiche si plusieurs saisons sont retenues.
 SALAIRES_REELS_CACHE = {}
 
+# Joueurs dont la fiche n'a pas pu être lue malgré les nouvelles tentatives :
+# leur cap hit est resté RÉDUIT par la rétention — signalé en fin de run.
+FICHES_EN_ECHEC = []
+
 def fusionner_equipes(dossier=TEAMS_OFFLINE_DIR, fichier_sortie=OUTPUT_CSV):
     print(f"\n🔄 Fusion des fichiers CSV du dossier : {dossier}")
     fichiers = [f for f in os.listdir(dossier) if f.endswith(".csv")]
@@ -91,7 +95,112 @@ def get_driver(headless=True):
 
     chrome_path = which("chromedriver")
     service = Service(executable_path=chrome_path)
-    return webdriver.Chrome(service=service, options=options)
+    driver = webdriver.Chrome(service=service, options=options)
+    # PID de Chrome mémorisé tout de suite : si chromedriver meurt avant le
+    # nettoyage (tué ou planté), on ne peut plus retrouver sa fenêtre par
+    # l'arbre de processus — voir tuer_driver().
+    try:
+        pid_service = service.process.pid
+        driver._pids_chrome = [pid for pid, parent, _ in lister_processus() if parent == pid_service]
+    except Exception:
+        driver._pids_chrome = []
+    return driver
+
+
+def lister_processus():
+    """Liste (pid, pid_parent, nom) de tous les processus (Windows seulement,
+    liste vide ailleurs). Instantané Toolhelp32 par ctypes : immédiat et sans
+    dépendance, contrairement à WMI (et donc à `taskkill /T`), qui prend des
+    minutes sur un poste chargé par des centaines de processus Chrome."""
+    if os.name != 'nt':
+        return []
+    import ctypes
+    from ctypes import wintypes
+
+    class PROCESSENTRY32(ctypes.Structure):
+        _fields_ = [
+            ('dwSize', wintypes.DWORD),
+            ('cntUsage', wintypes.DWORD),
+            ('th32ProcessID', wintypes.DWORD),
+            ('th32DefaultHeapID', ctypes.c_size_t),
+            ('th32ModuleID', wintypes.DWORD),
+            ('cntThreads', wintypes.DWORD),
+            ('th32ParentProcessID', wintypes.DWORD),
+            ('pcPriClassBase', ctypes.c_long),
+            ('dwFlags', wintypes.DWORD),
+            ('szExeFile', ctypes.c_char * 260),
+        ]
+
+    k32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    k32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    k32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+    k32.Process32First.argtypes = [wintypes.HANDLE, ctypes.POINTER(PROCESSENTRY32)]
+    k32.Process32Next.argtypes = [wintypes.HANDLE, ctypes.POINTER(PROCESSENTRY32)]
+    k32.CloseHandle.argtypes = [wintypes.HANDLE]
+
+    snap = k32.CreateToolhelp32Snapshot(0x00000002, 0)  # TH32CS_SNAPPROCESS
+    if not snap or snap == wintypes.HANDLE(-1).value:
+        return []
+    processus = []
+    try:
+        entree = PROCESSENTRY32()
+        entree.dwSize = ctypes.sizeof(PROCESSENTRY32)
+        suite = k32.Process32First(snap, ctypes.byref(entree))
+        while suite:
+            nom = entree.szExeFile.decode('mbcs', errors='replace').lower()
+            processus.append((entree.th32ProcessID, entree.th32ParentProcessID, nom))
+            suite = k32.Process32Next(snap, ctypes.byref(entree))
+    finally:
+        k32.CloseHandle(snap)
+    return processus
+
+
+def tuer_arbre(pids_racines):
+    """Tue les processus donnés et tous leurs descendants (Windows seulement).
+    Retourne le nombre de processus tués."""
+    if os.name != 'nt' or not pids_racines:
+        return 0
+    import ctypes
+    from ctypes import wintypes
+
+    enfants = {}
+    for pid, parent, _ in lister_processus():
+        enfants.setdefault(parent, []).append(pid)
+    vivants = {pid for liste in enfants.values() for pid in liste}
+
+    cibles, pile = [], [pid for pid in pids_racines if pid in vivants]
+    while pile:
+        pid = pile.pop()
+        if pid in cibles:
+            continue
+        cibles.append(pid)
+        pile.extend(enfants.get(pid, []))
+
+    k32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    k32.OpenProcess.restype = wintypes.HANDLE
+    k32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    k32.TerminateProcess.argtypes = [wintypes.HANDLE, wintypes.UINT]
+    k32.CloseHandle.argtypes = [wintypes.HANDLE]
+    tues = 0
+    for pid in cibles:
+        poignee = k32.OpenProcess(0x0001, False, pid)  # PROCESS_TERMINATE
+        if not poignee:
+            continue
+        if k32.TerminateProcess(poignee, 1):
+            tues += 1
+        k32.CloseHandle(poignee)
+    return tues
+
+
+def fermer_chrome_orphelins():
+    """Ferme ce qu'un run précédent, arrêté brutalement, a pu laisser ouvert :
+    les chromedriver encore vivants et leurs fenêtres Chrome. Le Chrome
+    personnel n'est jamais visé (son parent n'est pas chromedriver)."""
+    racines = [pid for pid, _, nom in lister_processus() if nom == 'chromedriver.exe']
+    tues = tuer_arbre(racines)
+    if tues:
+        print(f"🧹 {tues} processus Chrome/chromedriver d'un run précédent fermés")
+    return tues
 
 
 def naviguer_avec_timeout(driver, url, timeout):
@@ -126,7 +235,24 @@ def naviguer_avec_timeout(driver, url, timeout):
 def tuer_driver(driver):
     """Tue le processus chromedriver/Chrome sous-jacent sans attendre de
     réponse — utilisé quand le driver est bloqué et qu'un .quit() normal
-    risque lui aussi de rester bloqué indéfiniment."""
+    risque lui aussi de rester bloqué indéfiniment.
+    Sous Windows, tuer chromedriver seul laisse ses fenêtres Chrome orphelines
+    (elles restent ouvertes et s'accumulent à chaque relance, jusqu'à geler la
+    machine) : on tue tout l'arbre de processus, avant chromedriver lui-même
+    (un enfant ne se retrouve plus une fois son parent mort). Le PID de Chrome
+    mémorisé par get_driver() est visé aussi, pour le cas où chromedriver est
+    déjà mort à ce moment-là. Pas de `taskkill /T` : il passe par WMI, trop
+    lent sur un poste chargé (délai dépassé, donc fenêtres jamais fermées)."""
+    pids = []
+    try:
+        pids.append(driver.service.process.pid)
+    except Exception:
+        pass
+    pids += getattr(driver, '_pids_chrome', [])
+    try:
+        tuer_arbre(pids)
+    except Exception:
+        pass
     try:
         driver.service.process.kill()
     except Exception:
@@ -221,26 +347,17 @@ def extraire_salaires_reels(html):
     return saisons
 
 
-def recuperer_salaires_reels(player_url, name, headless=True, timeout=30, driver=None):
-    """Télécharge la fiche d'un joueur et retourne ses cap hits pleins par
-    saison (utilisé pour corriger un cap hit réduit par rétention de salaire
-    affiché sur une page d'équipe). Mise en cache mémoire pour le run courant.
-    Si `driver` est fourni, réutilise cette fenêtre Chrome au lieu d'en ouvrir
-    une nouvelle — évite l'accumulation de fenêtres sur un run complet."""
-    if player_url in SALAIRES_REELS_CACHE:
-        return SALAIRES_REELS_CACHE[player_url]
-
-    driver_local = driver is None
-    resultat = {}
+def lire_fiche_joueur(driver, player_url, name, timeout):
+    """Une tentative de lecture de la fiche d'un joueur dans `driver`.
+    Retourne ses cap hits pleins par saison, ou None si la lecture a échoué
+    (navigation bloquée, chromedriver planté, défi Cloudflare) — à distinguer
+    d'un dict vide, qui veut dire « fiche lue, aucune saison trouvée »."""
     try:
-        if driver is None:
-            driver = get_driver(headless)
         driver.set_page_load_timeout(timeout)
         driver.set_script_timeout(timeout)
         if not naviguer_avec_timeout(driver, player_url, timeout + 10):
             print(f"⚠️ Chargement de la fiche de {name} bloqué au-delà de {timeout + 10}s — abandon")
-            SALAIRES_REELS_CACHE[player_url] = resultat
-            return resultat
+            return None
 
         try:
             WebDriverWait(driver, 20).until(
@@ -255,8 +372,7 @@ def recuperer_salaires_reels(player_url, name, headless=True, timeout=30, driver
 
         if "cf-turnstile" in html.lower() or "un instant" in html.lower():
             print(f"⚠️ Défi Cloudflare non résolu pour la fiche de {name}")
-            SALAIRES_REELS_CACHE[player_url] = resultat
-            return resultat
+            return None
 
         os.makedirs(DIAGNOSTICS_PLAYERS_DIR, exist_ok=True)
         slug = player_url.rstrip("/").split("/")[-1]
@@ -267,15 +383,45 @@ def recuperer_salaires_reels(player_url, name, headless=True, timeout=30, driver
         if not resultat:
             nb_tables = html.count('pp_table-contract')
             print(f"   [diag] {name} : 0 saison extraite (pp_table-contract trouvé {nb_tables}x dans le HTML)")
+        return resultat
     except Exception as e:
-        print(f"❌ Erreur Selenium pour la fiche de {name} : {e}")
-    finally:
-        if driver_local and driver:
-            try:
-                driver.quit()
-            except Exception:
-                pass
+        print(f"❌ Erreur Selenium pour la fiche de {name} : {str(e)[:200]}")
+        return None
 
+
+def recuperer_salaires_reels(player_url, name, headless=True, timeout=30, driver=None):
+    """Télécharge la fiche d'un joueur et retourne ses cap hits pleins par
+    saison (utilisé pour corriger un cap hit réduit par rétention de salaire
+    affiché sur une page d'équipe). Mise en cache mémoire pour le run courant.
+    Si `driver` est fourni, réutilise cette fenêtre Chrome au lieu d'en ouvrir
+    une nouvelle — évite l'accumulation de fenêtres sur un run complet.
+    Si la lecture échoue (chromedriver plante parfois en quittant une page
+    d'équipe chargée de pubs), on réessaie dans une fenêtre fraîche, fermée
+    aussitôt : sans la fiche, c'est le cap hit RÉDUIT par la rétention qui
+    serait importé pour ce joueur."""
+    if player_url in SALAIRES_REELS_CACHE:
+        return SALAIRES_REELS_CACHE[player_url]
+
+    resultat = lire_fiche_joueur(driver, player_url, name, timeout) if driver is not None else None
+
+    for essai in range(2):
+        if resultat is not None:
+            break
+        if driver is not None or essai > 0:
+            print(f"🔁 Nouvelle tentative pour la fiche de {name} dans une fenêtre fraîche...")
+        driver_temp = None
+        try:
+            driver_temp = get_driver(headless)
+            resultat = lire_fiche_joueur(driver_temp, player_url, name, timeout)
+        except Exception as e:
+            print(f"❌ Impossible d'ouvrir une fenêtre pour la fiche de {name} : {str(e)[:200]}")
+        finally:
+            if driver_temp is not None:
+                tuer_driver(driver_temp)
+
+    if resultat is None:
+        resultat = {}
+        FICHES_EN_ECHEC.append(name)
     SALAIRES_REELS_CACHE[player_url] = resultat
     return resultat
 
@@ -553,6 +699,7 @@ def scraper_depuis_csv_source(csv_path=DEFAULT_SOURCE_CSV, headless=True):
 
     # Une seule fenêtre Chrome réutilisée pour tout le run (équipes + fiches
     # joueurs pour les salaires retenus) — évite l'accumulation de fenêtres.
+    fermer_chrome_orphelins()
     driver = get_driver(headless)
     equipes_perimees = []
     try:
@@ -593,10 +740,13 @@ def scraper_depuis_csv_source(csv_path=DEFAULT_SOURCE_CSV, headless=True):
             except Exception as e:
                 print(f"❌ Erreur avec {sigle} : {e}")
     finally:
+        # quit() d'abord (fermeture propre), puis l'arbre de processus au cas
+        # où une fenêtre aurait survécu (interruption, driver déjà mort).
         try:
             driver.quit()
         except Exception:
             pass
+        tuer_driver(driver)
 
     all_table.to_csv(OFFLINE_CSV, index=False, sep=';')
     print(f"\n📦 Fichier global sauvegardé : ./PuckPedia_offline.csv")
@@ -604,6 +754,10 @@ def scraper_depuis_csv_source(csv_path=DEFAULT_SOURCE_CSV, headless=True):
     if equipes_perimees:
         print(f"\n⚠️  {len(equipes_perimees)} équipe(s) avec données potentiellement PÉRIMÉES (échec de retéléchargement) : {equipes_perimees}")
         print("    Relancer le scraping pour ces équipes avant de faire confiance aux données.")
+
+    if FICHES_EN_ECHEC:
+        print(f"\n⚠️  {len(FICHES_EN_ECHEC)} joueur(s) à salaire retenu dont la fiche n'a pas pu être lue — cap hit RÉDUIT conservé (FAUX) : {FICHES_EN_ECHEC}")
+        print("    Relancer le scraping avant d'importer ces données.")
 
     if 'Equipe' in all_table.columns:
         print(f"📊 Total équipes traitées : {len(all_table['Equipe'].unique())}")

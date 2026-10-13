@@ -26,6 +26,42 @@ prod le jour même : faits saillants sur l'accueil, simulation pour un autre poo
 du facteur de plafond (admin + aide), notifications de l'admin par type. Aucune migration.
 Détails ci-dessous.
 
+**[Feat] — date effective forcée : note et avertissement de rétroactivité** (`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `actions.ts`, `app/lib/gameDayLock.ts`) :
+- Question de David : faut-il pouvoir forcer une heure ? Non retenu — la règle du pool est par
+  journée, et une date forcée prend déjà effet à 8 h (heure de l'Est), avant tous les matchs.
+- À la place : une ligne sous la date (« Prend effet avant les matchs de cette date... ») et un
+  avertissement ambre nommant les joueurs du panier dont le match de cette date est déjà commencé
+  (`startedTeamsOnDate()`, horaire de la LNH ; indisponible → pas d'avertissement). Rien ne bloque.
+- Pas encore vu à l'écran : à valider par David sur staging.
+
+**[Fix] — scraping PuckPedia : les fenêtres Chrome restaient ouvertes** (`python_script/scrape_puckpedia.py`) :
+- Signalé par David : le pipeline a gelé son portable, les fenêtres Chrome s'accumulaient.
+- Cause : quand un chargement bloquait, `tuer_driver()` ne tuait que `chromedriver.exe` ; sous
+  Windows, Chrome lui survit (orphelin), et `quit()` ne peut plus le fermer. Chaque relance
+  ajoutait donc une fenêtre, avec ses pubs et vidéos.
+- Correctif : `taskkill /F /T` sur l'arbre de processus de chromedriver, avant de tuer chromedriver
+  lui-même ; même nettoyage à la fin du run. Testé en local : 8 processus Chrome → 0.
+- Deuxième passe le même jour : le run suivant laissait encore 7 fenêtres (685 processus Chrome).
+  `taskkill /T` passe par WMI, qui prenait des minutes sur le poste déjà chargé : délai dépassé,
+  chromedriver tué seul, Chrome orphelin. Remplacé par un arrêt direct de l'arbre de processus
+  (`lister_processus()`/`tuer_arbre()`, instantané Toolhelp32 par ctypes, sans dépendance). Le PID
+  de Chrome est mémorisé à l'ouverture (`get_driver`), pour le fermer même si chromedriver est déjà
+  mort ; `fermer_chrome_orphelins()` nettoie au départ ce qu'un run tué brutalement aurait laissé.
+  Testé : chromedriver tué d'abord puis `tuer_driver` → 0 processus ; run complet pas encore refait.
+- Runs complets de David (staging 13 h 46, prod 14 h 29) : terminés, aucune fenêtre laissée ouverte.
+  Mais `chromedriver` 155 plante par moments en quittant une page d'équipe (18 relances par run,
+  3 le 8 octobre), et toujours sur la première fiche joueur lue après. Conséquence : 4 salaires
+  retenus non corrigés, **importés réduits en prod** (Carlo 615 000 au lieu de 4,1 M à BOS, Kadri,
+  Gallagher, Wotherspoon). Les CSV de ce run ne sont pas commités.
+- Correctif : `recuperer_salaires_reels()` réessaie jusqu'à 2 fois dans une fenêtre fraîche, fermée
+  aussitôt (`lire_fiche_joueur()` retourne `None` en cas d'échec, distinct d'une fiche sans saison) ;
+  les fiches toujours en échec sont listées en fin de run (`FICHES_EN_ECHEC`). Testé avec un
+  chromedriver tué : la fiche de Carlo est relue, 4,1 M. Reste à refaire un run complet.
+- Run staging de 14 h 55 avec ce correctif : 32 équipes, aucune périmée, 9 relances de fenêtre,
+  5 fiches relues avec succès, aucune en échec, aucune fenêtre laissée ouverte. Les 4 salaires
+  retenus sont redevenus exacts. CSV commités et poussés sur `main` (réimport en prod).
+- Les CSV du run interrompu (9 équipes, BOS à LAK) ne sont pas commités : scraping à relancer.
+
 **[Feat] — notifications de l'admin classées par type** (`app/app/admin/communaute/NotificationsList.tsx`) :
 - Communauté → Communication : filtres par type (Approbations, Retours de LTIR, LNH, Retours des
   poolers, Planification, Pool des séries, Autres) avec nombre et non lues, pastille de couleur,

@@ -12,6 +12,7 @@ import {
   searchPlayersAction,
   getSigningCountsAction,
   getAwardedWaiverClaimsAction,
+  getStartedTeamsOnDateAction,
   submitBatchAction,
 } from './actions'
 import {
@@ -428,6 +429,30 @@ export default function GestionEffectifsManager({
   // Admin date override
   const [forceDateEnabled, setForceDateEnabled] = useState(false)
   const [forcedDate, setForcedDate]             = useState(todayLocal)
+  // Joueurs du panier dont le match de la date forcée est déjà commencé (changement rétroactif).
+  const [startedTeams, setStartedTeams]         = useState<string[]>([])
+  const cartPlayers = useMemo(() => {
+    const seen = new Map<number, RosterEntry>()
+    for (const item of cart) {
+      for (const e of [item.entry1, item.entry2, item.ltirEntry, item.returnLtirEntry, item.deactivateActifEntry, item.releaseEntry, item.newPlayerEntry]) {
+        if (e?.teamCode) seen.set(e.playerId, e)
+      }
+    }
+    return Array.from(seen.values())
+  }, [cart])
+  const cartTeamsKey = useMemo(() => Array.from(new Set(cartPlayers.map(e => e.teamCode as string))).sort().join(','), [cartPlayers])
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      const teams = isAdmin && forceDateEnabled && cartTeamsKey
+        ? await getStartedTeamsOnDateAction(forcedDate, cartTeamsKey.split(','))
+        : []
+      if (!cancelled) setStartedTeams(teams)
+    }
+    void load()
+    return () => { cancelled = true }
+  }, [isAdmin, forceDateEnabled, forcedDate, cartTeamsKey])
+  const retroactivePlayers = cartPlayers.filter(e => startedTeams.includes(e.teamCode as string))
 
   // Submit
   const [isPending, startTransition] = useTransition()
@@ -1156,7 +1181,20 @@ export default function GestionEffectifsManager({
             <label htmlFor="force-date" className="text-sm text-gray-700">Forcer une date effective</label>
           </div>
           {forceDateEnabled
-            ? <input type="date" value={forcedDate} onChange={e => setForcedDate(e.target.value)} className="border border-gray-300 rounded px-3 py-2 text-sm max-w-xs" />
+            ? (
+              <>
+                <input type="date" value={forcedDate} onChange={e => setForcedDate(e.target.value)} className="border border-gray-300 rounded px-3 py-2 text-sm max-w-xs" />
+                <p className="text-xs text-gray-500">
+                  Prend effet avant les matchs de cette date : un joueur activé compte pour son match de ce jour-là, un joueur retiré ne compte plus.
+                </p>
+                {retroactivePlayers.length > 0 && (
+                  <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                    Match déjà commencé à cette date pour {retroactivePlayers.map(e => `${e.lastName} (${e.teamCode})`).join(', ')}.
+                    {' '}Le changement s&apos;appliquera rétroactivement à {new Set(retroactivePlayers.map(e => e.teamCode)).size > 1 ? 'ces matchs' : 'ce match'}.
+                  </p>
+                )}
+              </>
+            )
             : <p className="text-xs text-gray-400">Par défaut : date et heure de la soumission.</p>
           }
         </div>

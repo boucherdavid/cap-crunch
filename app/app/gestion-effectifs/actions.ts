@@ -7,7 +7,7 @@ import { after } from 'next/server'
 import { sendPushToUser } from '@/lib/push'
 import { announceToPool, playerNames, poolerName } from '@/lib/poolAnnouncements'
 import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/rosterTypeChange'
-import { computeBatchEffectiveDate, undoableDeactivations } from '@/lib/gameDayLock'
+import { computeBatchEffectiveDate, undoableDeactivations, startedTeamsOnDate } from '@/lib/gameDayLock'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { validateRosterLimits, getPlayerBucket, ACTIVE_LIMITS, type Bucket } from '@/lib/rosterLimits'
 import { createWaiverClaimForRelease, isPlayerUnderActiveWaiverClaim } from '@/lib/waiverClaims'
@@ -262,6 +262,16 @@ export async function getSigningCountsAction(
     al:   rows.filter(r => r.change_type === 'signature_agent_libre').length,
     ltir: rows.filter(r => r.change_type === 'signature_ltir').length,
   }
+}
+
+// Date effective forcée par l'admin (David, 2026-10-13) : équipes du panier dont le match de
+// cette date est déjà commencé — le changement sera rétroactif pour ce match.
+export async function getStartedTeamsOnDateAction(date: string, teamCodes: string[]): Promise<string[]> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return []
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+  return startedTeamsOnDate(date, teamCodes.filter(c => /^[A-Z]{2,4}$/.test(c)).slice(0, 40))
 }
 
 export type AwardedClaim = {
