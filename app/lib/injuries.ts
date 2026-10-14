@@ -44,9 +44,14 @@ export async function fetchLastGameByPlayerId(playerIds: number[], settings: Lti
   const map = new Map<number, string>()
   if (playerIds.length === 0) return map
   const since = new Date(Date.now() - settings.recentGameDays * 86_400_000).toISOString()
+  // Borne sur game_date (indexée), un jour plus tôt pour couvrir le décalage UTC : sans elle,
+  // Postgres relisait tous les matchs de toutes les saisons de chaque blessé (requête la plus
+  // coûteuse de la base, CPU de la prod saturé le 2026-10-14).
+  const sinceDate = new Date(Date.parse(since) - 86_400_000).toISOString().slice(0, 10)
   const { data } = await createAdminClient()
     .from('player_game_logs')
     .select('player_id, game_start_time')
+    .gte('game_date', sinceDate)
     .in('player_id', playerIds)
     .gte('game_start_time', since)
     .order('game_start_time')

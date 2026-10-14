@@ -36,6 +36,18 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   L'import des points (`regular_stats.yml`) a échoué deux fois le 14 au matin (`ReadTimeout` sur
   `players`). Les imports Python passent déjà par `db_diff` depuis le 12. À vérifier dans le tableau
   de bord Supabase (Usage → Disk IO budget).
+- Suite : projet prod « Unhealthy » (incident Supabase en cours) ; redémarré par David, revenu
+  « Healthy » mais CPU à 86-92 %, en hausse régulière depuis le 8 octobre (Disk IO 68 %).
+
+**[Perf] — requête la plus coûteuse de la base : dernier match des blessés** (`app/lib/injuries.ts`) :
+- `pg_stat_statements` (`supabase_debug/Query_debu_20261014.csv`) : `fetchLastGameByPlayerId`
+  en tête, 869 appels à 837 ms en moyenne (728 s de CPU depuis le 12). Filtrée par `player_id` +
+  `game_start_time`, sans saison : l'index `(player_id, season, game_type)` relisait tous les
+  matchs de chaque blessé (54 000 lignes de 2025-26 dans la table).
+- Correctif : borne `game_date >= since - 1 jour` (index `idx_game_logs_date`). Mesuré en prod :
+  0,52 s → 0,12 s, même résultat (71 lignes pour 143 blessés).
+- Reste du rapport : surtout des frais fixes de PostgREST/Auth par requête (~30 000 requêtes en
+  2 jours) et le classement (`buildStandings`, 346 appels à 191 ms) — à surveiller.
 
 ### 2026-10-13
 
