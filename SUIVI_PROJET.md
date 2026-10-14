@@ -30,6 +30,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   `executeTradeOffer()` calcule l'heure d'effet avec `computeBatchEffectiveDate` (joueurs échangés
   + ajustements des deux poolers) et l'applique à `removed_at`, `added_at`, `roster_change_log` ;
   `resolved_at` garde l'heure réelle. Pré-saison inchangée. Avis à l'écran, push et courriel.
+- Correction rétroactive en prod (accord de David) : échange n° 9 (Sébastien F. ↔ Vincent, confirmé
+  le 13 à 22 h 38 ET, match de Malkin commencé à 20 h) ramené au 14 à 8 h ET — `pooler_rosters`
+  2774 (removed_at) et 3169 (added_at), `roster_change_log` 106 à 109. Effet : but de Zacha (match
+  de 23 h) compté à Sébastien F. (+1) ; Malkin 0 point, Kasper n'a pas joué. Échange n° 11 (Yurov,
+  recrue des deux côtés, 0 point) laissé tel quel ; n° 7 non visé (aucun match commencé).
 
 **[Fix] — protection recrue : une seule règle partout, correction rétroactive, années de repêchage**
 (`lib/rookieProtection.ts`, `lib/rookieProtectionSync.ts`, `lib/poolDraftYear.ts`, Gestion
