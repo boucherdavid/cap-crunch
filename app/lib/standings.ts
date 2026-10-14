@@ -1,4 +1,6 @@
+import { unstable_cache } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getDataVersion } from '@/lib/dataVersion'
 
 export type PeriodContrib = {
   goals: number
@@ -81,6 +83,26 @@ type GameLogRow = {
 }
 
 export type DateRange = { from: string; to: string }  // ISO — from inclusif, to exclusif
+
+// La version fait partie de la clé (arguments de la fonction) : une écriture dans une table
+// source change la version, donc la clé, et le calcul est refait une seule fois pour tout le monde.
+const cachedStandings = unstable_cache(
+  async (seasonId: string, range: DateRange | null, _version: number) =>
+    buildStandings(createAdminClient(), seasonId, range ?? undefined),
+  ['standings-v1'],
+  { revalidate: 86_400 },
+)
+
+/**
+ * Classement mis en cache (David, 2026-10-14) — à utiliser partout plutôt que buildStandings(),
+ * qui relit tous les matchs de la saison. Mêmes résultats : le cache est invalidé par la version
+ * de `data_versions` (voir lib/dataVersion.ts), incrémentée à chaque mouvement ou import.
+ */
+export async function getStandings(seasonId: string | number, range?: DateRange): Promise<PoolerStanding[]> {
+  const version = await getDataVersion('standings')
+  if (version === null) return buildStandings(createAdminClient(), seasonId, range)
+  return cachedStandings(String(seasonId), range ?? null, version)
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function buildStandings(supabase: any, seasonId: string | number, range?: DateRange): Promise<PoolerStanding[]> {

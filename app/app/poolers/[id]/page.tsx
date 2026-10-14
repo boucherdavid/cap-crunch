@@ -5,7 +5,7 @@ import TeamBadge from '@/components/TeamBadge'
 import PoolerSwitcher from '@/components/PoolerSwitcher'
 import PoolerPageTabs, { type Tab } from './PoolerPageTabs'
 import PlayerLink from '@/components/PlayerLink'
-import { buildStandings } from '@/lib/standings'
+import { getStandings } from '@/lib/standings'
 import { fetchStreaks, DEFAULT_INDICATOR_CONFIG } from '@/lib/streaks'
 import type { StreakInfo } from '@/lib/streaks'
 import { fetchActiveNhlSeasonId } from '@/lib/nhl-active-season'
@@ -599,7 +599,7 @@ export default async function PoolerPage({
   )
 
   const alignementPlayers = saison
-    ? (await buildStandings(supabase, saison.id)).find(s => s.poolerId === id)?.players ?? []
+    ? (await getStandings(saison.id)).find(s => s.poolerId === id)?.players ?? []
     : []
 
   const indicatorConfig = {

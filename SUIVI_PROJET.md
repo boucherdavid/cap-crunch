@@ -21,6 +21,24 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-14
 
+**[Perf] — classement et blessures mis en cache, invalidés par la base elle-même**
+(`supabase_migrations/data_versions.sql`, `app/lib/dataVersion.ts`, `app/lib/standings.ts`,
+`app/lib/injuries.ts`, 9 appelants de `buildStandings`) :
+- Suite de la règle « ne jamais relire ce qui est déjà connu » : le classement relisait tous les
+  matchs de la saison à chaque visite (346 appels à 191 ms en 2 jours), les blessures aussi.
+- Table `data_versions` + triggers par requête (`FOR EACH STATEMENT`) : toute écriture dans
+  `pooler_rosters`, `roster_change_log`, `player_game_logs`, `scoring_config`, `pool_seasons`,
+  `poolers`, `players`, `teams` incrémente `standings` ; `player_injuries`, `player_game_logs`,
+  `players`, `app_settings` incrémentent `injuries`. Choisi plutôt qu'un `revalidateTag` dans
+  chaque écrivain (~90 écritures dans 12 fichiers + imports Python) : aucun oubli possible.
+- `getStandings(seasonId, range?)` : `unstable_cache` avec la version dans la clé ; remplace
+  `buildStandings` chez tous les appelants (accueil, classements, Tous les alignements, alignement
+  d'un pooler, ordre de repêchage, ballotage, Marqueur). Blessures : seules les données brutes
+  sont en cache (blessés 2 sources sur 3, dernier match récent, seuils) ; l'admissibilité, qui
+  dépend de la date du jour, reste calculée à l'affichage.
+- Sans la migration (table absente), repli sur le calcul direct, jamais une valeur périmée.
+- Reste non mis en cache : `/statistiques/blessures` (sa propre lecture, bornée par date).
+
 **[Fix] — fausse page « Pas de connexion » sur mobile** (`app/public/sw.js`, `app/app/offline/page.tsx`, `app/app/offline/OfflineRetry.tsx`) :
 - Signalé par David : page hors ligne affichée alors que wifi et cellulaire sont connectés, plus de la lenteur.
 - Cause côté app : le service worker affichait `/offline` au **premier** échec d'une navigation (sortie

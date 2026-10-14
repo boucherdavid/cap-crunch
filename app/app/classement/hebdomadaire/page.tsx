@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { buildStandings } from '@/lib/standings'
+import { getStandings } from '@/lib/standings'
 import { currentMondayET, mondayOfWeek, weekRange } from '@/lib/dateRanges'
 import ClassementTable from '../ClassementTable'
 import PeriodSelector from '../PeriodSelector'
@@ -33,7 +33,7 @@ export default async function ClassementHebdoPage({
   }
 
   const monday = semaine && /^\d{4}-\d{2}-\d{2}$/.test(semaine) ? mondayOfWeek(semaine) : currentMondayET()
-  const standings = await buildStandings(supabase, season.id, weekRange(monday))
+  const standings = await getStandings(season.id, weekRange(monday))
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">

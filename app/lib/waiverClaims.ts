@@ -3,7 +3,7 @@ import { after } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPushToUsers } from '@/lib/push'
 import { sendEmailToIds } from '@/lib/email'
-import { buildStandings } from '@/lib/standings'
+import { getStandings } from '@/lib/standings'
 import { getTodayET, addDaysToDate } from '@/lib/daily-recap'
 import { localMidnightUTC } from '@/lib/dateRanges'
 
@@ -54,7 +54,7 @@ async function computeWaiverPriority(
   if (isBeforeNovemberFirst(season) && presaisonDraftOrder && presaisonDraftOrder.length > 0) {
     return presaisonDraftOrder
   }
-  const standings = await buildStandings(admin, saisonId)
+  const standings = await getStandings(saisonId)
   if (standings.length > 0) return standings.map(s => s.poolerId).reverse()
   return presaisonDraftOrder && presaisonDraftOrder.length > 0 ? presaisonDraftOrder : null
 }

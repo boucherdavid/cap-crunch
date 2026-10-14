@@ -1300,8 +1300,12 @@ Règles obligatoires pour toute nouvelle lecture, et à appliquer quand on touch
   `game_date`) ne compte pas. Vérifier qu'un index couvre le filtre (`supabase_migrations/`), sinon
   en ajouter un.
 - **Ne pas recalculer à chaque visite** ce qui ne change qu'à un import ou à un mouvement
-  (classement, blessures, stats) : mettre en cache (`unstable_cache` + `revalidateTag` appelé par
-  l'action ou l'import qui modifie les données), ou stocker le résultat calculé.
+  (classement, blessures, stats) : mettre en cache avec la version de `data_versions` dans la clé
+  (`getDataVersion()`, `app/lib/dataVersion.ts`) — des triggers Postgres l'incrémentent à chaque
+  écriture dans les tables sources (`supabase_migrations/data_versions.sql`), y compris depuis les
+  imports Python. Nouvelle donnée en cache → nouvelle clé + triggers sur ses tables sources.
+  Classement : toujours `getStandings()`, jamais `buildStandings()` directement ; blessures :
+  `fetchInjuriesByPlayerId`/`ByNhlId` (déjà en cache).
 - **Ne lire que les colonnes et les lignes utiles** : pas de `select('*')` ni de chargement
   complet d'une table pour en filtrer une partie en JavaScript.
 - Après une livraison qui touche des requêtes : relire `pg_stat_statements` en prod (requête dans
