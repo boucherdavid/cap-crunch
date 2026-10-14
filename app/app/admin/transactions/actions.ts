@@ -6,7 +6,7 @@ import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/roste
 import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
 import { validateRosterLimits, getPlayerBucket } from '@/lib/rosterLimits'
 import { getEffectiveCap } from '@/lib/capUtils'
-import { isRookieProtected } from '@/lib/rookieProtection'
+import { isRookieProtected, hasSignedContract, NO_CONTRACT_ERROR } from '@/lib/rookieProtection'
 import { createWaiverClaimForRelease } from '@/lib/waiverClaims'
 import { announceToPool, playerNames, poolerName } from '@/lib/poolAnnouncements'
 import { DEFAULT_NHL_MINIMUM_SALARY } from '../presaison/types'
@@ -522,6 +522,15 @@ export async function applyTransactionItems(
         .eq('is_active', true)
         .maybeSingle()
       if (!existingRow) return { error: `Joueur (id : ${player_id}) avec type "${matchType}" introuvable.` }
+
+      // Recrue sans contrat LNH signé pour la saison : reste en banque (David, 2026-10-14).
+      if (matchType === 'recrue' && new_player_type !== 'recrue') {
+        const { data: player } = await supabase
+          .from('players').select('first_name, last_name, player_contracts (season, cap_number)').eq('id', player_id!).single()
+        if (!hasSignedContract(player?.player_contracts, saison.season)) {
+          return { error: NO_CONTRACT_ERROR(`${player?.first_name ?? ''} ${player?.last_name ?? ''}`.trim(), saison.season) }
+        }
+      }
       const { addedAtOverride, warning } = computeTypeChangeAddedAt(existingRow.added_at, txTs, minAddedAtTs)
       if (warning) warnings.push(warning)
 

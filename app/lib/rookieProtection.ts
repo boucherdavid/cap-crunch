@@ -76,6 +76,21 @@ export function isRookieProtected(
   return !isRookieProtectionExpired(type, poolDraftYear, isElcActiveForSeason(contracts, season), parseInt(season.slice(0, 4), 10))
 }
 
+/**
+ * Contrat LNH réellement signé pour la saison (David, 2026-10-14) : une recrue sans contrat
+ * (prospect encore junior/AHL/Europe, ou RFA pas re-signé) reste dans la banque — elle ne peut pas
+ * devenir actif ni réserviste. Un salaire estimé ne compte pas.
+ */
+export function hasSignedContract(
+  contracts: { season: string; cap_number: number | null }[] | null | undefined,
+  season: string,
+): boolean {
+  return (contracts ?? []).some(c => c.season === season && (c.cap_number ?? 0) > 0)
+}
+
+export const NO_CONTRACT_ERROR = (name: string, season: string) =>
+  `${name} n'a pas de contrat LNH pour ${season} : une recrue sans contrat reste dans la banque.`
+
 /** Dernière saison protégée, pour l'affichage (« protégé jusqu'en 2030-31 ») ; null pour un agent
  * libre, dont la fin dépend de son contrat. */
 export function lastProtectedSeason(rookieType: RookieTag, poolDraftYear: number | null): string | null {

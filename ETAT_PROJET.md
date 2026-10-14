@@ -35,7 +35,7 @@
 
 | Branche | Ã‰tat |
 |---|---|
-| `staging` | `main` + protection recrue unifiée (règle unique, correction et révision des étiquettes — indice, filtre « À vérifier », vue « Tous les poolers » —, années de repêchage en une seule année), à valider |
+| `staging` | `main` + protection recrue unifiée (règle unique, correction et révision des étiquettes — indice, filtre « À vérifier », vue « Tous les poolers » —, recrue sans contrat bloquée en banque, années de repêchage en une seule année), à valider |
 | `main` (prod) | Ã€ jour au 2026-10-13 â€” inclut la date effective forcÃ©e (note et avertissement), les correctifs du scraping PuckPedia, les notifications de l'admin classÃ©es par type, le calcul du facteur de plafond (admin) et son explication dans l'aide, la simulation pour un autre pooler (admin), les faits saillants sur l'accueil (bandeau sous le logo), le dÃ©tail des Ã©changes et l'effacement des mouvements annulÃ©s sur l'accueil, l'annulation le jour mÃªme d'une mise en rÃ©serve, l'activitÃ© du pool basÃ©e sur les vrais mouvements et l'annonce Ã  tous des signatures et Ã©changes, la discussion et la modification des offres d'Ã©change, le LTIR avec panier complet, MJ et PTS/MJ, l'avis de demande traitÃ©e |
 
 - Variables Vercel : prod `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN` ; staging `GITHUB_WORKFLOW_TOKEN`,

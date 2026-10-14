@@ -9,7 +9,7 @@ import { announceToPool, playerNames, poolerName } from '@/lib/poolAnnouncements
 import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/rosterTypeChange'
 import { computeBatchEffectiveDate, undoableDeactivations, startedTeamsOnDate } from '@/lib/gameDayLock'
 import { getEffectiveCap } from '@/lib/capUtils'
-import { isRookieProtected, type RookieTag } from '@/lib/rookieProtection'
+import { isRookieProtected, hasSignedContract, NO_CONTRACT_ERROR, type RookieTag } from '@/lib/rookieProtection'
 import { validateRosterLimits, getPlayerBucket, ACTIVE_LIMITS, type Bucket } from '@/lib/rosterLimits'
 import { createWaiverClaimForRelease, isPlayerUnderActiveWaiverClaim } from '@/lib/waiverClaims'
 import { fetchInjuriesByPlayerId, type InjuryInfo } from '@/lib/injuries'
@@ -709,6 +709,32 @@ export async function submitBatchAction(input: {
     // qu'ici, après tous les checks/écritures ci-dessus, jamais en cas d'erreur plus haut.
     if (signingType === 'ballotage' && waiverClaimId) {
       await db.from('waiver_claims').update({ status: 'resolved_claimed', resolved_at: new Date().toISOString() }).eq('id', waiverClaimId)
+    }
+  }
+
+  // ─── Recrue sans contrat (David, 2026-10-14) — tout le monde, admin compris ───────────────
+  // Une recrue sans contrat LNH signé pour la saison ne sort pas de la banque. Vérifié avant
+  // toute écriture ; /admin/transactions reste le filet de sécurité de l'admin.
+  {
+    const leavingBank = input.actions.flatMap(a => a.type === 'change_status'
+      ? [[a.entry1Id, a.newType1], [a.entry2Id, a.newType2]] as const
+      : [])
+      .filter(([id, t]) => id && t && t !== 'recrue')
+      .map(([id]) => id as number)
+    if (leavingBank.length > 0) {
+      const { data: bankRows } = await db
+        .from('pooler_rosters')
+        .select('player_type, players (first_name, last_name, player_contracts (season, cap_number))')
+        .in('id', leavingBank)
+      const season = saisonConfig?.season ?? ''
+      for (const r of (bankRows ?? []) as unknown as {
+        player_type: string
+        players: { first_name: string; last_name: string; player_contracts: { season: string; cap_number: number | null }[] | null } | null
+      }[]) {
+        if (r.player_type === 'recrue' && !hasSignedContract(r.players?.player_contracts, season)) {
+          return { error: NO_CONTRACT_ERROR(`${r.players?.first_name ?? ''} ${r.players?.last_name ?? ''}`.trim(), season) }
+        }
+      }
     }
   }
 

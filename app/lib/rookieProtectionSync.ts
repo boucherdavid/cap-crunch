@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { isRookieProtected, type RookieTag } from '@/lib/rookieProtection'
+import { isRookieProtected, hasSignedContract, type RookieTag } from '@/lib/rookieProtection'
 import { applyTransactionItems, type TxItemPayload } from '@/app/admin/transactions/actions'
 
 /**
@@ -24,7 +24,7 @@ export async function syncExpiredRookieProtection(
   const admin = createAdminClient()
   let query = admin
     .from('pooler_rosters')
-    .select('id, player_type, pooler_id, player_id, rookie_type, pool_draft_year, players(player_contracts(season, is_elc))')
+    .select('id, player_type, pooler_id, player_id, rookie_type, pool_draft_year, players(player_contracts(season, is_elc, cap_number))')
     .eq('pool_season_id', saisonId)
     .eq('is_active', true)
     .in('player_type', ['actif', 'reserviste', 'recrue'])
@@ -36,13 +36,16 @@ export async function syncExpiredRookieProtection(
   for (const row of (rows ?? []) as unknown as {
     id: number; player_type: string; pooler_id: string; player_id: number
     rookie_type: RookieTag; pool_draft_year: number | null
-    players: { player_contracts: { season: string; is_elc: boolean | null }[] | null } | null
+    players: { player_contracts: { season: string; is_elc: boolean | null; cap_number: number | null }[] | null } | null
   }[]) {
     // Actif/réserviste sans étiquette : rien à retirer.
     if (row.player_type !== 'recrue' && !row.rookie_type) continue
     if (isRookieProtected(row.rookie_type, row.pool_draft_year, row.players?.player_contracts, season)) continue
 
     if (row.player_type === 'recrue') {
+      // Sans contrat LNH signé, elle ne peut pas être activée : elle reste en banque (« Activation
+      // obligatoire » de la Banque de recrues) jusqu'à sa signature (David, 2026-10-14).
+      if (!hasSignedContract(row.players?.player_contracts, season)) continue
       promoteItems.push({
         action_type: 'promote',
         from_pooler_id: row.pooler_id,

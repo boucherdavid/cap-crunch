@@ -7,7 +7,7 @@ import { checkFutureRosterConflict } from '@/lib/rosterTypeChange'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { validateRosterLimits, type RosterLimitEntry } from '@/lib/rosterLimits'
 import { announceToPool } from '@/lib/poolAnnouncements'
-import { isRookieProtectionExpired, isElcActiveForSeason, isRookieProtected } from '@/lib/rookieProtection'
+import { isRookieProtectionExpired, isElcActiveForSeason, isRookieProtected, hasSignedContract, NO_CONTRACT_ERROR } from '@/lib/rookieProtection'
 import { poolDraftYear } from '@/lib/poolDraftYear'
 
 // Même vocabulaire roster_change_log que pickChangeType (admin/transactions/actions.ts,
@@ -581,7 +581,7 @@ export async function confirmTradeReady(
   if (demoteIds.length > 0 || promoteIds.length > 0) {
     const { data: rows } = await admin
       .from('pooler_rosters')
-      .select('player_id, player_type, rookie_type, pool_draft_year, players (player_contracts (season, is_elc))')
+      .select('player_id, player_type, rookie_type, pool_draft_year, players (first_name, last_name, player_contracts (season, is_elc, cap_number))')
       .eq('pooler_id', poolerId).eq('pool_season_id', offer.pool_season_id).eq('is_active', true)
       .in('player_id', [...demoteIds, ...promoteIds])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -594,6 +594,9 @@ export async function confirmTradeReady(
     for (const id of promoteIds) {
       const row = byId.get(id)
       if (!row || row.player_type !== 'recrue') return { error: 'Un joueur à activer est introuvable dans ta banque de recrues.' }
+      if (!hasSignedContract(row.players?.player_contracts, saison?.season ?? '')) {
+        return { error: NO_CONTRACT_ERROR(`${row.players?.first_name ?? ''} ${row.players?.last_name ?? ''}`.trim(), saison?.season ?? '') }
+      }
     }
   }
 

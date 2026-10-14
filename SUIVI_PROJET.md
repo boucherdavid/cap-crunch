@@ -50,6 +50,14 @@ d'effectifs, échanges, pré-saison, Mode init, Banque de recrues, conformité, 
   poolers » du sélecteur (tous les joueurs des alignements, banque comprise). Vérifié en prod : les
   19 joueurs étiquetés en 2025-26 et sans étiquette en 2026-27 sont 17 repêchés de 2021 (5ᵉ saison
   terminée) et 2 agents libres à l'ELC fini (Blake, Poitras) — aucun « à vérifier ».
+- Ajout (test de David en staging : Bilecki, repêché 2026 sans contrat, activé en Actif) : une
+  recrue **sans contrat LNH signé pour la saison** reste dans la banque (`hasSignedContract`,
+  salaire estimé exclu). Bloqué pour tout le monde, admin compris : Gestion d'effectifs (option
+  retirée de l'écran + garde-fou serveur avant toute écriture), `applyTransactionItems` (libre-
+  service de pré-saison, /admin/transactions, Banque de recrues), ajustements d'échange
+  `promote_recrue`. L'activation automatique d'une protection expirée saute une recrue sans contrat
+  (elle reste en « Activation obligatoire »). Prod vérifiée : aucune recrue sans contrat en
+  actif/réserviste (seul Edvinsson, vétéran sans étiquette, n'a pas de contrat).
 
 **[Perf] — classement et blessures mis en cache, invalidés par la base elle-même**
 (`supabase_migrations/data_versions.sql`, `app/lib/dataVersion.ts`, `app/lib/standings.ts`,
