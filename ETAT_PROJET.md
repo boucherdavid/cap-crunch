@@ -35,7 +35,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | `main` + classement et blessures en cache (`data_versions`) — migration `data_versions.sql` à rouler en staging puis en prod, à valider |
+| `staging` | `main` + classement et blessures en cache (`data_versions`) — migration roulée en staging et en prod le 2026-10-14 (triggers vérifiés), à valider sur staging |
 | `main` (prod) | À jour au 2026-10-13 — inclut la date effective forcée (note et avertissement), les correctifs du scraping PuckPedia, les notifications de l'admin classées par type, le calcul du facteur de plafond (admin) et son explication dans l'aide, la simulation pour un autre pooler (admin), les faits saillants sur l'accueil (bandeau sous le logo), le détail des échanges et l'effacement des mouvements annulés sur l'accueil, l'annulation le jour même d'une mise en réserve, l'activité du pool basée sur les vrais mouvements et l'annonce à tous des signatures et échanges, la discussion et la modification des offres d'échange, le LTIR avec panier complet, MJ et PTS/MJ, l'avis de demande traitée |
 
 - Variables Vercel : prod `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN` ; staging `GITHUB_WORKFLOW_TOKEN`,
