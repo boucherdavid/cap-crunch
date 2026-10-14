@@ -1395,6 +1395,10 @@ Règles obligatoires pour toute nouvelle lecture, et à appliquer quand on touch
   annulé pour les deux (`status='cancelled_expired'`) — aucun rollback nécessaire puisque rien
   n'a jamais été écrit ; à refaire au besoin. Résolution paresseuse
   (`resolveExpiredTradeOffers()`), même patron que le ballotage.
+- **Heure d'effet (David, 2026-10-14)** : la seconde confirmation ; si un match d'un joueur
+  impliqué (échangé ou visé par un ajustement) est déjà commencé ce jour-là, tout l'échange prend
+  effet le lendemain à 8 h ET — même règle que Gestion d'effectifs (`computeBatchEffectiveDate`,
+  `lib/gameDayLock.ts`), appliquée dans `executeTradeOffer()`.
 - **Joueur sur LTIR échangeable** (David, 2026-10-05) — aussi affichable au marché des échanges
   (`listTradeableAssetsAction` inclut `ltir`). Chez le donneur il reste hors masse et hors
   composition ; chez le receveur il arrive **actif ou réserviste** (`chosen_type`, comme tout joueur

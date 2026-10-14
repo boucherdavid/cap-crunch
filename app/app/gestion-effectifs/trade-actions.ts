@@ -163,7 +163,7 @@ export async function respondToTradeOfferAction(tradeOfferId: number, accept: bo
 
 export async function confirmTradeReadyAction(
   tradeOfferId: number, chosenTypes: Record<number, 'actif' | 'reserviste'>, extraActions: TradeExtraAction[] = [],
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; deferred?: boolean }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non authentifié.' }

@@ -21,6 +21,16 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-14
 
+**[Fix] — échange entre poolers : effectif le lendemain si un match est commencé**
+(`lib/tradeOffers.ts`, `gestion-effectifs/trade-actions.ts`, `TradeOffersTab.tsx`, `/aide`) :
+- Question de David : l'échange prenait effet à la seconde près de la seconde confirmation, sans
+  le report « match déjà commencé » de Gestion d'effectifs (un coéquipier pouvait changer de
+  propriétaire en pleine soirée de matchs).
+- Décision de David : dès qu'un match d'un joueur impliqué est commencé, effet le lendemain.
+  `executeTradeOffer()` calcule l'heure d'effet avec `computeBatchEffectiveDate` (joueurs échangés
+  + ajustements des deux poolers) et l'applique à `removed_at`, `added_at`, `roster_change_log` ;
+  `resolved_at` garde l'heure réelle. Pré-saison inchangée. Avis à l'écran, push et courriel.
+
 **[Fix] — protection recrue : une seule règle partout, correction rétroactive, années de repêchage**
 (`lib/rookieProtection.ts`, `lib/rookieProtectionSync.ts`, `lib/poolDraftYear.ts`, Gestion
 d'effectifs, échanges, pré-saison, Mode init, Banque de recrues, conformité, alignements, `/aide`) :
