@@ -35,6 +35,13 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   2774 (removed_at) et 3169 (added_at), `roster_change_log` 106 à 109. Effet : but de Zacha (match
   de 23 h) compté à Sébastien F. (+1) ; Malkin 0 point, Kasper n'a pas joué. Échange n° 11 (Yurov,
   recrue des deux côtés, 0 point) laissé tel quel ; n° 7 non visé (aucun match commencé).
+- Suite (retour de David : Zacha absent des « points de la soirée d'hier ») : le pointage de la
+  soirée (`lib/liveNight.ts`, accueil + `/en-direct`) prenait l'alignement **actuel** (lignes sans
+  removed_at, player_type courant) — tout mouvement fait le lendemain matin, ou un échange reporté,
+  changeait après coup la soirée affichée. Propriétaire et statut résolus maintenant à l'heure de
+  début du match de chaque joueur (`ownerAt`), même fenêtre que le classement ; `statusAtFromEvents`
+  extraite de `buildStandings` et partagée. Vérifié sur la prod : soirée du 13, Zacha 1 pt à
+  Sébastien F., Malkin chez Vincent. Clé du cache `live-night-v2`.
 
 **[Fix] — protection recrue : une seule règle partout, correction rétroactive, années de repêchage**
 (`lib/rookieProtection.ts`, `lib/rookieProtectionSync.ts`, `lib/poolDraftYear.ts`, Gestion

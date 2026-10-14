@@ -8,6 +8,11 @@
  * Soirée = date ET de (maintenant − 6 h) : un match commencé à 22 h 30 reste « ce soir » jusqu'à
  * 6 h du matin. Tant qu'aucun match de la soirée n'est commencé, on montre la soirée d'avant.
  *
+ * Propriétaire et statut d'un joueur : ceux en vigueur à l'heure de début de SON match (David,
+ * 2026-10-14) — même règle que le classement (fenêtre added_at → removed_at, puis
+ * roster_change_log). Sans ça, un mouvement fait le lendemain matin, ou un échange reporté au
+ * lendemain, changeait après coup les points de la soirée affichée.
+ *
  * Charge : tout le calcul est mis en cache 45 s côté serveur (`unstable_cache`, sans cookies —
  * client admin), peu importe le nombre de poolers connectés. Si la LNH ne répond pas, `error`
  * est vrai et les poolers ne voient pas de zéros trompeurs (leçon du pool des séries 2026).
@@ -15,6 +20,7 @@
 
 import { unstable_cache } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { statusAtFromEvents, type RosterEvent } from '@/lib/standings'
 
 const NHL_WEB = 'https://api-web.nhle.com'
 const NIGHT_ROLLOVER_HOURS = 6
@@ -142,17 +148,26 @@ const getPlayerNames = unstable_cache(async (): Promise<Record<number, string>> 
   return names
 }, ['live-night-player-names'], { revalidate: 3600 })
 
+type RosterWindow = Omit<Owner, 'type'> & { playerId: number; fallback: string; addedMs: number | null; removedMs: number | null }
+
 async function loadPoolContext() {
   const db = createAdminClient()
   const { data: season } = await db
     .from('pool_seasons').select('id').eq('is_active', true).eq('is_playoff', false).maybeSingle()
-  const [{ data: poolers }, { data: rosters }, { data: scoringRows }, playerNames] = await Promise.all([
+  // Toutes les lignes de la saison (y compris les joueurs partis) et l'historique des statuts :
+  // le propriétaire d'un joueur se résout à l'heure de son match, pas à l'heure de la page.
+  const [{ data: poolers }, { data: rosters }, { data: changeRows }, { data: scoringRows }, playerNames] = await Promise.all([
     db.from('poolers').select('id, name').order('name'),
     season
       ? db.from('pooler_rosters')
-          .select('pooler_id, player_type, players(nhl_id, first_name, last_name, position, teams(code))')
+          .select('pooler_id, player_id, player_type, added_at, removed_at, players(nhl_id, first_name, last_name, position, teams(code))')
           .eq('pool_season_id', season.id)
-          .is('removed_at', null)
+      : Promise.resolve({ data: [] }),
+    season
+      ? db.from('roster_change_log')
+          .select('pooler_id, player_id, changed_at, new_type, old_type')
+          .eq('pool_season_id', season.id)
+          .not('new_type', 'is', null)
       : Promise.resolve({ data: [] }),
     db.from('scoring_config').select('stat_key, points').in('scope', ['regular', 'both']),
     getPlayerNames(),
@@ -160,23 +175,52 @@ async function loadPoolContext() {
   const scoring: Record<string, number> = {}
   for (const r of scoringRows ?? []) scoring[r.stat_key] = Number(r.points)
   const names = new Map((poolers ?? []).map(p => [p.id as string, p.name as string]))
-  const owners = new Map<number, Owner>()
+
+  const windows = new Map<number, RosterWindow[]>()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const r of (rosters ?? []) as any[]) {
     const p = r.players
     if (!p?.nhl_id) continue
-    owners.set(p.nhl_id, {
+    const list = windows.get(p.nhl_id) ?? []
+    list.push({
       poolerId: r.pooler_id,
       poolerName: names.get(r.pooler_id) ?? '?',
-      type: r.player_type,
       name: `${p.first_name} ${p.last_name}`,
       team: p.teams?.code ?? null,
       position: p.position ?? '',
+      playerId: r.player_id,
+      fallback: r.player_type,
+      addedMs: r.added_at ? Date.parse(r.added_at) : null,
+      removedMs: r.removed_at ? Date.parse(r.removed_at) : null,
     })
+    windows.set(p.nhl_id, list)
   }
+  const events = new Map<string, RosterEvent[]>()
+  for (const r of (changeRows ?? []) as { pooler_id: string; player_id: number; changed_at: string; new_type: string; old_type: string | null }[]) {
+    const key = `${r.pooler_id}::${r.player_id}`
+    const list = events.get(key) ?? []
+    list.push({ changedAt: Date.parse(r.changed_at), newType: r.new_type, oldType: r.old_type })
+    events.set(key, list)
+  }
+  for (const list of events.values()) list.sort((a, b) => a.changedAt - b.changedAt)
+
+  /** Propriétaire et statut à l'heure du match (même fenêtre que buildStandings : added_at exclu,
+   * removed_at inclus) ; null si le joueur n'appartenait à personne à ce moment. */
+  function ownerAt(nhlId: number, timeMs: number): Owner | null {
+    for (const w of windows.get(nhlId) ?? []) {
+      if (w.addedMs === null || timeMs <= w.addedMs) continue
+      if (w.removedMs !== null && timeMs > w.removedMs) continue
+      const { playerId, fallback, addedMs: _a, removedMs: _r, ...owner } = w
+      return { ...owner, type: statusAtFromEvents(events.get(`${w.poolerId}::${playerId}`), timeMs, fallback) }
+    }
+    return null
+  }
+
   return {
     poolers: (poolers ?? []) as { id: string; name: string }[],
-    owners,
+    rosteredNhlIds: [...windows.keys()],
+    ownerAt,
+    currentTeam: (nhlId: number) => windows.get(nhlId)?.[0]?.team ?? null,
     playerNames,
     pts: {
       goal: scoring.goal ?? 1,
@@ -228,6 +272,7 @@ async function computeLiveNight(): Promise<LiveNight> {
     game.homeScore = box.homeTeam?.score ?? game.homeScore
     game.label = gameLabel(game.state, game.startTimeUTC, box.periodDescriptor, box.clock)
     const final = FINISHED.has(game.state)
+    const startMs = Date.parse(game.startTimeUTC)
 
     for (const side of ['awayTeam', 'homeTeam'] as const) {
       const team: string = box[side]?.abbrev ?? ''
@@ -239,7 +284,7 @@ async function computeLiveNight(): Promise<LiveNight> {
       for (const p of skaters) {
         const goals = Number(p.goals ?? 0)
         const assists = Number(p.assists ?? 0)
-        stats.set(p.playerId, makePlayer(p, team, game.label, ctx, { goals, assists, wins: 0, otl: 0, shutouts: 0 }))
+        stats.set(p.playerId, makePlayer(p, team, game.label, startMs, ctx, { goals, assists, wins: 0, otl: 0, shutouts: 0 }))
       }
       for (const p of goalies) {
         const toi = String(p.toi ?? '0:00').split(':')
@@ -250,24 +295,31 @@ async function computeLiveNight(): Promise<LiveNight> {
         const wins = p.decision === 'W' ? 1 : 0
         const otl = p.decision === 'O' ? 1 : 0
         const shutouts = final && Number(p.goalsAgainst ?? 0) === 0 && p.decision && toiSecs >= 3600 ? 1 : 0
-        stats.set(p.playerId, makePlayer(p, team, game.label, ctx, { goals: 0, assists: 0, wins, otl, shutouts }))
+        stats.set(p.playerId, makePlayer(p, team, game.label, startMs, ctx, { goals: 0, assists: 0, wins, otl, shutouts }))
       }
     }
   }))
 
   games.sort((a, b) => a.startTimeUTC.localeCompare(b.startTimeUTC) || a.id - b.id)
   const labelByTeam = new Map<string, string>()
-  for (const g of games) { labelByTeam.set(g.away, g.label); labelByTeam.set(g.home, g.label) }
+  const startByTeam = new Map<string, number>()
+  for (const g of games) {
+    labelByTeam.set(g.away, g.label); labelByTeam.set(g.home, g.label)
+    startByTeam.set(g.away, Date.parse(g.startTimeUTC)); startByTeam.set(g.home, Date.parse(g.startTimeUTC))
+  }
 
   // Par pooler : ses joueurs ACTIFS dont l'équipe joue ce soir (même ceux pas encore en jeu).
   const poolerMap = new Map<string, LivePooler>(
     ctx.poolers.map(p => [p.id, { poolerId: p.id, name: p.name, pj: 0, pts: 0, players: [] }]),
   )
-  for (const [nhlId, owner] of ctx.owners) {
-    if (owner.type !== 'actif') continue
+  for (const nhlId of ctx.rosteredNhlIds) {
     const live = stats.get(nhlId)
-    const team = live?.team ?? owner.team ?? ''
+    const team = live?.team ?? ctx.currentTeam(nhlId) ?? ''
     if (!live && !labelByTeam.has(team)) continue
+    const startMs = startByTeam.get(team)
+    if (startMs === undefined) continue
+    const owner = ctx.ownerAt(nhlId, startMs)
+    if (!owner || owner.type !== 'actif') continue
     const pooler = poolerMap.get(owner.poolerId)
     if (!pooler) continue
     const player = live ?? {
@@ -297,10 +349,10 @@ async function computeLiveNight(): Promise<LiveNight> {
 
 function makePlayer(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  p: any, team: string, label: string, ctx: Awaited<ReturnType<typeof loadPoolContext>>,
+  p: any, team: string, label: string, startMs: number, ctx: Awaited<ReturnType<typeof loadPoolContext>>,
   s: { goals: number; assists: number; wins: number; otl: number; shutouts: number },
 ): LivePlayer {
-  const owner = ctx.owners.get(p.playerId)
+  const owner = ctx.ownerAt(p.playerId, startMs)
   return {
     nhlId: p.playerId,
     name: owner?.name ?? ctx.playerNames[p.playerId] ?? p.name?.default ?? '?',
@@ -317,4 +369,4 @@ function makePlayer(
   }
 }
 
-export const getLiveNight = unstable_cache(computeLiveNight, ['live-night-v1'], { revalidate: 45 })
+export const getLiveNight = unstable_cache(computeLiveNight, ['live-night-v2'], { revalidate: 45 })

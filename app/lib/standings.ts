@@ -84,6 +84,25 @@ type GameLogRow = {
 
 export type DateRange = { from: string; to: string }  // ISO — from inclusif, to exclusif
 
+export type RosterEvent = { changedAt: number; newType: string; oldType: string | null }
+
+/**
+ * Statut d'un joueur chez un pooler à un instant donné, d'après ses événements
+ * `roster_change_log` triés par date effective (voir les explications dans buildStandings).
+ * Partagé avec le pointage de la soirée (lib/liveNight.ts) pour attribuer chaque match selon
+ * l'alignement en vigueur au moment du match.
+ */
+export function statusAtFromEvents(events: RosterEvent[] | undefined, timeMs: number, fallback: string): string {
+  if (!events || events.length === 0) return fallback
+  if (timeMs < events[0].changedAt) return events[0].oldType ?? fallback
+  let result = fallback
+  for (const e of events) {
+    if (e.changedAt > timeMs) break
+    result = e.newType
+  }
+  return result
+}
+
 // La version fait partie de la clé (arguments de la fonction) : une écriture dans une table
 // source change la version, donc la clé, et le calcul est refait une seule fois pour tout le monde.
 const cachedStandings = unstable_cache(
@@ -194,15 +213,7 @@ export async function buildStandings(supabase: any, seasonId: string | number, r
   // une correction Historique (ex: Changement de type) porte une date antérieure au premier
   // événement réellement journalisé pour ce joueur (ex: son ajout initial en temps réel).
   function statusAt(key: string, timeMs: number, fallback: string): string {
-    const events = eventsByKey.get(key)
-    if (!events || events.length === 0) return fallback
-    if (timeMs < events[0].changedAt) return events[0].oldType ?? fallback
-    let result = fallback
-    for (const e of events) {
-      if (e.changedAt > timeMs) break
-      result = e.newType
-    }
-    return result
+    return statusAtFromEvents(eventsByKey.get(key), timeMs, fallback)
   }
 
   // Découpe une ligne pooler_rosters (added_at→removed_at) en fenêtres "actif" contiguës,
