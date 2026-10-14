@@ -19,6 +19,24 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-14
+
+**[Fix] — fausse page « Pas de connexion » sur mobile** (`app/public/sw.js`, `app/app/offline/page.tsx`, `app/app/offline/OfflineRetry.tsx`) :
+- Signalé par David : page hors ligne affichée alors que wifi et cellulaire sont connectés, plus de la lenteur.
+- Cause côté app : le service worker affichait `/offline` au **premier** échec d'une navigation (sortie
+  de veille, bascule wifi/cellulaire), alors que Chrome aurait relancé la requête de lui-même. Il
+  interceptait aussi toutes les requêtes non-page en « cache-first » sans jamais rien mettre en cache
+  (détour inutile, et HTML hors ligne renvoyé à la place d'un JS en cas d'échec).
+- Correctif : navigation preload (requête lancée pendant le démarrage du service worker), 2 nouveaux
+  essais (1 s, 2,5 s) avant la page hors ligne, plus aucune interception hors navigations. Page hors
+  ligne : bouton « Réessayer », rechargement auto au retour du réseau, et toutes les 15 s si
+  l'appareil est en ligne mais que le serveur ne répond pas. Cache `hockey-pool-v5`.
+- Cause principale de la lenteur, **pas réglée par ce correctif** : la base Supabase prod ne répond
+  plus (requête d'une ligne sur `pool_seasons` en échec après plusieurs secondes, staging OK en 1 s).
+  L'import des points (`regular_stats.yml`) a échoué deux fois le 14 au matin (`ReadTimeout` sur
+  `players`). Les imports Python passent déjà par `db_diff` depuis le 12. À vérifier dans le tableau
+  de bord Supabase (Usage → Disk IO budget).
+
 ### 2026-10-13
 
 **[Bilan de session]** — 4 fonctionnalités, toutes validées par David sur staging puis promues en
