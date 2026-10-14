@@ -1,4 +1,4 @@
-﻿# Ã‰tat du projet â€” Cap Crunch
+# Ã‰tat du projet â€” Cap Crunch
 
 > **InstantanÃ© Â« oÃ¹ on en est Â»**, rÃ©Ã©crit Ã  chaque fin de session (pas un journal).
 > L'historique dÃ©taillÃ© est dans `SUIVI_PROJET.md` ; la rÃ©fÃ©rence stable dans `CLAUDE.md`.
