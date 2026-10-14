@@ -19,6 +19,41 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-14
+
+**[Fix] — fausse page « Pas de connexion » sur mobile** (`app/public/sw.js`, `app/app/offline/page.tsx`, `app/app/offline/OfflineRetry.tsx`) :
+- Signalé par David : page hors ligne affichée alors que wifi et cellulaire sont connectés, plus de la lenteur.
+- Cause côté app : le service worker affichait `/offline` au **premier** échec d'une navigation (sortie
+  de veille, bascule wifi/cellulaire), alors que Chrome aurait relancé la requête de lui-même. Il
+  interceptait aussi toutes les requêtes non-page en « cache-first » sans jamais rien mettre en cache
+  (détour inutile, et HTML hors ligne renvoyé à la place d'un JS en cas d'échec).
+- Correctif : navigation preload (requête lancée pendant le démarrage du service worker), 2 nouveaux
+  essais (1 s, 2,5 s) avant la page hors ligne, plus aucune interception hors navigations. Page hors
+  ligne : bouton « Réessayer », rechargement auto au retour du réseau, et toutes les 15 s si
+  l'appareil est en ligne mais que le serveur ne répond pas. Cache `hockey-pool-v5`.
+- Cause principale de la lenteur, **pas réglée par ce correctif** : la base Supabase prod ne répond
+  plus (requête d'une ligne sur `pool_seasons` en échec après plusieurs secondes, staging OK en 1 s).
+  L'import des points (`regular_stats.yml`) a échoué deux fois le 14 au matin (`ReadTimeout` sur
+  `players`). Les imports Python passent déjà par `db_diff` depuis le 12. À vérifier dans le tableau
+  de bord Supabase (Usage → Disk IO budget).
+- Suite : projet prod « Unhealthy » (incident Supabase en cours) ; redémarré par David, revenu
+  « Healthy » mais CPU à 86-92 %, en hausse régulière depuis le 8 octobre (Disk IO 68 %).
+
+**[Perf] — requête la plus coûteuse de la base : dernier match des blessés** (`app/lib/injuries.ts`) :
+- `pg_stat_statements` (`supabase_debug/Query_debu_20261014.csv`) : `fetchLastGameByPlayerId`
+  en tête, 869 appels à 837 ms en moyenne (728 s de CPU depuis le 12). Filtrée par `player_id` +
+  `game_start_time`, sans saison : l'index `(player_id, season, game_type)` relisait tous les
+  matchs de chaque blessé (54 000 lignes de 2025-26 dans la table).
+- Correctif : borne `game_date >= since - 1 jour` (index `idx_game_logs_date`). Mesuré en prod :
+  0,52 s → 0,12 s, même résultat (71 lignes pour 143 blessés).
+- Requête de diagnostic (SQL Editor, prod) :
+  `select round(total_exec_time::numeric/1000) as total_s, calls, round(mean_exec_time::numeric,1) as moy_ms, rows, shared_blks_read + shared_blks_written + shared_blks_dirtied as blocs_disque, left(regexp_replace(query, '\s+', ' ', 'g'), 220) as requete from pg_stat_statements order by total_exec_time desc limit 15;`
+- Règle ajoutée à `CLAUDE.md` (section 6, « Lectures de la base ») à la demande de David : toute
+  lecture bornée par une colonne indexée, pas de recalcul à chaque visite de ce qui ne change qu'à
+  un import ou un mouvement.
+- Reste du rapport : surtout des frais fixes de PostgREST/Auth par requête (~30 000 requêtes en
+  2 jours) et le classement (`buildStandings`, 346 appels à 191 ms) — à surveiller.
+
 ### 2026-10-13
 
 **[Bilan de session]** — 4 fonctionnalités, toutes validées par David sur staging puis promues en

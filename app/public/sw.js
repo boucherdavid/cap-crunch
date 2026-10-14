@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hockey-pool-v4'
+const CACHE_NAME = 'hockey-pool-v5'
 
 self.addEventListener('install', (event) => {
   // On cache uniquement la page offline — pas '/' qui requiert une auth
@@ -10,9 +10,14 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+    (async () => {
+      const keys = await caches.keys()
+      await Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      // La requête de page part pendant que le service worker démarre (gain réel sur Android)
+      if (self.registration.navigationPreload) {
+        await self.registration.navigationPreload.enable()
+      }
+    })()
   )
   self.clients.claim()
 })
@@ -42,34 +47,31 @@ self.addEventListener('notificationclick', (event) => {
   )
 })
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+async function handleNavigation(event) {
+  try {
+    const preloaded = await event.preloadResponse
+    if (preloaded) return preloaded
+    return await fetch(event.request)
+  } catch {
+    // Échec ponctuel (sortie de veille, bascule wifi/cellulaire) : on réessaie avant
+    // de conclure qu'on est hors ligne — le navigateur le ferait de lui-même sans nous.
+    for (const delay of [1000, 2500]) {
+      await sleep(delay)
+      try {
+        return await fetch(event.request)
+      } catch {}
+    }
+    return (await caches.match('/offline')) ?? Response.error()
+  }
+}
+
 self.addEventListener('fetch', (event) => {
-  const url = event.request.url
+  // Seules les pages (navigations) sont interceptées, pour la page hors ligne.
+  // Le reste (JS, données, images, Supabase, API) passe directement par le navigateur.
+  if (event.request.method !== 'GET' || event.request.mode !== 'navigate') return
+  if (event.request.url.includes('/admin')) return
 
-  // Ne pas intercepter : non-GET, Supabase, API, admin
-  if (
-    event.request.method !== 'GET' ||
-    url.includes('supabase') ||
-    url.includes('nhle.com') ||
-    url.includes('/api/') ||
-    url.includes('/admin')
-  ) {
-    return
-  }
-
-  // Pages HTML : network-first (contenu authentifié, jamais mis en cache)
-  const isNavigation = event.request.mode === 'navigate'
-  if (isNavigation) {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match('/offline'))
-    )
-    return
-  }
-
-  // Assets statiques : cache-first
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached
-      return fetch(event.request).catch(() => caches.match('/offline'))
-    })
-  )
+  event.respondWith(handleNavigation(event))
 })
