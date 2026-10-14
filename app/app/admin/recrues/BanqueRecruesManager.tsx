@@ -31,8 +31,38 @@ type BankEntry = {
   pool_draft_year: number | null
   players: Rookie
   player_type?: string
+  pooler_id?: string
 }
 type Saison = { id: number; season: string }
+type PrevTag = { rookie_type: 'repeche' | 'agent_libre'; pool_draft_year: number | null }
+type Hint = { text: string; review: boolean }
+
+// Vue « Tous les poolers » du sélecteur (révision des étiquettes seulement).
+const ALL_POOLERS = '__all__'
+
+const TAG_LABEL = (t: PrevTag) => t.rookie_type === 'repeche' ? `Repêché du pool ${t.pool_draft_year ?? ''}`.trim() : 'Agent libre (ELC)'
+
+/**
+ * Indice pour retrouver un joueur protégé sans étiquette (David, 2026-10-14) — seulement pour un
+ * joueur sans étiquette : étiquette de la saison passée (à vérifier si elle le protégerait encore),
+ * sinon repêché par la LNH dans les 5 dernières années (candidat possible du repêchage du pool).
+ */
+function computeHint(entry: BankEntry, prevTag: PrevTag | undefined, prevSeason: string, season: string): Hint | null {
+  if (entry.rookie_type) return null
+  if (prevTag) {
+    const stillProtected = isRookieProtected(prevTag.rookie_type, prevTag.pool_draft_year, entry.players.player_contracts, season)
+    return {
+      text: `Étiqueté en ${prevSeason} : ${TAG_LABEL(prevTag)} — ${stillProtected ? 'le protégerait encore, à vérifier' : 'protection terminée'}`,
+      review: stillProtected,
+    }
+  }
+  const startYear = parseInt(season.slice(0, 4), 10)
+  const nhlYear = entry.players.draft_year
+  if (nhlYear && nhlYear >= startYear - 4) {
+    return { text: `Repêché par la LNH en ${nhlYear}, sans étiquette — à vérifier`, review: true }
+  }
+  return null
+}
 type RookieCategory = 'repeche' | 'agent_libre'
 
 // Règle unique de la banque de recrues (lib/rookieProtection.ts).
@@ -71,9 +101,11 @@ const draftLabel = (r: Rookie) => {
 
 const PENCIL = '\u270e'
 
-function BankRow({ entry, season, onRemove, onEdit, onActivate, onRelease, loading, expired = false }: {
+function BankRow({ entry, season, poolerName, hint, onRemove, onEdit, onActivate, onRelease, loading, expired = false }: {
   entry: BankEntry
   season: string
+  poolerName?: string
+  hint?: Hint | null
   onRemove?: (id: number) => void
   onEdit: () => void
   onActivate?: () => void
@@ -92,8 +124,10 @@ function BankRow({ entry, season, onRemove, onEdit, onActivate, onRelease, loadi
         </span>
 
   return (
-    <div className="flex items-center justify-between py-1.5 px-3 rounded-lg hover:bg-gray-50 group">
+    <div className="py-1.5 px-3 rounded-lg hover:bg-gray-50 group">
+    <div className="flex items-center justify-between">
       <div className="flex items-center gap-2 text-sm min-w-0">
+        {poolerName && <span className="text-xs font-medium text-gray-600 w-24 truncate shrink-0">{poolerName}</span>}
         <span className="text-gray-400 w-8 text-center text-xs shrink-0">
           {entry.players.teams?.code ?? DASH}
         </span>
@@ -141,6 +175,12 @@ function BankRow({ entry, season, onRemove, onEdit, onActivate, onRelease, loadi
           )}
         </div>
       </div>
+    </div>
+    {hint && (
+      <p className={`text-xs mt-0.5 ${poolerName ? 'pl-36' : 'pl-10'} ${hint.review ? 'text-amber-700' : 'text-gray-400'}`}>
+        {hint.text}
+      </p>
+    )}
     </div>
   )
 }
@@ -279,6 +319,11 @@ export default function BanqueRecruesManager({
   // étiquette rétroactivement, jamais ajoutés/retirés d'ici.
   const [protectedActives, setProtectedActives] = useState<BankEntry[]>([])
   const [reloadKey, setReloadKey] = useState(0)
+  // Révision des étiquettes (David, 2026-10-14) : étiquettes de la saison passée, filtre, vue globale.
+  const [prevTags, setPrevTags] = useState<Map<number, PrevTag>>(new Map())
+  const [reviewOnly, setReviewOnly] = useState(false)
+  const [allEntries, setAllEntries] = useState<BankEntry[]>([])
+  const isAll = selectedPooler === ALL_POOLERS
   const [allTakenIds, setAllTakenIds] = useState<Set<number>>(new Set())
   const [selectedTeam, setSelectedTeam] = useState('')
   const [search, setSearch] = useState('')
@@ -291,6 +336,9 @@ export default function BanqueRecruesManager({
   const season = saison?.season ?? ''
   // Année du repêchage des recrues du pool pour cette saison (2026-27 → 2026).
   const currentDraftYear = parseInt(season.slice(0, 4), 10) || new Date().getFullYear()
+  const prevSeason = season ? `${currentDraftYear - 1}-${String(currentDraftYear).slice(2)}` : ''
+  const poolerNames = useMemo(() => new Map(poolers.map((p) => [p.id, p.name])), [poolers])
+  const hintFor = (entry: BankEntry) => computeHint(entry, prevTags.get(entry.player_id), prevSeason, season)
 
   // Charger tous les IDs de recrues prises (tous poolers) pour éviter doublons
   useEffect(() => {
@@ -304,8 +352,40 @@ export default function BanqueRecruesManager({
       .then(({ data }) => setAllTakenIds(new Set((data ?? []).map((r) => r.player_id))))
   }, [saison, supabase])
 
+  // Étiquettes de la saison passée, pour l'indice de révision.
   useEffect(() => {
-    if (!selectedPooler || !saison) return
+    if (!prevSeason) return
+    const load = async () => {
+      const { data: prev } = await supabase
+        .from('pool_seasons').select('id').eq('season', prevSeason).eq('is_playoff', false).maybeSingle()
+      if (!prev) { setPrevTags(new Map()); return }
+      const { data } = await supabase
+        .from('pooler_rosters')
+        .select('player_id, rookie_type, pool_draft_year')
+        .eq('pool_season_id', prev.id)
+        .not('rookie_type', 'is', null)
+      setPrevTags(new Map((data ?? []).map((r) => [r.player_id as number, r as unknown as PrevTag])))
+    }
+    load()
+  }, [prevSeason, supabase])
+
+  // Vue « Tous les poolers » : tous les joueurs des alignements, banque comprise.
+  useEffect(() => {
+    if (!isAll || !saison) return
+    const load = async () => {
+      const { data } = await supabase
+        .from('pooler_rosters')
+        .select('id, player_id, pooler_id, player_type, rookie_type, pool_draft_year, players(id, first_name, last_name, position, status, draft_year, draft_round, draft_overall, teams(code), player_contracts(season, is_elc))')
+        .eq('pool_season_id', saison.id)
+        .in('player_type', ['actif', 'reserviste', 'ltir', 'recrue'])
+        .eq('is_active', true)
+      setAllEntries((data ?? []) as unknown as BankEntry[])
+    }
+    load()
+  }, [isAll, saison, supabase, reloadKey])
+
+  useEffect(() => {
+    if (!selectedPooler || !saison || isAll) return
     setPendingRookie(null)
 
     const fetchBank = async () => {
@@ -331,7 +411,7 @@ export default function BanqueRecruesManager({
     }
 
     fetchBank()
-  }, [selectedPooler, saison, supabase, reloadKey])
+  }, [selectedPooler, saison, supabase, reloadKey, isAll])
 
   const teamOptions = useMemo(() =>
     Array.from(new Set(rookies.map((r) => r.teams?.code ?? '').filter(Boolean)))
@@ -466,7 +546,12 @@ export default function BanqueRecruesManager({
           className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
         >
           {poolers.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          <option value={ALL_POOLERS}>Tous les poolers (révision des étiquettes)</option>
         </select>
+        <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
+          <input type="checkbox" checked={reviewOnly} onChange={(e) => setReviewOnly(e.target.checked)} />
+          À vérifier seulement
+        </label>
         {message && (
           <span className={`text-sm font-medium ${message.startsWith('Erreur') ? 'text-red-600' : 'text-emerald-600'}`}>
             {message}
@@ -474,6 +559,49 @@ export default function BanqueRecruesManager({
         )}
       </div>
 
+      {isAll && (() => {
+        const rows = [...allEntries]
+          .filter((e) => !reviewOnly || hintFor(e)?.review)
+          .sort((a, b) => (poolerNames.get(a.pooler_id ?? '') ?? '').localeCompare(poolerNames.get(b.pooler_id ?? '') ?? '', 'fr-CA')
+            || sortRookies(a.players, b.players))
+        return (
+          <div className="bg-white rounded-lg shadow p-5">
+            <h2 className="font-semibold text-gray-700 mb-1">
+              {`Révision des étiquettes — ${rows.length} joueur${rows.length > 1 ? 's' : ''}`}
+            </h2>
+            <p className="text-xs text-gray-400 mb-4">
+              Tous les joueurs des alignements, banque comprise. « À vérifier » : un joueur sans étiquette qui était protégé la saison passée, ou repêché par la LNH dans les 5 dernières années.
+            </p>
+            {rows.length === 0 ? (
+              <p className="text-gray-400 text-sm text-center py-4">{reviewOnly ? 'Aucun joueur à vérifier' : 'Aucun joueur'}</p>
+            ) : (
+              <div className="space-y-1">
+                {rows.map((entry) => (
+                  <div key={entry.id}>
+                    <BankRow entry={entry} season={season} loading={loading}
+                      poolerName={poolerNames.get(entry.pooler_id ?? '')}
+                      hint={hintFor(entry)}
+                      onEdit={() => setEditingEntryId(editingEntryId === entry.id ? null : entry.id)} />
+                    {editingEntryId === entry.id && (
+                      <TypePanel
+                        rookie={entry.players}
+                        initialType={entry.rookie_type ?? undefined}
+                        initialYear={entry.pool_draft_year}
+                        defaultYear={currentDraftYear}
+                        onConfirm={(type, year) => confirmEdit(entry.id, type, year)}
+                        onCancel={() => setEditingEntryId(null)}
+                        loading={loading}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
+      {!isAll && (
       <div className="grid grid-cols-2 gap-6">
         {/* Banque actuelle */}
         <div className="space-y-4">
@@ -557,9 +685,11 @@ export default function BanqueRecruesManager({
                 Clique sur {PENCIL}{' '}pour corriger l&apos;étiquette d&apos;un joueur, même en cours de saison : repêché par le pool (protégé 5 saisons, incluant celle de son repêchage) ou agent libre (protégé tant que son contrat est un ELC). Un joueur protégé peut retourner en banque.
               </p>
               <div className="space-y-1">
-                {[...protectedActives].sort((a, b) => sortRookies(a.players, b.players)).map((entry) => (
+                {[...protectedActives]
+                  .filter((e) => !reviewOnly || hintFor(e)?.review)
+                  .sort((a, b) => sortRookies(a.players, b.players)).map((entry) => (
                   <div key={entry.id}>
-                    <BankRow entry={entry} season={season} loading={loading}
+                    <BankRow entry={entry} season={season} loading={loading} hint={hintFor(entry)}
                       onEdit={() => setEditingEntryId(editingEntryId === entry.id ? null : entry.id)} />
                     {editingEntryId === entry.id && (
                       <TypePanel
@@ -648,6 +778,7 @@ export default function BanqueRecruesManager({
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }

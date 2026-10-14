@@ -44,6 +44,12 @@ d'effectifs, échanges, pré-saison, Mode init, Banque de recrues, conformité, 
   « Repêchage 2027 ») partout (13 endroits).
 - Simulation sur la prod avant livraison : aucune recrue activée ni étiquette retirée par la
   nouvelle règle. Transition de saison inchangée (retour auto en banque des protégés, confirmé).
+- Ajout (demande de David) : révision des étiquettes dans la Banque de recrues — indice par joueur
+  sans étiquette (étiquette de la saison passée et si elle le protégerait encore ; sinon repêché
+  par la LNH dans les 5 dernières années), filtre « À vérifier seulement », et option « Tous les
+  poolers » du sélecteur (tous les joueurs des alignements, banque comprise). Vérifié en prod : les
+  19 joueurs étiquetés en 2025-26 et sans étiquette en 2026-27 sont 17 repêchés de 2021 (5ᵉ saison
+  terminée) et 2 agents libres à l'ELC fini (Blake, Poitras) — aucun « à vérifier ».
 
 **[Perf] — classement et blessures mis en cache, invalidés par la base elle-même**
 (`supabase_migrations/data_versions.sql`, `app/lib/dataVersion.ts`, `app/lib/standings.ts`,
