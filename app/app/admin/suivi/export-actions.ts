@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { poolDraftYear } from '@/lib/poolDraftYear'
 
 const CHANGE_LABEL: Record<string, string> = {
   activation:             'Activation',
@@ -86,7 +87,7 @@ export async function exportJournalCsvAction(
     const cible = pl
       ? `${pl.last_name}, ${pl.first_name}`
       : pick
-        ? `Choix — ${pick.pool_seasons?.season ?? '?'} Ronde ${pick.round}`
+        ? `Choix — ${poolDraftYear(pick.pool_seasons?.season)} Ronde ${pick.round}`
         : '—'
 
     return [

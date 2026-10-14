@@ -21,6 +21,44 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-14
 
+**[Fix] — protection recrue : une seule règle partout, correction rétroactive, années de repêchage**
+(`lib/rookieProtection.ts`, `lib/rookieProtectionSync.ts`, `lib/poolDraftYear.ts`, Gestion
+d'effectifs, échanges, pré-saison, Mode init, Banque de recrues, conformité, alignements, `/aide`) :
+- Règle reconfirmée par David après consultation des poolers : repêché du pool = 5 saisons incluant
+  celle du repêchage ; tout autre joueur = tant que son contrat de la saison est un ELC ; remise en
+  banque permise pendant la protection, activation obligatoire (automatique) après.
+- Constat : la règle centrale était juste, mais 6 endroits avaient leur propre copie fondée sur le
+  statut recrue ou l'année de repêchage **de la LNH** (Gestion d'effectifs, signature en recrue,
+  ajustements d'échange, Mode init, Banque de recrues) ou sur `players.status` (alignements,
+  conformité). Le libre-service de pré-saison exigeait une étiquette déjà posée.
+- `isRookieProtected()` remplace toutes ces copies ; un joueur jamais étiqueté est traité comme un
+  agent libre. `isElcActiveForSeason()` : sans contrat pour la saison mais avec des contrats
+  d'avant, l'ELC est terminé (avant : supposé actif).
+- `syncExpiredRookieProtection` déplacée dans `lib/rookieProtectionSync.ts` (client admin) ;
+  appelée aussi après une correction d'étiquette (`updateRookieTypeAction`) : une recrue en banque
+  qui n'est plus protégée est activée automatiquement (choix de David).
+- Banque de recrues (`/admin/init?tab=recrues`) : liste de tous les actifs, réservistes et LTIR du
+  pooler avec « Protégé jusqu'en … » ; ✎ avec champ d'année du repêchage du pool — l'ancien ✎ et
+  le Mode init enregistraient l'année de repêchage de la LNH comme année du pool.
+- Choix de repêchage et repêchage des recrues libellés par année (« Choix ronde 1 (2027) »,
+  « Repêchage 2027 ») partout (13 endroits).
+- Simulation sur la prod avant livraison : aucune recrue activée ni étiquette retirée par la
+  nouvelle règle. Transition de saison inchangée (retour auto en banque des protégés, confirmé).
+- Ajout (demande de David) : révision des étiquettes dans la Banque de recrues — indice par joueur
+  sans étiquette (étiquette de la saison passée et si elle le protégerait encore ; sinon repêché
+  par la LNH dans les 5 dernières années), filtre « À vérifier seulement », et option « Tous les
+  poolers » du sélecteur (tous les joueurs des alignements, banque comprise). Vérifié en prod : les
+  19 joueurs étiquetés en 2025-26 et sans étiquette en 2026-27 sont 17 repêchés de 2021 (5ᵉ saison
+  terminée) et 2 agents libres à l'ELC fini (Blake, Poitras) — aucun « à vérifier ».
+- Ajout (test de David en staging : Bilecki, repêché 2026 sans contrat, activé en Actif) : une
+  recrue **sans contrat LNH signé pour la saison** reste dans la banque (`hasSignedContract`,
+  salaire estimé exclu). Bloqué pour tout le monde, admin compris : Gestion d'effectifs (option
+  retirée de l'écran + garde-fou serveur avant toute écriture), `applyTransactionItems` (libre-
+  service de pré-saison, /admin/transactions, Banque de recrues), ajustements d'échange
+  `promote_recrue`. L'activation automatique d'une protection expirée saute une recrue sans contrat
+  (elle reste en « Activation obligatoire »). Prod vérifiée : aucune recrue sans contrat en
+  actif/réserviste (seul Edvinsson, vétéran sans étiquette, n'a pas de contrat).
+
 **[Perf] — classement et blessures mis en cache, invalidés par la base elle-même**
 (`supabase_migrations/data_versions.sql`, `app/lib/dataVersion.ts`, `app/lib/standings.ts`,
 `app/lib/injuries.ts`, 9 appelants de `buildStandings`) :

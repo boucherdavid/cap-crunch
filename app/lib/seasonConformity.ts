@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getEffectiveCap } from '@/lib/capUtils'
+import { isRookieProtected } from '@/lib/rookieProtection'
 import { getPlayerBucket, ACTIVE_LIMITS, BUCKET_LABELS, type Bucket } from '@/lib/rosterLimits'
 
 export type ConformityIssue = { poolerId: string; poolerName: string; reasons: string[] }
@@ -32,7 +33,6 @@ export async function checkSeasonConformity(
 
   if (!saison) return { error: 'Saison introuvable.', issues: [], totalPoolers: 0 }
   const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
-  const seasonStartYear = parseInt(saison.season.split('-')[0], 10)
 
   type PoolerAcc = {
     name: string
@@ -50,26 +50,14 @@ export async function checkSeasonConformity(
     if (!info) continue
 
     const contracts: any[] = entry.players?.player_contracts ?? []
-    const currentContract = contracts.find((c: any) => c.season === saison.season)
     const capNum = getEffectiveCap(contracts, saison.season, unsignedMultiplier).cap
     const pos: string | null = entry.players?.position ?? null
     let type: string = entry.player_type
 
-    // Même reclassification que loadPresaisonDataAction (presaison/actions.ts) : une recrue
-    // dont la protection a expiré (5 saisons pour un repêché, fin d'ELC pour un agent libre)
-    // compte comme un actif normal ; une recrue encore protégée est exclue des comptages.
+    // Recrue dont la protection a expiré (règle unique isRookieProtected) : compte comme un
+    // actif normal ; une recrue encore protégée est exclue des comptages.
     if (type === 'recrue') {
-      const rookieType: string | null = entry.rookie_type ?? null
-      const draftYear: number | null = entry.pool_draft_year ?? null
-      let isExpired = false
-      if (rookieType === 'repeche' && draftYear !== null) {
-        isExpired = (seasonStartYear - draftYear) >= 5
-      } else if (rookieType === 'agent_libre') {
-        isExpired = !currentContract?.is_elc
-      } else {
-        continue
-      }
-      if (!isExpired) continue
+      if (isRookieProtected(entry.rookie_type ?? null, entry.pool_draft_year ?? null, contracts, saison.season)) continue
       type = 'actif'
     }
 

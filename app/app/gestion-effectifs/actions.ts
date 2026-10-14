@@ -9,6 +9,7 @@ import { announceToPool, playerNames, poolerName } from '@/lib/poolAnnouncements
 import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/rosterTypeChange'
 import { computeBatchEffectiveDate, undoableDeactivations, startedTeamsOnDate } from '@/lib/gameDayLock'
 import { getEffectiveCap } from '@/lib/capUtils'
+import { isRookieProtected, hasSignedContract, NO_CONTRACT_ERROR, type RookieTag } from '@/lib/rookieProtection'
 import { validateRosterLimits, getPlayerBucket, ACTIVE_LIMITS, type Bucket } from '@/lib/rosterLimits'
 import { createWaiverClaimForRelease, isPlayerUnderActiveWaiverClaim } from '@/lib/waiverClaims'
 import { fetchInjuriesByPlayerId, type InjuryInfo } from '@/lib/injuries'
@@ -41,7 +42,7 @@ export type RosterEntry = {
   // Mis en réserve aujourd'hui sans qu'aucun match de son équipe n'ait commencé depuis : peut
   // être réactivé malgré le délai (annulation le jour même, David 2026-10-12, voir gameDayLock.ts).
   undoableToday?: boolean
-  recrueEligible: boolean  // is_rookie, draft_year dans la fenêtre de 5 saisons, ou statut ELC — peut retourner à la banque de recrues
+  recrueEligible: boolean  // encore protégé (isRookieProtected) — peut retourner à la banque de recrues
   injury: InjuryInfo | null  // source CBS Sports/ESPN, voir player_injuries et app/lib/injuries.ts
 }
 
@@ -133,20 +134,15 @@ export async function getPoolerRosterAction(
 ): Promise<RosterForPooler> {
   const supabase = await createClient()
 
-  // Fenêtre de protection recrue (5 saisons) — même formule que getDraftYearCutoff()
-  // dans admin/rosters/actions.ts, pour déterminer si un actif/réserviste peut encore
-  // retourner à la banque de recrues.
-  const draftYearCutoff = parseInt(season.split('-')[0], 10) + 1 - 5
-
   const [{ data: rosterData }, { data: deactRows }, { data: settings }, injuriesByPlayerId] = await Promise.all([
     supabase
       .from('pooler_rosters')
       .select(`
-        id, player_id, player_type,
+        id, player_id, player_type, rookie_type, pool_draft_year,
         players (
-          first_name, last_name, position, nhl_id, is_rookie, draft_year, status,
+          first_name, last_name, position, nhl_id,
           teams (code),
-          player_contracts (season, cap_number, contract_status)
+          player_contracts (season, cap_number, contract_status, is_elc)
         )
       `)
       .eq('pooler_id', poolerId)
@@ -196,7 +192,7 @@ export async function getPoolerRosterAction(
       isEstimatedCap: isEstimated,
       lastDeactivatedAt: deactMap.get(r.player_id) ?? null,
       undoableToday: undoable.has(r.player_id),
-      recrueEligible: !!(r.players?.is_rookie || (r.players?.draft_year != null && r.players.draft_year >= draftYearCutoff) || r.players?.status === 'ELC'),
+      recrueEligible: isRookieProtected(r.rookie_type, r.pool_draft_year, r.players?.player_contracts, season),
       injury: injuriesByPlayerId.get(r.player_id) ?? null,
     }
   })
@@ -385,11 +381,9 @@ export async function submitBatchAction(input: {
     }
   }
 
-  // Fenêtre de protection recrue (5 saisons) — même formule que getPoolerRosterAction()
-  // et admin/rosters/actions.ts, revalidée ici côté serveur pour 'demote_rookie'.
-  const draftYearCutoff = saisonConfig?.season
-    ? parseInt(saisonConfig.season.split('-')[0], 10) + 1 - 5
-    : new Date().getFullYear() - 4
+  // Protection recrue revalidée côté serveur (isRookieProtected, lib/rookieProtection.ts).
+  const protectionSeason: string = saisonConfig?.season
+    ?? `${new Date().getFullYear()}-${String(new Date().getFullYear() + 1).slice(2)}`
 
   const delaiJours    = saisonConfig?.delai_reactivation_jours ?? 3
   const maxAl         = saisonConfig?.max_signatures_al ?? 10
@@ -465,12 +459,12 @@ export async function submitBatchAction(input: {
   async function getEntry(entryId: number) {
     const { data } = await db
       .from('pooler_rosters')
-      .select('player_id, player_type, added_at, rookie_type, players (nhl_id, is_rookie, draft_year, status, position)')
+      .select('player_id, player_type, added_at, rookie_type, pool_draft_year, players (nhl_id, position, player_contracts (season, is_elc))')
       .eq('id', entryId)
       .single()
     return data as {
-      player_id: number; player_type: string; added_at: string | null; rookie_type: string | null
-      players: { nhl_id: number | null; is_rookie: boolean | null; draft_year: number | null; status: string | null; position: string | null } | null
+      player_id: number; player_type: string; added_at: string | null; rookie_type: RookieTag; pool_draft_year: number | null
+      players: { nhl_id: number | null; position: string | null; player_contracts: { season: string; is_elc: boolean | null }[] | null } | null
     } | null
   }
 
@@ -568,15 +562,10 @@ export async function submitBatchAction(input: {
     if (!e) throw new Error('Entrée introuvable')
     const rookieFields: Record<string, unknown> = {}
     if (toType === 'recrue') {
-      const eligible = !!(
-        e.players?.is_rookie ||
-        (e.players?.draft_year != null && e.players.draft_year >= draftYearCutoff) ||
-        e.players?.status === 'ELC'
-      )
-      if (!eligible) throw new Error('Ce joueur a dépassé la protection recrue (5 saisons) et n\'est pas sur ELC — ne peut plus retourner à la banque')
-      // Jamais classé auparavant (pas passé par le repêchage du pool, qui fixe rookie_type='repeche'
-      // dès la sélection) — seul le cas agent libre/ELC peut être déduit automatiquement ici. Le cas
-      // repêché-mais-plus-sur-ELC (protection 5 saisons) reste manuel via /admin/init (pool_draft_year requis).
+      if (!isRookieProtected(e.rookie_type, e.pool_draft_year, e.players?.player_contracts, protectionSeason)) {
+        throw new Error('Ce joueur n\'est plus protégé (5 saisons pour un repêché du pool, ELC pour les autres) — il ne peut plus retourner à la banque')
+      }
+      // Jamais étiqueté : seul le repêchage du pool pose 'repeche', donc c'est un agent libre.
       if (!e.rookie_type) rookieFields.rookie_type = 'agent_libre'
     }
     const conflict = await checkFutureRosterConflict(db, input.poolerId, e.player_id, input.saisonId, changedAt, toType)
@@ -663,16 +652,15 @@ export async function submitBatchAction(input: {
       }
     }
 
-    // Signature directe en recrue (agent libre encore sur son ELC) — évite le détour par
-    // /admin/init (Banque de recrues), qui reste nécessaire seulement pour le cas repêché-par-
-    // le-pool mais plus sur ELC (protection 5 saisons, pool_draft_year requis).
+    // Signature directe en recrue : un agent libre, admissible seulement sous ELC.
     // Toujours remis à zéro (David, 2026-10-07) : une ancienne ligne du même pooler (joueur
     // libéré puis re-signé) gardait sinon son vieux type « repêché » et son année.
     const rookieFields: Record<string, unknown> = { rookie_type: null, pool_draft_year: null, draft_pick_id: null }
     if (playerType === 'recrue') {
-      const { data: player } = await db.from('players').select('is_rookie, draft_year, status').eq('id', playerId).single()
-      const eligible = !!(player?.is_rookie || (player?.draft_year != null && player.draft_year >= draftYearCutoff) || player?.status === 'ELC')
-      if (!eligible) throw new Error('Ce joueur n\'est pas admissible à la banque de recrues (protection recrue expirée et pas sur ELC)')
+      const { data: contracts } = await db.from('player_contracts').select('season, is_elc').eq('player_id', playerId)
+      if (!isRookieProtected('agent_libre', null, contracts, protectionSeason)) {
+        throw new Error('Ce joueur n\'est pas admissible à la banque de recrues (pas sous ELC)')
+      }
       rookieFields.rookie_type = 'agent_libre'
     }
 
@@ -721,6 +709,32 @@ export async function submitBatchAction(input: {
     // qu'ici, après tous les checks/écritures ci-dessus, jamais en cas d'erreur plus haut.
     if (signingType === 'ballotage' && waiverClaimId) {
       await db.from('waiver_claims').update({ status: 'resolved_claimed', resolved_at: new Date().toISOString() }).eq('id', waiverClaimId)
+    }
+  }
+
+  // ─── Recrue sans contrat (David, 2026-10-14) — tout le monde, admin compris ───────────────
+  // Une recrue sans contrat LNH signé pour la saison ne sort pas de la banque. Vérifié avant
+  // toute écriture ; /admin/transactions reste le filet de sécurité de l'admin.
+  {
+    const leavingBank = input.actions.flatMap(a => a.type === 'change_status'
+      ? [[a.entry1Id, a.newType1], [a.entry2Id, a.newType2]] as const
+      : [])
+      .filter(([id, t]) => id && t && t !== 'recrue')
+      .map(([id]) => id as number)
+    if (leavingBank.length > 0) {
+      const { data: bankRows } = await db
+        .from('pooler_rosters')
+        .select('player_type, players (first_name, last_name, player_contracts (season, cap_number))')
+        .in('id', leavingBank)
+      const season = saisonConfig?.season ?? ''
+      for (const r of (bankRows ?? []) as unknown as {
+        player_type: string
+        players: { first_name: string; last_name: string; player_contracts: { season: string; cap_number: number | null }[] | null } | null
+      }[]) {
+        if (r.player_type === 'recrue' && !hasSignedContract(r.players?.player_contracts, season)) {
+          return { error: NO_CONTRACT_ERROR(`${r.players?.first_name ?? ''} ${r.players?.last_name ?? ''}`.trim(), season) }
+        }
+      }
     }
   }
 

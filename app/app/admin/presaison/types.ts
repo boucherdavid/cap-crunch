@@ -15,13 +15,11 @@ export type RosterEntry = {
   cap_number: number
   isEstimatedCap: boolean
   unsignedStatus: 'RFA' | 'UFA' | null  // sans contrat pour la saison — voir getEffectiveCap
-  // Non-null seulement si le joueur est encore sous protection recrue (ELC actif, ou plafond
-  // 5 saisons pour un repêché) malgré son player_type actif/réserviste — condition pour être
-  // remis en banque par l'admin (voir "Remettre en banque" dans PoolerCard). Une recrue à
-  // protection expirée a déjà rookie_type=null (syncExpiredRookieProtection), donc n'est
-  // jamais éligible — cohérent avec le fait qu'elle ne peut plus redevenir recrue nulle part
-  // ailleurs dans l'app.
+  // Étiquette de protection posée sur la ligne (affichage seulement).
   rookieType: string | null
+  // Actif/réserviste encore protégé (isRookieProtected, lib/rookieProtection.ts) : peut être
+  // remis en banque. Un joueur jamais étiqueté sous ELC l'est aussi (David, 2026-10-14).
+  bankEligible: boolean
   // Blessure LNH en cours (player_injuries) avec l'admissibilité LTIR calculée — sert aux
   // boutons LTIR du hub (David, 2026-09-28). null = pas blessé.
   injury: InjuryInfo | null

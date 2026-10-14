@@ -5,6 +5,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { validateRosterLimits } from '@/lib/rosterLimits'
 import { getEffectiveCap } from '@/lib/capUtils'
+import { syncExpiredRookieProtection } from '@/lib/rookieProtectionSync'
+import { isRookieProtected } from '@/lib/rookieProtection'
 
 function revalidateRosterPages() {
   revalidatePath('/admin/init')
@@ -91,13 +93,14 @@ function detectChangeType(
   return 'changement_type'
 }
 
-async function getDraftYearCutoff(
+// Saison (« 2026-27 ») pour la règle unique de la banque de recrues (isRookieProtected) —
+// remplace l'ancienne fenêtre basée sur le repêchage de la LNH (David, 2026-10-14).
+async function getSeasonLabel(
   supabase: Awaited<ReturnType<typeof createClient>>,
   saisonId: number,
-): Promise<number> {
+): Promise<string> {
   const { data: season } = await supabase.from('pool_seasons').select('season').eq('id', saisonId).single()
-  const saisonFin = season ? parseInt(season.season.split('-')[0], 10) + 1 : new Date().getFullYear()
-  return saisonFin - 5
+  return season?.season ?? ''
 }
 
 async function logChange(
@@ -140,13 +143,12 @@ export async function addPlayerAction(
   if (seasonGuard.error) return seasonGuard
 
   if (playerType === 'recrue') {
-    const [{ data: player }, draftYearCutoff] = await Promise.all([
-      supabase.from('players').select('is_rookie, draft_year').eq('id', playerId).single(),
-      getDraftYearCutoff(supabase, saisonId),
+    const [{ data: contracts }, season] = await Promise.all([
+      supabase.from('player_contracts').select('season, is_elc').eq('player_id', playerId),
+      getSeasonLabel(supabase, saisonId),
     ])
-    const isEligible = player?.is_rookie || (player?.draft_year != null && player.draft_year >= draftYearCutoff)
-    if (!isEligible) {
-      return { error: 'Seuls les joueurs recrues peuvent aller dans la banque de recrues.' }
+    if (!isRookieProtected(rookieType ?? 'agent_libre', rookieType === 'repeche' ? (poolDraftYear ?? null) : null, contracts, season)) {
+      return { error: 'Ce joueur n\'est pas protégé (5 saisons pour un repêché du pool, ELC pour les autres) : il ne peut pas aller dans la banque de recrues.' }
     }
     if (!rookieType) {
       return { error: 'Le type de recrue (repêché ou agent libre) est requis.' }
@@ -210,19 +212,32 @@ export async function updateRookieTypeAction(
 ): Promise<{ error?: string }> {
   const supabase = await createClient()
 
+  // Repêché du pool : l'année du repêchage des recrues du pool (jamais celle de la LNH) est
+  // obligatoire — c'est elle qui fixe les 5 saisons de protection.
+  if (rookieType === 'repeche' && (!poolDraftYear || poolDraftYear < 2000 || poolDraftYear > 2100)) {
+    return { error: 'Indique l\'année du repêchage des recrues du pool (ex. : 2026).' }
+  }
+
   // Pas de verrou « saison démarrée » ici, contrairement à l'ajout et au retrait (David,
-  // 2026-10-07) : corriger une étiquette de protection mal posée ne touche ni player_type ni
-  // les dates, donc ni les points ni l'historique — doit rester possible en cours de saison.
+  // 2026-10-07) : corriger une étiquette ne touche ni les dates ni les points — doit rester
+  // possible en cours de saison, rétroactivement, pour tout joueur des alignements (2026-10-14).
   const { data: updated, error } = await supabase
     .from('pooler_rosters')
     .update({
       rookie_type:    rookieType,
-      pool_draft_year: rookieType === 'repeche' ? (poolDraftYear ?? null) : null,
+      pool_draft_year: rookieType === 'repeche' ? poolDraftYear : null,
     })
     .eq('id', rosterId)
-    .select('id')
+    .select('pooler_id, pool_season_id, pool_seasons (season)')
   if (error) return { error: error.message }
   if (!updated || updated.length === 0) return { error: 'Entrée introuvable.' }
+
+  // Correction qui rend non protégé un joueur en banque : activé automatiquement, comme une
+  // protection expirée (David, 2026-10-14).
+  const row = updated[0] as unknown as { pooler_id: string; pool_season_id: number; pool_seasons: { season: string } | null }
+  if (row.pool_seasons?.season) {
+    await syncExpiredRookieProtection(row.pool_season_id, row.pool_seasons.season, { poolerId: row.pooler_id })
+  }
   revalidateRosterPages()
   return {}
 }
@@ -395,7 +410,7 @@ export async function submitRosterAction(
     // Récupérer le roster courant pour validation et détection des types
     supabase
       .from('pooler_rosters')
-      .select('id, player_id, player_type, players(position, is_rookie, draft_year, nhl_id, player_contracts(season, cap_number, contract_status))')
+      .select('id, player_id, player_type, rookie_type, pool_draft_year, players(position, is_rookie, nhl_id, player_contracts(season, cap_number, contract_status, is_elc))')
       .eq('pooler_id', poolerId)
       .eq('pool_season_id', saisonId)
       .eq('is_active', true),
@@ -415,16 +430,11 @@ export async function submitRosterAction(
   type FinalEntry = { player_type: string; position: string | null; is_rookie: boolean; capNumber: number }
   const finalEntries: FinalEntry[] = []
 
-  const draftYearCutoff = await getDraftYearCutoff(supabase, saisonId)
-
   for (const row of (current ?? []) as any[]) {
     if (removeSet.has(row.id)) continue
     const newType = changeMap.get(row.id) ?? row.player_type
-    if (newType === 'recrue') {
-      const isEligible = row.players?.is_rookie || (row.players?.draft_year != null && row.players.draft_year >= draftYearCutoff)
-      if (!isEligible) {
-        return { error: `Seuls les joueurs recrues peuvent aller dans la banque de recrues.` }
-      }
+    if (newType === 'recrue' && !isRookieProtected(row.rookie_type ?? null, row.pool_draft_year ?? null, row.players?.player_contracts, saison.season)) {
+      return { error: 'Un joueur non protégé (5 saisons pour un repêché du pool, ELC pour les autres) ne peut pas aller dans la banque de recrues.' }
     }
     finalEntries.push({
       player_type: newType,
@@ -435,10 +445,9 @@ export async function submitRosterAction(
   }
 
   for (const entry of toAdd) {
-    const { data: player } = await supabase.from('players').select('position, is_rookie, draft_year, player_contracts(season, cap_number, contract_status)').eq('id', entry.player_id).single()
-    const isEligible = player?.is_rookie || (player?.draft_year != null && player.draft_year >= draftYearCutoff)
-    if (entry.player_type === 'recrue' && !isEligible) {
-      return { error: `Seuls les joueurs recrues peuvent aller dans la banque de recrues.` }
+    const { data: player } = await supabase.from('players').select('position, is_rookie, player_contracts(season, cap_number, contract_status, is_elc)').eq('id', entry.player_id).single()
+    if (entry.player_type === 'recrue' && !isRookieProtected(entry.rookie_type ?? null, entry.pool_draft_year ?? null, player?.player_contracts, saison.season)) {
+      return { error: 'Un joueur non protégé (5 saisons pour un repêché du pool, ELC pour les autres) ne peut pas aller dans la banque de recrues.' }
     }
     finalEntries.push({
       player_type: entry.player_type,

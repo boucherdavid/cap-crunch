@@ -6,6 +6,7 @@ import PoolerSwitcher from '@/components/PoolerSwitcher'
 import PoolerPageTabs, { type Tab } from './PoolerPageTabs'
 import PlayerLink from '@/components/PlayerLink'
 import { getStandings } from '@/lib/standings'
+import { isRookieProtected, isElcActiveForSeason } from '@/lib/rookieProtection'
 import { fetchStreaks, DEFAULT_INDICATOR_CONFIG } from '@/lib/streaks'
 import type { StreakInfo } from '@/lib/streaks'
 import { fetchActiveNhlSeasonId } from '@/lib/nhl-active-season'
@@ -13,6 +14,7 @@ import { getEffectiveCap } from '@/lib/capUtils'
 import { todayET, fetchSchedule7, fetchOrgPlayersForPooler } from '@/lib/nhlWeeklySchedule'
 import { fetchInjuriesByPlayerId, fetchInjuriesByNhlId, type InjuryInfo } from '@/lib/injuries'
 import InjuryBadge from '@/components/InjuryBadge'
+import { poolDraftYear } from '@/lib/poolDraftYear'
 
 const DASH = '\u2014'
 const STAR = '\u2605'
@@ -21,14 +23,9 @@ const PROTECTION_SEASONS = 5
 const getSaisonFin = (season: string): number =>
   parseInt(season.split('-')[0], 10) + 1
 
-const isProtected = (row: RosterRow, saisonFin: number): boolean => {
-  if (!row.rookie_type) return true
-  if (row.rookie_type === 'repeche') {
-    return (row.pool_draft_year ?? 0) + PROTECTION_SEASONS >= saisonFin
-  }
-  // agent_libre : protégé tant que ELC
-  return row.players?.status === 'ELC'
-}
+// Règle unique de la banque de recrues (lib/rookieProtection.ts).
+const isProtected = (row: RosterRow, season: string): boolean =>
+  isRookieProtected(row.rookie_type, row.pool_draft_year, row.players?.player_contracts, season)
 
 type PlayerRow = {
   id: number
@@ -42,7 +39,7 @@ type PlayerRow = {
   draft_round: number | null
   draft_overall: number | null
   teams: { code: string } | null
-  player_contracts: { season: string; cap_number: number }[]
+  player_contracts: { season: string; cap_number: number; is_elc: boolean | null }[]
 }
 
 type DraftPickRow = {
@@ -137,10 +134,10 @@ const protectionRestante = (row: RosterRow, saisonFin: number, currentSeason?: s
     return `${restant} an${restant > 1 ? 's' : ''}`
   }
   if (row.rookie_type === 'agent_libre' || !row.rookie_type) {
-    if (row.players?.status !== 'ELC') return 'Expirée'
     if (!currentSeason) return 'ELC'
+    if (!isElcActiveForSeason(row.players?.player_contracts, currentSeason)) return 'Expirée'
     const restant = (row.players?.player_contracts ?? [])
-      .filter(c => c.season >= currentSeason).length
+      .filter(c => c.season > currentSeason && c.is_elc).length
     if (restant === 0) return 'Dernière saison (ELC)'
     if (restant === 1) return '1 an (ELC)'
     return `${restant} ans (ELC)`
@@ -418,7 +415,7 @@ export default async function PoolerPage({
         id, nhl_id, first_name, last_name, position, status, is_rookie,
         draft_year, draft_round, draft_overall,
         teams (code),
-        player_contracts (season, cap_number, contract_status)
+        player_contracts (season, cap_number, contract_status, is_elc)
       )
     `)
     .eq('pooler_id', id)
@@ -437,8 +434,8 @@ export default async function PoolerPage({
   const reservistes = roster.filter((row) => row.player_type === 'reserviste')
   const ltir = roster.filter((row) => row.player_type === 'ltir')
   const recrues = roster.filter((row) => row.player_type === 'recrue')
-  const banqueRecrues = recrues.filter((row) => isProtected(row, saisonFin))
-  const activationObligatoire = recrues.filter((row) => !isProtected(row, saisonFin))
+  const banqueRecrues = recrues.filter((row) => saison ? isProtected(row, saison.season) : true)
+  const activationObligatoire = recrues.filter((row) => saison ? !isProtected(row, saison.season) : false)
 
   const activeCounts = actifs.reduce(
     (counts, row) => {
@@ -537,7 +534,7 @@ export default async function PoolerPage({
               .map(([season, seasonPicks]) => (
                 <div key={season}>
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                    Saison {season}
+                    {`Repêchage ${poolDraftYear(season)}`}
                     {season === saison?.season && (
                       <span className="ml-2 bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded normal-case font-medium">Active</span>
                     )}

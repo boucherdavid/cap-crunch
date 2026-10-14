@@ -22,11 +22,16 @@ Application web pour gérer un pool de hockey long terme, en remplacement d'un f
 - La banque de recrues et les joueurs LTIR ne comptent pas dans la masse salariale
 - Transactions gérées côté admin
 - Historique conservé dans `transactions` et `transaction_items`
-- Protection recrue : pour un repêché par le pool, les 5 saisons depuis le repêchage sont la
-  **seule** limite — la fin de l'ELC ne fait plus perdre la protection avant ces 5 ans (le
-  pooler garde l'option de laisser le joueur en banque même avec un ELC terminé) ; pour un
-  agent libre, protégé tant que l'ELC est actif, sans fenêtre de 5 ans
-  (`isRookieProtectionExpired()`, `app/lib/rookieProtection.ts`). Quand la protection expire
+- Protection recrue (règle reconfirmée avec les poolers, David, 2026-10-14) : un joueur choisi au
+  repêchage des recrues du pool est protégé **5 saisons, incluant celle de son repêchage**
+  (repêché en 2026 → protégé de 2026-27 à 2030-31), peu importe son contrat ; tout autre joueur
+  (agent libre, ou jamais étiqueté) est protégé tant que son contrat de la saison est un ELC.
+  Pendant la protection, le pooler peut le remettre en banque quand il veut ; après, il doit
+  l'activer. **Une seule fonction partout** : `isRookieProtected()` (`app/lib/rookieProtection.ts`)
+  — jamais le statut recrue ni l'année de repêchage de la LNH. L'année d'un repêchage du pool et
+  de ses choix s'affiche avec une seule année (« choix de 2027 », jamais « 2027-28 ») :
+  `poolDraftYear()` (`app/lib/poolDraftYear.ts`). Correction rétroactive de l'étiquette de tout
+  joueur des alignements : `/admin/init?tab=recrues` (✎, année du pool exigée pour un repêché). Quand la protection expire
   pour de vrai, la perte du statut recrue est automatique et permanente
   (`rookie_type`/`pool_draft_year` effacés), sans étape de décision séparée : un joueur déjà
   actif/réserviste reste où il est ; une recrue encore en banque (jamais promue) est activée

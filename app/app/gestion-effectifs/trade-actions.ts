@@ -3,11 +3,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getEffectiveCap } from '@/lib/capUtils'
+import { isRookieProtected } from '@/lib/rookieProtection'
 import {
   createTradeOffer, respondToTradeOffer, confirmTradeReady, resolveExpiredTradeOffers,
   counterTradeOffer, reviseTradeOffer, tradeOfferVersion, withdrawTradeOffer, postTradeMessage, setTradeChatShared, purgeOldTradeMessages, loadTradeMessages,
   type TradeItemInput, type TradeExtraAction, type TradeMessageView,
 } from '@/lib/tradeOffers'
+import { poolDraftYear } from '@/lib/poolDraftYear'
 
 // ─── Parcourir les actifs échangeables d'un pooler (soi-même ou un autre — déjà public via
 // /poolers/[id], voir app/app/simulation/actions.ts pour le même principe) ────────────────────
@@ -29,7 +31,7 @@ export async function listTradeableAssetsAction(poolerId: string, saisonId: numb
     supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
     supabase
       .from('pooler_rosters')
-      .select('player_id, player_type, players (first_name, last_name, position, is_rookie, draft_year, status, teams (code), player_contracts (season, cap_number, contract_status))')
+      .select('player_id, player_type, rookie_type, pool_draft_year, players (first_name, last_name, position, teams (code), player_contracts (season, cap_number, contract_status, is_elc))')
       .eq('pooler_id', poolerId).eq('pool_season_id', saisonId).eq('is_active', true)
       .in('player_type', ['actif', 'reserviste', 'ltir', 'recrue']),
     supabase
@@ -39,11 +41,6 @@ export async function listTradeableAssetsAction(poolerId: string, saisonId: numb
   ])
   const season = saison?.season ?? ''
   const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
-  // Même formule "fraîche" que getPoolerRosterAction/deactivate() (gestion-effectifs/
-  // actions.ts) — PAS `rookie_type` déjà posé sur la ligne (David, 2026-09-22 : un joueur
-  // signé directement comme actif encore sur son ELC n'a jamais rookie_type, mais reste
-  // éligible à la banque).
-  const draftYearCutoff = parseInt(season.split('-')[0] || '0', 10) + 1 - 5
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const players: TradeableItem[] = ((rosterRows ?? []) as any[]).map(r => ({
@@ -54,16 +51,16 @@ export async function listTradeableAssetsAction(poolerId: string, saisonId: numb
     teamCode: r.players?.teams?.code ?? null,
     playerType: r.player_type,
     capNumber: getEffectiveCap(r.players?.player_contracts, season, unsignedMultiplier).cap,
-    recrueEligible: r.player_type !== 'recrue' && r.player_type !== 'ltir' && !!(
-      r.players?.is_rookie || (r.players?.draft_year != null && r.players.draft_year >= draftYearCutoff) || r.players?.status === 'ELC'
-    ),
+    // Règle unique de la banque (lib/rookieProtection.ts).
+    recrueEligible: r.player_type !== 'recrue' && r.player_type !== 'ltir'
+      && isRookieProtected(r.rookie_type, r.pool_draft_year, r.players?.player_contracts, season),
   }))
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const picks: TradeableItem[] = ((pickRows ?? []) as any[]).map(p => ({
     kind: 'pick' as const,
     pickId: p.id,
     round: p.round,
-    season: p.pool_seasons?.season ?? '',
+    season: poolDraftYear(p.pool_seasons?.season),
   }))
 
   return [...players, ...picks]
@@ -239,7 +236,7 @@ async function resolveItemLabels(
   if (pickIds.length > 0) {
     const { data } = await db.from('pool_draft_picks').select('id, round, pool_seasons (season)').in('id', pickIds)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const p of (data ?? []) as any[]) labels.set(`pick-${p.id}`, `Choix ronde ${p.round} (${p.pool_seasons?.season ?? '?'})`)
+    for (const p of (data ?? []) as any[]) labels.set(`pick-${p.id}`, `Choix ronde ${p.round} (${poolDraftYear(p.pool_seasons?.season)})`)
   }
   return { labels, caps, positions }
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import MovementHistoryPanel from '@/components/MovementHistoryPanel'
 import { loadRosterAction, searchFreeAgentsAction, submitTransactionAction, ActionType, TxItemPayload } from './actions'
 import { isRookieProtectionExpired, isElcActiveForSeason } from '@/lib/rookieProtection'
+import { poolDraftYear } from '@/lib/poolDraftYear'
 
 const DASH = '\u2014'
 const STAR = '\u2605'
@@ -554,7 +555,7 @@ function PoolerPanelStateful({
       from_pooler_id: poolerId,
       to_pooler_id: otherPoolerId,
       pick_id: pick.id,
-      label: `Ronde ${pick.round} ${pick.pool_seasons.season}${isOwn ? '' : ` (de ${pick.original_owner.name})`} → ${poolers.find(pp => pp.id === otherPoolerId)?.name}`,
+      label: `Ronde ${pick.round} ${poolDraftYear(pick.pool_seasons.season)}${isOwn ? '' : ` (de ${pick.original_owner.name})`} → ${poolers.find(pp => pp.id === otherPoolerId)?.name}`,
       sideLabel: poolerName,
     })
   }

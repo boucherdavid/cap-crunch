@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPushToUsers } from '@/lib/push'
 import { todayET, addDays } from '@/lib/nhlWeeklySchedule'
 import { MARKET_CATEGORY_LABEL, type MarketCategory } from '@/lib/tradeMarketShared'
+import { poolDraftYear } from '@/lib/poolDraftYear'
 
 // Marché des échanges (David, 2026-10-03) — écritures par createAdminClient(), après avoir
 // vérifié que l'utilisateur possède bien ce qu'il met sur le marché (même patron que
@@ -88,7 +89,7 @@ export async function addMarketListingsAction(
 
   const labels = [
     ...ownedPlayers.map(r => `${r.players?.first_name ?? ''} ${r.players?.last_name ?? ''}`.trim()),
-    ...ownedPicks.map(p => `choix de ronde ${p.round} (${p.pool_seasons?.season ?? '?'})`),
+    ...ownedPicks.map(p => `choix de ronde ${p.round} (${poolDraftYear(p.pool_seasons?.season)})`),
   ]
   const shown = labels.slice(0, 3).join(', ') + (labels.length > 3 ? ` et ${labels.length - 3} autre${labels.length - 3 > 1 ? 's' : ''}` : '')
   await notifyOthers(db, user.id, 'Marché des échanges', `${me?.name ?? 'Un pooler'} met sur le marché : ${shown}`)

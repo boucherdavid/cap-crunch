@@ -8,6 +8,7 @@ import { getEffectiveCap } from '@/lib/capUtils'
 import { adminDecideTradeOffer, loadTradeMessages, type TradeMessageView } from '@/lib/tradeOffers'
 import { listPendingLtirRequestsForAdmin, decideLtirRequest, type LtirRequestView } from '@/lib/ltirRequests'
 import type { LtirSettings } from '@/lib/ltirEligibility'
+import { poolDraftYear } from '@/lib/poolDraftYear'
 
 async function requireAdmin() {
   const supabase = await createClient()
@@ -329,7 +330,7 @@ export async function getPendingTradeOffersForAdminAction(saisonId: number): Pro
   const playerLabel = new Map((players ?? []).map(p => [p.id, `${p.last_name}, ${p.first_name}${p.position ? ` (${p.position})` : ''}`]))
   const playerCap = new Map((players ?? []).map(p => [p.id, getEffectiveCap(p.player_contracts, season, unsignedMultiplier).cap]))
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pickLabel = new Map(((picks ?? []) as any[]).map(p => [p.id, `Choix ronde ${p.round} (${p.pool_seasons?.season ?? '?'})`]))
+  const pickLabel = new Map(((picks ?? []) as any[]).map(p => [p.id, `Choix ronde ${p.round} (${poolDraftYear(p.pool_seasons?.season)})`]))
 
   return {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

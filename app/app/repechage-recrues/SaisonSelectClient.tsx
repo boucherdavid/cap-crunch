@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { poolDraftYear } from '@/lib/poolDraftYear'
 
 type Saison = { id: number; season: string; is_active: boolean }
 
@@ -20,7 +21,7 @@ export default function SaisonSelectClient({
     >
       {saisons.map(s => (
         <option key={s.id} value={s.id}>
-          {s.season}{s.is_active ? ' (active)' : ''}
+          {`Repêchage ${poolDraftYear(s.season)}${s.is_active ? ' (saison active)' : ''}`}
         </option>
       ))}
     </select>

@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { todayET } from '@/lib/nhlWeeklySchedule'
 import type { MarketListingView, MarketRequestView } from '@/lib/tradeMarketShared'
+import { poolDraftYear } from '@/lib/poolDraftYear'
 
 // Marché des échanges (David, 2026-10-03) — voir supabase_migrations/trade_market.sql.
 // Retrait automatique paresseux, comme le ballotage et les échanges : à chaque lecture, on
@@ -110,7 +111,7 @@ export async function loadTradeMarket(saisonId: number): Promise<{
     const from = pk?.original_owner?.name && pk.original_owner.name !== base.poolerName ? ` (de ${pk.original_owner.name})` : ''
     return {
       ...base, kind: 'pick' as const, itemId: r.pick_id,
-      label: pk ? `Choix ronde ${pk.round} — ${pk.pool_seasons?.season ?? '?'}${from}` : 'Choix de repêchage',
+      label: pk ? `Choix ronde ${pk.round} — ${poolDraftYear(pk.pool_seasons?.season)}${from}` : 'Choix de repêchage',
       position: null, teamCode: null, playerType: null, capNumber: null,
     }
   })

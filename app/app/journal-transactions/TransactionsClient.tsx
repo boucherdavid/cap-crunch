@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { poolDraftYear } from '@/lib/poolDraftYear'
 
 const DASH = '—'
 
@@ -56,7 +57,7 @@ function itemDescription(item: any): string {
     case 'transfer': {
       if (item.pick) {
         const isOwn = item.pick.original_owner?.name === from
-        const pickLabel = `Ronde ${item.pick.round} ${item.pick.pool_seasons?.season ?? ''}${!isOwn ? ` (de ${item.pick.original_owner?.name})` : ''}`
+        const pickLabel = `Ronde ${item.pick.round} ${poolDraftYear(item.pick.pool_seasons?.season)}${!isOwn ? ` (de ${item.pick.original_owner?.name})` : ''}`
         return `${from} donne ${pickLabel} à ${to}`
       }
       return `${from} donne ${player} à ${to}`
@@ -103,7 +104,7 @@ function TradeCard({ items }: { items: any[] }) {
   function transferLabel(item: any): string {
     if (item.pick) {
       const isOwn = item.pick.original_owner?.name === item.from_pooler?.name
-      return `Ronde ${item.pick.round} ${item.pick.pool_seasons?.season ?? ''}${!isOwn ? ` (de ${item.pick.original_owner?.name})` : ''}`
+      return `Ronde ${item.pick.round} ${poolDraftYear(item.pick.pool_seasons?.season)}${!isOwn ? ` (de ${item.pick.original_owner?.name})` : ''}`
     }
     const p = item.players
     return p ? `${p.last_name}, ${p.first_name} (${p.teams?.code ?? DASH}) ${p.position ?? ''}` : '?'

@@ -20,6 +20,7 @@ import SectionIcon, { sectionBorderClass, type SectionId } from '@/components/Se
 import MobileFold from '@/components/MobileFold'
 import { syncLtirReturns } from '@/lib/ltirReturns'
 import { syncNhlTransactions, loadRecentNhlTransactions, type NhlTransactionView } from '@/lib/nhlTransactions'
+import { poolDraftYear } from '@/lib/poolDraftYear'
 
 export const dynamic = 'force-dynamic'
 
@@ -274,7 +275,7 @@ function summarizeTransaction(items: any[]): Summary | null {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const assetLabel = (i: any) => i.players
       ? playerName(i.players)
-      : `choix de ${i.pick?.round ?? '?'}${i.pick?.round === 1 ? 're' : 'e'} ronde${i.pick?.pool_seasons?.season ? ` (${i.pick.pool_seasons.season})` : ''}`
+      : `choix de ${i.pick?.round ?? '?'}${i.pick?.round === 1 ? 're' : 'e'} ronde${i.pick?.pool_seasons?.season ? ` (${poolDraftYear(i.pick.pool_seasons.season)})` : ''}`
     const trade = names.map(name => ({ pooler: name, assets: transfers.filter(i => i.to_pooler?.name === name).map(assetLabel) }))
     const received = (side: TradeSide): Seg[] => side.assets.length ? joinSegs(side.assets.map(a => [B(a)]), ', ') : [{ t: 'rien' }]
     return {

@@ -140,10 +140,17 @@ function cartMoves(cart: CartItem[]): StatusMove[] {
   return moves
 }
 
+// Recrue de banque sans contrat LNH signé pour la saison (David, 2026-10-14) — reste en banque.
+// Même règle que hasSignedContract (lib/rookieProtection.ts), revérifiée par le serveur.
+function isUnsignedRecrue(entry: RosterEntry | undefined): boolean {
+  return !!entry && entry.playerType === 'recrue' && (entry.capNumber == null || entry.isEstimatedCap)
+}
+
 // Statuts atteignables depuis le statut courant d'une entrée — exclut le statut courant,
-// et 'recrue' si le joueur n'est plus dans la fenêtre de protection (5 saisons).
+// 'recrue' si le joueur n'est plus protégé, et toute sortie de banque pour une recrue sans contrat.
 function allowedNewStatuses(entry: RosterEntry | undefined): RosterStatus[] {
   if (!entry) return []
+  if (isUnsignedRecrue(entry)) return []
   const all: RosterStatus[] = ['actif', 'reserviste', 'recrue']
   return all.filter(s => s !== entry.playerType && (s !== 'recrue' || entry.recrueEligible))
 }
@@ -857,8 +864,10 @@ export default function GestionEffectifsManager({
                   <option value="">— Choisir —</option>
                   {options1.map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
                 </select>
-                {e1 && !e1.recrueEligible && (
-                  <p className="text-xs text-gray-400 mt-1">Protection recrue (5 saisons) expirée — retour à la banque impossible.</p>
+                {isUnsignedRecrue(e1) ? (
+                  <p className="text-xs text-amber-700 mt-1">Pas de contrat LNH pour cette saison : une recrue sans contrat reste dans la banque.</p>
+                ) : e1 && e1.playerType !== 'recrue' && !e1.recrueEligible && (
+                  <p className="text-xs text-gray-400 mt-1">Ce joueur n&apos;est plus protégé : retour à la banque impossible.</p>
                 )}
               </div>
             </div>

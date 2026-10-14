@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { submitRosterAction, adminInitRosterAction, updateRookieTypeAction, viderRostersAction } from './actions'
 import TeamBadge from '@/components/TeamBadge'
 import { normalizeSearch } from '@/lib/normalizeSearch'
+import { lastProtectedSeason } from '@/lib/rookieProtection'
 
 type Pooler = { id: string; name: string }
 type Player = {
@@ -226,15 +227,6 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
   const addPlayer = (player: Player, playerType: 'actif' | 'recrue' | 'reserviste') => {
     if (rosterPlayerIds.has(player.id)) return
     setSearch('')
-    if (playerType === 'recrue' && !initMode) {
-      const saisonFin = saison ? parseInt(saison.season.split('-')[0], 10) + 1 : new Date().getFullYear()
-      const draftYearCutoff = saisonFin - 5
-      const isEligible = player.is_rookie || (player.draft_year != null && player.draft_year >= draftYearCutoff)
-      if (!isEligible) {
-        showMessage('Seuls les joueurs recrues peuvent aller dans la banque de recrues.', 'error')
-        return
-      }
-    }
     const tempId = tempIdCounter.current--
     // Toujours « agent libre » par défaut (David, 2026-10-07) : seul le repêchage des recrues du
     // pool pose « repêché ». L'ancienne déduction à partir du repêchage LNH (draft_year) classait
@@ -253,8 +245,18 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
   }
 
   const changeRookieType = (entry: NormalizedRosterEntry, newRookieType: 'repeche' | 'agent_libre') => {
-    // pool_draft_year = toujours players.draft_year (année NHL réelle, non modifiable)
-    const poolDraftYear = newRookieType === 'repeche' ? (entry.players.draft_year ?? null) : null
+    // Année du repêchage des recrues DU POOL, jamais celle de la LNH (David, 2026-10-14).
+    let poolDraftYear: number | null = null
+    if (newRookieType === 'repeche') {
+      const fallback = entry.pool_draft_year ?? (saison ? parseInt(saison.season.slice(0, 4), 10) : new Date().getFullYear())
+      const answer = window.prompt('Année du repêchage des recrues du pool (ex. : 2026) :', String(fallback))
+      if (answer === null) return
+      poolDraftYear = parseInt(answer, 10)
+      if (!Number.isInteger(poolDraftYear) || poolDraftYear < 2000 || poolDraftYear > 2100) {
+        showMessage('Année invalide.', 'error')
+        return
+      }
+    }
     setRoster(prev => prev.map(r => r.id === entry.id
       ? { ...r, rookie_type: newRookieType, pool_draft_year: poolDraftYear }
       : r
@@ -273,15 +275,6 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
   }
 
   const changeType = (entry: NormalizedRosterEntry, newType: 'actif' | 'recrue' | 'reserviste' | 'ltir') => {
-    if (newType === 'recrue') {
-      const saisonFin = saison ? parseInt(saison.season.split('-')[0], 10) + 1 : new Date().getFullYear()
-      const draftYearCutoff = saisonFin - 5
-      const isEligible = entry.players.is_rookie || (entry.players.draft_year != null && entry.players.draft_year >= draftYearCutoff)
-      if (!isEligible) {
-        showMessage('Seuls les joueurs recrues peuvent aller dans la banque de recrues.', 'error')
-        return
-      }
-    }
     setRoster(prev => prev.map(r => r.id === entry.id ? { ...r, player_type: newType } : r))
   }
 
@@ -588,9 +581,9 @@ export default function RosterManager({ poolers, players, saison, allTakenPlayer
                               <option value="repeche">Repêché</option>
                               <option value="agent_libre">Agent libre</option>
                             </select>
-                            {entry.rookie_type === 'repeche' && entry.players.draft_year && (
+                            {entry.rookie_type === 'repeche' && entry.pool_draft_year && (
                               <span className="text-xs text-purple-500">
-                                {`Repêché ${entry.players.draft_year} — protection jusqu'en ${entry.players.draft_year + 5}`}
+                                {`Repêché par le pool en ${entry.pool_draft_year} — protégé jusqu'en ${lastProtectedSeason('repeche', entry.pool_draft_year)}`}
                               </span>
                             )}
                             {entry.rookie_type === 'agent_libre' && (
