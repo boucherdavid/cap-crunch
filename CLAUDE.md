@@ -1290,6 +1290,24 @@ David, 2026-10-08 :**
 - Utiliser `proxy.ts`, PAS `middleware.ts`
 - Rester compatible avec les conventions Next.js 16
 
+**Lectures de la base — ne jamais relire ce qui est déjà connu (David, 2026-10-14) :**
+La prod tourne sur une machine Nano : son CPU a saturé le 2026-10-14 à cause d'une seule requête
+(dernier match des blessés) qui relisait tous les matchs de chaque joueur à chaque affichage.
+Règles obligatoires pour toute nouvelle lecture, et à appliquer quand on touche une lecture existante :
+- **Toujours borner** une lecture d'une table qui grossit (`player_game_logs`, `roster_change_log`,
+  `transactions`, stats, journaux…) par une colonne **indexée** : saison, date, identifiant. Un
+  filtre qui ne réduit les lignes qu'après la lecture (ex. `game_start_time` sans saison ni
+  `game_date`) ne compte pas. Vérifier qu'un index couvre le filtre (`supabase_migrations/`), sinon
+  en ajouter un.
+- **Ne pas recalculer à chaque visite** ce qui ne change qu'à un import ou à un mouvement
+  (classement, blessures, stats) : mettre en cache (`unstable_cache` + `revalidateTag` appelé par
+  l'action ou l'import qui modifie les données), ou stocker le résultat calculé.
+- **Ne lire que les colonnes et les lignes utiles** : pas de `select('*')` ni de chargement
+  complet d'une table pour en filtrer une partie en JavaScript.
+- Après une livraison qui touche des requêtes : relire `pg_stat_statements` en prod (requête dans
+  `SUIVI_PROJET.md`, session 2026-10-14) — toute requête au-dessus de ~100 ms en moyenne ou
+  appelée à chaque visite est à revoir.
+
 **Supabase :**
 - La legacy anon key est plus fiable que `sb_publishable_`
 - La logique RLS autour de `is_admin()` est sensible — modifier avec prudence

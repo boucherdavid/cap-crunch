@@ -46,6 +46,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   matchs de chaque blessé (54 000 lignes de 2025-26 dans la table).
 - Correctif : borne `game_date >= since - 1 jour` (index `idx_game_logs_date`). Mesuré en prod :
   0,52 s → 0,12 s, même résultat (71 lignes pour 143 blessés).
+- Requête de diagnostic (SQL Editor, prod) :
+  `select round(total_exec_time::numeric/1000) as total_s, calls, round(mean_exec_time::numeric,1) as moy_ms, rows, shared_blks_read + shared_blks_written + shared_blks_dirtied as blocs_disque, left(regexp_replace(query, '\s+', ' ', 'g'), 220) as requete from pg_stat_statements order by total_exec_time desc limit 15;`
+- Règle ajoutée à `CLAUDE.md` (section 6, « Lectures de la base ») à la demande de David : toute
+  lecture bornée par une colonne indexée, pas de recalcul à chaque visite de ce qui ne change qu'à
+  un import ou un mouvement.
 - Reste du rapport : surtout des frais fixes de PostgREST/Auth par requête (~30 000 requêtes en
   2 jours) et le classement (`buildStandings`, 346 appels à 191 ms) — à surveiller.
 
