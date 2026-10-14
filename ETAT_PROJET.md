@@ -26,14 +26,16 @@
   relancer la requête de diagnostic vers le 15 octobre.
   **2026-10-14 : la prod ne répond de nouveau plus** (requêtes en timeout, import des points en
   échec deux fois). Cause à confirmer dans le tableau de bord Supabase.
-- **Fausse page « Pas de connexion » sur mobile** : correctif du service worker sur `staging`
-  (2026-10-14), à valider sur téléphone avant de promouvoir.
+- **Correctifs du 2026-10-14 en prod** : service worker (fausse page « Pas de connexion ») et
+  requête « dernier match des blessés » bornée par date. À surveiller : CPU de la prod (86-92 % le
+  14 au matin) — relancer `pg_stat_statements` dans 1-2 jours. Prochaine étape proposée : mettre
+  en cache le classement (`buildStandings`, recalculé à chaque visite).
 
 ## 2. Branches / déploiement
 
 | Branche | État |
 |---|---|
-| `staging` | `main` + correctif du service worker (page hors ligne) + requête « dernier match des blessés » bornée par date (CPU prod), à valider |
+| `staging` | = `main` |
 | `main` (prod) | À jour au 2026-10-13 — inclut la date effective forcée (note et avertissement), les correctifs du scraping PuckPedia, les notifications de l'admin classées par type, le calcul du facteur de plafond (admin) et son explication dans l'aide, la simulation pour un autre pooler (admin), les faits saillants sur l'accueil (bandeau sous le logo), le détail des échanges et l'effacement des mouvements annulés sur l'accueil, l'annulation le jour même d'une mise en réserve, l'activité du pool basée sur les vrais mouvements et l'annonce à tous des signatures et échanges, la discussion et la modification des offres d'échange, le LTIR avec panier complet, MJ et PTS/MJ, l'avis de demande traitée |
 
 - Variables Vercel : prod `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN` ; staging `GITHUB_WORKFLOW_TOKEN`,
