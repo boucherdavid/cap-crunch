@@ -127,6 +127,7 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
   const [history, setHistory] = useState<TradeOfferView[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const load = useCallback(() => {
@@ -358,10 +359,12 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
 
   function handleConfirm(offer: TradeOfferView) {
     setError(null)
+    setNotice(null)
     const types = chosenTypes[offer.id] ?? {}
     startTransition(async () => {
       const result = await confirmTradeReadyAction(offer.id, types, getExtraActions(offer.id))
       if (result.error) setError(result.error)
+      else if (result.deferred) setNotice("Échange complété. Un match d'un joueur impliqué était déjà commencé : il prend effet demain.")
       load()
       refreshPoolerTodo()
     })
@@ -422,6 +425,7 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
   return (
     <div className="min-w-0 space-y-6">
       {error && <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">{error}</div>}
+      {notice && <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">{notice}</div>}
 
       <div>
         <div className="flex items-center justify-between mb-2">

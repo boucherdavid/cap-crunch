@@ -265,6 +265,7 @@ const SECTIONS: Section[] = [
           <li>• Une fois approuvé, tu as un délai pour <strong>confirmer</strong> que le résultat entre dans ta masse salariale et ta composition (12/6/2 + réservistes) — si ça ne rentre pas encore, une section dédiée directement dans cet onglet te permet d&apos;ajuster au passage (libérer, changer actif/réserviste, activer ou remettre en banque une recrue), pas besoin d&apos;aller dans Mouvements séparément.</li>
           <li>• Un joueur <strong>sur le LTIR</strong> peut aussi être échangé. Chez le pooler qui le reçoit, il arrive comme <strong>actif ou réserviste</strong> (choix à la confirmation) et son salaire compte dans la masse salariale. S&apos;il est encore blessé, c&apos;est au nouveau propriétaire de faire sa propre demande de LTIR.</li>
           <li>• L&apos;échange s&apos;exécute seulement une fois que <strong>les deux poolers</strong> ont confirmé. Si l&apos;un des deux ne confirme pas à temps, l&apos;échange est annulé pour les deux — personne ne perd rien, à refaire au besoin.</li>
+          <li>• Il prend effet à la seconde confirmation, ou <strong>le lendemain</strong> si un match d&apos;un joueur impliqué est déjà commencé ce jour-là.</li>
         </ul>
       </div>
     ),
@@ -914,6 +915,7 @@ const SECTIONS: Section[] = [
         <li>• Une fois accepté, l&apos;<strong>administrateur doit approuver</strong> avant que quoi que ce soit ne bouge.</li>
         <li>• Une fois approuvé, les deux poolers ont un délai (configurable par l&apos;administrateur, par défaut 3 jours) pour confirmer que le résultat respecte leurs limites d&apos;alignement (12/6/2 + cap).</li>
         <li>• Si l&apos;un des deux ne confirme pas à temps, l&apos;échange est <strong>annulé pour les deux</strong> — rien n&apos;a changé, à refaire au besoin.</li>
+        <li>• L&apos;échange prend effet à la <strong>seconde confirmation</strong>. Si un match d&apos;un joueur impliqué est déjà commencé ce jour-là, il prend effet <strong>le lendemain</strong> : les matchs du jour restent à l&apos;ancien propriétaire.</li>
         <li>• S&apos;applique uniquement en <strong>cours de saison</strong> — un échange en pré-saison se fait par l&apos;administrateur.</li>
       </ul>
     ),

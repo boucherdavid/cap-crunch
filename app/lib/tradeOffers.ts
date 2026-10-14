@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPushToUsers, sendPushToAdmins } from '@/lib/push'
 import { sendEmailToIds, escapeHtml } from '@/lib/email'
 import { checkFutureRosterConflict } from '@/lib/rosterTypeChange'
+import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { validateRosterLimits, type RosterLimitEntry } from '@/lib/rosterLimits'
 import { announceToPool } from '@/lib/poolAnnouncements'
@@ -545,7 +546,7 @@ async function simulatePostTradeRoster(
 export async function confirmTradeReady(
   tradeOfferId: number, poolerId: string, chosenTypes: Record<number, 'actif' | 'reserviste'>,
   extraActions: TradeExtraAction[] = [],
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; deferred?: boolean }> {
   const admin = createAdminClient()
   const { data: offer } = await admin
     .from('trade_offers')
@@ -629,6 +630,7 @@ export async function confirmTradeReady(
     const result = await executeTradeOffer(admin, tradeOfferId)
     if (result.error) return result
     if (saison?.season_started) after(() => announceTradeToPool(admin, tradeOfferId).catch(() => {}))
+    if (result.deferred) return { deferred: true }
   } else {
     const otherPoolerId = isProposer ? offer.target_pooler_id : offer.proposer_pooler_id
     const readyLabel = await poolerName(admin, poolerId)
@@ -675,7 +677,7 @@ async function announceTradeToPool(admin: ReturnType<typeof createAdminClient>, 
 // éviter un cycle avec admin/transactions/actions.ts) en dupliquant le strict minimum de la
 // logique 'transfer' déjà en place là-bas, pour un résultat cohérent avec les échanges
 // admin-initiés (même vocabulaire roster_change_log).
-async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tradeOfferId: number): Promise<{ error?: string }> {
+async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tradeOfferId: number): Promise<{ error?: string; deferred?: boolean }> {
   const { data: offer } = await admin
     .from('trade_offers')
     .select('id, pool_season_id, proposer_pooler_id, target_pooler_id, proposer_extra_actions, target_extra_actions')
@@ -695,14 +697,26 @@ async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tr
   // Pré-saison : aucun historique (added_at NULL, pas de roster_change_log) — « Démarrer la
   // saison » date ensuite tous les actifs d'un coup, comme pour les autres mouvements.
   const preseason = !saisonRow?.season_started
-  const addedAt = preseason ? null : now
+  // Report au lendemain (David, 2026-10-14) : dès qu'un match d'un joueur impliqué (échangé ou
+  // visé par un ajustement) est commencé aujourd'hui, tout l'échange prend effet le lendemain à
+  // 8 h (heure de l'Est) — même règle que Gestion d'effectifs (computeBatchEffectiveDate).
+  // `now` reste l'heure réelle de l'exécution (resolved_at).
+  const involvedIds = [
+    ...items.map(i => i.player_id).filter((id): id is number => !!id),
+    ...[offer.proposer_extra_actions, offer.target_extra_actions]
+      .flatMap(x => ((x as TradeExtraAction[] | null) ?? []).map(e => e.playerId)),
+  ]
+  const { effectiveAt, deferred } = preseason
+    ? { effectiveAt: now, deferred: false }
+    : await computeBatchEffectiveDate(involvedIds)
+  const addedAt = preseason ? null : effectiveAt
 
   async function log(playerId: number, poolerId: string, oldType: string | null, newType: string | null) {
     if (preseason) return
     await admin.from('roster_change_log').insert({
       player_id: playerId, pooler_id: poolerId, pool_season_id: saisonId,
       change_type: pickChangeType(oldType, newType),
-      old_type: oldType, new_type: newType, changed_by: null, changed_at: now, is_admin_override: true,
+      old_type: oldType, new_type: newType, changed_by: null, changed_at: effectiveAt, is_admin_override: true,
     })
   }
 
@@ -733,10 +747,10 @@ async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tr
       const isRecrue = srcRow.player_type === 'recrue'
       const destType = isRecrue ? 'recrue' : (item.chosen_type ?? 'reserviste')
 
-      const conflict = await checkFutureRosterConflict(admin, item.to_pooler_id, item.player_id, saisonId, now, destType)
+      const conflict = await checkFutureRosterConflict(admin, item.to_pooler_id, item.player_id, saisonId, effectiveAt, destType)
       if (conflict.error) return conflict
 
-      await admin.from('pooler_rosters').update({ is_active: false, removed_at: now }).eq('id', srcRow.id)
+      await admin.from('pooler_rosters').update({ is_active: false, removed_at: effectiveAt }).eq('id', srcRow.id)
       await log(item.player_id, item.from_pooler_id, srcRow.player_type, null)
 
       const rookieFields = isRecrue ? { rookie_type: srcRow.rookie_type, pool_draft_year: srcRow.pool_draft_year } : { rookie_type: null, pool_draft_year: null }
@@ -778,7 +792,7 @@ async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tr
       if (!row) continue // déjà retiré/changé entre-temps — ignoré plutôt que d'échouer tout l'échange
 
       if (extra.action === 'release') {
-        await admin.from('pooler_rosters').update({ is_active: false, removed_at: now }).eq('id', row.id)
+        await admin.from('pooler_rosters').update({ is_active: false, removed_at: effectiveAt }).eq('id', row.id)
         await log(extra.playerId, extraPoolerId, row.player_type, null)
         await admin.from('transaction_items').insert({
           transaction_id: tx.id, action_type: 'release', from_pooler_id: extraPoolerId, player_id: extra.playerId, old_player_type: row.player_type,
@@ -787,7 +801,7 @@ async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tr
       }
 
       const finalType = extra.action === 'demote_to_recrue' ? 'recrue' : extra.newType
-      const conflict = await checkFutureRosterConflict(admin, extraPoolerId, extra.playerId, saisonId, now, finalType)
+      const conflict = await checkFutureRosterConflict(admin, extraPoolerId, extra.playerId, saisonId, effectiveAt, finalType)
       if (conflict.error) return conflict
 
       if (extra.action === 'change_status' && extra.newType !== row.player_type) {
@@ -842,13 +856,16 @@ async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tr
 
   const { data: fullOffer } = await admin.from('trade_offers').select('proposer_pooler_id, target_pooler_id').eq('id', tradeOfferId).single()
   if (fullOffer) {
+    const body = deferred
+      ? "L'échange a été exécuté. Un match d'un joueur impliqué était déjà commencé : il prend effet demain."
+      : "L'échange a été exécuté avec succès."
     after(() => Promise.all([
-      sendPushToUsers([fullOffer.proposer_pooler_id, fullOffer.target_pooler_id], { title: 'Cap Crunch — Transaction complétée', body: "L'échange a été exécuté avec succès.", url: '/gestion-effectifs' }).catch(() => {}),
-      sendEmailToIds([fullOffer.proposer_pooler_id, fullOffer.target_pooler_id], { subject: 'Cap Crunch — Transaction complétée', html: `<p>L'échange a été exécuté avec succès.</p>${linkHtml('/gestion-effectifs')}` }).catch(() => {}),
+      sendPushToUsers([fullOffer.proposer_pooler_id, fullOffer.target_pooler_id], { title: 'Cap Crunch — Transaction complétée', body, url: '/gestion-effectifs' }).catch(() => {}),
+      sendEmailToIds([fullOffer.proposer_pooler_id, fullOffer.target_pooler_id], { subject: 'Cap Crunch — Transaction complétée', html: `<p>${body}</p>${linkHtml('/gestion-effectifs')}` }).catch(() => {}),
     ]))
   }
 
-  return {}
+  return { deferred }
 }
 
 // ─── Résolution des échanges expirés (paresseuse, comme le ballotage) ─────────
