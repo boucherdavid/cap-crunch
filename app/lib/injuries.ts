@@ -5,8 +5,10 @@
  * pour la règle elle-même).
  */
 
+import { unstable_cache } from 'next/cache'
 import type { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getDataVersion } from '@/lib/dataVersion'
 import { computeDatesDisagree, computeLtirEligible, countInjurySources, isOnNhlIr, playedSinceInjury, DEFAULT_LTIR_SETTINGS, MIN_INJURY_SOURCES, type LtirSettings } from './ltirEligibility'
 
 export type InjuryInfo = {
@@ -109,41 +111,55 @@ export async function fetchLtirSettings(supabase: SupabaseLike): Promise<LtirSet
   }
 }
 
-export async function fetchInjuriesByPlayerId(supabase: SupabaseLike): Promise<Map<number, InjuryInfo>> {
-  const [{ data }, settings] = await Promise.all([
-    supabase
-      .from('player_injuries')
-      .select('player_id, injury_type, status, est_return_date, espn_est_return_date, espn_status_desc, mp_status, mp_return_date, in_cbs, cbs_return_date, first_seen_at'),
-    fetchLtirSettings(supabase),
-  ])
+type InjurySnapshotRow = InjuryRowLike & { player_id: number; nhl_id: number | null; last_game_at: string | null }
+type InjurySnapshot = { rows: InjurySnapshotRow[]; settings: LtirSettings }
 
-  const lastGames = await fetchLastGameByPlayerId((data ?? []).map(r => r.player_id as number), settings)
-  const map = new Map<number, InjuryInfo>()
-  for (const row of data ?? []) {
-    // Une seule source : pas encore considéré blessé (voir MIN_INJURY_SOURCES).
-    if (countInjurySources(row) < MIN_INJURY_SOURCES) continue
-    map.set(row.player_id, toInjuryInfo(row as InjuryRowLike, settings, lastGames.get(row.player_id) ?? null))
-  }
-  return map
+/** Blessés (2 sources sur 3), dernier match récent et seuils LTIR — lecture brute, sans calcul
+ * qui dépend de la date du jour (fait à l'affichage par toInjuryInfo). */
+async function loadInjurySnapshot(): Promise<InjurySnapshot> {
+  const admin = createAdminClient()
+  const [{ data }, settings] = await Promise.all([
+    admin
+      .from('player_injuries')
+      .select('player_id, injury_type, status, est_return_date, espn_est_return_date, espn_status_desc, mp_status, mp_return_date, in_cbs, cbs_return_date, first_seen_at, players (nhl_id)'),
+    fetchLtirSettings(admin as unknown as SupabaseLike),
+  ])
+  // Une seule source : pas encore considéré blessé (voir MIN_INJURY_SOURCES).
+  const injured = (data ?? []).filter(r => countInjurySources(r) >= MIN_INJURY_SOURCES)
+  const lastGames = await fetchLastGameByPlayerId(injured.map(r => r.player_id as number), settings)
+  const rows = injured.map(({ players, ...r }) => ({
+    ...(r as unknown as InjuryRowLike & { player_id: number }),
+    nhl_id: (players as unknown as { nhl_id: number | null } | null)?.nhl_id ?? null,
+    last_game_at: lastGames.get(r.player_id as number) ?? null,
+  }))
+  return { rows, settings }
+}
+
+// Même principe que getStandings (lib/standings.ts) : la version de `data_versions` change à
+// chaque écriture dans player_injuries, player_game_logs, players ou app_settings.
+const cachedInjurySnapshot = unstable_cache(
+  async (_version: number) => loadInjurySnapshot(),
+  ['injury-snapshot-v1'],
+  { revalidate: 86_400 },
+)
+
+async function getInjurySnapshot(): Promise<InjurySnapshot> {
+  const version = await getDataVersion('injuries')
+  return version === null ? loadInjurySnapshot() : cachedInjurySnapshot(version)
+}
+
+/** Blessés indexés par player_id. Mis en cache (David, 2026-10-14) : `supabase` n'est plus lu,
+ * gardé pour ne pas changer les appelants. */
+export async function fetchInjuriesByPlayerId(_supabase?: SupabaseLike): Promise<Map<number, InjuryInfo>> {
+  const { rows, settings } = await getInjurySnapshot()
+  return new Map(rows.map(r => [r.player_id, toInjuryInfo(r, settings, r.last_game_at)]))
 }
 
 /** Même chose, indexé par nhl_id — pour les composants qui n'ont pas le player_id interne
  * (ex: PlayerContrib de buildStandings(), voir /poolers/[id] onglet Alignement). */
-export async function fetchInjuriesByNhlId(supabase: SupabaseLike): Promise<Map<number, InjuryInfo>> {
-  const [{ data }, settings] = await Promise.all([
-    supabase
-      .from('player_injuries')
-      .select('player_id, injury_type, status, est_return_date, espn_est_return_date, espn_status_desc, mp_status, mp_return_date, in_cbs, cbs_return_date, first_seen_at, players (nhl_id)'),
-    fetchLtirSettings(supabase),
-  ])
-
-  const lastGames = await fetchLastGameByPlayerId((data ?? []).map(r => r.player_id as number), settings)
+export async function fetchInjuriesByNhlId(_supabase?: SupabaseLike): Promise<Map<number, InjuryInfo>> {
+  const { rows, settings } = await getInjurySnapshot()
   const map = new Map<number, InjuryInfo>()
-  for (const row of data ?? []) {
-    const nhlId = (row.players as unknown as { nhl_id: number | null } | null)?.nhl_id
-    if (!nhlId) continue
-    if (countInjurySources(row) < MIN_INJURY_SOURCES) continue
-    map.set(nhlId, toInjuryInfo(row as unknown as InjuryRowLike, settings, lastGames.get(row.player_id as number) ?? null))
-  }
+  for (const r of rows) if (r.nhl_id) map.set(r.nhl_id, toInjuryInfo(r, settings, r.last_game_at))
   return map
 }

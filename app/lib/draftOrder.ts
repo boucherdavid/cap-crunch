@@ -1,4 +1,4 @@
-import { buildStandings } from './standings'
+import { getStandings } from './standings'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function computeReverseStandingsOrder(supabase: any, currentSeasonId: number): Promise<{
@@ -24,7 +24,7 @@ export async function computeReverseStandingsOrder(supabase: any, currentSeasonI
   const previous = idx >= 0 ? all[idx + 1] : undefined
   if (!previous) return { error: 'Aucune saison précédente trouvée.' }
 
-  const standings = await buildStandings(supabase, previous.id)
+  const standings = await getStandings(previous.id)
   if (standings.length === 0) return { error: 'Classement de la saison précédente indisponible.' }
 
   return {

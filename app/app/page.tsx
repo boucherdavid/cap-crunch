@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { buildStandings } from '@/lib/standings'
+import { getStandings } from '@/lib/standings'
 import { fmtPts } from '@/lib/nhl-stats'
 import SummaryTable from '@/components/SummaryTable'
 import { getPlayoffStandingsCached } from '@/app/gestion-series/playoff-pool-actions'
@@ -886,7 +886,7 @@ export default async function Home() {
   const hasGames = todayGames.length > 0
 
   const [standings, poolActivity, poolInjuries, nhlNews, market, liveNight, nhlTransactions] = await Promise.all([
-    saison ? buildStandings(supabase, saison.id) : Promise.resolve([]),
+    saison ? getStandings(saison.id) : Promise.resolve([]),
     saison ? fetchPoolActivity(supabase, saison.id, saison.season_started ? (saison.season_started_at ?? null) : null) : Promise.resolve([]),
     saison ? fetchPoolInjuries(supabase, saison.id) : Promise.resolve([]),
     fetchNhlNews(),

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { buildStandings } from '@/lib/standings'
+import { getStandings } from '@/lib/standings'
 import { currentMonthET, monthRange } from '@/lib/dateRanges'
 import ClassementTable from '../ClassementTable'
 import PeriodSelector from '../PeriodSelector'
@@ -33,7 +33,7 @@ export default async function ClassementMensuelPage({
   }
 
   const month = mois && /^\d{4}-\d{2}$/.test(mois) ? mois : currentMonthET()
-  const standings = await buildStandings(supabase, season.id, monthRange(month))
+  const standings = await getStandings(season.id, monthRange(month))
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">

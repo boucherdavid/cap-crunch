@@ -14,7 +14,7 @@
 
 import { unstable_cache } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { buildStandings } from '@/lib/standings'
+import { getStandings } from '@/lib/standings'
 import { CHANGE_LABEL } from '@/lib/rosterChangeLabels'
 import { toNhlSeasonId } from '@/lib/nhl-stats'
 
@@ -181,7 +181,7 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
   }
 
   const [standings, { data: rosterRows }, { data: logRows }] = await Promise.all([
-    buildStandings(admin, season.id),
+    getStandings(season.id),
     // Alignements lus directement : buildStandings() omet les recrues jamais activées.
     admin.from('pooler_rosters')
       .select('pooler_id, player_type, added_at, players (first_name, last_name, nhl_id)')

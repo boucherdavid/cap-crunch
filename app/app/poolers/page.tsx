@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { buildStandings } from '@/lib/standings'
+import { getStandings } from '@/lib/standings'
 
 export const metadata = { title: 'Tous les alignements' }
 export const dynamic = 'force-dynamic'
@@ -68,7 +68,7 @@ export default async function PoolersPage() {
   }
 
   const [standings, { data: rosterRows }, { data: picksRows }] = await Promise.all([
-    buildStandings(supabase, season.id),
+    getStandings(season.id),
     supabase
       .from('pooler_rosters')
       .select(`
