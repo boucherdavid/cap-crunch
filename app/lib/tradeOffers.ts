@@ -7,7 +7,8 @@ import { checkFutureRosterConflict } from '@/lib/rosterTypeChange'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { validateRosterLimits, type RosterLimitEntry } from '@/lib/rosterLimits'
 import { announceToPool } from '@/lib/poolAnnouncements'
-import { isRookieProtectionExpired, isElcActiveForSeason } from '@/lib/rookieProtection'
+import { isRookieProtectionExpired, isElcActiveForSeason, isRookieProtected } from '@/lib/rookieProtection'
+import { poolDraftYear } from '@/lib/poolDraftYear'
 
 // Même vocabulaire roster_change_log que pickChangeType (admin/transactions/actions.ts,
 // privée) — dupliquée ici plutôt qu'importée pour éviter un cycle (voir le commentaire en tête
@@ -572,27 +573,23 @@ export async function confirmTradeReady(
   const { data: settingsRow } = await admin.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle()
   const unsignedMultiplier = settingsRow?.unsigned_player_cap_multiplier ?? 1.20
 
-  // Éligibilité recrue (David, 2026-09-22, corrigé le même jour) — même règle "fraîche" que
-  // deactivate()/getPoolerRosterAction (gestion-effectifs/actions.ts) : is_rookie, draft_year
-  // dans la fenêtre de 5 saisons, ou statut ELC — PAS `rookie_type` déjà posé sur la ligne (ce
-  // champ n'est fixé que si le joueur est déjà passé par le repêchage du pool ou la banque ;
-  // un joueur signé directement comme actif encore sur son ELC n'a jamais rookie_type, mais
-  // reste tout à fait éligible à la banque). Simplement présent en banque pour en activer une.
+  // Remise en banque : règle unique isRookieProtected (lib/rookieProtection.ts, David,
+  // 2026-10-14) ; un joueur jamais étiqueté est traité comme un agent libre (ELC).
+  // Simplement présent en banque pour en activer une.
   const demoteIds = extraActions.filter(e => e.action === 'demote_to_recrue').map(e => e.playerId)
   const promoteIds = extraActions.filter(e => e.action === 'promote_recrue').map(e => e.playerId)
   if (demoteIds.length > 0 || promoteIds.length > 0) {
     const { data: rows } = await admin
       .from('pooler_rosters')
-      .select('player_id, player_type, players (is_rookie, draft_year, status)')
+      .select('player_id, player_type, rookie_type, pool_draft_year, players (player_contracts (season, is_elc))')
       .eq('pooler_id', poolerId).eq('pool_season_id', offer.pool_season_id).eq('is_active', true)
       .in('player_id', [...demoteIds, ...promoteIds])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const byId = new Map(((rows ?? []) as any[]).map(r => [r.player_id, r]))
-    const draftYearCutoff = parseInt((saison?.season ?? '0-0').split('-')[0], 10) + 1 - 5
     for (const id of demoteIds) {
       const row = byId.get(id)
-      const eligible = !!(row && (row.players?.is_rookie || (row.players?.draft_year != null && row.players.draft_year >= draftYearCutoff) || row.players?.status === 'ELC'))
-      if (!eligible) return { error: "Un joueur à remettre en banque a dépassé la protection recrue (5 saisons) et n'est pas sur ELC." }
+      const eligible = !!row && isRookieProtected(row.rookie_type, row.pool_draft_year, row.players?.player_contracts, saison?.season ?? '')
+      if (!eligible) return { error: "Un joueur à remettre en banque n'est plus protégé (5 saisons pour un repêché du pool, ELC pour les autres)." }
     }
     for (const id of promoteIds) {
       const row = byId.get(id)
@@ -660,7 +657,7 @@ async function announceTradeToPool(admin: ReturnType<typeof createAdminClient>, 
   }[])
     .filter(i => i.to_pooler_id === poolerId)
     .map(i => i.item_type === 'pick'
-      ? `choix de ${i.pick?.round ?? '?'}${i.pick?.round === 1 ? 're' : 'e'} ronde${i.pick?.pool_seasons ? ` (${i.pick.pool_seasons.season})` : ''}`
+      ? `choix de ${i.pick?.round ?? '?'}${i.pick?.round === 1 ? 're' : 'e'} ronde${i.pick?.pool_seasons ? ` (${poolDraftYear(i.pick.pool_seasons.season)})` : ''}`
       : `${i.players?.first_name ?? ''} ${i.players?.last_name ?? ''}`.trim())
     .join(', ') || 'rien'
   await announceToPool({

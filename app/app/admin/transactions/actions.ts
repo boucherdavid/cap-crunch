@@ -6,7 +6,7 @@ import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/roste
 import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
 import { validateRosterLimits, getPlayerBucket } from '@/lib/rosterLimits'
 import { getEffectiveCap } from '@/lib/capUtils'
-import { isRookieProtectionExpired } from '@/lib/rookieProtection'
+import { isRookieProtected } from '@/lib/rookieProtection'
 import { createWaiverClaimForRelease } from '@/lib/waiverClaims'
 import { announceToPool, playerNames, poolerName } from '@/lib/poolAnnouncements'
 import { DEFAULT_NHL_MINIMUM_SALARY } from '../presaison/types'
@@ -533,25 +533,20 @@ export async function applyTransactionItems(
       // encore dans ses 5 ans malgré un ELC terminé), rookie_type/pool_draft_year restent en
       // place même après activation — le pooler garde l'option de le remettre en banque plus
       // tard (David, 2026-09-14).
-      let rookieClearFields = {}
+      let rookieClearFields: Record<string, unknown> = {}
       if (action_type === 'promote' && existingRow.rookie_type) {
-        const { data: contract } = await supabase
+        const { data: contracts } = await supabase
           .from('player_contracts')
-          .select('is_elc')
+          .select('season, is_elc')
           .eq('player_id', player_id!)
-          .eq('season', saison.season)
-          .maybeSingle()
-        const seasonStartYear = parseInt(saison.season.split('-')[0], 10)
-        // Pas de ligne de contrat pour cette saison : ne veut pas dire "ELC terminé" — souvent
-        // une recrue jamais signée en NHL, toujours présumée protégée (voir rookieProtection.ts).
-        const isElcActive = contract ? !!contract.is_elc : true
-        const expired = isRookieProtectionExpired(
-          existingRow.rookie_type as 'repeche' | 'agent_libre',
-          existingRow.pool_draft_year ?? null,
-          isElcActive,
-          seasonStartYear,
-        )
-        if (expired) rookieClearFields = { rookie_type: null, pool_draft_year: null }
+        // Règle unique (lib/rookieProtection.ts).
+        if (!isRookieProtected(existingRow.rookie_type, existingRow.pool_draft_year ?? null, contracts, saison.season)) {
+          rookieClearFields = { rookie_type: null, pool_draft_year: null }
+        }
+      }
+      // Remise en banque d'un joueur jamais étiqueté : seul le repêchage du pool pose 'repeche'.
+      if (action_type === 'type_change' && new_player_type === 'recrue' && !existingRow.rookie_type) {
+        rookieClearFields = { rookie_type: 'agent_libre' }
       }
 
       const { error } = await supabase

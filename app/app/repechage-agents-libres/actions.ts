@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
 import { applyTransactionItems, type TxItemPayload } from '../admin/transactions/actions'
+import { isRookieProtected, type RookieTag } from '@/lib/rookieProtection'
 import { leaveQueueForPoolerAction } from '../admin/presaison/actions'
 
 // Libre-service pooler — David, 2026-09-06 : plutôt que de dépendre de l'admin pour chaque
@@ -62,22 +63,31 @@ export async function submitSelfServiceAction(
     return { error: 'La saison est démarrée — utilise Gestion d\'effectifs pour ajuster ton alignement.' }
   }
 
-  // Remettre en banque (David, 2026-09-09) — seulement un joueur encore sous protection
-  // recrue (rookie_type non-null malgré player_type actif/réserviste). Vérifié ici plutôt que
-  // de faire confiance au client — un item forgé pourrait viser n'importe quel vétéran sinon.
+  // Remettre en banque (David, 2026-09-09) — seulement un joueur encore protégé, selon la règle
+  // unique isRookieProtected (David, 2026-10-14 : un joueur jamais étiqueté sous ELC l'est aussi).
+  // Vérifié ici plutôt que de faire confiance au client — un item forgé pourrait viser n'importe
+  // quel vétéran sinon.
   const demoteToRecrueIds = items
     .filter((it): it is Extract<SelfServiceItem, { action_type: 'type_change' }> => it.action_type === 'type_change' && it.new_player_type === 'recrue')
     .map(it => it.player_id)
   if (demoteToRecrueIds.length > 0) {
-    const { data: rosterRows } = await supabase
-      .from('pooler_rosters')
-      .select('player_id, rookie_type')
-      .eq('pooler_id', user.id)
-      .eq('pool_season_id', saisonId)
-      .eq('is_active', true)
-      .in('player_id', demoteToRecrueIds)
-    const rookieMap = new Map((rosterRows ?? []).map(r => [r.player_id, r.rookie_type]))
-    const ineligible = demoteToRecrueIds.some(id => !rookieMap.get(id))
+    const [{ data: rosterRows }, { data: seasonRow }] = await Promise.all([
+      supabase
+        .from('pooler_rosters')
+        .select('player_id, rookie_type, pool_draft_year, players (player_contracts (season, is_elc))')
+        .eq('pooler_id', user.id)
+        .eq('pool_season_id', saisonId)
+        .eq('is_active', true)
+        .in('player_id', demoteToRecrueIds),
+      supabase.from('pool_seasons').select('season').eq('id', saisonId).single(),
+    ])
+    const protectedIds = new Set(((rosterRows ?? []) as unknown as {
+      player_id: number; rookie_type: RookieTag; pool_draft_year: number | null
+      players: { player_contracts: { season: string; is_elc: boolean | null }[] | null } | null
+    }[])
+      .filter(r => isRookieProtected(r.rookie_type, r.pool_draft_year, r.players?.player_contracts, seasonRow?.season ?? ''))
+      .map(r => r.player_id))
+    const ineligible = demoteToRecrueIds.some(id => !protectedIds.has(id))
     if (ineligible) {
       return { error: 'Un des joueurs sélectionnés n\'est plus sous protection recrue — impossible de le remettre en banque.' }
     }

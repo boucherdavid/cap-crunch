@@ -42,10 +42,44 @@ export function isRookieProtectionExpired(
 // repêchées, sans contrat, se retrouvaient comptées comme actives/hors protection dès le
 // chargement de la pré-saison). Seule une ligne de contrat existante avec is_elc=false prouve
 // que la protection est réellement terminée.
+// Sans ligne pour la saison mais avec des contrats d'avant (David, 2026-10-14) : le contrat est
+// terminé (ex : ELC fini, joueur pas encore re-signé) — l'ELC n'est donc plus actif.
 export function isElcActiveForSeason(
   contracts: { season: string; is_elc: boolean | null }[] | null | undefined,
   season: string,
 ): boolean {
-  const contract = (contracts ?? []).find(c => c.season === season)
-  return contract ? !!contract.is_elc : true
+  const all = contracts ?? []
+  const contract = all.find(c => c.season === season)
+  if (contract) return !!contract.is_elc
+  return !all.some(c => c.season < season)
+}
+
+export type RookieTag = 'repeche' | 'agent_libre' | null
+
+/**
+ * Règle unique de la banque de recrues (David, 2026-10-14, après consultation des poolers) :
+ * - repêché par le repêchage des recrues du pool : protégé pendant 5 saisons, incluant celle de
+ *   son repêchage (repêché en 2026 → protégé de 2026-27 à 2030-31), peu importe son contrat ;
+ * - tout autre joueur (agent libre, ou jamais étiqueté) : protégé tant que son contrat de la
+ *   saison est un ELC.
+ * Pendant la protection, le pooler peut le remettre dans sa banque quand il veut ; après, il doit
+ * l'activer (activation automatique). À utiliser PARTOUT où l'on décide si un joueur peut être
+ * (ou rester) en banque — jamais le statut recrue ni l'année de repêchage de la LNH.
+ */
+export function isRookieProtected(
+  rookieType: RookieTag,
+  poolDraftYear: number | null,
+  contracts: { season: string; is_elc: boolean | null }[] | null | undefined,
+  season: string,
+): boolean {
+  const type = rookieType === 'repeche' && poolDraftYear !== null ? 'repeche' : 'agent_libre'
+  return !isRookieProtectionExpired(type, poolDraftYear, isElcActiveForSeason(contracts, season), parseInt(season.slice(0, 4), 10))
+}
+
+/** Dernière saison protégée, pour l'affichage (« protégé jusqu'en 2030-31 ») ; null pour un agent
+ * libre, dont la fin dépend de son contrat. */
+export function lastProtectedSeason(rookieType: RookieTag, poolDraftYear: number | null): string | null {
+  if (rookieType !== 'repeche' || poolDraftYear === null) return null
+  const start = poolDraftYear + 4
+  return `${start}-${String(start + 1).slice(2)}`
 }

@@ -860,10 +860,12 @@ const SECTIONS: Section[] = [
     keywords: 'recrue banque draft repeche elc agent libre protection saisons contrat masse salariale expiration automatique activer liberer',
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
-        <li>• Un joueur <strong>repêché</strong> par le pool reste protégé pendant <strong>5 saisons</strong> après son année de repêchage, peu importe la durée de son contrat d&apos;entrée (ELC) — la fin de l&apos;ELC ne fait pas perdre la protection avant ces 5 ans. Tu gardes donc l&apos;option de le laisser en banque même une fois son ELC terminé.</li>
-        <li>• Un joueur signé comme <strong>agent libre</strong> reste protégé tant que son ELC est actif, sans limite de nombre de saisons (pas de fenêtre de 5 ans pour lui).</li>
+        <li>• Un joueur choisi au <strong>repêchage des recrues du pool</strong> est protégé pendant <strong>5 saisons</strong>, incluant celle de son repêchage : repêché en 2026, il est protégé de 2026-27 à 2030-31. Son contrat n&apos;y change rien : la fin de son ELC ne lui fait pas perdre la protection avant ces 5 saisons.</li>
+        <li>• Tout autre joueur (signé comme <strong>agent libre</strong>) est protégé tant que son contrat de la saison est un ELC, sans fenêtre de 5 saisons.</li>
+        <li>• Le repêchage des recrues et ses choix se désignent par une seule année : les choix de 2027 servent au repêchage de l&apos;été 2027.</li>
+        <li>• Pendant sa protection, tu peux remettre un joueur dans ta banque <strong>quand tu veux</strong> ; une fois la protection terminée, il doit être activé.</li>
         <li>• Un joueur en banque de recrues ne compte pas dans la masse salariale, même s&apos;il joue dans la LNH.</li>
-        <li>• Quand la protection expire <strong>pour de vrai</strong> (5 ans écoulés pour un repêché, ELC terminé pour un agent libre), la perte du statut recrue est <strong>automatique</strong> : s&apos;il était déjà actif ou réserviste, il reste où il est ; s&apos;il était encore en banque, il est activé automatiquement. Aucune action requise de ta part à ce moment précis.</li>
+        <li>• Quand la protection expire (5 saisons écoulées pour un repêché, ELC terminé pour un agent libre), la perte du statut recrue est <strong>automatique</strong> : s&apos;il était déjà actif ou réserviste, il reste où il est ; s&apos;il était encore en banque, il est activé automatiquement. Aucune action requise de ta part à ce moment précis.</li>
         <li>• À chaque <strong>changement de saison</strong>, tout joueur actif ou réserviste encore protégé comme recrue est <strong>retourné automatiquement en banque</strong> — ça te montre d&apos;un coup d&apos;œil qui y est encore admissible. Réactive ceux que tu veux garder pendant la pré-saison (Signatures des agents libres).</li>
         <li>• Tu peux toi-même <strong>activer ou remettre en banque</strong> n&apos;importe quelle recrue encore protégée en tout temps, depuis Gestion d&apos;effectifs ou Signatures des agents libres (ce dernier seulement avant le début de la saison).</li>
       </ul>

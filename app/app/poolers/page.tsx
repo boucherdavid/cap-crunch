@@ -1,23 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { getStandings } from '@/lib/standings'
+import { isRookieProtected, type RookieTag } from '@/lib/rookieProtection'
+import { poolDraftYear } from '@/lib/poolDraftYear'
 
 export const metadata = { title: 'Tous les alignements' }
 export const dynamic = 'force-dynamic'
 
 const RANK_COLOR = ['text-yellow-500', 'text-gray-400', 'text-amber-600']
-const PROTECTION_SEASONS = 5
-
-const getSaisonFin = (season: string) => parseInt(season.split('-')[0], 10) + 1
-
-const isProtected = (
-  row: { rookie_type: string | null; pool_draft_year: number | null; players: { status: string | null } | null },
-  saisonFin: number
-) => {
-  if (!row.rookie_type) return true
-  if (row.rookie_type === 'repeche') return (row.pool_draft_year ?? 0) + PROTECTION_SEASONS >= saisonFin
-  return row.players?.status === 'ELC'
-}
+// Règle unique de la banque de recrues (lib/rookieProtection.ts).
+const isProtected = (row: RosterEntry, season: string) =>
+  isRookieProtected(row.rookie_type as RookieTag, row.pool_draft_year, row.players?.player_contracts, season)
 
 const formatCap = (n: number) =>
   new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
@@ -39,7 +32,7 @@ type RosterEntry = {
   player_type: string
   rookie_type: string | null
   pool_draft_year: number | null
-  players: { last_name: string; status: string | null; position: string | null; player_contracts: { season: string; cap_number: number }[] } | null
+  players: { last_name: string; status: string | null; position: string | null; player_contracts: { season: string; cap_number: number; is_elc: boolean | null }[] } | null
 }
 
 type PickEntry = {
@@ -73,7 +66,7 @@ export default async function PoolersPage() {
       .from('pooler_rosters')
       .select(`
         pooler_id, player_type, rookie_type, pool_draft_year,
-        players (last_name, status, position, player_contracts (season, cap_number, contract_status))
+        players (last_name, status, position, player_contracts (season, cap_number, contract_status, is_elc))
       `)
       .eq('pool_season_id', season.id)
       .eq('is_active', true),
@@ -97,7 +90,6 @@ export default async function PoolersPage() {
     picksByPooler.get(row.current_owner_id)!.push(row)
   }
 
-  const saisonFin = getSaisonFin(season.season)
 
   const teams = standings.map((s, i) => {
     const roster = (rosterByPooler.get(s.poolerId) ?? []).map(r => ({
@@ -109,7 +101,7 @@ export default async function PoolersPage() {
     const reservistes = roster.filter(r => r.player_type === 'reserviste')
     const ltir       = roster.filter(r => r.player_type === 'ltir')
     const recrues    = roster.filter(r => r.player_type === 'recrue')
-    const banque     = recrues.filter(r => isProtected(r, saisonFin))
+    const banque     = recrues.filter(r => isProtected(r, season.season))
 
     const capUtilise = [...actifs, ...reservistes].reduce(
       (sum, r) => sum + getCurrentCap(r.players, season.season), 0
@@ -158,7 +150,7 @@ export default async function PoolersPage() {
           const capBarColor = team.capPct > 100 ? 'bg-red-500' : team.capPct > 90 ? 'bg-orange-400' : 'bg-green-500'
           const rankColor   = RANK_COLOR[team.rank - 1] ?? 'text-gray-500'
           const picksSummary = Object.entries(team.picksBySaison)
-            .map(([sn, rounds]) => `${sn.slice(2, 4)}-${sn.slice(5)} : ${rounds.map(r => `R${r}`).join(', ')}`)
+            .map(([sn, rounds]) => `${poolDraftYear(sn)} : ${rounds.map(r => `R${r}`).join(', ')}`)
             .join(' · ')
 
           return (

@@ -21,6 +21,30 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-14
 
+**[Fix] — protection recrue : une seule règle partout, correction rétroactive, années de repêchage**
+(`lib/rookieProtection.ts`, `lib/rookieProtectionSync.ts`, `lib/poolDraftYear.ts`, Gestion
+d'effectifs, échanges, pré-saison, Mode init, Banque de recrues, conformité, alignements, `/aide`) :
+- Règle reconfirmée par David après consultation des poolers : repêché du pool = 5 saisons incluant
+  celle du repêchage ; tout autre joueur = tant que son contrat de la saison est un ELC ; remise en
+  banque permise pendant la protection, activation obligatoire (automatique) après.
+- Constat : la règle centrale était juste, mais 6 endroits avaient leur propre copie fondée sur le
+  statut recrue ou l'année de repêchage **de la LNH** (Gestion d'effectifs, signature en recrue,
+  ajustements d'échange, Mode init, Banque de recrues) ou sur `players.status` (alignements,
+  conformité). Le libre-service de pré-saison exigeait une étiquette déjà posée.
+- `isRookieProtected()` remplace toutes ces copies ; un joueur jamais étiqueté est traité comme un
+  agent libre. `isElcActiveForSeason()` : sans contrat pour la saison mais avec des contrats
+  d'avant, l'ELC est terminé (avant : supposé actif).
+- `syncExpiredRookieProtection` déplacée dans `lib/rookieProtectionSync.ts` (client admin) ;
+  appelée aussi après une correction d'étiquette (`updateRookieTypeAction`) : une recrue en banque
+  qui n'est plus protégée est activée automatiquement (choix de David).
+- Banque de recrues (`/admin/init?tab=recrues`) : liste de tous les actifs, réservistes et LTIR du
+  pooler avec « Protégé jusqu'en … » ; ✎ avec champ d'année du repêchage du pool — l'ancien ✎ et
+  le Mode init enregistraient l'année de repêchage de la LNH comme année du pool.
+- Choix de repêchage et repêchage des recrues libellés par année (« Choix ronde 1 (2027) »,
+  « Repêchage 2027 ») partout (13 endroits).
+- Simulation sur la prod avant livraison : aucune recrue activée ni étiquette retirée par la
+  nouvelle règle. Transition de saison inchangée (retour auto en banque des protégés, confirmé).
+
 **[Perf] — classement et blessures mis en cache, invalidés par la base elle-même**
 (`supabase_migrations/data_versions.sql`, `app/lib/dataVersion.ts`, `app/lib/standings.ts`,
 `app/lib/injuries.ts`, 9 appelants de `buildStandings`) :

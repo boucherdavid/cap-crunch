@@ -23,6 +23,7 @@ type RosterEntry = {
   position: string | null; cap_number: number; isEstimatedCap: boolean
   unsignedStatus: 'RFA' | 'UFA' | null
   rookieType: string | null
+  bankEligible: boolean
   injury: InjuryInfo | null
 }
 type PoolerInfo = {
@@ -492,7 +493,7 @@ function PoolerCard({
   // Remettre en banque au nom d'un pooler (David, 2026-09-09) — même filet de sécurité que
   // "Libérer au nom d'un pooler", pour le cas où un pooler ne peut pas s'en charger lui-même
   // pendant le repêchage AL. Restreint aux joueurs encore sous protection recrue
-  // (rookieType non-null malgré player_type actif/réserviste) — c'est le seul cas où repasser
+  // (bankEligible, règle unique isRookieProtected) — c'est le seul cas où repasser
   // en 'recrue' a un sens ; un vétéran normal n'a pas de banque à retourner.
   const [banquing, setBanquing] = useState(false)
   const [banqueErr, setBanqueErr] = useState<string | null>(null)
@@ -662,7 +663,7 @@ function PoolerCard({
                   >
                     Libérer des joueurs
                   </button>
-                  {pooler.roster.some(e => e.rookieType) && (
+                  {pooler.roster.some(e => e.bankEligible) && (
                     <button
                       onClick={startBanqueMode}
                       className="text-xs px-2 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded"
@@ -687,7 +688,7 @@ function PoolerCard({
               <div className="space-y-0.5">
                 {group.entries.map(e => {
                   const selected = selectedForRelease.has(e.player_id)
-                  const banqueEligible = !!e.rookieType
+                  const banqueEligible = e.bankEligible
                   const banqueSelected = selectedForBanque.has(e.player_id)
                   const canToggleType = e.player_type === 'actif' || e.player_type === 'reserviste'
                   return (
@@ -1173,7 +1174,7 @@ function MonAlignement({
 
   const rosterComplete = myPooler.counts.forward === 12 && myPooler.counts.defense === 6
     && myPooler.counts.goalie === 2 && myPooler.counts.reserviste >= 2 && !myPooler.isOverLimits
-  const hasEligibleForBanque = myPooler.roster.some(e => e.rookieType && (e.player_type === 'actif' || e.player_type === 'reserviste'))
+  const hasEligibleForBanque = myPooler.roster.some(e => e.bankEligible)
   const removedCap = myPooler.roster.filter(e => removed.has(e.player_id)).reduce((s, e) => s + e.cap_number, 0)
   const addedRecrueCap = recruePlayers.filter(r => addedRecrueIds.has(r.player_id)).reduce((s, r) => s + r.cap_number, 0)
   // Cap réel des agents libres ajoutés au bac à sable (David, 2026-09-10) — auparavant
@@ -1314,7 +1315,7 @@ function MonAlignement({
                     {group.entries.map(e => {
                       const canToggleType = !seasonStarted && (e.player_type === 'actif' || e.player_type === 'reserviste')
                       const canRelease = canToggleType && releasePhaseOpen
-                      const banqueEligible = canToggleType && !!e.rookieType
+                      const banqueEligible = canToggleType && e.bankEligible
                       const selected = selectedForRelease.has(e.player_id)
                       const banqueSelected = selectedForBanque.has(e.player_id)
                       return (

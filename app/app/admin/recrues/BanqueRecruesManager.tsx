@@ -5,13 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import { normalizeSearch } from '@/lib/normalizeSearch'
 import { addPlayerAction, removePlayerAction, updateRookieTypeAction } from '../rosters/actions'
 import { submitTransactionAction } from '../transactions/actions'
+import { isRookieProtected, lastProtectedSeason } from '@/lib/rookieProtection'
 
 const DASH = '\u2014'
 const CROSS = '\u2715'
-const PROTECTION_SEASONS = 5
-
-const getSaisonFin = (season: string): number =>
-  parseInt(season.split('-')[0], 10) + 1
 
 
 type Pooler = { id: string; name: string }
@@ -25,6 +22,7 @@ type Rookie = {
   draft_round: number | null
   draft_overall: number | null
   teams: { code: string } | null
+  player_contracts?: { season: string; is_elc: boolean | null }[] | null
 }
 type BankEntry = {
   id: number
@@ -37,14 +35,23 @@ type BankEntry = {
 type Saison = { id: number; season: string }
 type RookieCategory = 'repeche' | 'agent_libre'
 
-const isEntryProtected = (entry: BankEntry, saisonFin: number): boolean => {
-  // Non classifié → protégé par défaut (à reclassifier par l'admin)
-  if (!entry.rookie_type) return true
-  if (entry.rookie_type === 'repeche') {
-    return (entry.pool_draft_year ?? 0) + PROTECTION_SEASONS >= saisonFin
+// Règle unique de la banque de recrues (lib/rookieProtection.ts).
+const isEntryProtected = (entry: BankEntry, season: string): boolean =>
+  isRookieProtected(entry.rookie_type, entry.pool_draft_year, entry.players.player_contracts, season)
+
+const PLAYER_TYPE_LABEL: Record<string, string> = { actif: 'Actif', reserviste: 'Réserviste', ltir: 'LTIR' }
+
+/** « Protégé jusqu'en 2030-31 », « Protégé (ELC) » ou « Non protégé ». */
+function ProtectionStatus({ entry, season }: { entry: BankEntry; season: string }) {
+  if (!isEntryProtected(entry, season)) {
+    return <span className="text-xs text-gray-400 shrink-0">Non protégé</span>
   }
-  // agent_libre : protégé tant que ELC
-  return entry.players.status === 'ELC'
+  const until = lastProtectedSeason(entry.rookie_type, entry.pool_draft_year)
+  return (
+    <span className="text-xs text-emerald-700 shrink-0">
+      {until ? `Protégé jusqu'en ${until}` : 'Protégé (ELC)'}
+    </span>
+  )
 }
 
 const sortRookies = (a: Rookie, b: Rookie) => {
@@ -64,8 +71,9 @@ const draftLabel = (r: Rookie) => {
 
 const PENCIL = '\u270e'
 
-function BankRow({ entry, onRemove, onEdit, onActivate, onRelease, loading, expired = false }: {
+function BankRow({ entry, season, onRemove, onEdit, onActivate, onRelease, loading, expired = false }: {
   entry: BankEntry
+  season: string
   onRemove?: (id: number) => void
   onEdit: () => void
   onActivate?: () => void
@@ -79,8 +87,8 @@ function BankRow({ entry, onRemove, onEdit, onActivate, onRelease, loading, expi
       </span>
     : entry.rookie_type === 'agent_libre'
       ? <span className="inline-block bg-amber-50 text-amber-600 rounded px-1.5 py-0.5 text-xs font-medium" title="Protégé tant que le contrat LNH réel est un ELC">Agent libre (ELC)</span>
-      : <span className="inline-block bg-red-50 text-red-600 rounded px-1.5 py-0.5 text-xs font-medium" title="Type de protection jamais assigné — cliquer sur ✎ pour le définir">
-          Type à définir
+      : <span className="inline-block bg-gray-100 text-gray-500 rounded px-1.5 py-0.5 text-xs font-medium" title="Jamais étiqueté : traité comme un agent libre (protégé tant que son contrat est un ELC). Clique sur ✎ pour corriger">
+          Sans étiquette
         </span>
 
   return (
@@ -95,10 +103,11 @@ function BankRow({ entry, onRemove, onEdit, onActivate, onRelease, loading, expi
         <span className="text-gray-400 text-xs shrink-0">{entry.players.position ?? DASH}</span>
         {entry.player_type && (
           <span className="text-gray-500 text-xs shrink-0">
-            {entry.player_type === 'actif' ? 'Actif' : 'Réserviste'}
+            {PLAYER_TYPE_LABEL[entry.player_type] ?? entry.player_type}
           </span>
         )}
         {typeLabel}
+        <ProtectionStatus entry={entry} season={season} />
         {draftLabel(entry.players) && (
           <span className="text-gray-400 text-xs shrink-0" title="Vrai repêchage LNH (indépendant du type de protection dans le pool)">
             LNH {draftLabel(entry.players)}
@@ -183,16 +192,21 @@ function ActivatePanel({ rookie, onConfirm, onCancel, loading }: {
   )
 }
 
-function TypePanel({ rookie, initialType, onConfirm, onCancel, loading }: {
+function TypePanel({ rookie, initialType, initialYear, defaultYear, onConfirm, onCancel, loading }: {
   rookie: Rookie
   initialType?: RookieCategory
-  onConfirm: (type: RookieCategory) => void
+  initialYear?: number | null
+  defaultYear: number
+  onConfirm: (type: RookieCategory, poolDraftYear: number | null) => void
   onCancel: () => void
   loading: boolean
 }) {
   // « Agent libre » par défaut (David, 2026-10-07) : seul le repêchage des recrues du pool pose
   // « repêché » ; ici, c'est un choix délibéré de l'admin.
   const [type, setType] = useState<RookieCategory>(initialType ?? 'agent_libre')
+  // Année du repêchage des recrues DU POOL, jamais celle de la LNH (David, 2026-10-14).
+  const [year, setYear] = useState<number>(initialYear ?? defaultYear)
+  const validYear = Number.isInteger(year) && year >= 2000 && year <= 2100
 
   return (
     <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
@@ -204,9 +218,6 @@ function TypePanel({ rookie, initialType, onConfirm, onCancel, loading }: {
           <input type="radio" name="type" value="repeche"
             checked={type === 'repeche'} onChange={() => setType('repeche')} />
           <span>Repêché du pool</span>
-          {type === 'repeche' && rookie.draft_year && (
-            <span className="text-gray-400 text-xs">({rookie.draft_year}, protection jusqu'en {rookie.draft_year + PROTECTION_SEASONS - 1}-{String(rookie.draft_year + PROTECTION_SEASONS).slice(2)})</span>
-          )}
         </label>
         <label className="flex items-center gap-1.5 cursor-pointer">
           <input type="radio" name="type" value="agent_libre"
@@ -214,10 +225,29 @@ function TypePanel({ rookie, initialType, onConfirm, onCancel, loading }: {
           <span>Agent libre (ELC)</span>
         </label>
       </div>
+      {type === 'repeche' && (
+        <div className="flex items-center gap-2 mb-3">
+          <label className="text-xs text-gray-600" htmlFor={`pool-year-${rookie.id}`}>Repêché par le pool en</label>
+          <input
+            id={`pool-year-${rookie.id}`}
+            type="number"
+            min={2000}
+            max={2100}
+            value={Number.isNaN(year) ? '' : year}
+            onChange={(e) => setYear(parseInt(e.target.value, 10))}
+            className="w-20 border rounded px-2 py-1 text-sm"
+          />
+          {validYear && (
+            <span className="text-gray-400 text-xs">
+              {`protégé jusqu'en ${lastProtectedSeason('repeche', year)}`}
+            </span>
+          )}
+        </div>
+      )}
       <div className="flex gap-2">
         <button
-          onClick={() => onConfirm(type)}
-          disabled={loading}
+          onClick={() => onConfirm(type, type === 'repeche' ? year : null)}
+          disabled={loading || (type === 'repeche' && !validYear)}
           className="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded hover:bg-emerald-700 disabled:opacity-50"
         >
           Confirmer
@@ -245,9 +275,10 @@ export default function BanqueRecruesManager({
   const supabase = createClient()
   const [selectedPooler, setSelectedPooler] = useState(poolers[0]?.id ?? '')
   const [bank, setBank] = useState<BankEntry[]>([])
-  // Actifs/réservistes qui portent encore une étiquette de protection (David, 2026-10-07) —
-  // affichés seulement pour corriger leur type, jamais ajoutés/retirés d'ici.
+  // Tous les actifs, réservistes et LTIR du pooler (David, 2026-10-14) : pour corriger leur
+  // étiquette rétroactivement, jamais ajoutés/retirés d'ici.
   const [protectedActives, setProtectedActives] = useState<BankEntry[]>([])
+  const [reloadKey, setReloadKey] = useState(0)
   const [allTakenIds, setAllTakenIds] = useState<Set<number>>(new Set())
   const [selectedTeam, setSelectedTeam] = useState('')
   const [search, setSearch] = useState('')
@@ -257,7 +288,9 @@ export default function BanqueRecruesManager({
   const [editingEntryId, setEditingEntryId] = useState<number | null>(null)
   const [activatingEntryId, setActivatingEntryId] = useState<number | null>(null)
 
-  const saisonFin = saison ? getSaisonFin(saison.season) : 0
+  const season = saison?.season ?? ''
+  // Année du repêchage des recrues du pool pour cette saison (2026-27 → 2026).
+  const currentDraftYear = parseInt(season.slice(0, 4), 10) || new Date().getFullYear()
 
   // Charger tous les IDs de recrues prises (tous poolers) pour éviter doublons
   useEffect(() => {
@@ -278,7 +311,7 @@ export default function BanqueRecruesManager({
     const fetchBank = async () => {
       const { data } = await supabase
         .from('pooler_rosters')
-        .select('id, player_id, rookie_type, pool_draft_year, players(id, first_name, last_name, position, status, draft_year, draft_round, draft_overall, teams(code))')
+        .select('id, player_id, rookie_type, pool_draft_year, players(id, first_name, last_name, position, status, draft_year, draft_round, draft_overall, teams(code), player_contracts(season, is_elc))')
         .eq('pooler_id', selectedPooler)
         .eq('pool_season_id', saison.id)
         .eq('player_type', 'recrue')
@@ -288,18 +321,17 @@ export default function BanqueRecruesManager({
 
       const { data: actives } = await supabase
         .from('pooler_rosters')
-        .select('id, player_id, player_type, rookie_type, pool_draft_year, players(id, first_name, last_name, position, status, draft_year, draft_round, draft_overall, teams(code))')
+        .select('id, player_id, player_type, rookie_type, pool_draft_year, players(id, first_name, last_name, position, status, draft_year, draft_round, draft_overall, teams(code), player_contracts(season, is_elc))')
         .eq('pooler_id', selectedPooler)
         .eq('pool_season_id', saison.id)
-        .in('player_type', ['actif', 'reserviste'])
-        .not('rookie_type', 'is', null)
+        .in('player_type', ['actif', 'reserviste', 'ltir'])
         .eq('is_active', true)
 
       setProtectedActives((actives ?? []) as unknown as BankEntry[])
     }
 
     fetchBank()
-  }, [selectedPooler, saison, supabase])
+  }, [selectedPooler, saison, supabase, reloadKey])
 
   const teamOptions = useMemo(() =>
     Array.from(new Set(rookies.map((r) => r.teams?.code ?? '').filter(Boolean)))
@@ -324,15 +356,15 @@ export default function BanqueRecruesManager({
   const { protectedBank, expiredBank } = useMemo(() => {
     const sorted = [...bank].sort((a, b) => sortRookies(a.players, b.players))
     return {
-      protectedBank: sorted.filter((e) => isEntryProtected(e, saisonFin)),
-      expiredBank: sorted.filter((e) => !isEntryProtected(e, saisonFin)),
+      protectedBank: sorted.filter((e) => isEntryProtected(e, season)),
+      expiredBank: sorted.filter((e) => !isEntryProtected(e, season)),
     }
-  }, [bank, saisonFin])
+  }, [bank, season])
 
-  const confirmAdd = async (type: RookieCategory) => {
+  const confirmAdd = async (type: RookieCategory, year: number | null) => {
     if (!saison || !pendingRookie) return
     setLoading(true)
-    const poolDraftYear = type === 'repeche' ? (pendingRookie.draft_year ?? undefined) : undefined
+    const poolDraftYear = type === 'repeche' ? (year ?? undefined) : undefined
     const result = await addPlayerAction(selectedPooler, pendingRookie.id, saison.id, 'recrue', type, poolDraftYear)
     if (result.error || result.id == null) {
       setMessage(`Erreur : ${result.error ?? 'id manquant'}`)
@@ -360,15 +392,10 @@ export default function BanqueRecruesManager({
     if (result.error) {
       setMessage(`Erreur : ${result.error}`)
     } else {
-      const apply = (prev: BankEntry[]) => prev.map((e) =>
-        e.id === entryId
-          ? { ...e, rookie_type: type, pool_draft_year: type === 'repeche' ? draftYear : null }
-          : e,
-      )
-      setBank(apply)
-      setProtectedActives(apply)
+      // Rechargé : une recrue devenue non protégée vient d'être activée automatiquement.
+      setReloadKey((k) => k + 1)
       setEditingEntryId(null)
-      setMessage('Type mis à jour.')
+      setMessage('Étiquette mise à jour.')
     }
     setLoading(false)
     setTimeout(() => setMessage(''), 3000)
@@ -462,13 +489,15 @@ export default function BanqueRecruesManager({
               <div className="space-y-1">
                 {protectedBank.map((entry) => (
                   <div key={entry.id}>
-                    <BankRow entry={entry} onRemove={removeFromBank} loading={loading}
+                    <BankRow entry={entry} season={season} onRemove={removeFromBank} loading={loading}
                       onEdit={() => setEditingEntryId(editingEntryId === entry.id ? null : entry.id)} />
                     {editingEntryId === entry.id && (
                       <TypePanel
                         rookie={entry.players}
                         initialType={entry.rookie_type ?? undefined}
-                        onConfirm={(type) => confirmEdit(entry.id, type, entry.players.draft_year)}
+                        initialYear={entry.pool_draft_year}
+                        defaultYear={currentDraftYear}
+                        onConfirm={(type, year) => confirmEdit(entry.id, type, year)}
                         onCancel={() => setEditingEntryId(null)}
                         loading={loading}
                       />
@@ -490,7 +519,7 @@ export default function BanqueRecruesManager({
               <div className="space-y-1">
                 {expiredBank.map((entry) => (
                   <div key={entry.id}>
-                    <BankRow entry={entry} onRemove={removeFromBank} loading={loading} expired
+                    <BankRow entry={entry} season={season} onRemove={removeFromBank} loading={loading} expired
                       onEdit={() => setEditingEntryId(editingEntryId === entry.id ? null : entry.id)}
                       onActivate={() => setActivatingEntryId(activatingEntryId === entry.id ? null : entry.id)}
                       onRelease={() => releaseExpired(entry)} />
@@ -498,7 +527,9 @@ export default function BanqueRecruesManager({
                       <TypePanel
                         rookie={entry.players}
                         initialType={entry.rookie_type ?? undefined}
-                        onConfirm={(type) => confirmEdit(entry.id, type, entry.players.draft_year)}
+                        initialYear={entry.pool_draft_year}
+                        defaultYear={currentDraftYear}
+                        onConfirm={(type, year) => confirmEdit(entry.id, type, year)}
                         onCancel={() => setEditingEntryId(null)}
                         loading={loading}
                       />
@@ -520,21 +551,23 @@ export default function BanqueRecruesManager({
           {protectedActives.length > 0 && (
             <div className="bg-white rounded-lg shadow p-5">
               <h2 className="font-semibold text-gray-700 mb-1">
-                {`Actifs et réservistes encore protégés — ${protectedActives.length} joueur(s)`}
+                {`Autres joueurs de l'alignement — ${protectedActives.length} joueur${protectedActives.length > 1 ? 's' : ''}`}
               </h2>
               <p className="text-xs text-gray-400 mb-4">
-                Ces joueurs peuvent retourner en banque. Clique sur {PENCIL} pour corriger leur type de protection.
+                Clique sur {PENCIL}{' '}pour corriger l&apos;étiquette d&apos;un joueur, même en cours de saison : repêché par le pool (protégé 5 saisons, incluant celle de son repêchage) ou agent libre (protégé tant que son contrat est un ELC). Un joueur protégé peut retourner en banque.
               </p>
               <div className="space-y-1">
                 {[...protectedActives].sort((a, b) => sortRookies(a.players, b.players)).map((entry) => (
                   <div key={entry.id}>
-                    <BankRow entry={entry} loading={loading}
+                    <BankRow entry={entry} season={season} loading={loading}
                       onEdit={() => setEditingEntryId(editingEntryId === entry.id ? null : entry.id)} />
                     {editingEntryId === entry.id && (
                       <TypePanel
                         rookie={entry.players}
                         initialType={entry.rookie_type ?? undefined}
-                        onConfirm={(type) => confirmEdit(entry.id, type, entry.players.draft_year)}
+                        initialYear={entry.pool_draft_year}
+                        defaultYear={currentDraftYear}
+                        onConfirm={(type, year) => confirmEdit(entry.id, type, year)}
                         onCancel={() => setEditingEntryId(null)}
                         loading={loading}
                       />
@@ -599,6 +632,7 @@ export default function BanqueRecruesManager({
                 {pendingRookie?.id === rookie.id && (
                   <TypePanel
                     rookie={rookie}
+                    defaultYear={currentDraftYear}
                     onConfirm={confirmAdd}
                     onCancel={() => setPendingRookie(null)}
                     loading={loading}

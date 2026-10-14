@@ -1,13 +1,12 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
 import { computeReverseStandingsOrder } from '@/lib/draftOrder'
 import { getEffectiveCap } from '@/lib/capUtils'
-import { isRookieProtectionExpired, isElcActiveForSeason } from '@/lib/rookieProtection'
-import { applyTransactionItems, type TxItemPayload } from '../transactions/actions'
+import { isRookieProtected } from '@/lib/rookieProtection'
+import { syncExpiredRookieProtection } from '@/lib/rookieProtectionSync'
 import { DEFAULT_NHL_MINIMUM_SALARY } from './types'
 import { fetchInjuriesByPlayerId } from '@/lib/injuries'
 import { fetchDraftTurnSeconds } from '@/lib/draftTimers'
@@ -34,68 +33,6 @@ function getPlayerBucket(position: string | null): 'forward' | 'defense' | 'goal
   return 'forward'
 }
 
-// Recrue dont la protection (5 saisons depuis le repêchage pour un repêché, ELC pour un agent
-// libre — voir isRookieProtectionExpired) a expiré : la perte du statut recrue devient
-// permanente et automatique, sans étape de décision séparée (David, 2026-09-07 — remplace le
-// passage par la banque de recrues + activation manuelle du 2026-09-03, jugé trop de friction :
-// le pooler gère son surplus de salaire lui-même, de A à Z, via le libre-service
-// actif↔réserviste/libération/remise en banque déjà en place sur /repechage-agents-libres,
-// plutôt que d'attendre une action de l'admin ou de cliquer "Activer"). Deux cas, selon où le
-// joueur se trouve au moment de l'expiration :
-// - déjà actif/réserviste : reste exactement où il est, seuls rookie_type/pool_draft_year
-//   sont effacés (aucun changement de player_type, donc pas de transaction/roster_change_log
-//   — simple retrait d'un tag de protection devenu caduc).
-// - encore en banque (jamais promu) : promotion automatique en 'actif', via le même chemin
-//   que le bouton "Activer" manuel (submitTransactionAction/applyTransactionItems,
-//   action_type='promote') pour hériter gratuitement de toute sa logique (added_at,
-//   checkFutureRosterConflict, effacement des champs recrue) — avec le client admin, puisque
-//   cette fonction tourne aussi depuis /repechage-agents-libres (page pooler, pas admin) où le
-//   client de la requête n'a pas accès en écriture à transactions/transaction_items (RLS
-//   admin-only, voir repechage-agents-libres/actions.ts).
-// Appelée en tout début de loadPresaisonDataAction, à chaque chargement — pas seulement à la
-// transition annuelle — pour capter les cas qui y échapperaient (ex: un agent libre recrue
-// dont l'ELC se termine alors qu'il était déjà actif depuis une saison antérieure).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function syncExpiredRookieProtection(supabase: any, saisonId: number, season: string, seasonStartYear: number) {
-  const { data: rows } = await supabase
-    .from('pooler_rosters')
-    .select('id, player_type, pooler_id, player_id, rookie_type, pool_draft_year, players(player_contracts(season, is_elc))')
-    .eq('pool_season_id', saisonId)
-    .eq('is_active', true)
-    .in('player_type', ['actif', 'reserviste', 'recrue'])
-    .not('rookie_type', 'is', null)
-
-  const promoteItems: TxItemPayload[] = []
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const row of (rows ?? []) as any[]) {
-    const contracts: any[] = row.players?.player_contracts ?? []
-    const expired = isRookieProtectionExpired(row.rookie_type, row.pool_draft_year ?? null, isElcActiveForSeason(contracts, season), seasonStartYear)
-    if (!expired) continue
-
-    if (row.player_type === 'recrue') {
-      promoteItems.push({
-        action_type: 'promote',
-        from_pooler_id: row.pooler_id,
-        to_pooler_id: row.pooler_id,
-        player_id: row.player_id,
-        old_player_type: 'recrue',
-        new_player_type: 'actif',
-      })
-    } else {
-      await supabase.from('pooler_rosters').update({ rookie_type: null, pool_draft_year: null }).eq('id', row.id)
-    }
-  }
-
-  if (promoteItems.length > 0) {
-    const result = await applyTransactionItems(createAdminClient(), null, saisonId, 'Ajustement pré-saison', promoteItems)
-    // Ne bloque jamais le chargement de la page si l'activation auto échoue (ex: conflit de
-    // roster) — l'admin garde le bouton "Activer" manuel de la banque de recrues en filet de
-    // sécurité (BanqueRecruesManager.tsx). On journalise pour pouvoir diagnostiquer.
-    if (result.error) console.error('syncExpiredRookieProtection: échec activation auto —', result.error)
-  }
-}
-
 export async function loadPresaisonDataAction(saisonId: number): Promise<{
   error?: string
   poolers?: PoolerCapInfo[]
@@ -108,9 +45,9 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
 
   const { data: saisonRow } = await supabase.from('pool_seasons').select('season').eq('id', saisonId).single()
   if (!saisonRow) return { error: 'Saison introuvable.' }
-  const seasonStartYear = parseInt(saisonRow.season.split('-')[0], 10)
 
-  await syncExpiredRookieProtection(supabase, saisonId, saisonRow.season, seasonStartYear)
+  // Protection expirée : activation auto / étiquette retirée (lib/rookieProtectionSync.ts).
+  await syncExpiredRookieProtection(saisonId, saisonRow.season, { notes: 'Ajustement pré-saison' })
 
   const [{ data: saison }, { data: poolers }, { data: rosters }, { data: settings }, { data: readyRows }, injuriesByPlayerId] = await Promise.all([
     supabase
@@ -190,6 +127,8 @@ export async function loadPresaisonDataAction(saisonId: number): Promise<{
       isEstimatedCap: capIsEstimated,
       unsignedStatus,
       rookieType: entry.rookie_type ?? null,
+      bankEligible: (type === 'actif' || type === 'reserviste')
+        && isRookieProtected(entry.rookie_type ?? null, entry.pool_draft_year ?? null, contracts, saison.season),
       injury: injuriesByPlayerId.get(entry.player_id) ?? null,
     })
 

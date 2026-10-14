@@ -2,6 +2,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/rosterTypeChange'
+import { poolDraftYear } from '@/lib/poolDraftYear'
 
 export type HistRosterEntry = {
   id: number
@@ -618,7 +619,7 @@ export async function getHistLogAction(poolSeasonId: number): Promise<HistLogEnt
       poolerName: r.poolers?.name ?? '',
       playerName: r.player_id ? `${r.players?.first_name ?? ''} ${r.players?.last_name ?? ''}`.trim() : null,
       teamCode: r.players?.teams?.code ?? null,
-      pickLabel: r.pick_id ? `Choix — ${r.pool_draft_picks?.pool_seasons?.season ?? '?'} Ronde ${r.pool_draft_picks?.round ?? '?'}` : null,
+      pickLabel: r.pick_id ? `Choix — ${poolDraftYear(r.pool_draft_picks?.pool_seasons?.season)} Ronde ${r.pool_draft_picks?.round ?? '?'}` : null,
       newType: r.new_type,
       effectiveDate: r.changed_at,
       loggedAt: r.created_at,
