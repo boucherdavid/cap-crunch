@@ -351,7 +351,7 @@ par `workflow_dispatch` et suit l'exécution — exige `GITHUB_WORKFLOW_TOKEN` d
 « fine-grained » limité au dépôt, permission Actions lecture/écriture ; sans lui, bouton désactivé)
 `/offline`
 
-**Pointage en direct** (David, 2026-10-04) : `/en-direct` (menu Le pool) et deux cartes sur l'accueil
+**Pointage en direct** (David, 2026-10-04 ; propriétaire et statut à l'heure de chaque match depuis le 2026-10-14) : `/en-direct` (menu Le pool) et deux cartes sur l'accueil
 (« Classement — ce soir », « Pointeurs — ce soir », remplacent « Joueurs en action » en saison
 régulière). **Non officiel**, rien n'est écrit en base : `app/lib/liveNight.ts` lit les boxscores LNH
 de la soirée (date ET de maintenant − 6 h ; soirée d'avant tant qu'aucun match n'est commencé) et
