@@ -1,6 +1,6 @@
 # Suivi du projet Cap Crunch
 
-Derniere mise a jour: 2026-10-03
+Derniere mise a jour: 2026-10-14
 
 ## Role du fichier
 
@@ -20,6 +20,21 @@ jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters`
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
 ### 2026-10-14
+
+**[Bilan de session]** — tout est en prod, `staging` = `main` :
+- Matin : prod « Unhealthy » (incident Supabase + CPU saturé), redémarrée par David ; import des
+  points en échec deux fois, relancé avec succès. Correctifs : fausse page « Pas de connexion »
+  (service worker), requête des blessés bornée par date, classement et blessures en cache
+  (`data_versions`, migration roulée en staging et en prod). Règle ajoutée à `CLAUDE.md` : ne
+  jamais relire ce qui est déjà connu.
+- Protection recrue unifiée (`isRookieProtected`), correction et révision des étiquettes, recrue
+  sans contrat bloquée en banque, années de repêchage en une seule année.
+- Échanges : effet le lendemain si un match d'un joueur impliqué est commencé ; correction
+  rétroactive de l'échange n° 9 (but de Zacha). Pointage de la soirée selon l'alignement à l'heure
+  du match.
+- `ETAT_PROJET.md` réécrit : ses accents avaient été abîmés plus tôt dans la journée par une
+  commande PowerShell (`Get-Content` sans encodage, puis `Set-Content -Encoding utf8`) — ne
+  modifier ce fichier qu'avec l'outil d'édition ou `sed`, jamais par une relecture PowerShell.
 
 **[Fix] — échange entre poolers : effectif le lendemain si un match est commencé**
 (`lib/tradeOffers.ts`, `gestion-effectifs/trade-actions.ts`, `TradeOffersTab.tsx`, `/aide`) :
