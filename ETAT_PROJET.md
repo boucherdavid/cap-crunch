@@ -30,8 +30,8 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : gardiens partants (2026-10-16), à valider |
-| `main` (prod) | À jour au 2026-10-14 — inclut, en plus du 13 : fausse page « Pas de connexion » corrigée (service worker), requête des blessés bornée, classement et blessures en cache, protection recrue unifiée (règle unique, correction et révision des étiquettes, recrue sans contrat bloquée en banque, années de repêchage en une seule année), échange effectif le lendemain si un match d'un joueur impliqué est commencé, pointage de la soirée selon l'alignement à l'heure du match |
+| `staging` | = `main` |
+| `main` (prod) | À jour au 2026-10-16 — gardiens partants (page + carte de l'accueil) et groupe de menu « Soir de match », validés par David en staging. Inclut aussi, en plus du 13 : fausse page « Pas de connexion » corrigée (service worker), requête des blessés bornée, classement et blessures en cache, protection recrue unifiée (règle unique, correction et révision des étiquettes, recrue sans contrat bloquée en banque, années de repêchage en une seule année), échange effectif le lendemain si un match d'un joueur impliqué est commencé, pointage de la soirée selon l'alignement à l'heure du match |
 
 - Migration `data_versions.sql` (2026-10-14) roulée en staging et en prod.
 - Variables Vercel : prod `CRON_SECRET`, `GITHUB_WORKFLOW_TOKEN` ; staging `GITHUB_WORKFLOW_TOKEN`,
@@ -65,9 +65,6 @@
 
 ### ▶ Prochaine session — commencer ici
 
-- **Gardiens partants** (`/statistiques/gardiens-partants` + carte de l'accueil) et nouveau groupe de
-  menu **Soir de match** (En direct, Gardiens partants, Trios et paires) : vérifier sur
-  staging que Vercel lit Daily Faceoff et Goaliepost (sinon, avis « non disponible »), puis promouvoir.
 - **CPU de la prod** : relancer `pg_stat_statements` vers le 15-16 octobre ; les lectures du
   classement et des matchs des blessés devraient avoir quitté le haut de la liste.
 - **Page « Pas de connexion »** : confirmer sur téléphone qu'elle n'apparaît plus à tort.

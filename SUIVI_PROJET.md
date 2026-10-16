@@ -45,6 +45,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   `SectionIcon.tsx` (lune, jaune), reprise par le bandeau des pages et les cartes de l'accueil
   (pointage de la soirée, gardiens du pool). `/aide` et `/a-propos` mis à jour. Les adresses des
   pages ne changent pas.
+- Validé par David en staging et promu en prod le 2026-10-16 (merge `cee4826`).
 
 ### 2026-10-14
 
