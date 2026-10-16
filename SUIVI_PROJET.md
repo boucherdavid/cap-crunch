@@ -21,6 +21,22 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-16
 
+**[Fix] — Délai de réactivation contourné par la banque de recrues ; journal muet en saison**
+(`gestion-effectifs/actions.ts`, `lib/gameDayLock.ts`, `lib/transactionJournal.ts`,
+`journal-transactions/TransactionsClient.tsx`, `aide/AideTabs.tsx`,
+`python_script/backfill_journal_gestion.py`) :
+- Vincent a réactivé Jacob Fowler le 16 (remis en banque le 14, délai de 3 jours) :
+  `checkReactivationDelay` ne voyait que `deactivation`/`ltir`, pas la remise en banque
+  (`changement_type` → `recrue`). Filtre partagé `REACTIVATION_DELAY_FILTER` (serveur + écran) ;
+  annulation le jour même étendue à la remise en banque (David). Seul cas réel de la saison.
+- **Correction en prod** (David) : lot du 16 annulé — Fowler en banque, Wedgewood actif, logs
+  117 et 118 supprimés. Vincent pourra le réactiver à partir du 17 vers 11 h 45 HE.
+- Journal : `submitBatchAction` n'écrivait que `roster_change_log` → rien après le 3 octobre
+  sauf les échanges. Une `transactions` par lot désormais (note « Gestion d'effectifs » ou
+  « Ballotage », la contrainte de `transaction_items` refusant `ballotage`). Script de
+  reconstitution validé en dry-run en prod (28 lots) ; `--apply` à lancer par David (refusé
+  par le garde-fou automatique de Claude), puis à relancer après la promotion en prod.
+
 **[Bilan de session]** — Tout est en prod (`4e06aba`) : gardiens partants (page + carte de
 l'accueil, mise à jour seule aux 5 min), nouveau groupe de menu « Soir de match », carte des
 blessures de l'accueil en cache, ballotage/échanges réglés depuis l'accueil avec rappels avant les

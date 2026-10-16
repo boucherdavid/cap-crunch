@@ -105,8 +105,15 @@ export async function computeBatchEffectiveDate(playerIds: number[]): Promise<Ba
   }
 }
 
-// Annulation le jour même d'une mise en réserve (David, 2026-10-12) — un joueur envoyé en
-// réserve aujourd'hui (heure de l'Est) peut être réactivé malgré le délai de réactivation tant
+// Désactivations qui déclenchent le délai de réactivation (filtre PostgREST `.or()` sur
+// roster_change_log) : mise en réserve, mise sur LTIR, et remise en banque de recrues (David,
+// 2026-10-16 — sans elle, banque puis réactivation contournait le délai).
+export const REACTIVATION_DELAY_FILTER =
+  'change_type.in.(deactivation,ltir),and(change_type.eq.changement_type,new_type.eq.recrue)'
+
+// Annulation le jour même d'une mise en réserve ou d'une remise en banque (David, 2026-10-12,
+// banque ajoutée le 2026-10-16) — un joueur envoyé en réserve ou en banque aujourd'hui (heure de
+// l'Est) peut être réactivé malgré le délai de réactivation tant
 // qu'aucun match de son équipe n'a commencé depuis : la période en réserve ne contient alors
 // aucun match, le classement n'est pas touché. Une mise en réserve reportée au lendemain (match
 // déjà commencé, voir computeBatchEffectiveDate) a une date future : jamais annulable.

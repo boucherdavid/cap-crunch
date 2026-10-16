@@ -1603,6 +1603,15 @@ Troisième exception (David, 2026-10-12) : **annulation le jour même** — un j
 aujourd'hui (heure de l'Est) se réactive sans délai tant qu'aucun match de son équipe n'a commencé
 depuis (`undoableDeactivations()`, `lib/gameDayLock.ts`, horaire LNH ; indisponible → refusé).
 Pas pour une mise sur LTIR. Côté écran : `RosterEntry.undoableToday`.
+**Remise en banque de recrues** (David, 2026-10-16) : déclenche aussi le délai (`changement_type`
+vers `recrue`, filtre partagé `REACTIVATION_DELAY_FILTER`, `lib/gameDayLock.ts`), avec la même
+annulation le jour même — avant, banque puis réactivation contournait le délai (Fowler, Vincent).
+
+**Journal des lots de Gestion d'effectifs** (David, 2026-10-16) : `submitBatchAction` écrit une
+`transactions` par lot (note « Gestion d'effectifs », ou « Ballotage » — la contrainte de
+`transaction_items` n'accepte pas `ballotage`, l'onglet est reconnu par la note), un item par ligne
+`roster_change_log`, `created_at` = date effective. Conversion partagée : `lib/transactionJournal.ts`.
+Lots antérieurs : `python_script/backfill_journal_gestion.py` (dry-run, `--apply`, idempotent).
 
 **Retour au jeu d'un joueur sur LTIR (`app/lib/ltirReturns.ts`, `ltir_return_watch`) — David,
 2026-10-05 :**

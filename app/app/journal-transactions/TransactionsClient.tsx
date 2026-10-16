@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { poolDraftYear } from '@/lib/poolDraftYear'
+import { JOURNAL_NOTES_BALLOTAGE } from '@/lib/transactionJournal'
 
 const DASH = '—'
 
@@ -30,9 +31,9 @@ const TAB_COLORS: Record<TabKey, string> = {
   gestion: 'bg-slate-50',
 }
 
-function classifyTx(items: any[]): TabKey {
+function classifyTx(items: any[], notes: string | null): TabKey {
   const types = items.map((i: any) => i.action_type)
-  if (types.includes('ballotage')) return 'ballotage'
+  if (types.includes('ballotage') || notes === JOURNAL_NOTES_BALLOTAGE) return 'ballotage'
   if (types.includes('transfer')) return 'echanges'
   if (types.includes('sign')) return 'signatures'
   if (
@@ -189,7 +190,7 @@ export default function TransactionsClient({
 
   const classified = transactions.map((tx: any) => ({
     ...tx,
-    _tab: classifyTx(tx.transaction_items ?? []),
+    _tab: classifyTx(tx.transaction_items ?? [], tx.notes ?? null),
   }))
 
   const counts: Record<TabKey, number> = {

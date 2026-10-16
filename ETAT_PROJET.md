@@ -30,7 +30,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | = `main` |
+| `staging` | En avance sur `main` (2026-10-16) : délai de réactivation après une remise en banque, journal des transactions alimenté par Gestion d'effectifs — à valider par David, puis lancer `python_script/backfill_journal_gestion.py --apply` (prod) après la promotion |
 | `main` (prod) | À jour au 2026-10-16 — gardiens partants (page qui se met à jour seule + carte de l'accueil), groupe de menu « Soir de match », carte des blessures en cache, rappels avant les dates limites (ballotage, échanges, plafond) et réponses au ballotage pour l'admin, validés par David en staging. Inclut aussi, en plus du 13 : fausse page « Pas de connexion » corrigée (service worker), requête des blessés bornée, classement et blessures en cache, protection recrue unifiée (règle unique, correction et révision des étiquettes, recrue sans contrat bloquée en banque, années de repêchage en une seule année), échange effectif le lendemain si un match d'un joueur impliqué est commencé, pointage de la soirée selon l'alignement à l'heure du match |
 
 - Migrations `data_versions.sql` (2026-10-14) et `deadline_reminders.sql` (2026-10-16) roulées en staging et en prod.

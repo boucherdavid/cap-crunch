@@ -7,12 +7,13 @@ import { after } from 'next/server'
 import { sendPushToUser } from '@/lib/push'
 import { announceToPool, playerNames, poolerName } from '@/lib/poolAnnouncements'
 import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/rosterTypeChange'
-import { computeBatchEffectiveDate, undoableDeactivations, startedTeamsOnDate } from '@/lib/gameDayLock'
+import { computeBatchEffectiveDate, undoableDeactivations, startedTeamsOnDate, REACTIVATION_DELAY_FILTER } from '@/lib/gameDayLock'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { isRookieProtected, hasSignedContract, NO_CONTRACT_ERROR, type RookieTag } from '@/lib/rookieProtection'
 import { validateRosterLimits, getPlayerBucket, ACTIVE_LIMITS, type Bucket } from '@/lib/rosterLimits'
 import { createWaiverClaimForRelease, isPlayerUnderActiveWaiverClaim } from '@/lib/waiverClaims'
 import { fetchInjuriesByPlayerId, type InjuryInfo } from '@/lib/injuries'
+import { journalActionType, JOURNAL_NOTES_GESTION, JOURNAL_NOTES_BALLOTAGE } from '@/lib/transactionJournal'
 
 export type PlayerType = 'actif' | 'reserviste' | 'ltir' | 'recrue'
 
@@ -154,7 +155,7 @@ export async function getPoolerRosterAction(
       .select('player_id, changed_at, change_type')
       .eq('pooler_id', poolerId)
       .eq('pool_season_id', saisonId)
-      .in('change_type', ['deactivation', 'ltir'])
+      .or(REACTIVATION_DELAY_FILTER)
       .order('changed_at', { ascending: false }),
     supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
     fetchInjuriesByPlayerId(supabase),
@@ -170,10 +171,12 @@ export async function getPoolerRosterAction(
       deactTypeMap.set(row.player_id, row.change_type)
     }
   }
-  // Mises en réserve annulables aujourd'hui (pas une mise sur LTIR).
+  // Mises en réserve et remises en banque annulables aujourd'hui (pas une mise sur LTIR).
   const undoable = await undoableDeactivations(
     (rosterData ?? [])
-      .filter((r: any) => r.player_type === 'reserviste' && deactTypeMap.get(r.player_id) === 'deactivation')
+      .filter((r: any) =>
+        (r.player_type === 'reserviste' && deactTypeMap.get(r.player_id) === 'deactivation') ||
+        (r.player_type === 'recrue' && deactTypeMap.get(r.player_id) === 'changement_type'))
       .map((r: any) => ({ playerId: r.player_id, teamCode: r.players?.teams?.code ?? null, changedAt: deactMap.get(r.player_id)! })),
   )
 
@@ -513,6 +516,14 @@ export async function submitBatchAction(input: {
     }
   }
 
+  // Lignes du journal des transactions (David, 2026-10-16) — avant, un lot de Gestion d'effectifs
+  // n'écrivait que roster_change_log, et /journal-transactions (qui lit `transactions`) ne montrait
+  // aucun mouvement fait en saison. Une transaction par lot, écrite à la fin (writeJournal).
+  const journalItems: {
+    action_type: string; from_pooler_id: string | null; to_pooler_id: string | null
+    player_id: number; old_player_type: string | null; new_player_type: string | null
+  }[] = []
+
   async function log(playerId: number, changeType: string, oldType: string | null, newType: string | null) {
     if (isPreseason) return
     await db.from('roster_change_log').insert({
@@ -521,6 +532,31 @@ export async function submitBatchAction(input: {
       changed_by: changedBy, changed_at: changedAt,
       is_admin_override: isAdminOverride,
     })
+    const actionType = journalActionType(changeType, oldType, newType)
+    const incoming = actionType === 'sign' || actionType === 'promote' || actionType === 'reactivate'
+    journalItems.push({
+      action_type: actionType,
+      from_pooler_id: incoming ? null : input.poolerId,
+      to_pooler_id: incoming ? input.poolerId : null,
+      player_id: playerId, old_player_type: oldType, new_player_type: newType,
+    })
+  }
+
+  // Même en cas d'erreur à mi-lot : ce qui a déjà été écrit doit paraître au journal.
+  async function writeJournal() {
+    if (journalItems.length === 0) return
+    try {
+      const { data: tx, error } = await db.from('transactions').insert({
+        pool_season_id: input.saisonId,
+        notes: input.actions.some(a => a.type === 'ballotage') ? JOURNAL_NOTES_BALLOTAGE : JOURNAL_NOTES_GESTION,
+        created_by: user!.id,
+        created_at: changedAt,
+      }).select('id').single()
+      if (error || !tx) throw error
+      await db.from('transaction_items').insert(journalItems.map(i => ({ ...i, transaction_id: tx.id })))
+    } catch (e) {
+      console.error('Journal des transactions (Gestion d\'effectifs) :', e)
+    }
   }
 
   async function checkReactivationDelay(playerId: number, position: string | null) {
@@ -531,13 +567,13 @@ export async function submitBatchAction(input: {
       .eq('player_id', playerId)
       .eq('pooler_id', input.poolerId)
       .eq('pool_season_id', input.saisonId)
-      .in('change_type', ['deactivation', 'ltir'])
+      .or(REACTIVATION_DELAY_FILTER)
       .order('changed_at', { ascending: false })
       .limit(1)
       .maybeSingle()
     if (!lastDeact) return
-    // Annulation le jour même d'une mise en réserve (David, 2026-10-12, voir gameDayLock.ts).
-    if (lastDeact.change_type === 'deactivation') {
+    // Annulation le jour même d'une mise en réserve ou d'une remise en banque (voir gameDayLock.ts).
+    if (lastDeact.change_type !== 'ltir') {
       const { data: p } = await db.from('players').select('teams (code)').eq('id', playerId).maybeSingle()
       const teamCode = (p as { teams: { code: string } | null } | null)?.teams?.code ?? null
       const ok = await undoableDeactivations([{ playerId, teamCode, changedAt: lastDeact.changed_at }])
@@ -937,8 +973,10 @@ export async function submitBatchAction(input: {
       })
     }
 
+    await writeJournal()
     return { warning: warnings.length > 0 ? warnings.join(' ') : undefined }
   } catch (e: any) {
+    await writeJournal()
     return { error: e?.message ?? 'Erreur inconnue' }
   }
 }
