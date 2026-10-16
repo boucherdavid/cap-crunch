@@ -21,6 +21,7 @@ import MobileFold from '@/components/MobileFold'
 import { syncLtirReturns } from '@/lib/ltirReturns'
 import { syncNhlTransactions, loadRecentNhlTransactions, type NhlTransactionView } from '@/lib/nhlTransactions'
 import { poolDraftYear } from '@/lib/poolDraftYear'
+import { getPoolGoaliesTonight, type PoolGoalieTonight } from '@/lib/startingGoalies'
 
 export const dynamic = 'force-dynamic'
 
@@ -705,6 +706,46 @@ function PoolInjuriesWidget({ items }: { items: PoolInjuryItem[] }) {
   )
 }
 
+// ---------- gardiens du pool ce soir ----------
+
+// Gardiens partants (David, 2026-10-16) — Daily Faceoff et Goaliepost, lib/startingGoalies.ts.
+// Seulement les gardiens actifs et réservistes du pool dont l'équipe joue ce soir.
+const GOALIE_SITUATION: Record<PoolGoalieTonight['situation'], { label: string; className: string }> = {
+  confirme:       { label: 'Confirmé',       className: 'text-emerald-700 bg-emerald-100' },
+  probable:       { label: 'Probable',       className: 'text-sky-700 bg-sky-100' },
+  incertain:      { label: 'Non confirmé',   className: 'text-gray-600 bg-gray-100' },
+  desaccord:      { label: 'Sources en désaccord', className: 'text-amber-700 bg-amber-100' },
+  non_disponible: { label: 'Non disponible', className: 'text-gray-400 bg-gray-50' },
+  auxiliaire:     { label: 'Ne devrait pas jouer', className: 'text-gray-500 bg-gray-100' },
+}
+
+function PoolGoaliesWidget({ items, myId }: { items: PoolGoalieTonight[]; myId: string | null }) {
+  if (items.length === 0) return null
+  return (
+    <MobileFold>
+      <div className={`bg-slate-700 px-5 py-3 flex items-center justify-between gap-3 ${sectionBorderClass('soir-de-match')}`}>
+        <CardTitle section="soir-de-match" href="/statistiques/gardiens-partants">Gardiens du pool ce soir</CardTitle>
+        <span className="text-xs text-slate-300 shrink-0">Daily Faceoff, Goaliepost</span>
+      </div>
+      <ul className="divide-y divide-gray-100">
+        {items.map(it => {
+          const s = GOALIE_SITUATION[it.situation]
+          return (
+            <li key={it.nhlId} className={`px-4 py-2.5 flex items-center justify-between gap-3 ${it.owner.poolerId === myId ? 'bg-violet-50' : ''}`}>
+              <span className="text-sm text-gray-700 min-w-0">
+                <span className="font-medium">{it.name}</span>
+                <span className="text-gray-400"> ({it.owner.poolerName}{it.owner.playerType === 'reserviste' ? ', réserviste' : ''})</span>
+                <span className="block text-xs text-gray-400">{it.home ? `${it.opponent} @ ${it.team}` : `${it.team} @ ${it.opponent}`} · {fmtGameTime(it.startUTC)}</span>
+              </span>
+              <span className={`text-xs font-bold rounded px-1.5 py-0.5 text-right shrink-0 ${s.className}`}>{s.label}</span>
+            </li>
+          )
+        })}
+      </ul>
+    </MobileFold>
+  )
+}
+
 // ---------- signatures et échanges de la LNH ----------
 
 // Sources ESPN et LNH (lib/nhlTransactions.ts) — descriptions d'ESPN en anglais, telles quelles.
@@ -886,7 +927,7 @@ export default async function Home() {
   const playingTeams = new Set(todayGames.flatMap(g => [g.awayAbbrev, g.homeAbbrev]))
   const hasGames = todayGames.length > 0
 
-  const [standings, poolActivity, poolInjuries, nhlNews, market, liveNight, nhlTransactions] = await Promise.all([
+  const [standings, poolActivity, poolInjuries, nhlNews, market, liveNight, nhlTransactions, poolGoalies] = await Promise.all([
     saison ? getStandings(saison.id) : Promise.resolve([]),
     saison ? fetchPoolActivity(supabase, saison.id, saison.season_started ? (saison.season_started_at ?? null) : null) : Promise.resolve([]),
     saison ? fetchPoolInjuries(supabase, saison.id) : Promise.resolve([]),
@@ -895,6 +936,8 @@ export default async function Home() {
     // Pointage en direct (2026-10-04) — saison régulière seulement, calcul en cache 45 s.
     !seriesSaison ? getLiveNight() : Promise.resolve(null as LiveNight | null),
     loadRecentNhlTransactions(saison?.id ?? null),
+    // Gardiens partants : seulement s'il y a des matchs ce soir (sources lues en cache 10 min).
+    hasGames && !seriesSaison ? getPoolGoaliesTonight().then(r => r.items).catch(() => []) : Promise.resolve([] as PoolGoalieTonight[]),
   ])
 
   // Classement séries depuis le cache BD + récap d'hier + joueurs en action séries
@@ -1033,6 +1076,7 @@ export default async function Home() {
           </div>
           {/* « Joueurs en action » remplacé par le pointage en direct en saison régulière (2026-10-04) */}
           {seriesSaison && <ActivityTable activity={activity} todayDate={todayDate} hasGames={hasGames} />}
+          <PoolGoaliesWidget items={poolGoalies} myId={me?.id ?? null} />
           <NhlTransactionsWidget items={nhlTransactions} />
           <NhlNewsWidget items={nhlNews} />
         </div>

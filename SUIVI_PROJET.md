@@ -19,6 +19,33 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-16
+
+**[Feat] — Gardiens partants de la soirée** (`app/lib/startingGoalies.ts`,
+`app/app/statistiques/gardiens-partants/page.tsx`, `app/app/page.tsx`, `app/components/Navbar.tsx`,
+`app/app/aide/AideTabs.tsx`) :
+- Demande de David : voir les gardiens partants du jour (Daily Faceoff et Goaliepost/DobberHockey).
+- Deux sources lues au moment de l'affichage, aucune écriture en base (respecte le budget
+  d'écritures Supabase ; une tâche GitHub serait partie avec des heures de retard). Daily Faceoff :
+  `__NEXT_DATA__` de `/starting-goalies/<date>`, statut Confirmed/Likely/Unconfirmed, jumelage par
+  nom (repli : nom de famille unique dans l'équipe). Goaliepost : données du rendu Next.js
+  (`self.__next_f.push`), identifiant LNH (`externalId`), certitude, arrêts projetés,
+  back-to-back ; matchs jumelés au calendrier de la LNH par numéro de match.
+- Chaque source en cache 10 min (`unstable_cache`) ; lecture ratée jamais mise en cache. Verdict :
+  Confirmé (une source confirme), Probable, Non confirmé, Sources en désaccord (gardiens
+  différents, les deux affichés), Non disponible. Une source en panne → l'autre seule, avec un avis.
+- Propriétaires des gardiens en cache par la version `standings` de `data_versions`.
+- Page `/statistiques/gardiens-partants` (menu Statistiques) et carte « Gardiens du pool ce soir »
+  sur l'accueil (actifs/réservistes du pool dont l'équipe joue, « Ne devrait pas jouer » quand un
+  autre gardien est prévu). Entrée ajoutée au guide de `/aide`.
+- Testé en local contre staging le 16 (2 matchs, 4 partants « Probable », propriétaires retrouvés).
+  **À vérifier sur staging** : que Vercel peut lire les deux sites (testé depuis un poste seulement).
+- Nouveau groupe de menu **Soir de match** le même jour (David) : En direct, Gardiens partants,
+  Trios et paires (sortis de Le pool et d'Analytique). Famille `soir-de-match` dans
+  `SectionIcon.tsx` (lune, jaune), reprise par le bandeau des pages et les cartes de l'accueil
+  (pointage de la soirée, gardiens du pool). `/aide` et `/a-propos` mis à jour. Les adresses des
+  pages ne changent pas.
+
 ### 2026-10-14
 
 **[Bilan de session]** — tout est en prod, `staging` = `main` :

@@ -452,7 +452,7 @@ const SECTIONS: Section[] = [
           <li>• <strong>Quand les points sont-ils mis à jour ?</strong>{' '}Les points officiels du classement sont mis à jour une fois par nuit, vers 2 h (heure de l&apos;Est), avec les matchs de la veille.</li>
           <li>
             • <strong>En direct</strong>{' '}: pendant les matchs, la page d&apos;accueil affiche le classement de la soirée et les pointeurs de la LNH, mis à jour chaque minute. Le détail par pooler est sur{' '}
-            <Link href="/en-direct" className="text-blue-600 hover:underline font-medium">Le pool → En direct</Link>.
+            <Link href="/en-direct" className="text-blue-600 hover:underline font-medium">Soir de match → En direct</Link>.
             Le menu « Afficher » du tableau des pointeurs permet de ne voir que tes joueurs actifs, tes réservistes ou tes recrues (ou les actifs d&apos;un autre pooler){' '}: pratique le lendemain matin pour savoir qui t&apos;a donné tes points.
             Ce pointage est <strong>non officiel</strong>{' '}: seuls les joueurs actifs comptent, et les points officiels sont ceux de la nuit.
           </li>
@@ -638,6 +638,28 @@ const SECTIONS: Section[] = [
     ),
   },
   {
+    id: 'guide-gardiens-partants',
+    tab: 'guide',
+    title: 'Gardiens partants',
+    keywords: 'gardiens partants starting goalies daily faceoff goaliepost dobber confirme probable ce soir',
+    href: '/statistiques/gardiens-partants',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Accède-y via <strong>Soir de match → Gardiens partants</strong>{' '}: le gardien prévu de chaque équipe pour les
+          matchs de la soirée, selon Daily Faceoff et Goaliepost (DobberHockey). Mis à jour automatiquement aux 10 minutes.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• <strong>Confirmé</strong> : au moins une source confirme le partant. <strong>Probable</strong> : partant prévu, pas encore confirmé.</li>
+          <li>• <strong>Sources en désaccord</strong> : les deux sites ne prévoient pas le même gardien ; les deux noms sont affichés.</li>
+          <li>• <strong>Non disponible</strong> : aucune source n&apos;a encore annoncé de gardien, ou les sites ne répondent pas pour l&apos;instant.</li>
+          <li>• Le propriétaire de chaque gardien dans le pool est indiqué, ou <strong>Disponible</strong> si personne ne l&apos;a.</li>
+          <li>• Sur l&apos;accueil, la carte <strong>Gardiens du pool ce soir</strong> montre tes gardiens et ceux des autres poolers dont l&apos;équipe joue, avec <strong>Ne devrait pas jouer</strong> quand un autre gardien est prévu.</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
     id: 'guide-projections',
     tab: 'guide',
     title: 'Projections',
@@ -669,13 +691,13 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Le menu <strong>Analytique</strong> regroupe trois pages pour creuser plus loin que les buts et les passes. Les données viennent de MoneyPuck.com et de Daily Faceoff, et sont mises à jour chaque jour.
+          Le menu <strong>Analytique</strong> regroupe deux pages pour creuser plus loin que les buts et les passes. Les données viennent de MoneyPuck.com et sont mises à jour chaque jour. Trios et paires est dans le menu <strong>Soir de match</strong>.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• <strong>Statistiques avancées</strong> : un tableau par saison, pour les patineurs ou les gardiens, selon la situation de jeu (toutes, 5 contre 5, avantage ou désavantage numérique). Ouvre « Définitions des colonnes » pour savoir ce que chaque sigle mesure, et clique un en-tête pour trier.</li>
           <li>• <strong>Outil d&apos;analyse</strong> : choisis deux mesures (ou une des questions prêtes, comme « Rendement ») pour les voir sur un graphique. La ligne de tendance montre ce qui est attendu ; l&apos;écart de chaque joueur dit s&apos;il fait mieux ou moins bien. Patineurs ou gardiens (victoires, blanchissages, buts sauvés).</li>
           <li>• <strong>Évolution</strong> : la question prête « Évolution » compare la même mesure d&apos;une saison à la suivante ; au-dessus de la diagonale, le joueur progresse. La fiche d&apos;un joueur montre aussi ses stats avancées saison par saison, depuis 2020-21.</li>
-          <li>• <strong>Trios et paires</strong> : l&apos;alignement actuel d&apos;une équipe — les quatre trios, les trois paires, les gardiens et les deux unités d&apos;avantage numérique. Un joueur du premier trio et de la première unité d&apos;avantage numérique a plus de chances de produire. La fiche d&apos;un joueur indique aussi son trio et ses partenaires.</li>
+          <li>• <strong>Trios et paires</strong> (menu Soir de match, source Daily Faceoff) : l&apos;alignement actuel d&apos;une équipe — les quatre trios, les trois paires, les gardiens et les deux unités d&apos;avantage numérique. Un joueur du premier trio et de la première unité d&apos;avantage numérique a plus de chances de produire. La fiche d&apos;un joueur indique aussi son trio et ses partenaires.</li>
           <li>• Filtre par position, par pooler ou « Disponibles seulement » pour repérer un agent libre sous-estimé, et fixe un salaire maximum selon ton espace sous le plafond.</li>
           <li>• Clique un nom ou un point du graphique pour ouvrir la fiche du joueur.</li>
           <li>• Ce sont des aides à la décision : une tendance calculée sur une saison ne garantit rien pour la suivante.</li>

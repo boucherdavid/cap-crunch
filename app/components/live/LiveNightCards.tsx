@@ -29,10 +29,10 @@ export function LiveStatus({ night }: { night: LiveNight }) {
 
 function CardHeader({ title, night }: { title: string; night: LiveNight }) {
   return (
-    <div className={`bg-slate-800 px-5 py-3 ${sectionBorderClass('pool')}`}>
+    <div className={`bg-slate-800 px-5 py-3 ${sectionBorderClass('soir-de-match')}`}>
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-white font-bold text-sm uppercase tracking-wide">
-          <SectionIcon section="pool" />
+          <SectionIcon section="soir-de-match" />
           <Link href="/en-direct" className="hover:underline">{title}</Link>
         </h2>
         <LiveStatus night={night} />

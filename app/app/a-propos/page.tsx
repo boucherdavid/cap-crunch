@@ -72,6 +72,27 @@ const CATEGORIES: Category[] = [
     ],
   },
   {
+    id: 'soir-de-match',
+    label: 'Soir de match',
+    items: [
+      {
+        title: 'En direct',
+        href: '/en-direct',
+        description: "Le pointage non officiel de la soirée, mis à jour chaque minute pendant les matchs : classement de la soirée par pooler et tous les pointeurs de la LNH, avec leur propriétaire.",
+      },
+      {
+        title: 'Gardiens partants',
+        href: '/statistiques/gardiens-partants',
+        description: "Le gardien prévu de chaque équipe pour les matchs de la soirée, selon Daily Faceoff et Goaliepost (DobberHockey) : confirmé, probable ou sources en désaccord, avec le pooler qui le possède.",
+      },
+      {
+        title: 'Trios et paires',
+        href: '/analytique/trios',
+        description: "L'alignement actuel de chaque équipe : trios, paires de défenseurs, gardiens et unités d'avantage numérique, avec le pooler qui possède chaque joueur. Données Daily Faceoff, mises à jour chaque jour.",
+      },
+    ],
+  },
+  {
     id: 'lnh',
     label: 'LNH',
     items: [
@@ -104,11 +125,6 @@ const CATEGORIES: Category[] = [
         title: "Outil d'analyse",
         href: '/analytique/analyse',
         description: 'Croise deux mesures au choix (salaire, points, âge, temps de glace…) sur un graphique pour repérer qui fait mieux ou moins bien que la tendance, par exemple le rendement par rapport au salaire.',
-      },
-      {
-        title: 'Trios et paires',
-        href: '/analytique/trios',
-        description: "L'alignement actuel de chaque équipe : trios, paires de défenseurs, gardiens et unités d'avantage numérique, avec le pooler qui possède chaque joueur. Données Daily Faceoff, mises à jour chaque jour.",
       },
       {
         title: 'Blessures',

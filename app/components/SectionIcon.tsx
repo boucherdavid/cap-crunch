@@ -4,7 +4,7 @@
 
 export type SectionId =
   | 'accueil' | 'mon-equipe' | 'pool' | 'calendrier' | 'statistiques' | 'analytique' | 'blessures'
-  | 'contrats' | 'prospects' | 'repechage' | 'communaute' | 'aide' | 'admin' | 'actualite'
+  | 'contrats' | 'prospects' | 'repechage' | 'communaute' | 'aide' | 'admin' | 'actualite' | 'soir-de-match'
 
 // Classes écrites en entier : Tailwind ne détecte pas un nom de classe construit à la volée.
 const STYLES: Record<SectionId, { text: string; border: string }> = {
@@ -22,6 +22,7 @@ const STYLES: Record<SectionId, { text: string; border: string }> = {
   'aide':         { text: 'text-slate-300',   border: 'border-slate-300' },
   'admin':        { text: 'text-gray-400',    border: 'border-gray-400' },
   'actualite':    { text: 'text-slate-400',   border: 'border-slate-400' },
+  'soir-de-match': { text: 'text-yellow-400', border: 'border-yellow-400' },
 }
 
 // Tracés au trait, grille 24 × 24.
@@ -40,6 +41,7 @@ const PATHS: Record<SectionId, string> = {
   'aide':         'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20ZM9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01',
   'admin':        'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
   'actualite':    'M4 4h13v16H6a2 2 0 0 1-2-2V4ZM17 8h3v10a2 2 0 0 1-2 2M8 8h5M8 12h5M8 16h5',
+  'soir-de-match': 'M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z',
 }
 
 /** Bande de couleur à gauche d'un en-tête de carte. */
