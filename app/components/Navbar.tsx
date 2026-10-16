@@ -77,7 +77,7 @@ type NavGroup = {
 
 // Icône de chaque famille du menu — la même que dans l'en-tête des cartes de l'accueil.
 const GROUP_SECTION: Record<string, SectionId> = {
-  'mon-equipe': 'mon-equipe', 'le-pool': 'pool', 'calendrier': 'calendrier', 'statistiques': 'statistiques',
+  'mon-equipe': 'mon-equipe', 'le-pool': 'pool', 'soir-de-match': 'soir-de-match', 'calendrier': 'calendrier', 'statistiques': 'statistiques',
   'analytique': 'analytique', 'blessures': 'blessures', 'contrats': 'contrats', 'prospects-lnh': 'prospects',
   'repechage-annuel': 'repechage', 'communaute': 'communaute', 'aide': 'aide', 'admin': 'admin',
 }
@@ -103,14 +103,22 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Le pool',
     items: [
       { label: 'Classement', href: '/classement' },
-      { label: 'En direct', href: '/en-direct' },
-      { label: 'Gardiens partants', href: '/statistiques/gardiens-partants' },
       { label: 'Tous les alignements', href: '/poolers' },
       { label: 'Meilleurs joueurs disponibles', href: '/meilleurs-disponibles' },
       { label: 'Marché des échanges', href: '/marche-echanges' },
       { label: 'Journal des transactions', href: '/journal-transactions' },
       { label: 'Comparaison avec Marqueur', href: '/comparaison-marqueur' },
       { label: 'Marqueur.com ↗', href: MARQUEUR_URL },
+    ],
+  },
+  {
+    // Soirée de matchs (David, 2026-10-16) : ce qu'on consulte avant et pendant les matchs.
+    id: 'soir-de-match',
+    label: 'Soir de match',
+    items: [
+      { label: 'En direct', href: '/en-direct' },
+      { label: 'Gardiens partants', href: '/statistiques/gardiens-partants' },
+      { label: 'Trios et paires', href: '/analytique/trios' },
     ],
   },
   { id: 'calendrier', label: 'Calendrier LNH', href: '/calendrier' },
@@ -129,7 +137,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Statistiques avancées', href: '/analytique/stats-avancees' },
       { label: "Outil d'analyse", href: '/analytique/analyse' },
-      { label: 'Trios et paires', href: '/analytique/trios' },
     ],
   },
   { id: 'blessures', label: 'Blessures', href: '/statistiques/blessures' },

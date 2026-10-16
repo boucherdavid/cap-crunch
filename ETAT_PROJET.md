@@ -65,7 +65,8 @@
 
 ### ▶ Prochaine session — commencer ici
 
-- **Gardiens partants** (`/statistiques/gardiens-partants` + carte de l'accueil) : vérifier sur
+- **Gardiens partants** (`/statistiques/gardiens-partants` + carte de l'accueil) et nouveau groupe de
+  menu **Soir de match** (En direct, Gardiens partants, Trios et paires) : vérifier sur
   staging que Vercel lit Daily Faceoff et Goaliepost (sinon, avis « non disponible »), puis promouvoir.
 - **CPU de la prod** : relancer `pg_stat_statements` vers le 15-16 octobre ; les lectures du
   classement et des matchs des blessés devraient avoir quitté le haut de la liste.

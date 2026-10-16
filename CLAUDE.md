@@ -362,7 +362,7 @@ jamais un rechargement de page. LNH indisponible → `error`, jamais des zéros.
 restent `player_game_logs`, importés chaque nuit vers 2 h ET par Vercel Cron (voir section 6, « Tâches planifiées »). Lien Marqueur.com (notre pool, suivi
 comparatif) : `lib/externalLinks.ts`, carte sur l'accueil et entrée externe du menu Le pool.
 
-**Gardiens partants** (David, 2026-10-16) : `/statistiques/gardiens-partants` (menu Le pool, sous En direct) et
+**Gardiens partants** (David, 2026-10-16) : `/statistiques/gardiens-partants` (menu Soir de match) et
 carte « Gardiens du pool ce soir » sur l'accueil. `app/lib/startingGoalies.ts` lit Daily Faceoff
 (`__NEXT_DATA__`, jumelage par nom) et Goaliepost/DobberHockey (rendu Next.js, `externalId` = nhl_id)
 au moment de l'affichage, en cache 10 min par source, **rien n'est écrit en base**. Verdict croisé :
@@ -611,10 +611,11 @@ sont deux natures de contenu différentes.**
 | Section | Contenu |
 |---|---|
 | Mon équipe (nouveau nom de groupe — le lien "Mon alignement", ex-"Mon équipe", garde son nom de page inchangé depuis le renommage plus haut le même jour) | Mon alignement · Gestion d'effectifs · Simulation · Mes listes (ajouté le 2026-09-27) — "ce qui m'appartient / que je contrôle" |
-| Le pool | Classement · En direct (2026-10-04) · Gardiens partants (2026-10-16) · Tous les alignements (ex-"Équipes") · Meilleurs joueurs disponibles (2026-10-05) · Marché des échanges (2026-10-03) · Journal des transactions · Comparaison avec Marqueur (2026-10-06) · Marqueur.com ↗ (lien externe) — "ce qui concerne les autres poolers". Le groupe "Classement du pool" a été retiré le 2026-09-30 (David) : un seul lien Classement, avec un sélecteur Saison complète (défaut) / Mensuel / Hebdomadaire en haut de la page (`app/classement/PeriodSelector.tsx`, routes `/classement`, `/classement/mensuel`, `/classement/hebdomadaire` inchangées) |
+| Le pool | Classement · Tous les alignements (ex-"Équipes") · Meilleurs joueurs disponibles (2026-10-05) · Marché des échanges (2026-10-03) · Journal des transactions · Comparaison avec Marqueur (2026-10-06) · Marqueur.com ↗ (lien externe) — "ce qui concerne les autres poolers". Le groupe "Classement du pool" a été retiré le 2026-09-30 (David) : un seul lien Classement, avec un sélecteur Saison complète (défaut) / Mensuel / Hebdomadaire en haut de la page (`app/classement/PeriodSelector.tsx`, routes `/classement`, `/classement/mensuel`, `/classement/hebdomadaire` inchangées) |
+| Soir de match (2026-10-16) | En direct · Gardiens partants · Trios et paires (sorti d'Analytique) — ce qu'on consulte avant et pendant les matchs ; famille `soir-de-match` (lune, jaune) aussi sur les cartes « Pointage de la soirée » et « Gardiens du pool ce soir » de l'accueil |
 | Calendrier LNH (lien autonome, ex-sous-item de "Statistiques", sorti le 2026-09-23 (suite) — entre Le pool et Statistiques) | Le résumé personnel "mes joueurs cette semaine" a été extrait dans un onglet séparé sur `/poolers/[id]`, voir ci-dessous — cette page ne garde que la navigation jour par jour |
 | Statistiques (ex-partie de "LNH") | LNH · Projections · AHL |
-| Analytique (ajouté le 2026-10-01) | Statistiques avancées · Outil d'analyse · Trios et paires (2026-10-02) |
+| Analytique (ajouté le 2026-10-01) | Statistiques avancées · Outil d'analyse (Trios et paires déplacé dans Soir de match le 2026-10-16) |
 | Blessures | Lien autonome (plus regroupé sous "LNH", qui cachait la page selon le retour du pooler) |
 | Contrats LNH | Lien autonome (ex-sous-item de "LNH") |
 | Prospects LNH (ex-"Recrues", réduit) | Classement pré-repêchage · Repêchage LNH — référence sur le vrai repêchage LNH, rien de propre au pool |

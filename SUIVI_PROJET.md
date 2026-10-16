@@ -40,9 +40,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   autre gardien est prévu). Entrée ajoutée au guide de `/aide`.
 - Testé en local contre staging le 16 (2 matchs, 4 partants « Probable », propriétaires retrouvés).
   **À vérifier sur staging** : que Vercel peut lire les deux sites (testé depuis un poste seulement).
-- Déplacée le même jour dans **Le pool**, entre En direct et Tous les alignements (David) ; carte de
-  l'accueil aux couleurs du pool. Piste à l'étude : un groupe « soirée » (En direct, Gardiens
-  partants, Trios et paires).
+- Nouveau groupe de menu **Soir de match** le même jour (David) : En direct, Gardiens partants,
+  Trios et paires (sortis de Le pool et d'Analytique). Famille `soir-de-match` dans
+  `SectionIcon.tsx` (lune, jaune), reprise par le bandeau des pages et les cartes de l'accueil
+  (pointage de la soirée, gardiens du pool). `/aide` et `/a-propos` mis à jour. Les adresses des
+  pages ne changent pas.
 
 ### 2026-10-14
 
