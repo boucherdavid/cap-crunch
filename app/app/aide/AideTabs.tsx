@@ -638,6 +638,28 @@ const SECTIONS: Section[] = [
     ),
   },
   {
+    id: 'guide-gardiens-partants',
+    tab: 'guide',
+    title: 'Gardiens partants',
+    keywords: 'gardiens partants starting goalies daily faceoff goaliepost dobber confirme probable ce soir',
+    href: '/statistiques/gardiens-partants',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Accède-y via <strong>Statistiques → Gardiens partants</strong>{' '}: le gardien prévu de chaque équipe pour les
+          matchs de la soirée, selon Daily Faceoff et Goaliepost (DobberHockey). Mis à jour automatiquement aux 10 minutes.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• <strong>Confirmé</strong> : au moins une source confirme le partant. <strong>Probable</strong> : partant prévu, pas encore confirmé.</li>
+          <li>• <strong>Sources en désaccord</strong> : les deux sites ne prévoient pas le même gardien ; les deux noms sont affichés.</li>
+          <li>• <strong>Non disponible</strong> : aucune source n&apos;a encore annoncé de gardien, ou les sites ne répondent pas pour l&apos;instant.</li>
+          <li>• Le propriétaire de chaque gardien dans le pool est indiqué, ou <strong>Disponible</strong> si personne ne l&apos;a.</li>
+          <li>• Sur l&apos;accueil, la carte <strong>Gardiens du pool ce soir</strong> montre tes gardiens et ceux des autres poolers dont l&apos;équipe joue, avec <strong>Ne devrait pas jouer</strong> quand un autre gardien est prévu.</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
     id: 'guide-projections',
     tab: 'guide',
     title: 'Projections',

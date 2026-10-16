@@ -120,6 +120,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'LNH', href: '/statistiques' },
       { label: 'Projections', href: '/statistiques/projections' },
       { label: 'AHL', href: '/statistiques/ahl' },
+      { label: 'Gardiens partants', href: '/statistiques/gardiens-partants' },
     ],
   },
   {
@@ -239,6 +240,7 @@ const PAGE_WIDTHS: Record<string, { box: string; flush: boolean }> = {
   '/analytique/trios': { box: 'max-w-6xl px-2 sm:px-4', flush: true },
   '/simulation': { box: 'max-w-7xl mx-auto px-4', flush: true },
   '/statistiques/blessures': { box: 'max-w-7xl mx-auto px-4', flush: true },
+  '/statistiques/gardiens-partants': { box: 'max-w-6xl mx-auto px-4', flush: true },
 }
 
 export function SectionEyebrow({ userId, isAdmin }: { userId: string | null; isAdmin: boolean }) {

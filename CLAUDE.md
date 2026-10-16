@@ -362,6 +362,13 @@ jamais un rechargement de page. LNH indisponible → `error`, jamais des zéros.
 restent `player_game_logs`, importés chaque nuit vers 2 h ET par Vercel Cron (voir section 6, « Tâches planifiées »). Lien Marqueur.com (notre pool, suivi
 comparatif) : `lib/externalLinks.ts`, carte sur l'accueil et entrée externe du menu Le pool.
 
+**Gardiens partants** (David, 2026-10-16) : `/statistiques/gardiens-partants` (menu Statistiques) et
+carte « Gardiens du pool ce soir » sur l'accueil. `app/lib/startingGoalies.ts` lit Daily Faceoff
+(`__NEXT_DATA__`, jumelage par nom) et Goaliepost/DobberHockey (rendu Next.js, `externalId` = nhl_id)
+au moment de l'affichage, en cache 10 min par source, **rien n'est écrit en base**. Verdict croisé :
+Confirmé / Probable / Non confirmé / Sources en désaccord / Non disponible ; une source en panne →
+l'autre seule.
+
 **Recherche globale de joueurs** (David, 2026-10-01) : champ dans la barre du haut
 (`app/components/PlayerSearch.tsx`, actions dans `player-search-actions.ts`), ouvre la fiche
 `PlayerSlideOver` par `?joueur=<nhl_id>` ou `?fiche=<id interne>` (prospect sans nhl_id). La
