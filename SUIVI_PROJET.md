@@ -41,6 +41,8 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   joueur ; dans l'historique, toujours. Jamais visible des poolers.
 - Migration `deadline_reminders.sql` (4 colonnes `*_reminder_sent_at`). Sans elle, aucun rappel
   (la lecture échoue), le reste fonctionne.
+- Migration roulée en staging et en prod par David. Validé en staging et promu en prod le
+  2026-10-16, avec le rafraîchissement des gardiens partants et la carte des blessures en cache.
 
 **[Perf] — Accueil : carte « Blessures dans le pool » en cache** (`app/app/page.tsx`) :
 - `pg_stat_statements` du 2026-10-16 (`supabase_debug/Statut_supabase_20261016.csv`) : situation
