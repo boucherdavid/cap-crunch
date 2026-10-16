@@ -21,6 +21,19 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-16
 
+**[Perf] — Accueil : carte « Blessures dans le pool » en cache** (`app/app/page.tsx`) :
+- `pg_stat_statements` du 2026-10-16 (`supabase_debug/Statut_supabase_20261016.csv`) : situation
+  stabilisée. L'ancienne requête des blessés (837 ms) n'a fait que 3 appels depuis le 14 ; la
+  version bornée tourne à 65 ms ; le classement est passé de 346 à 414 appels seulement (cache
+  efficace). Restait la lecture des alignements de la carte des blessures de l'accueil : 149
+  appels à 197 ms, à chaque visite.
+- Correctif : la liste des actifs/réservistes est en cache avec la version `standings` de
+  `data_versions` (`cachedPoolActiveRoster`) ; l'admissibilité LTIR, qui dépend du jour, reste
+  calculée à chaque affichage à partir des blessures déjà en cache. Résultat identique, vérifié en
+  local contre staging.
+- À faire par David : `select pg_stat_statements_reset();` en prod, puis relancer la requête de
+  diagnostic dans 2-3 jours.
+
 **[Feat] — Gardiens partants de la soirée** (`app/lib/startingGoalies.ts`,
 `app/app/statistiques/gardiens-partants/page.tsx`, `app/app/page.tsx`, `app/components/Navbar.tsx`,
 `app/app/aide/AideTabs.tsx`) :

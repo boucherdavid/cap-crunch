@@ -30,7 +30,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | En avance sur `main` : rafraîchissement automatique des gardiens partants (aux 5 min), à valider |
+| `staging` | En avance sur `main` : rafraîchissement automatique des gardiens partants (aux 5 min) et carte des blessures de l'accueil en cache, à valider |
 | `main` (prod) | À jour au 2026-10-16 — gardiens partants (page + carte de l'accueil) et groupe de menu « Soir de match », validés par David en staging. Inclut aussi, en plus du 13 : fausse page « Pas de connexion » corrigée (service worker), requête des blessés bornée, classement et blessures en cache, protection recrue unifiée (règle unique, correction et révision des étiquettes, recrue sans contrat bloquée en banque, années de repêchage en une seule année), échange effectif le lendemain si un match d'un joueur impliqué est commencé, pointage de la soirée selon l'alignement à l'heure du match |
 
 - Migration `data_versions.sql` (2026-10-14) roulée en staging et en prod.
@@ -65,8 +65,8 @@
 
 ### ▶ Prochaine session — commencer ici
 
-- **CPU de la prod** : relancer `pg_stat_statements` vers le 15-16 octobre ; les lectures du
-  classement et des matchs des blessés devraient avoir quitté le haut de la liste.
+- **CPU de la prod** : stabilisé (relevé du 16). Remettre les stats à zéro
+  (`select pg_stat_statements_reset();`) puis relancer la requête vers le 18-19 octobre.
 - **Page « Pas de connexion »** : confirmer sur téléphone qu'elle n'apparaît plus à tort.
 - **Blake et Poitras** : étiquetés « agent libre » en 2025-26, ELC terminé, donc non protégés —
   corriger avec ✎ seulement si l'un des deux avait été repêché par le pool.

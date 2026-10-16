@@ -1,4 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getDataVersion } from '@/lib/dataVersion'
+import { unstable_cache } from 'next/cache'
 import { getStandings } from '@/lib/standings'
 import { fmtPts } from '@/lib/nhl-stats'
 import SummaryTable from '@/components/SummaryTable'
@@ -639,32 +642,49 @@ type PoolInjuryItem = { poolerName: string; playerName: string; injuryType: stri
 // le LTIR est une vraie décision à prendre) — un joueur déjà en LTIR ou en banque de recrues
 // n'a pas besoin de ce signal (David, 2026-09-23 : source CBS Sports + ESPN en recoupement,
 // voir python_script/scrape_injuries.py et app/lib/injuries.ts).
-async function fetchPoolInjuries(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  poolSeasonId: number,
-  limit = 8,
-): Promise<PoolInjuryItem[]> {
+// Alignements actif/réserviste de la saison (David, 2026-10-16) : la lecture coûtait ~200 ms à
+// chaque visite de l'accueil (pg_stat_statements). Mise en cache tant que la version « standings »
+// ne bouge pas (data_versions) ; l'admissibilité LTIR, qui dépend du jour, reste calculée à chaque
+// affichage à partir des blessures déjà en cache.
+type PoolRosterPlayer = { poolerName: string; playerId: number; playerName: string }
+
+async function loadPoolActiveRoster(poolSeasonId: number): Promise<PoolRosterPlayer[]> {
+  const { data } = await createAdminClient()
+    .from('pooler_rosters')
+    .select('poolers (name), players (id, first_name, last_name)')
+    .eq('pool_season_id', poolSeasonId)
+    .eq('is_active', true)
+    .in('player_type', ['actif', 'reserviste'])
+  const out: PoolRosterPlayer[] = []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const row of (data ?? []) as any[]) {
+    if (!row.players) continue
+    out.push({ poolerName: row.poolers?.name ?? '?', playerId: row.players.id, playerName: `${row.players.first_name} ${row.players.last_name}` })
+  }
+  return out
+}
+
+const cachedPoolActiveRoster = unstable_cache(
+  async (poolSeasonId: number, _version: number) => loadPoolActiveRoster(poolSeasonId),
+  ['home-pool-active-roster-v1'],
+  { revalidate: 86_400 },
+)
+
+async function fetchPoolInjuries(poolSeasonId: number, limit = 8): Promise<PoolInjuryItem[]> {
   try {
-    const [{ data: rosterRows }, injuriesByPlayerId] = await Promise.all([
-      supabase
-        .from('pooler_rosters')
-        .select('poolers (name), players (id, first_name, last_name)')
-        .eq('pool_season_id', poolSeasonId)
-        .eq('is_active', true)
-        .in('player_type', ['actif', 'reserviste']),
-      fetchInjuriesByPlayerId(supabase),
+    const version = await getDataVersion('standings')
+    const [roster, injuriesByPlayerId] = await Promise.all([
+      version === null ? loadPoolActiveRoster(poolSeasonId) : cachedPoolActiveRoster(poolSeasonId, version),
+      fetchInjuriesByPlayerId(),
     ])
 
     const out: PoolInjuryItem[] = []
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const row of (rosterRows ?? []) as any[]) {
-      const player = row.players
-      if (!player) continue
-      const inj = injuriesByPlayerId.get(player.id)
+    for (const p of roster) {
+      const inj = injuriesByPlayerId.get(p.playerId)
       if (!inj) continue
       out.push({
-        poolerName: row.poolers?.name ?? '?',
-        playerName: `${player.first_name} ${player.last_name}`,
+        poolerName: p.poolerName,
+        playerName: p.playerName,
         injuryType: inj.injuryType,
         status: inj.status,
         eligible: inj.eligible,
@@ -930,7 +950,7 @@ export default async function Home() {
   const [standings, poolActivity, poolInjuries, nhlNews, market, liveNight, nhlTransactions, poolGoalies] = await Promise.all([
     saison ? getStandings(saison.id) : Promise.resolve([]),
     saison ? fetchPoolActivity(supabase, saison.id, saison.season_started ? (saison.season_started_at ?? null) : null) : Promise.resolve([]),
-    saison ? fetchPoolInjuries(supabase, saison.id) : Promise.resolve([]),
+    saison ? fetchPoolInjuries(saison.id) : Promise.resolve([]),
     fetchNhlNews(),
     saison ? fetchMarketSummary(saison.id) : Promise.resolve({ items: [], total: 0 }),
     // Pointage en direct (2026-10-04) — saison régulière seulement, calcul en cache 45 s.
