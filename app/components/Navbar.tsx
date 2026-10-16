@@ -104,6 +104,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Classement', href: '/classement' },
       { label: 'En direct', href: '/en-direct' },
+      { label: 'Gardiens partants', href: '/statistiques/gardiens-partants' },
       { label: 'Tous les alignements', href: '/poolers' },
       { label: 'Meilleurs joueurs disponibles', href: '/meilleurs-disponibles' },
       { label: 'Marché des échanges', href: '/marche-echanges' },
@@ -120,7 +121,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'LNH', href: '/statistiques' },
       { label: 'Projections', href: '/statistiques/projections' },
       { label: 'AHL', href: '/statistiques/ahl' },
-      { label: 'Gardiens partants', href: '/statistiques/gardiens-partants' },
     ],
   },
   {

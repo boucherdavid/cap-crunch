@@ -723,8 +723,8 @@ function PoolGoaliesWidget({ items, myId }: { items: PoolGoalieTonight[]; myId: 
   if (items.length === 0) return null
   return (
     <MobileFold>
-      <div className={`bg-slate-700 px-5 py-3 flex items-center justify-between gap-3 ${sectionBorderClass('statistiques')}`}>
-        <CardTitle section="statistiques" href="/statistiques/gardiens-partants">Gardiens du pool ce soir</CardTitle>
+      <div className={`bg-slate-700 px-5 py-3 flex items-center justify-between gap-3 ${sectionBorderClass('pool')}`}>
+        <CardTitle section="pool" href="/statistiques/gardiens-partants">Gardiens du pool ce soir</CardTitle>
         <span className="text-xs text-slate-300 shrink-0">Daily Faceoff, Goaliepost</span>
       </div>
       <ul className="divide-y divide-gray-100">

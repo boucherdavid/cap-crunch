@@ -646,7 +646,7 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Accède-y via <strong>Statistiques → Gardiens partants</strong>{' '}: le gardien prévu de chaque équipe pour les
+          Accède-y via <strong>Le pool → Gardiens partants</strong>{' '}: le gardien prévu de chaque équipe pour les
           matchs de la soirée, selon Daily Faceoff et Goaliepost (DobberHockey). Mis à jour automatiquement aux 10 minutes.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">

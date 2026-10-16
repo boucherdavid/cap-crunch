@@ -40,6 +40,9 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   autre gardien est prévu). Entrée ajoutée au guide de `/aide`.
 - Testé en local contre staging le 16 (2 matchs, 4 partants « Probable », propriétaires retrouvés).
   **À vérifier sur staging** : que Vercel peut lire les deux sites (testé depuis un poste seulement).
+- Déplacée le même jour dans **Le pool**, entre En direct et Tous les alignements (David) ; carte de
+  l'accueil aux couleurs du pool. Piste à l'étude : un groupe « soirée » (En direct, Gardiens
+  partants, Trios et paires).
 
 ### 2026-10-14
 
