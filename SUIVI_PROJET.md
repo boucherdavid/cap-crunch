@@ -21,6 +21,27 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-16
 
+**[Feat] — Rappels avant les dates limites + réponses au ballotage pour l'admin**
+(`app/lib/deadlineSync.ts`, `app/lib/waiverClaims.ts`, `app/lib/tradeOffers.ts`,
+`app/admin/effectifs/cap-watch-actions.ts`, `app/gestion-effectifs/waiver-actions.ts`,
+`BallotageTab.tsx`, `app/app/page.tsx`, `supabase_migrations/deadline_reminders.sql`) :
+- Question de David : les poolers sont-ils avisés avant leurs dates limites ? Retour de LTIR :
+  oui (détection, rappel 2 jours avant, dépassement). Ballotage, échanges et plafond : aucun rappel.
+- Problème trouvé : le ballotage et les échanges ne se réglaient qu'à l'ouverture de leur onglet ;
+  sans visite, le gagnant d'un ballotage n'était pas avisé à minuit. `syncDeadlines()` les règle
+  maintenant aussi depuis l'accueil (`after()`, au plus aux 5 min par instance, comme le LTIR).
+  Mises à jour rendues conditionnelles (statut attendu) pour ne jamais attribuer, annuler ni
+  notifier deux fois.
+- Rappels (push + courriel), un seul chacun : ballotage le dernier jour (~8 h ET) aux poolers sans
+  réponse ; ballotage remporté 24 h avant la fin des 48 h ; avis aux admins quand il devient
+  bloqué ; échange 1 jour avant la fin, au pooler qui n'a pas confirmé ; plafond dépassé 2 jours
+  avant (et courriel ajouté à l'avis initial, qui n'était qu'un push). Guide `/aide` (À faire).
+- Ballotage, admin (David) : réponses de chaque pooler dans l'ordre de priorité (réclamé, refusé,
+  pas de réponse) — sur un ballotage ouvert seulement après son propre refus ou s'il a libéré le
+  joueur ; dans l'historique, toujours. Jamais visible des poolers.
+- Migration `deadline_reminders.sql` (4 colonnes `*_reminder_sent_at`). Sans elle, aucun rappel
+  (la lecture échoue), le reste fonctionne.
+
 **[Perf] — Accueil : carte « Blessures dans le pool » en cache** (`app/app/page.tsx`) :
 - `pg_stat_statements` du 2026-10-16 (`supabase_debug/Statut_supabase_20261016.csv`) : situation
   stabilisée. L'ancienne requête des blessés (837 ms) n'a fait que 3 appels depuis le 14 ; la

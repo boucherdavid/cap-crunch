@@ -1035,6 +1035,15 @@ revue le 2026-09-14 :**
   ajuster) ; passé le délai, seul l'admin peut libérer le joueur manuellement — jamais
   automatique.
 
+**Dates limites des poolers (`app/lib/deadlineSync.ts`) — David, 2026-10-16 :** ballotage,
+échanges et plafond sont réglés aussi depuis l'accueil (`after()`, aux 5 min par instance), plus
+seulement à l'ouverture de leur onglet. Un rappel push + courriel par délai, une seule fois
+(colonnes `*_reminder_sent_at`) : ballotage le dernier jour aux poolers sans réponse, ballotage
+remporté 24 h avant la fin, échange 1 jour avant, plafond 2 jours avant ; avis aux admins quand
+un ballotage devient bloqué. Toute mise à jour de règlement est conditionnelle au statut attendu.
+Réponses au ballotage visibles par l'admin seulement : après son propre refus (ou s'il a libéré
+le joueur) sur un ballotage ouvert, toujours dans l'historique.
+
 **Ballotage en cours de saison (`app/lib/waiverClaims.ts`) — David, 2026-09-15 :**
 - Déclencheur : un pooler libère un joueur (`/gestion-effectifs`, action "Libération") ou
   l'admin libère un joueur en son nom (`/admin/transactions`, `action_type='release'`) — dans

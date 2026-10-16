@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useState, useEffect, useTransition, useCallback } from 'react'
 import { refreshPoolerTodo } from '@/components/usePoolerTodo'
 import { getWaiverClaimsAction, submitWaiverClaimAction, refuseWaiverClaimAction } from './waiver-actions'
-import type { WaiverClaimView, WaiverHistoryEntry } from './waiver-actions'
+import type { WaiverClaimView, WaiverHistoryEntry, WaiverResponse } from './waiver-actions'
 
 const STATUS_LABEL: Record<string, string> = {
   awarded: 'Gagné — en attente que le gagnant complète sa transaction',
@@ -18,6 +18,26 @@ const STATUS_COLOR: Record<string, string> = {
   resolved_claimed: 'text-green-700',
   resolved_unclaimed: 'text-gray-500',
   blocked: 'text-red-700',
+}
+
+// Réponses des poolers, dans l'ordre de priorité — admin seulement (David, 2026-10-16).
+function WaiverResponses({ responses }: { responses: WaiverResponse[] }) {
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1.5" title="Visible par l'admin seulement, dans l'ordre de priorité">
+      {responses.map((r, i) => (
+        <span
+          key={r.poolerName}
+          className={`text-[11px] rounded px-1.5 py-0.5 ${
+            r.status === 'claimed' ? 'bg-green-100 text-green-800'
+              : r.status === 'refused' ? 'bg-gray-100 text-gray-500'
+              : 'bg-amber-50 text-amber-700'
+          }`}
+        >
+          {i + 1}. {r.poolerName} : {r.status === 'claimed' ? 'réclamé' : r.status === 'refused' ? 'refusé' : 'pas de réponse'}
+        </span>
+      ))}
+    </div>
+  )
 }
 
 function formatExpiry(iso: string) {
@@ -101,6 +121,7 @@ export default function BallotageTab({ saisonId }: { saisonId: number }) {
                 <div className="text-xs text-gray-500">
                   Libéré par {c.releasedByName} — {formatExpiry(c.expiresAt)}
                 </div>
+                {c.responses && <WaiverResponses responses={c.responses} />}
               </div>
               <div className="flex flex-wrap items-center gap-2 shrink-0">
                 <Link
@@ -141,6 +162,7 @@ export default function BallotageTab({ saisonId }: { saisonId: number }) {
               <div key={h.id} className="text-xs text-gray-500 border-b border-gray-100 pb-1">
                 {h.playerName} (libéré par {h.releasedByName}) — <span className={STATUS_COLOR[h.status] ?? ''}>{STATUS_LABEL[h.status] ?? h.status}</span>
                 {h.awardedToName && ` par ${h.awardedToName}`}
+                {h.responses && <WaiverResponses responses={h.responses} />}
               </div>
             ))}
           </div>

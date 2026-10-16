@@ -883,10 +883,12 @@ export async function resolveExpiredTradeOffers(saisonId: number): Promise<void>
   for (const offer of expired) {
     if (offer.proposer_ready_at && offer.target_ready_at) continue // exécuté entre-temps, ne devrait pas arriver mais évite une double annulation
     const now = new Date().toISOString()
-    await admin.from('trade_offers').update({
+    // Conditionnelle (2026-10-16) : la résolution part aussi de l'accueil (lib/deadlineSync.ts).
+    const { data: cancelled } = await admin.from('trade_offers').update({
       status: 'cancelled_expired', resolved_at: now,
       cancelled_reason: "Au moins un des deux poolers n'a pas confirmé sa part dans le délai — rien n'a été transféré.",
-    }).eq('id', offer.id)
+    }).eq('id', offer.id).eq('status', 'pending_completion').select('id')
+    if (!cancelled || cancelled.length === 0) continue
 
     after(() => Promise.all([
       sendPushToUsers([offer.proposer_pooler_id, offer.target_pooler_id], {
@@ -897,6 +899,47 @@ export async function resolveExpiredTradeOffers(saisonId: number): Promise<void>
       sendEmailToIds([offer.proposer_pooler_id, offer.target_pooler_id], {
         subject: 'Cap Crunch — Transaction annulée',
         html: `<p>Le délai de confirmation est passé sans que les deux poolers aient confirmé — l'échange est annulé, rien n'a changé de part et d'autre. Refais une proposition si l'échange tient toujours.</p>${linkHtml(TRADE_TAB_PATH)}`,
+      }).catch(() => {}),
+    ]))
+  }
+}
+
+// Rappel avant la fin du délai de confirmation (David, 2026-10-16) — lancé par
+// lib/deadlineSync.ts, une seule fois par échange (`reminder_sent_at`, migration
+// deadline_reminders.sql), au pooler qui n'a pas encore confirmé sa part.
+const TRADE_REMINDER_HOURS_BEFORE = 24
+
+export async function sendTradeReminders(saisonId: number): Promise<void> {
+  const admin = createAdminClient()
+  const now = Date.now()
+  const { data: pending } = await admin
+    .from('trade_offers')
+    .select('id, proposer_pooler_id, target_pooler_id, proposer_ready_at, target_ready_at, completion_deadline')
+    .eq('pool_season_id', saisonId)
+    .eq('status', 'pending_completion')
+    .is('reminder_sent_at', null)
+  for (const offer of pending ?? []) {
+    const deadlineMs = new Date(offer.completion_deadline).getTime()
+    if (deadlineMs <= now || deadlineMs - now > TRADE_REMINDER_HOURS_BEFORE * 3_600_000) continue
+    const ids = [
+      offer.proposer_ready_at ? null : offer.proposer_pooler_id,
+      offer.target_ready_at ? null : offer.target_pooler_id,
+    ].filter((id): id is string => !!id)
+    if (ids.length === 0) continue
+    const { data: marked } = await admin.from('trade_offers')
+      .update({ reminder_sent_at: new Date().toISOString() })
+      .eq('id', offer.id).eq('status', 'pending_completion').is('reminder_sent_at', null).select('id')
+    if (!marked || marked.length === 0) continue
+    const deadlineLabel = new Date(offer.completion_deadline).toLocaleString('fr-CA', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Toronto' })
+    after(() => Promise.all([
+      sendPushToUsers(ids, {
+        title: 'Cap Crunch — Échange à confirmer',
+        body: `Confirme ta part de l'échange avant le ${deadlineLabel}, sinon il sera annulé pour les deux.`,
+        url: TRADE_TAB_PATH,
+      }).catch(() => {}),
+      sendEmailToIds(ids, {
+        subject: 'Cap Crunch — Échange à confirmer',
+        html: `<p>Un échange approuvé attend encore ta confirmation. Confirme ta part dans l'onglet Échanges de Gestion d'effectifs avant le <strong>${deadlineLabel}</strong>, sinon il sera annulé pour les deux.</p>${linkHtml(TRADE_TAB_PATH)}`,
       }).catch(() => {}),
     ]))
   }

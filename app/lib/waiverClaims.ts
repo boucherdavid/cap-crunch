@@ -1,7 +1,7 @@
 import { emailLinkHtml } from '@/lib/siteUrl'
 import { after } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendPushToUsers } from '@/lib/push'
+import { sendPushToUsers, sendPushToAdmins } from '@/lib/push'
 import { sendEmailToIds } from '@/lib/email'
 import { getStandings } from '@/lib/standings'
 import { getTodayET, addDaysToDate } from '@/lib/daily-recap'
@@ -19,6 +19,7 @@ const COMPLETION_GRACE_HOURS = 48
 // plutôt vers l'onglet Mouvements (défaut, pas de query param) où se trouve le bandeau à agir.
 const BALLOTAGE_TAB_PATH = '/gestion-effectifs?tab=ballotage'
 const MOUVEMENTS_PATH = '/gestion-effectifs'
+const ADMIN_TRANSACTIONS_PATH = '/admin/transactions'
 
 // Ballotage en cours de saison — file de réclamation par priorité quand un pooler libère un
 // joueur (saison démarrée seulement, voir CLAUDE.md section 6). Pas d'import depuis
@@ -230,7 +231,7 @@ export async function resolveExpiredWaiverClaims(saisonId: number) {
       .eq('status', 'claimed')
 
     if (!requests || requests.length === 0) {
-      await admin.from('waiver_claims').update({ status: 'resolved_unclaimed', resolved_at: new Date().toISOString() }).eq('id', claim.id)
+      await admin.from('waiver_claims').update({ status: 'resolved_unclaimed', resolved_at: new Date().toISOString() }).eq('id', claim.id).eq('status', 'open')
       continue
     }
 
@@ -238,9 +239,12 @@ export async function resolveExpiredWaiverClaims(saisonId: number) {
     const winnerId = claim.priority_snapshot.find(id => requesterIds.has(id)) ?? requests[0].pooler_id
     const now = new Date().toISOString()
 
-    await admin.from('waiver_claims').update({
+    // Conditionnelle (2026-10-16) : la résolution part aussi de l'accueil (lib/deadlineSync.ts),
+    // deux exécutions simultanées ne doivent ni attribuer ni notifier deux fois.
+    const { data: updated } = await admin.from('waiver_claims').update({
       status: 'awarded', awarded_to_pooler_id: winnerId, awarded_at: now,
-    }).eq('id', claim.id)
+    }).eq('id', claim.id).eq('status', 'open').select('id')
+    if (!updated || updated.length === 0) continue
 
     const label = await playerLabel(admin, claim.player_id)
     after(() => Promise.all([
@@ -274,10 +278,108 @@ export async function resolveExpiredAwardedClaims(saisonId: number) {
     .lte('awarded_at', cutoff)
   if (!stale || stale.length === 0) return
 
-  await admin.from('waiver_claims').update({
+  const { data: blocked } = await admin.from('waiver_claims').update({
     status: 'blocked',
     error_message: "Le gagnant n'a pas complété sa transaction dans le délai de 48 h — à traiter manuellement.",
-  }).in('id', stale.map(c => c.id))
+  }).in('id', stale.map(c => c.id)).eq('status', 'awarded')
+    .select('id, player_id, winner:poolers!awarded_to_pooler_id (name)')
+  if (!blocked || blocked.length === 0) return
+
+  // Avis aux admins (2026-10-16) : un ballotage bloqué attend une intervention manuelle.
+  const adminIds = await loadAdminIds(admin)
+  for (const b of blocked as unknown as { player_id: number; winner: { name: string } | null }[]) {
+    const label = await playerLabel(admin, b.player_id)
+    const body = `${b.winner?.name ?? 'Le gagnant'} n'a pas complété le ballotage de ${label} dans le délai de 48 h — à traiter manuellement.`
+    after(() => Promise.all([
+      sendPushToAdmins({ title: 'Cap Crunch — Ballotage bloqué', body, url: ADMIN_TRANSACTIONS_PATH }).catch(() => {}),
+      sendEmailToIds(adminIds, { subject: 'Cap Crunch — Ballotage bloqué', html: `<p>${body}</p>${linkHtml(ADMIN_TRANSACTIONS_PATH)}` }).catch(() => {}),
+    ]))
+  }
+}
+
+async function loadAdminIds(admin: ReturnType<typeof createAdminClient>): Promise<string[]> {
+  const { data } = await admin.from('poolers').select('id').eq('is_admin', true)
+  return (data ?? []).map(p => p.id as string)
+}
+
+// Rappels avant les dates limites du ballotage (David, 2026-10-16) — lancés par
+// lib/deadlineSync.ts. Chaque rappel n'est envoyé qu'une fois : la colonne est posée par une mise
+// à jour conditionnelle avant l'envoi. Colonnes absentes (migration deadline_reminders.sql pas
+// encore roulée) → la lecture échoue, aucun rappel.
+const LAST_DAY_REMINDER_HOURS = 16       // ~8 h, heure de l'Est, le dernier jour réclamable
+const MIN_HOURS_AFTER_RELEASE = 6        // pas de rappel juste après l'avis de libération
+const COMPLETION_REMINDER_AFTER_HOURS = 24
+
+export async function sendWaiverReminders(saisonId: number) {
+  const admin = createAdminClient()
+  const now = Date.now()
+
+  // 1. Dernier jour pour réclamer : seulement les poolers qui n'ont ni réclamé ni refusé.
+  const { data: open } = await admin
+    .from('waiver_claims')
+    .select('id, player_id, released_by_pooler_id, released_at, expires_at')
+    .eq('pool_season_id', saisonId)
+    .eq('status', 'open')
+    .is('reminder_sent_at', null)
+  for (const c of open ?? []) {
+    const expiresMs = new Date(c.expires_at).getTime()
+    if (expiresMs <= now || expiresMs - now > LAST_DAY_REMINDER_HOURS * 3_600_000) continue
+    if (c.released_at && now - new Date(c.released_at).getTime() < MIN_HOURS_AFTER_RELEASE * 3_600_000) continue
+    const { data: marked } = await admin.from('waiver_claims')
+      .update({ reminder_sent_at: new Date().toISOString() })
+      .eq('id', c.id).is('reminder_sent_at', null).select('id')
+    if (!marked || marked.length === 0) continue
+
+    const [{ data: poolers }, { data: answered }] = await Promise.all([
+      admin.from('poolers').select('id'),
+      admin.from('waiver_claim_requests').select('pooler_id').eq('waiver_claim_id', c.id),
+    ])
+    const done = new Set((answered ?? []).map(r => r.pooler_id))
+    const ids = (poolers ?? []).map(p => p.id as string).filter(id => id !== c.released_by_pooler_id && !done.has(id))
+    if (ids.length === 0) continue
+    const label = await playerLabel(admin, c.player_id)
+    after(() => Promise.all([
+      sendPushToUsers(ids, {
+        title: 'Cap Crunch — Ballotage, dernier jour',
+        body: `Dernier jour pour réclamer ou refuser ${label} (jusqu'à 23 h 59).`,
+        url: BALLOTAGE_TAB_PATH,
+      }).catch(() => {}),
+      sendEmailToIds(ids, {
+        subject: 'Cap Crunch — Ballotage, dernier jour',
+        html: `<p>C'est le dernier jour pour réclamer ou refuser <strong>${label}</strong> au ballotage (jusqu'à 23 h 59, heure de l'Est).</p>${linkHtml(BALLOTAGE_TAB_PATH)}`,
+      }).catch(() => {}),
+    ]))
+  }
+
+  // 2. Ballotage remporté, pas encore complété : rappel 24 h avant la fin des 48 h.
+  const cutoff = new Date(now - COMPLETION_REMINDER_AFTER_HOURS * 3_600_000).toISOString()
+  const { data: awarded } = await admin
+    .from('waiver_claims')
+    .select('id, player_id, awarded_to_pooler_id')
+    .eq('pool_season_id', saisonId)
+    .eq('status', 'awarded')
+    .is('completion_reminder_sent_at', null)
+    .lte('awarded_at', cutoff)
+  for (const c of awarded ?? []) {
+    if (!c.awarded_to_pooler_id) continue
+    const { data: marked } = await admin.from('waiver_claims')
+      .update({ completion_reminder_sent_at: new Date().toISOString() })
+      .eq('id', c.id).eq('status', 'awarded').is('completion_reminder_sent_at', null).select('id')
+    if (!marked || marked.length === 0) continue
+    const label = await playerLabel(admin, c.player_id)
+    const winnerId = c.awarded_to_pooler_id as string
+    after(() => Promise.all([
+      sendPushToUsers([winnerId], {
+        title: 'Cap Crunch — Ballotage à compléter',
+        body: `Il te reste environ 24 h pour ajouter ${label} à ton alignement, sinon l'admin devra intervenir.`,
+        url: MOUVEMENTS_PATH,
+      }).catch(() => {}),
+      sendEmailToIds([winnerId], {
+        subject: 'Cap Crunch — Ballotage à compléter',
+        html: `<p>Tu as remporté <strong>${label}</strong> au ballotage, mais la transaction n'est pas encore complétée. Il te reste environ 24 h pour l'ajouter dans Gestion d'effectifs (onglet Mouvements), sinon l'admin devra intervenir.</p>${linkHtml(MOUVEMENTS_PATH)}`,
+      }).catch(() => {}),
+    ]))
+  }
 }
 
 // Garde-fou contre une signature normale d'un joueur présentement au ballotage (David,

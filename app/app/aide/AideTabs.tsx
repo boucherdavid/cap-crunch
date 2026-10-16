@@ -285,6 +285,7 @@ const SECTIONS: Section[] = [
           <li>• Chaque élément indique la date limite, s&apos;il y en a une, et mène directement à la page où agir.</li>
           <li>• Une demande de LTIR en attente d&apos;approbation y apparaît aussi, pour information.</li>
           <li>• La liste se met à jour toute seule : un élément disparaît dès que c&apos;est réglé.</li>
+          <li>• Tu reçois aussi un rappel (notification et courriel) avant chaque date limite : le dernier jour pour réclamer ou refuser un joueur au ballotage, 24 h avant la fin du délai pour compléter un ballotage remporté, 1 jour avant la fin du délai pour confirmer un échange, 2 jours avant la date limite pour régler un plafond dépassé.</li>
         </ul>
       </div>
     ),

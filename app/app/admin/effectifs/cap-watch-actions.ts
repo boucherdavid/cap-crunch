@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
+import { sendEmailToIds } from '@/lib/email'
+import { emailLinkHtml } from '@/lib/siteUrl'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { adminDecideTradeOffer, loadTradeMessages, type TradeMessageView } from '@/lib/tradeOffers'
 import { listPendingLtirRequestsForAdmin, decideLtirRequest, type LtirRequestView } from '@/lib/ltirRequests'
@@ -207,12 +209,15 @@ export async function checkSigningsAction(saisonId: number): Promise<{
           status: 'flagged', real_cap: realCapPlayer, flagged_at: new Date().toISOString(), deadline_at: deadlineAt,
         }).eq('id', w.id)
         newlyFlagged++
-        // after() : voir le commentaire dans lib/threadNotify.ts.
-        after(() => sendPushToUser(w.pooler_id, {
-          title: 'Cap Crunch — Contrat signé, plafond dépassé',
-          body: `${playerLabel} a maintenant un contrat réel et ta masse salariale dépasse le plafond. Tu as jusqu'au ${new Date(deadlineAt).toLocaleDateString('fr-CA')} pour ajuster ton alignement.`,
-          url: '/gestion-effectifs',
-        }).catch(() => {}))
+        // after() : voir le commentaire dans lib/threadNotify.ts. Courriel ajouté le 2026-10-16.
+        const flagBody = `${playerLabel} a maintenant un contrat réel et ta masse salariale dépasse le plafond. Tu as jusqu'au ${new Date(deadlineAt).toLocaleDateString('fr-CA')} pour ajuster ton alignement.`
+        after(() => Promise.all([
+          sendPushToUser(w.pooler_id, { title: 'Cap Crunch — Contrat signé, plafond dépassé', body: flagBody, url: '/gestion-effectifs' }).catch(() => {}),
+          sendEmailToIds([w.pooler_id], {
+            subject: 'Cap Crunch — Contrat signé, plafond dépassé',
+            html: `<p>${flagBody}</p>${emailLinkHtml('/gestion-effectifs')}`,
+          }).catch(() => {}),
+        ]))
       } else {
         await supabase.from('cap_signing_watch').update({
           status: 'resolved', real_cap: realCapPlayer, resolved_at: new Date().toISOString(),
