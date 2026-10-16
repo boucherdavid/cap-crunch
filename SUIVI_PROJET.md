@@ -37,7 +37,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   reconstitution validé en dry-run en prod (28 lots) ; `--apply` à lancer par David (refusé
   par le garde-fou automatique de Claude), puis à relancer après la promotion en prod.
 - Promu en prod le même jour à la demande de David (`2e3e7f9`, doc `3123be7`). Restent :
-  `backfill_journal_gestion.py --apply` (David) et avertir Vincent pour Fowler.
+  avertir Vincent pour Fowler. Reconstitution du journal faite par David (vérifiée : 0 lot restant).
 
 **[Bilan de session]** — Tout est en prod (`4e06aba`) : gardiens partants (page + carte de
 l'accueil, mise à jour seule aux 5 min), nouveau groupe de menu « Soir de match », carte des
