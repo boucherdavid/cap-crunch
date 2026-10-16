@@ -45,28 +45,30 @@
 - Pousser des CSV sur `staging` déclenche aussi un import en prod (`import.yml` n'est pas limité à
   `main`) : sans gravité, mais deux imports tournent alors en parallèle. Correctif proposé, pas fait.
 
-## 3. Livré le 14 octobre 2026 (tout est en prod)
+## 3. Livré le 16 octobre 2026 (tout est en prod)
 
 | Fonctionnalité | Où | Validation |
 |---|---|---|
-| Page hors ligne seulement après 2 nouveaux essais ; bouton Réessayer, rechargement auto ; navigation preload | Application installée (mobile) | Pas encore confirmé sur téléphone |
-| Classement et blessures en cache, invalidés par la base (`data_versions`) | Accueil, classements, alignements | Validé par David en staging |
-| Protection recrue : règle unique `isRookieProtected` (repêché du pool 5 saisons incluant celle du repêchage ; sinon ELC) | Partout | Validé par David |
-| Révision des étiquettes : ✎ avec année du pool, indice par joueur, filtre « À vérifier », vue « Tous les poolers » | `/admin/init?tab=recrues` | Validé par David |
-| Recrue sans contrat LNH : reste en banque (tous, admin compris) | Gestion d'effectifs, transactions, échanges | Validé par David en staging |
-| Choix et repêchages libellés par une seule année (« Choix ronde 1 (2027) ») | 13 endroits | Validé par David |
-| Échange effectif le lendemain si un match d'un joueur impliqué est commencé | Échanges | Pas testé avec un vrai match en cours |
-| Pointage de la soirée selon l'alignement à l'heure de chaque match | Accueil, `/en-direct` | Vérifié par calcul sur la prod (soirée du 13) |
+| Gardiens partants (Daily Faceoff + Goaliepost, cache 10 min par site, page qui se met à jour seule aux 5 min) | `/statistiques/gardiens-partants`, carte « Gardiens du pool ce soir » sur l'accueil | Validé par David en staging |
+| Groupe de menu « Soir de match » : En direct, Gardiens partants, Trios et paires | Menu, bandeau, cartes de l'accueil | Validé par David |
+| Carte « Blessures dans le pool » en cache (version des alignements) | Accueil | Validé par David en staging |
+| Ballotage et échanges réglés aussi depuis l'accueil (plus seulement à l'ouverture de l'onglet) | Accueil (`syncDeadlines`) | Validé par David en staging |
+| Rappels push + courriel : ballotage (dernier jour), ballotage remporté (24 h avant), échange (1 jour avant), plafond (2 jours avant) ; avis aux admins pour un ballotage bloqué | Notifications | Pas encore vu partir en vrai — surveiller au prochain ballotage |
+| Réponses au ballotage pour l'admin (après son refus ; toujours dans l'historique) | Gestion d'effectifs → Ballotage | Validé par David en staging |
 
-- Correction rétroactive en prod : échange n° 9 (Sébastien F. ↔ Vincent) ramené au 14 à 8 h ET —
-  but de Zacha compté à Sébastien F.
+- Le 14 octobre (aussi en prod) : cache du classement et des blessures, protection recrue unifiée,
+  échange effectif le lendemain si un match est commencé, pointage de la soirée selon l'alignement
+  à l'heure du match — détails dans `SUIVI_PROJET.md`.
 
 ## 4. À faire / à vérifier
 
 ### ▶ Prochaine session — commencer ici
 
-- **CPU de la prod** : stabilisé (relevé du 16). Remettre les stats à zéro
-  (`select pg_stat_statements_reset();`) puis relancer la requête vers le 18-19 octobre.
+- **`pg_stat_statements`** : remettre à zéro en prod (`select pg_stat_statements_reset();`) si pas
+  déjà fait, puis relancer la requête de diagnostic vers le 18-19 octobre (carte des blessures et
+  `syncDeadlines` depuis l'accueil).
+- **Premiers rappels de délai** : vérifier au prochain ballotage ou échange qu'un seul rappel part,
+  au bon moment, aux bons poolers.
 - **Page « Pas de connexion »** : confirmer sur téléphone qu'elle n'apparaît plus à tort.
 - **Blake et Poitras** : étiquetés « agent libre » en 2025-26, ELC terminé, donc non protégés —
   corriger avec ✎ seulement si l'un des deux avait été repêché par le pool.

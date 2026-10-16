@@ -21,6 +21,13 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-16
 
+**[Bilan de session]** — Tout est en prod (`4e06aba`) : gardiens partants (page + carte de
+l'accueil, mise à jour seule aux 5 min), nouveau groupe de menu « Soir de match », carte des
+blessures de l'accueil en cache, ballotage/échanges réglés depuis l'accueil avec rappels avant les
+dates limites, réponses au ballotage pour l'admin. Migration `deadline_reminders.sql` roulée en
+staging et en prod. `pg_stat_statements` du 16 : situation stabilisée (voir plus bas). À suivre :
+remise à zéro des stats et nouveau relevé vers le 18-19 ; premiers rappels réels à observer.
+
 **[Feat] — Rappels avant les dates limites + réponses au ballotage pour l'admin**
 (`app/lib/deadlineSync.ts`, `app/lib/waiverClaims.ts`, `app/lib/tradeOffers.ts`,
 `app/admin/effectifs/cap-watch-actions.ts`, `app/gestion-effectifs/waiver-actions.ts`,
