@@ -30,7 +30,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | = `main` |
+| `staging` | En avance sur `main` : rafraîchissement automatique des gardiens partants (aux 5 min), à valider |
 | `main` (prod) | À jour au 2026-10-16 — gardiens partants (page + carte de l'accueil) et groupe de menu « Soir de match », validés par David en staging. Inclut aussi, en plus du 13 : fausse page « Pas de connexion » corrigée (service worker), requête des blessés bornée, classement et blessures en cache, protection recrue unifiée (règle unique, correction et révision des étiquettes, recrue sans contrat bloquée en banque, années de repêchage en une seule année), échange effectif le lendemain si un match d'un joueur impliqué est commencé, pointage de la soirée selon l'alignement à l'heure du match |
 
 - Migration `data_versions.sql` (2026-10-14) roulée en staging et en prod.

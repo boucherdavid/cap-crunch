@@ -46,6 +46,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   (pointage de la soirée, gardiens du pool). `/aide` et `/a-propos` mis à jour. Les adresses des
   pages ne changent pas.
 - Validé par David en staging et promu en prod le 2026-10-16 (merge `cee4826`).
+- Rafraîchissement automatique de la page (David, même jour, « seulement sans enjeu pour
+  Supabase ») : `GardiensPartantsView.tsx` sonde `/statistiques/gardiens-partants/donnees` aux
+  5 minutes, onglet visible et tant qu'un match de la soirée n'est pas commencé — même modèle
+  qu'En direct. Coût en base par sondage : une ligne de `data_versions` ; les sites restent en
+  cache 10 minutes. La carte de l'accueil n'est pas rafraîchie (recalculerait toute la page).
 
 ### 2026-10-14
 

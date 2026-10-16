@@ -367,7 +367,8 @@ carte « Gardiens du pool ce soir » sur l'accueil. `app/lib/startingGoalies.ts`
 (`__NEXT_DATA__`, jumelage par nom) et Goaliepost/DobberHockey (rendu Next.js, `externalId` = nhl_id)
 au moment de l'affichage, en cache 10 min par source, **rien n'est écrit en base**. Verdict croisé :
 Confirmé / Probable / Non confirmé / Sources en désaccord / Non disponible ; une source en panne →
-l'autre seule.
+l'autre seule. La page se rafraîchit seule aux 5 minutes (route `donnees`, onglet visible, tant
+qu'un match n'est pas commencé).
 
 **Recherche globale de joueurs** (David, 2026-10-01) : champ dans la barre du haut
 (`app/components/PlayerSearch.tsx`, actions dans `player-search-actions.ts`), ouvre la fiche
