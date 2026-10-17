@@ -126,6 +126,10 @@ function parsePlayers(html: string): MarqueurPlayer[] {
   // 2026-10-06 au soir, ce top 10 a été pris pour l'alignement des 8 poolers (11 points chacun,
   // 254 faux écarts). Mieux vaut échouer que de comparer n'importe quoi.
   const end = html.indexOf('SOMMAIRE')
+  // Pendant ses mises à jour, Marqueur masque les alignements et affiche ce bandeau (2026-10-17).
+  if (end < 0 && /MISES-(À|&Agrave;)-JOUR EN COURS/i.test(html)) {
+    throw new Error('Marqueur affiche « Mises à jour en cours » et masque les alignements. Réessaie plus tard')
+  }
   if (end < 0) throw new Error("la page reçue ne contient pas l'alignement du pooler")
   const body = html.slice(0, end)
   const players: MarqueurPlayer[] = []
