@@ -21,6 +21,16 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-17
 
+**[Refactor] — Marqueur sorti du menu Le pool** (`Navbar.tsx`, `comparaison-marqueur/page.tsx`, `lib/marqueur.ts`, `poolers/[id]/page.tsx`, `aide/AideTabs.tsx`, `a-propos/page.tsx`) :
+- Menu Le pool trop chargé (David) : « Comparaison avec Marqueur » et « Marqueur.com ↗ » retirés ;
+  le menu Admin a maintenant « Comparaison Marqueur » (existant) + « Marqueur.com ↗ ».
+- `/comparaison-marqueur` redirige vers `/admin/effectifs?tab=marqueur` (liens existants) ;
+  `getMarqueurReportCached()` retiré (plus d'appelant). Entrées d'aide et d'à propos retirées.
+- Poolers : lien « Notre pool sur Marqueur.com ↗ » sous le nom en haut de `/poolers/[id]`, en
+  plus de la carte existante de l'accueil. Lien général (pas la page du pooler sur Marqueur : il
+  faudrait lire Marqueur à chaque affichage pour trouver son identifiant).
+- `MarqueurReportView` garde son mode `audience='pooler'`, inutilisé pour l'instant.
+
 **[Feat] — « Journal des activités » + filtre pooler en liste déroulante** (`journal-transactions/TransactionsClient.tsx`, `Navbar.tsx`, `page.tsx`, `aide/AideTabs.tsx`, `a-propos/page.tsx`) :
 - Libellé « Journal des transactions » → « Journal des activités » (menu, donc bandeau de la
   page, lien de l'accueil, aide, à propos). Route `/journal-transactions` inchangée. Le titre

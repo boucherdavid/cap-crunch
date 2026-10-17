@@ -1,19 +1,11 @@
-import MarqueurReportView from '@/app/admin/effectifs/MarqueurReportView'
-import { getMarqueurReportCached } from '@/lib/marqueur'
-
-export const metadata = { title: 'Comparaison avec Marqueur' }
-export const dynamic = 'force-dynamic'
+import { redirect } from 'next/navigation'
 
 /**
- * Comparaison Cap Crunch / Marqueur.com ouverte aux poolers (David, 2026-10-06), menu Le pool —
- * mêmes données que l'onglet admin (/admin/effectifs?tab=marqueur), en cache 5 minutes pour ne
- * pas solliciter Marqueur à chaque visite. La connexion est exigée par proxy.ts, comme partout.
+ * Ex-page des poolers (2026-10-06 → 2026-10-17). La comparaison avec Marqueur est redevenue un
+ * outil admin (David, 2026-10-17 — menu Le pool trop chargé) : redirection volontaire vers l'onglet
+ * admin, pour les liens existants. Les poolers gardent un lien vers Marqueur.com sur l'accueil et
+ * sur la page d'alignement de chaque pooler.
  */
-export default async function ComparaisonMarqueurPage() {
-  const report = await getMarqueurReportCached()
-  return (
-    <div className="mx-auto px-4 py-8 max-w-5xl">
-      <MarqueurReportView report={report} audience="pooler" />
-    </div>
-  )
+export default function ComparaisonMarqueurPage() {
+  redirect('/admin/effectifs?tab=marqueur')
 }

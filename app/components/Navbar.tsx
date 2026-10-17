@@ -107,8 +107,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Meilleurs joueurs disponibles', href: '/meilleurs-disponibles' },
       { label: 'Marché des échanges', href: '/marche-echanges' },
       { label: 'Journal des activités', href: '/journal-transactions' },
-      { label: 'Comparaison avec Marqueur', href: '/comparaison-marqueur' },
-      { label: 'Marqueur.com ↗', href: MARQUEUR_URL },
     ],
   },
   {
@@ -185,6 +183,7 @@ const ADMIN_GROUP: NavGroup = {
       items: [
         { label: 'Gestion des effectifs', href: '/admin/effectifs' },
         { label: 'Comparaison Marqueur', href: '/admin/effectifs?tab=marqueur' },
+        { label: 'Marqueur.com ↗', href: MARQUEUR_URL },
         { label: 'Communauté', href: '/admin/communaute' },
         { label: 'Gestion du pool', href: '/admin/pool' },
         { label: 'Mise à jour de données', href: '/admin/donnees' },
@@ -241,7 +240,6 @@ const PAGE_WIDTHS: Record<string, { box: string; flush: boolean }> = {
   '/poolers': { box: 'max-w-5xl mx-auto px-4', flush: true },
   '/marche-echanges': { box: 'max-w-5xl mx-auto px-4', flush: true },
   '/calendrier': { box: 'max-w-5xl mx-auto px-4', flush: true },
-  '/comparaison-marqueur': { box: 'max-w-5xl mx-auto px-4', flush: true },
   '/meilleurs-disponibles': { box: 'max-w-6xl mx-auto px-4', flush: true },
   '/en-direct': { box: 'max-w-6xl mx-auto px-2 sm:px-4', flush: true },
   '/analytique/trios': { box: 'max-w-6xl px-2 sm:px-4', flush: true },

@@ -60,11 +60,6 @@ const CATEGORIES: Category[] = [
         description: "Mets sur le marché les joueurs et les choix de repêchage que tu es prêt à échanger, ou publie ce que tu cherches. Les autres poolers sont avertis par notification et peuvent te faire une offre en un clic.",
       },
       {
-        title: 'Comparaison avec Marqueur',
-        href: '/comparaison-marqueur',
-        description: "Nos alignements sont aussi tenus à la main sur Marqueur.com, pour vérifier Cap Crunch. Cette page compare les totaux, liste les mouvements pas encore reportés là-bas et, pour chaque écart de points, donne le total officiel de la LNH match par match.",
-      },
-      {
         title: 'Journal des activités',
         href: '/journal-transactions',
         description: 'Historique public, en lecture seule, de tous les mouvements du pool (signatures, libérations, changements de statut, échanges).',

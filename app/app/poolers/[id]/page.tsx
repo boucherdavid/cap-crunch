@@ -15,6 +15,7 @@ import { todayET, fetchSchedule7, fetchOrgPlayersForPooler } from '@/lib/nhlWeek
 import { fetchInjuriesByPlayerId, fetchInjuriesByNhlId, type InjuryInfo } from '@/lib/injuries'
 import InjuryBadge from '@/components/InjuryBadge'
 import { poolDraftYear } from '@/lib/poolDraftYear'
+import { MARQUEUR_URL } from '@/lib/externalLinks'
 
 const DASH = '\u2014'
 const STAR = '\u2605'
@@ -627,6 +628,9 @@ export default async function PoolerPage({
         <div>
           <h1 className="text-2xl font-bold text-gray-800">{pooler.name}</h1>
           {saison && <p className="text-gray-500 text-sm">Saison {saison.season}</p>}
+          <a href={MARQUEUR_URL} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
+            Notre pool sur Marqueur.com ↗
+          </a>
         </div>
         {allPoolers && allPoolers.length > 1 && (
           <PoolerSwitcher poolers={allPoolers} currentId={id} />
