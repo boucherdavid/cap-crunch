@@ -624,17 +624,22 @@ export default async function PoolerPage({
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">{pooler.name}</h1>
+      {/* Le sélecteur sert de titre (David, 2026-10-17) ; lien Marqueur bien visible à droite. */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="space-y-1">
+          {allPoolers && allPoolers.length > 1
+            ? <PoolerSwitcher poolers={allPoolers} currentId={id} />
+            : <h1 className="text-2xl font-bold text-gray-800">{pooler.name}</h1>}
           {saison && <p className="text-gray-500 text-sm">Saison {saison.season}</p>}
-          <a href={MARQUEUR_URL} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
-            Notre pool sur Marqueur.com ↗
-          </a>
         </div>
-        {allPoolers && allPoolers.length > 1 && (
-          <PoolerSwitcher poolers={allPoolers} currentId={id} />
-        )}
+        <a
+          href={MARQUEUR_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+        >
+          Notre pool sur Marqueur.com ↗
+        </a>
       </div>
       <PoolerPageTabs
         masseSalarialeContent={masseSalarialeContent}

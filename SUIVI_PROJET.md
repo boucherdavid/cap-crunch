@@ -30,6 +30,12 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   plus de la carte existante de l'accueil. Lien général (pas la page du pooler sur Marqueur : il
   faudrait lire Marqueur à chaque affichage pour trouver son identifiant).
 - `MarqueurReportView` garde son mode `audience='pooler'`, inutilisé pour l'instant.
+- Suite (David) : « Comparaison Marqueur » et « Marqueur.com ↗ » retirés aussi du menu Admin
+  (doublon de l'onglet Marqueur de Gestion des effectifs). Sur `/poolers/[id]`, plus de `<h1>`
+  avec le nom : le sélecteur (`PoolerSwitcher`, « Alignement de », grand format) sert de titre,
+  et le lien Marqueur devient un bouton bleu à droite. `<h1>` gardé seulement s'il n'y a qu'un pooler.
+- `lib/marqueur.ts` : message clair quand Marqueur affiche « MISES-À-JOUR EN COURS » (alignements
+  masqués pendant leurs mises à jour — cause de l'erreur vue par David ce matin, pas le déplacement).
 
 **[Feat] — « Journal des activités » + filtre pooler en liste déroulante** (`journal-transactions/TransactionsClient.tsx`, `Navbar.tsx`, `page.tsx`, `aide/AideTabs.tsx`, `a-propos/page.tsx`) :
 - Libellé « Journal des transactions » → « Journal des activités » (menu, donc bandeau de la

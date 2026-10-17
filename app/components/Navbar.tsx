@@ -16,7 +16,6 @@ import type { PoolerTodo } from './pooler-todo-actions'
 const AdminUnreadContext = createContext<{ count: number; title: string }>({ count: 0, title: '' })
 const TodoContext = createContext<PoolerTodo>({ trades: 0, waivers: 0, total: 0, items: [] })
 import { createClient } from '@/lib/supabase/client'
-import { MARQUEUR_URL } from '@/lib/externalLinks'
 import SectionIcon, { sectionBorderClass, type SectionId } from './SectionIcon'
 
 function HamburgerIcon() {
@@ -182,8 +181,6 @@ const ADMIN_GROUP: NavGroup = {
       label: 'Opérations courantes',
       items: [
         { label: 'Gestion des effectifs', href: '/admin/effectifs' },
-        { label: 'Comparaison Marqueur', href: '/admin/effectifs?tab=marqueur' },
-        { label: 'Marqueur.com ↗', href: MARQUEUR_URL },
         { label: 'Communauté', href: '/admin/communaute' },
         { label: 'Gestion du pool', href: '/admin/pool' },
         { label: 'Mise à jour de données', href: '/admin/donnees' },
@@ -309,7 +306,7 @@ function TreeLeaf({ leaf, pathname, userName, onNavigate }: {
   const todo = useContext(TodoContext)
   const adminUnread = useContext(AdminUnreadContext)
   if (leaf.auth && !userName) return null
-  // Lien externe (Marqueur.com) : nouvel onglet.
+  // Lien externe : nouvel onglet.
   if (leaf.href.startsWith('http')) {
     return (
       <a
