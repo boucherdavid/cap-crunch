@@ -471,17 +471,18 @@ const SECTIONS: Section[] = [
   {
     id: 'guide-journal-transactions',
     tab: 'guide',
-    title: 'Journal des transactions',
-    keywords: 'transactions echanges ajustements joueurs picks historique mouvements journal admin lecture seule',
+    title: 'Journal des activités',
+    keywords: 'activites transactions echanges ajustements joueurs picks historique mouvements journal admin lecture seule',
     href: '/journal-transactions',
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Consulte l&apos;historique de tous les mouvements via <strong>Le pool → Journal des transactions</strong>.
+          Consulte l&apos;historique de tous les mouvements via <strong>Le pool → Journal des activités</strong>.
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
-          <li>• Les transactions sont séparées en deux catégories : <strong>Échanges</strong> (joueurs et picks entre poolers) et <strong>Ajustements</strong> (signatures, libérations, changements de type).</li>
-          <li>• C&apos;est un historique en <strong>lecture seule</strong> — tes propres ajustements se font depuis Gestion d&apos;effectifs, et les échanges entre poolers sont traités par l&apos;administrateur.</li>
+          <li>• Les activités sont classées par onglet : <strong>Échanges</strong>, <strong>Ballotage</strong>, <strong>Signatures</strong>, <strong>LTIR</strong> et <strong>Gestion</strong> (changements de statut, libérations, promotions de recrues).</li>
+          <li>• La liste déroulante <strong>Tous les poolers</strong> affiche seulement les mouvements d&apos;un pooler.</li>
+          <li>• C&apos;est un historique en <strong>lecture seule</strong> — tes propres mouvements et tes propositions d&apos;échange se font depuis Gestion d&apos;effectifs.</li>
         </ul>
       </div>
     ),

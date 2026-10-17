@@ -186,7 +186,7 @@ export default function TransactionsClient({
 }) {
   const router = useRouter()
   const [tab, setTab] = useState<TabKey>('tous')
-  const [poolerSearch, setPoolerSearch] = useState('')
+  const [poolerFilter, setPoolerFilter] = useState('')
 
   const classified = transactions.map((tx: any) => ({
     ...tx,
@@ -203,10 +203,15 @@ export default function TransactionsClient({
   }
 
   const byTab = tab === 'tous' ? classified : classified.filter(tx => tx._tab === tab)
-  const needle = poolerSearch.trim().toLowerCase()
-  const visible = !needle ? byTab : byTab.filter(tx =>
-    (tx.transaction_items ?? []).some((item: { from_pooler?: { name?: string }; to_pooler?: { name?: string } }) =>
-      item.from_pooler?.name?.toLowerCase().includes(needle) || item.to_pooler?.name?.toLowerCase().includes(needle),
+  // Liste déroulante plutôt qu'un champ texte : toujours les mêmes poolers (David, 2026-10-17).
+  type PoolerRef = { from_pooler?: { name?: string }; to_pooler?: { name?: string } }
+  const poolerNames = Array.from(new Set(
+    transactions.flatMap((tx: any) => (tx.transaction_items ?? []).flatMap((item: PoolerRef) =>
+      [item.from_pooler?.name, item.to_pooler?.name])),
+  )).filter((n): n is string => !!n).sort((a, b) => a.localeCompare(b, 'fr'))
+  const visible = !poolerFilter ? byTab : byTab.filter(tx =>
+    (tx.transaction_items ?? []).some((item: PoolerRef) =>
+      item.from_pooler?.name === poolerFilter || item.to_pooler?.name === poolerFilter,
     ),
   )
 
@@ -265,16 +270,18 @@ export default function TransactionsClient({
         ))}
       </div>
 
-      <input
-        type="text"
-        value={poolerSearch}
-        onChange={e => setPoolerSearch(e.target.value)}
-        placeholder="Filtrer par pooler..."
-        className="w-full sm:w-64 border border-gray-200 rounded-lg px-3 py-1.5 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
+      <select
+        value={poolerFilter}
+        onChange={e => setPoolerFilter(e.target.value)}
+        aria-label="Filtrer par pooler"
+        className="w-full sm:w-64 border border-gray-200 rounded-lg px-3 py-1.5 text-sm mb-4 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        <option value="">Tous les poolers</option>
+        {poolerNames.map(name => <option key={name} value={name}>{name}</option>)}
+      </select>
 
       {visible.length === 0 && (
-        <p className="text-gray-400 text-sm">Aucune transaction dans cette catégorie.</p>
+        <p className="text-gray-400 text-sm">Aucune activité dans cette catégorie.</p>
       )}
 
       {tableRows.length > 0 && (

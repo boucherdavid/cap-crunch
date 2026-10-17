@@ -21,6 +21,15 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-17
 
+**[Feat] — « Journal des activités » + filtre pooler en liste déroulante** (`journal-transactions/TransactionsClient.tsx`, `Navbar.tsx`, `page.tsx`, `aide/AideTabs.tsx`, `a-propos/page.tsx`) :
+- Libellé « Journal des transactions » → « Journal des activités » (menu, donc bandeau de la
+  page, lien de l'accueil, aide, à propos). Route `/journal-transactions` inchangée. Le titre
+  de l'outil admin `/admin/historique` n'est pas touché.
+- Filtre par pooler : liste déroulante « Tous les poolers » (noms tirés du journal de la
+  saison affichée, égalité exacte) au lieu d'un champ texte.
+- Aide : catégories mises à jour (Échanges, Ballotage, Signatures, LTIR, Gestion — l'ancien
+  texte parlait encore de « Ajustements »).
+
 **[Feat] — Prochains matchs : filtre par position, recrues hors de « Tous »** (`app/components/UpcomingGamesAnalysis.tsx`) :
 - Onglet « Prochains matchs » de `/poolers/[id]` : nouvelle rangée Toutes les positions /
   Attaquants / Défenseurs / Gardiens, classement par `getPlayerBucket()` (`lib/rosterLimits.ts`,

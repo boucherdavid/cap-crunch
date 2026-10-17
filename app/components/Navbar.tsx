@@ -106,7 +106,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Tous les alignements', href: '/poolers' },
       { label: 'Meilleurs joueurs disponibles', href: '/meilleurs-disponibles' },
       { label: 'Marché des échanges', href: '/marche-echanges' },
-      { label: 'Journal des transactions', href: '/journal-transactions' },
+      { label: 'Journal des activités', href: '/journal-transactions' },
       { label: 'Comparaison avec Marqueur', href: '/comparaison-marqueur' },
       { label: 'Marqueur.com ↗', href: MARQUEUR_URL },
     ],

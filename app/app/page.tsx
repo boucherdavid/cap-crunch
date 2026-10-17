@@ -485,7 +485,7 @@ function HighlightsBanner({ items, now }: { items: PoolActivityItem[]; now: numb
         <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500">
           Faits saillants <span className="font-normal normal-case text-gray-400">· {HIGHLIGHT_DAYS} derniers jours</span>
         </h2>
-        <Link href="/journal-transactions" className="text-xs text-blue-600 hover:underline">Journal des transactions →</Link>
+        <Link href="/journal-transactions" className="text-xs text-blue-600 hover:underline">Journal des activités →</Link>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {recent.map(item => {
