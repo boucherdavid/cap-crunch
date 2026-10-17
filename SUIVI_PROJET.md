@@ -36,6 +36,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   et le lien Marqueur devient un bouton bleu à droite. `<h1>` gardé seulement s'il n'y a qu'un pooler.
 - `lib/marqueur.ts` : message clair quand Marqueur affiche « MISES-À-JOUR EN COURS » (alignements
   masqués pendant leurs mises à jour — cause de l'erreur vue par David ce matin, pas le déplacement).
+- Commits : `542ece3`, `40e3818`, `8d5b965` (avec `44ed5dc`, Journal des activités) — validés par
+  David en staging, promus en prod le même jour.
+- Note : le projet Vercel de prod (`cap-crunch`) bâtit aussi des déploiements « Preview » à chaque
+  poussée sur `staging` (sans effet sur le site de prod) ; source de confusion possible. Option
+  proposée, non retenue : « Ignored Build Step » dans ce projet seulement.
 
 **[Feat] — « Journal des activités » + filtre pooler en liste déroulante** (`journal-transactions/TransactionsClient.tsx`, `Navbar.tsx`, `page.tsx`, `aide/AideTabs.tsx`, `a-propos/page.tsx`) :
 - Libellé « Journal des transactions » → « Journal des activités » (menu, donc bandeau de la
