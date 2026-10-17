@@ -19,6 +19,15 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-17
+
+**[Feat] — Prochains matchs : filtre par position, recrues hors de « Tous »** (`app/components/UpcomingGamesAnalysis.tsx`) :
+- Onglet « Prochains matchs » de `/poolers/[id]` : nouvelle rangée Toutes les positions /
+  Attaquants / Défenseurs / Gardiens, classement par `getPlayerBucket()` (`lib/rosterLimits.ts`,
+  même règle que le 12/6/2 — gère « LD,RD », « RW,C »…). Combinable avec le filtre de statut.
+- « Tous » ne montre plus que les actifs et réservistes ; les recrues de banque restent
+  dans leur propre filtre « Recrues » (David). Message si aucun joueur ne correspond.
+
 ### 2026-10-16
 
 **[Fix] — Délai de réactivation contourné par la banque de recrues ; journal muet en saison**

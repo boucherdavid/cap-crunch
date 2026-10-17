@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import TeamBadge from '@/components/TeamBadge'
 import { addDays, type DaySchedule, type OrgPlayer } from '@/lib/nhlWeeklySchedule'
+import { getPlayerBucket, type Bucket } from '@/lib/rosterLimits'
 
 const TYPE_BADGE: Record<string, string> = {
   reserviste: 'RÉS',
@@ -13,6 +14,12 @@ const TYPE_LABEL: Record<string, string> = {
   actif: 'Actifs',
   reserviste: 'Réservistes',
   recrue: 'Recrues',
+}
+
+const POSITION_LABEL: Record<Bucket, string> = {
+  forward: 'Attaquants',
+  defense: 'Défenseurs',
+  goalie: 'Gardiens',
 }
 
 const HORIZON_OPTIONS = [2, 3, 4, 5, 6, 7]
@@ -40,7 +47,10 @@ export default function UpcomingGamesAnalysis({
   today: string
 }) {
   const [horizon, setHorizon] = useState(7)
+  // « Tous » = actifs + réservistes ; les recrues de banque restent dans leur propre filtre
+  // (David, 2026-10-17).
   const [typeFilter, setTypeFilter] = useState<'all' | 'actif' | 'reserviste' | 'recrue'>('all')
+  const [positionFilter, setPositionFilter] = useState<'all' | Bucket>('all')
 
   const endDate = addDays(today, horizon - 1)
 
@@ -59,13 +69,14 @@ export default function UpcomingGamesAnalysis({
   }, [schedule7, horizon, today])
 
   const players = useMemo(() => {
-    const filtered = typeFilter === 'all'
-      ? allOrgPlayers
-      : allOrgPlayers.filter(p => p.playerType === typeFilter)
-    return filtered
+    return allOrgPlayers
+      .filter(p => typeFilter === 'all'
+        ? p.playerType === 'actif' || p.playerType === 'reserviste'
+        : p.playerType === typeFilter)
+      .filter(p => positionFilter === 'all' || getPlayerBucket(p.position) === positionFilter)
       .map(p => ({ ...p, games: gamesPerTeam[p.teamCode] ?? 0 }))
       .sort((a, b) => b.games - a.games || a.name.localeCompare(b.name))
-  }, [allOrgPlayers, gamesPerTeam, typeFilter])
+  }, [allOrgPlayers, gamesPerTeam, typeFilter, positionFilter])
 
   const btnClass = (active: boolean) =>
     `px-3 py-1.5 text-sm font-medium rounded border transition-colors ${
@@ -107,6 +118,21 @@ export default function UpcomingGamesAnalysis({
           </button>
         ))}
       </div>
+
+      {/* Position filter */}
+      <div className="flex flex-wrap gap-2">
+        {(['all', 'forward', 'defense', 'goalie'] as const).map(pos => (
+          <button key={pos} onClick={() => setPositionFilter(pos)} className={btnClass(positionFilter === pos)}>
+            {pos === 'all' ? 'Toutes les positions' : POSITION_LABEL[pos]}
+          </button>
+        ))}
+      </div>
+
+      {players.length === 0 && (
+        <div className="text-center py-8 text-gray-400 text-sm">
+          Aucun joueur ne correspond à ces filtres.
+        </div>
+      )}
 
       {/* Player grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
