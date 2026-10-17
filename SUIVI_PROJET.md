@@ -27,6 +27,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   même règle que le 12/6/2 — gère « LD,RD », « RW,C »…). Combinable avec le filtre de statut.
 - « Tous » ne montre plus que les actifs et réservistes ; les recrues de banque restent
   dans leur propre filtre « Recrues » (David). Message si aucun joueur ne correspond.
+- Commit : `a6f62f8` — validé par David en staging, promu en prod le même jour.
 
 ### 2026-10-16
 
