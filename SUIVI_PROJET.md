@@ -32,6 +32,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Exceptions (blessé remplacé, poste vacant, annulation le jour même) inchangées. Avertissements
   de `/admin/historique` (non bloquants) laissés en heures.
 - Aide (Règlements) : précision « jours complets » avec l'exemple du 17 → 20.
+- Commit : `d10690f` — promu en prod le même jour à la demande de David.
 
 **[Refactor] — Marqueur sorti du menu Le pool** (`Navbar.tsx`, `comparaison-marqueur/page.tsx`, `lib/marqueur.ts`, `poolers/[id]/page.tsx`, `aide/AideTabs.tsx`, `a-propos/page.tsx`) :
 - Menu Le pool trop chargé (David) : « Comparaison avec Marqueur » et « Marqueur.com ↗ » retirés ;
