@@ -21,6 +21,18 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-17
 
+**[Fix] — Délai de réactivation en jours civils** (`lib/reactivationDelay.ts`, `gestion-effectifs/actions.ts`, `GestionEffectifsManager.tsx`, `aide/AideTabs.tsx`) :
+- Avant : 72 h glissantes depuis l'heure exacte de la désactivation (désactivé le 17 à 14 h →
+  activable le 20 à 14 h). David : la règle du pool est par journée — désactivé le 17, le joueur
+  est inactif les 17, 18 et 19 ; activable le 20 dès 0 h, heure de l'Est.
+- Nouveau `lib/reactivationDelay.ts` (fonctions pures) : jour effectif de la désactivation (ET)
+  + délai = premier jour de réactivation. Utilisé par `checkReactivationDelay` (serveur) et par
+  `isLocked`/`unlockDate` (écran). Désactivation reportée au lendemain (match commencé, date
+  effective le 18) → activable le 21. Testé sur 5 cas, dont le passage à l'heure normale.
+- Exceptions (blessé remplacé, poste vacant, annulation le jour même) inchangées. Avertissements
+  de `/admin/historique` (non bloquants) laissés en heures.
+- Aide (Règlements) : précision « jours complets » avec l'exemple du 17 → 20.
+
 **[Refactor] — Marqueur sorti du menu Le pool** (`Navbar.tsx`, `comparaison-marqueur/page.tsx`, `lib/marqueur.ts`, `poolers/[id]/page.tsx`, `aide/AideTabs.tsx`, `a-propos/page.tsx`) :
 - Menu Le pool trop chargé (David) : « Comparaison avec Marqueur » et « Marqueur.com ↗ » retirés ;
   le menu Admin a maintenant « Comparaison Marqueur » (existant) + « Marqueur.com ↗ ».

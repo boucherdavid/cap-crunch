@@ -21,6 +21,7 @@ import {
   getPendingLtirRequestsAction,
   getLtirReturnWatchesAction,
 } from './ltir-actions'
+import { isReactivationLocked, formatUnlockDay } from '@/lib/reactivationDelay'
 import type { LtirRequestView } from '@/lib/ltirRequests'
 import type { LtirReturnWatchView } from '@/lib/ltirReturns'
 import type {
@@ -86,15 +87,12 @@ function posCategory(pos: string | null): 'F' | 'D' | 'G' {
 
 function isLocked(entry: RosterEntry | undefined, delaiJours: number): boolean {
   if (!entry?.lastDeactivatedAt || entry.undoableToday) return false
-  const days = (Date.now() - new Date(entry.lastDeactivatedAt).getTime()) / 86_400_000
-  return days < delaiJours
+  return isReactivationLocked(entry.lastDeactivatedAt, delaiJours)
 }
 
 function unlockDate(entry: RosterEntry | undefined, delaiJours: number): string {
   if (!entry?.lastDeactivatedAt) return ''
-  const d = new Date(entry.lastDeactivatedAt)
-  d.setDate(d.getDate() + delaiJours)
-  return d.toLocaleDateString('fr-CA', { day: 'numeric', month: 'short' })
+  return formatUnlockDay(entry.lastDeactivatedAt, delaiJours)
 }
 
 type StatusMove = { entry: RosterEntry; to: string }

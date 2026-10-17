@@ -8,6 +8,7 @@ import { sendPushToUser } from '@/lib/push'
 import { announceToPool, playerNames, poolerName } from '@/lib/poolAnnouncements'
 import { computeTypeChangeAddedAt, checkFutureRosterConflict } from '@/lib/rosterTypeChange'
 import { computeBatchEffectiveDate, undoableDeactivations, startedTeamsOnDate, REACTIVATION_DELAY_FILTER } from '@/lib/gameDayLock'
+import { isReactivationLocked, formatUnlockDay } from '@/lib/reactivationDelay'
 import { getEffectiveCap } from '@/lib/capUtils'
 import { isRookieProtected, hasSignedContract, NO_CONTRACT_ERROR, type RookieTag } from '@/lib/rookieProtection'
 import { validateRosterLimits, getPlayerBucket, ACTIVE_LIMITS, type Bucket } from '@/lib/rosterLimits'
@@ -579,16 +580,14 @@ export async function submitBatchAction(input: {
       const ok = await undoableDeactivations([{ playerId, teamCode, changedAt: lastDeact.changed_at }])
       if (ok.has(playerId)) return
     }
-    const daysDiff = (Date.now() - new Date(lastDeact.changed_at).getTime()) / 86_400_000
-    if (daysDiff < delaiJours) {
+    // Jours civils, heure de l'Est (lib/reactivationDelay.ts) : désactivé le 17 → activable le 20.
+    if (isReactivationLocked(lastDeact.changed_at, delaiJours)) {
       // Exceptions (voir plus haut) : poste vacant de sa position d'abord, sinon blessé qui sort.
       const bucket = getPlayerBucket(position)
       if (holeCredits[bucket] > 0) { holeCredits[bucket]--; return }
       if (injuredOutCredits > 0) { injuredOutCredits--; return }
-      const unlock = new Date(lastDeact.changed_at)
-      unlock.setDate(unlock.getDate() + delaiJours)
       throw new Error(
-        `Ce joueur ne peut pas être réactivé avant le ${unlock.toLocaleDateString('fr-CA')} (délai de ${delaiJours} j), sauf pour remplacer un joueur actif blessé`,
+        `Ce joueur ne peut pas être réactivé avant le ${formatUnlockDay(lastDeact.changed_at, delaiJours)} (délai de ${delaiJours} j), sauf pour remplacer un joueur actif blessé`,
       )
     }
   }
