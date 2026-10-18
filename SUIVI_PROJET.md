@@ -21,6 +21,19 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-18
 
+**[Fix] — Matchs joués des gardiens gonflés par les substituts** (`python_script/import_regular_stats.py`, `import_playoff_stats.py`, `backfill_regular_game_logs.py`, `backfill_playoff_game_logs.py`, nouveau `cleanup_goalie_backup_logs.py`) :
+- Signalé par Vincent : Scott Wedgewood avait 8 MJ, 2 selon la LNH. La feuille de match liste les deux
+  gardiens habillés ; l'import créait une ligne `player_game_logs` (à zéro) pour le substitut resté au
+  banc. Points non touchés, seulement MJ et PTS/MJ. Les 4 imports ignorent maintenant un gardien à
+  `toi` 0:00 (un substitut entré en cours de match compte, comme à la LNH).
+- `cleanup_goalie_backup_logs.py` (dry-run, `--apply`, `--season`, `--game-type`) : retire une ligne
+  seulement si la date est absente du relevé officiel du gardien ET la ligne est entièrement à zéro.
+  Dry-run prod : 253 lignes en 2026-27 (71 gardiens), 2404 en 2025-26, aucune ligne avec des stats.
+
+**[Feat] — Journal des activités : filtre par joueur** (`app/app/journal-transactions/TransactionsClient.tsx`) :
+- Deuxième liste déroulante à côté du filtre pooler, limitée aux joueurs des mouvements déjà filtrés
+  (onglet, pooler). Le tableau ne garde que les lignes du joueur ; un échange reste affiché entier.
+
 **[Feat] — Alignement : match du jour et couleurs par statut** (`app/app/poolers/[id]/PoolerPageTabs.tsx`) :
 - Nouvelle colonne « Aujourd'hui » (onglet Alignement de `/poolers/[id]`, inspirée de Marqueur.com) :
   `vs`/`@` + pastille de l'adversaire + heure (heure de l'Est), « En cours » ou « Terminé ». Pas de

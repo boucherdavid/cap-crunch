@@ -122,9 +122,13 @@ def parse_boxscore(
             nhl_id = g.get('playerId')
             if not nhl_id or nhl_id not in nhl_to_db:
                 continue
+            toi_secs = _toi_seconds(g.get('toi', '0:00'))
+            # Substitut habillé qui n'a pas joué (toi 0:00) : la LNH ne compte pas de match joué
+            # (David, 2026-10-18 — Wedgewood avait 8 MJ au lieu de 2, un par match de son équipe).
+            if toi_secs == 0:
+                continue
             goalie_nhl_ids.add(nhl_id)
             decision = g.get('decision')
-            toi_secs = _toi_seconds(g.get('toi', '0:00'))
             goals_ag = int(g.get('goalsAgainst', 0) or 0)
 
             wins = 1 if decision == 'W' else 0

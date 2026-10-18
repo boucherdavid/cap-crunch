@@ -187,6 +187,7 @@ export default function TransactionsClient({
   const router = useRouter()
   const [tab, setTab] = useState<TabKey>('tous')
   const [poolerFilter, setPoolerFilter] = useState('')
+  const [playerFilter, setPlayerFilter] = useState('')
 
   const classified = transactions.map((tx: any) => ({
     ...tx,
@@ -209,10 +210,26 @@ export default function TransactionsClient({
     transactions.flatMap((tx: any) => (tx.transaction_items ?? []).flatMap((item: PoolerRef) =>
       [item.from_pooler?.name, item.to_pooler?.name])),
   )).filter((n): n is string => !!n).sort((a, b) => a.localeCompare(b, 'fr'))
-  const visible = !poolerFilter ? byTab : byTab.filter(tx =>
+  const byPooler = !poolerFilter ? byTab : byTab.filter(tx =>
     (tx.transaction_items ?? []).some((item: PoolerRef) =>
       item.from_pooler?.name === poolerFilter || item.to_pooler?.name === poolerFilter,
     ),
+  )
+  // Filtre par joueur (David, 2026-10-18 — suivre les mouvements d'un joueur pour valider ses
+  // matchs comptés) : seulement les joueurs présents dans les mouvements déjà filtrés (onglet,
+  // pooler). Dans le tableau, seules les lignes du joueur restent ; un échange reste entier.
+  type PlayerRef = { players?: { id: number; first_name: string; last_name: string } | null }
+  const playerMap = new Map<string, string>()
+  for (const tx of byPooler) {
+    for (const item of (tx.transaction_items ?? []) as PlayerRef[]) {
+      if (item.players) playerMap.set(String(item.players.id), `${item.players.last_name}, ${item.players.first_name}`)
+    }
+  }
+  const playerOptions = Array.from(playerMap).sort((a, b) => a[1].localeCompare(b[1], 'fr'))
+  const activePlayer = playerOptions.some(([id]) => id === playerFilter) ? playerFilter : ''
+  const matchesPlayer = (item: PlayerRef) => !activePlayer || String(item.players?.id) === activePlayer
+  const visible = !activePlayer ? byPooler : byPooler.filter(tx =>
+    (tx.transaction_items ?? []).some(matchesPlayer),
   )
 
   // Échanges gardent leur affichage deux colonnes (TradeCard) ; tout le reste passe en tableau
@@ -221,7 +238,7 @@ export default function TransactionsClient({
   const tradeTxs = visible.filter(tx => tx._tab === 'echanges')
   const tableTxs = visible.filter(tx => tx._tab !== 'echanges')
   const tableRows = tableTxs.flatMap(tx =>
-    (tx.transaction_items ?? []).map((item: { id: number }) => ({ tx, item, ...rowInfo(item) })),
+    (tx.transaction_items ?? []).filter(matchesPlayer).map((item: { id: number }) => ({ tx, item, ...rowInfo(item) })),
   )
 
   return (
@@ -270,15 +287,26 @@ export default function TransactionsClient({
         ))}
       </div>
 
-      <select
-        value={poolerFilter}
-        onChange={e => setPoolerFilter(e.target.value)}
-        aria-label="Filtrer par pooler"
-        className="w-full sm:w-64 border border-gray-200 rounded-lg px-3 py-1.5 text-sm mb-4 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        <option value="">Tous les poolers</option>
-        {poolerNames.map(name => <option key={name} value={name}>{name}</option>)}
-      </select>
+      <div className="flex flex-col sm:flex-row gap-2 mb-4">
+        <select
+          value={poolerFilter}
+          onChange={e => setPoolerFilter(e.target.value)}
+          aria-label="Filtrer par pooler"
+          className="w-full sm:w-64 border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Tous les poolers</option>
+          {poolerNames.map(name => <option key={name} value={name}>{name}</option>)}
+        </select>
+        <select
+          value={activePlayer}
+          onChange={e => setPlayerFilter(e.target.value)}
+          aria-label="Filtrer par joueur"
+          className="w-full sm:w-64 border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Tous les joueurs</option>
+          {playerOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+        </select>
+      </div>
 
       {visible.length === 0 && (
         <p className="text-gray-400 text-sm">Aucune activité dans cette catégorie.</p>
