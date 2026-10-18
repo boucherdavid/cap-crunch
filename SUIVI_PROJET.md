@@ -19,6 +19,17 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-18
+
+**[Feat] — Alignement : match du jour et couleurs par statut** (`app/app/poolers/[id]/PoolerPageTabs.tsx`) :
+- Nouvelle colonne « Aujourd'hui » (onglet Alignement de `/poolers/[id]`, inspirée de Marqueur.com) :
+  `vs`/`@` + pastille de l'adversaire + heure (heure de l'Est), « En cours » ou « Terminé ». Pas de
+  score (choix de David). Tirée de `schedule7`, déjà chargé pour l'onglet Prochains matchs — aucun
+  appel de plus. Sur téléphone, sous le nom à côté de l'équipe. Ex-joueurs (PARTI) exclus.
+- Lignes colorées selon le statut (`ROW_STYLE`) : réserviste en ambre, LTIR en rouge (fond + étiquette),
+  au lieu de l'opacité réduite commune ; PARTI reste gris atténué. Le fond est repris par la cellule
+  figée du nom.
+
 ### 2026-10-17
 
 **[Fix] — Délai de réactivation en jours civils** (`lib/reactivationDelay.ts`, `gestion-effectifs/actions.ts`, `GestionEffectifsManager.tsx`, `aide/AideTabs.tsx`) :

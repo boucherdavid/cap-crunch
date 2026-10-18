@@ -10,6 +10,7 @@ import UpcomingGamesAnalysis from '@/components/UpcomingGamesAnalysis'
 import type { DaySchedule, OrgPlayer } from '@/lib/nhlWeeklySchedule'
 import type { InjuryInfo } from '@/lib/injuries'
 import InjuryBadge from '@/components/InjuryBadge'
+import TeamBadge from '@/components/TeamBadge'
 
 export type Tab = 'masse-salariale' | 'alignement' | 'historique' | 'recrues' | 'prochains-matchs'
 
@@ -25,6 +26,59 @@ type ChangeLogEntry = {
 
 const GROUP_LABEL = ['Attaquants', 'Défenseurs', 'Gardiens']
 const TYPE_BADGE: Record<string, string> = { reserviste: 'RES', ltir: 'LTIR' }
+
+// Couleur de la ligne et de l'étiquette selon le statut (David, 2026-10-18) : réserviste en
+// ambre, LTIR en rouge, ex-joueur (PARTI) et autres en gris atténué. Le fond est repris par
+// la cellule du nom, figée à gauche, qui doit rester opaque pendant le défilement.
+const ROW_STYLE: Record<string, { row: string; cell: string; badge: string }> = {
+  actif:      { row: 'hover:bg-gray-50',  cell: 'bg-white',    badge: '' },
+  reserviste: { row: 'bg-amber-50',       cell: 'bg-amber-50', badge: 'bg-amber-100 text-amber-700' },
+  ltir:       { row: 'bg-red-50',         cell: 'bg-red-50',   badge: 'bg-red-100 text-red-700' },
+  autre:      { row: 'hover:bg-gray-50 opacity-60', cell: 'bg-white', badge: 'bg-gray-100 text-gray-400' },
+}
+
+// Match du jour d'une équipe (David, 2026-10-18 — inspiré de Marqueur.com) : adversaire,
+// domicile ou visiteur, heure (heure de l'Est) ou état. Tiré de schedule7, déjà chargé pour
+// l'onglet Prochains matchs — aucun appel de plus.
+type TodayGame = { opponent: string; home: boolean; startTimeUTC: string; gameState: string }
+
+function buildTodayGames(schedule7: DaySchedule[], today: string): Map<string, TodayGame> {
+  const map = new Map<string, TodayGame>()
+  const day = schedule7.find(d => d.date === today)
+  for (const g of day?.games ?? []) {
+    map.set(g.homeAbbrev, { opponent: g.awayAbbrev, home: true, startTimeUTC: g.startTimeUTC, gameState: g.gameState })
+    map.set(g.awayAbbrev, { opponent: g.homeAbbrev, home: false, startTimeUTC: g.startTimeUTC, gameState: g.gameState })
+  }
+  return map
+}
+
+function fmtStartET(iso: string): string {
+  if (!iso) return ''
+  const parts = new Intl.DateTimeFormat('fr-CA', {
+    timeZone: 'America/Toronto', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date(iso))
+  const h = Number(parts.find(x => x.type === 'hour')?.value ?? '0')
+  const m = parts.find(x => x.type === 'minute')?.value ?? '00'
+  return m === '00' ? `${h} h` : `${h} h ${m}`
+}
+
+function TodayGameInfo({ game }: { game: TodayGame }) {
+  const live = game.gameState === 'LIVE' || game.gameState === 'CRIT'
+  const done = game.gameState === 'FINAL' || game.gameState === 'OFF'
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap">
+      <span className="text-[11px] text-gray-400">{game.home ? 'vs' : '@'}</span>
+      <TeamBadge code={game.opponent} size="sm" />
+      {live ? (
+        <span className="text-[11px] font-semibold text-green-600">En cours</span>
+      ) : done ? (
+        <span className="text-[11px] text-gray-400">Terminé</span>
+      ) : (
+        <span className="text-[11px] text-gray-500">{fmtStartET(game.startTimeUTC)}</span>
+      )}
+    </span>
+  )
+}
 
 const CHANGE_LABEL: Record<string, string> = {
   activation:          'Activation',
@@ -172,7 +226,7 @@ function TotalsRow({ label, gamesPlayed, points, grand }: { label: string; games
   return (
     <tr className={grand ? 'bg-blue-50 border-t' : 'bg-gray-50'}>
       <td className={`px-2 sm:px-4 py-1.5 text-xs font-medium sticky left-0 z-10 ${grand ? 'bg-blue-50 text-gray-600 text-sm' : 'bg-gray-50 text-gray-500'}`}>{label}</td>
-      <td className="hidden sm:table-cell" />
+      <td colSpan={2} className="hidden sm:table-cell" />
       <td className="px-2 py-1.5 text-center text-gray-600 font-medium">{gamesPlayed}</td>
       <td colSpan={3} />
       <td colSpan={2} className="hidden sm:table-cell" />
@@ -182,8 +236,9 @@ function TotalsRow({ label, gamesPlayed, points, grand }: { label: string; games
   )
 }
 
-function PlayerStatsRow({ p, streaks, onPeriodClick, injuriesByNhlId }: {
+function PlayerStatsRow({ p, streaks, onPeriodClick, injuriesByNhlId, todayGame }: {
   p: PlayerContrib
+  todayGame?: TodayGame
   streaks: Record<number, StreakInfo>
   onPeriodClick?: (p: PlayerContrib) => void
   injuriesByNhlId?: Map<number, InjuryInfo>
@@ -195,20 +250,22 @@ function PlayerStatsRow({ p, streaks, onPeriodClick, injuriesByNhlId }: {
   // vrai actif malgré ses points déjà gagnés et son départ (repéré par David le 2026-08-13).
   const badge = !p.stillRostered ? 'PARTI' : TYPE_BADGE[p.playerType]
   const injury = p.nhlId ? injuriesByNhlId?.get(p.nhlId) : undefined
+  const style = ROW_STYLE[!p.stillRostered ? 'autre' : (ROW_STYLE[p.playerType] ? p.playerType : 'autre')]
   return (
-    <tr className={isActif ? 'hover:bg-gray-50' : 'hover:bg-gray-50 opacity-60'}>
+    <tr className={style.row}>
       {/* Nom figé à gauche pendant le défilement horizontal, équipe sous le nom sur
           téléphone (David, 2026-09-28 — rendu mobile jugé difficile à lire par les poolers). */}
-      <td className="px-2 sm:px-4 py-2 sticky left-0 z-10 bg-white">
+      <td className={`px-2 sm:px-4 py-2 sticky left-0 z-10 ${style.cell}`}>
         <PlayerLink nhlId={p.nhlId}>
           <span className={`font-medium ${isActif ? 'text-gray-800' : 'text-gray-500'}`}>
             {p.lastName}, {p.firstName}
           </span>
         </PlayerLink>
         <span className="sm:hidden ml-1 text-[11px] text-gray-400">{p.teamAbbrev}</span>
+        {todayGame && <span className="sm:hidden ml-1.5"><TodayGameInfo game={todayGame} /></span>}
         <StreakBadge info={p.nhlId ? streaks[p.nhlId] : undefined} />
         <GoalieBadge info={p.nhlId ? streaks[p.nhlId] : undefined} />
-        {badge && <span className="ml-2 text-xs bg-gray-100 text-gray-400 rounded px-1">{badge}</span>}
+        {badge && <span className={`ml-2 text-xs font-medium rounded px-1 ${style.badge}`}>{badge}</span>}
         {injury && <InjuryBadge injury={injury} onLtir={p.playerType === 'ltir' && p.stillRostered} />}
         <button
           type="button"
@@ -219,6 +276,7 @@ function PlayerStatsRow({ p, streaks, onPeriodClick, injuriesByNhlId }: {
           ↩{p.periods.length}
         </button>
       </td>
+      <td className="px-2 py-2 hidden sm:table-cell">{todayGame && <TodayGameInfo game={todayGame} />}</td>
       <td className="px-2 py-2 hidden sm:table-cell text-gray-500 text-center text-xs">{p.teamAbbrev}</td>
       <td className="px-2 py-2 text-center text-gray-500">{p.gamesPlayed || '—'}</td>
       {isGoalie ? (
@@ -289,6 +347,7 @@ export default function PoolerPageTabs({
     }`
 
   const sorted = groupAndSort(alignementPlayers)
+  const todayGames = buildTodayGames(schedule7, today)
   // poolPoints ne compte déjà que les matchs joués pendant les segments réellement actifs
   // (voir buildStandings) — pas besoin de refiltrer par statut actuel ici.
   const totalPts = alignementPlayers.reduce((s, p) => s + p.poolPoints, 0)
@@ -351,6 +410,7 @@ export default function PoolerPageTabs({
                 <thead className="bg-gray-50 text-gray-400 text-xs uppercase tracking-wide">
                   <tr>
                     <th className="px-2 sm:px-4 py-2 text-left sticky left-0 z-10 bg-gray-50">Joueur</th>
+                    <th className="px-2 py-2 hidden sm:table-cell text-left whitespace-nowrap">Aujourd&apos;hui</th>
                     <th className="px-2 py-2 hidden sm:table-cell">Éq.</th>
                     <th className="px-2 py-2">MJ</th>
                     <th className="px-2 py-2">B</th>
@@ -372,12 +432,18 @@ export default function PoolerPageTabs({
                       <Fragment key={p.nhlId ?? i}>
                         {isFirstOfGroup && (
                           <tr className="bg-gray-100">
-                            <td colSpan={10} className="px-4 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            <td colSpan={11} className="px-4 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                               {GROUP_LABEL[group]}
                             </td>
                           </tr>
                         )}
-                        <PlayerStatsRow p={p} streaks={streaks} onPeriodClick={setPeriodPopup} injuriesByNhlId={injuriesByNhlId} />
+                        <PlayerStatsRow
+                          p={p}
+                          streaks={streaks}
+                          onPeriodClick={setPeriodPopup}
+                          injuriesByNhlId={injuriesByNhlId}
+                          todayGame={p.stillRostered ? todayGames.get(p.teamAbbrev) : undefined}
+                        />
                         {isLastOfGroup && (
                           <TotalsRow
                             label={`Total ${GROUP_LABEL[group].toLowerCase()}`}
