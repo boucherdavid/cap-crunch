@@ -318,7 +318,10 @@ mettre à jour cette section dès qu'une route ou un onglet admin change (voir s
 voir section 6 ; colonne "Dans le pool" indique qui possède chaque joueur blessé, peu importe
 son type de roster, ou "Disponible" si personne) `/repechage` `/repechage-recrues` `/calendrier`
 `/poolers` `/poolers/[id]` `/journal-transactions` (historique en lecture seule — pas de
-saisie pooler ; distinct de `/admin/transactions`, l'outil admin) `/classement`
+saisie pooler ; distinct de `/admin/transactions`, l'outil admin ; filtres pooler et joueur ;
+pooler + joueur choisis → encadré « Périodes actives » (`ActivePeriodsPanel.tsx`, David
+2026-10-18) : matchs comptés par `getStandings()` vs relevé officiel de la LNH
+(`lib/nhlPlayerGames.ts`, cache 1 h, aucune lecture Supabase), écart en ambre) `/classement`
 `/classement/hebdomadaire` `/classement/mensuel` (David, 2026-09-17 — mêmes données que
 `/classement`, `buildStandings()` juste borné à une semaine lundi-dimanche ou un mois civil,
 heure de l'Est ; navigation précédent/suivant, voir section 6) `/resultats`
@@ -639,6 +642,11 @@ repêchage. Route (`/repechage-agents-libres`), noms de fonctions et de tables
 (`presaison_draft_state`, etc.) inchangés à travers tous ces déplacements — seul le
 regroupement/libellé visible (menu, titre de page `<h1>`) a changé, pour éviter un chantier de
 renommage profond à faible valeur pour des changements qui ne touchent que l'affichage.
+
+**Onglet Alignement de `/poolers/[id]` (David, 2026-10-18)** : colonne « Aujourd'hui » (`vs`/`@`
+adversaire + heure ET, « En cours », « Terminé », sans score) tirée de `schedule7` déjà chargé ;
+lignes colorées par statut (`ROW_STYLE`, `PoolerPageTabs.tsx`) — réserviste ambre, LTIR rouge,
+PARTI gris atténué.
 
 **Onglet "Prochains matchs" sur `/poolers/[id]` (David, 2026-09-23)** — 5ᵉ onglet ajouté
 (Alignement/Masse Salariale/Recrues/Historique existants + celui-ci), ex-onglet "Analyse" de
@@ -1355,6 +1363,12 @@ Règles obligatoires pour toute nouvelle lecture, et à appliquer quand on touch
   relit l'existant et passe par `python_script/db_diff.py` (`diff_rows`, `fetch_all`,
   `rows_differ`) — jamais de remplacement complet d'une table à chaque passage.
 - `csv_path` doit être relatif à `BASE_DIR` (requis pour GitHub Actions)
+- **Gardiens substituts (David, 2026-10-18)** : la feuille de match de la LNH liste les deux
+  gardiens habillés ; un gardien à `toi` 0:00 n'est **pas** un match joué et ne doit jamais créer
+  de ligne `player_game_logs` (4 imports : `import_regular_stats.py`, `import_playoff_stats.py`,
+  `backfill_regular_game_logs.py`, `backfill_playoff_game_logs.py`). Lignes fantômes déjà en base :
+  `cleanup_goalie_backup_logs.py` (dry-run, `--apply`, `--season`, `--game-type` ; supprime
+  seulement une ligne à zéro absente du relevé officiel) — roulé en prod le 2026-10-18.
 - **Scraping PuckPedia et fenêtres Chrome (David, 2026-10-13)** — `scrape_puckpedia.py` : une seule
   fenêtre à la fois. `chromedriver` plante par moments (Chrome 155) et, sous Windows, sa fenêtre
   Chrome lui survit : toujours fermer par `tuer_driver()` (arbre de processus par ctypes,
