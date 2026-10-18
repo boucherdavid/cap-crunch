@@ -199,15 +199,6 @@ export default function TransactionsClient({
     _tab: classifyTx(tx.transaction_items ?? [], tx.notes ?? null),
   }))
 
-  const counts: Record<TabKey, number> = {
-    tous: classified.length,
-    echanges: classified.filter(tx => tx._tab === 'echanges').length,
-    ballotage: classified.filter(tx => tx._tab === 'ballotage').length,
-    signatures: classified.filter(tx => tx._tab === 'signatures').length,
-    ltir: classified.filter(tx => tx._tab === 'ltir').length,
-    gestion: classified.filter(tx => tx._tab === 'gestion').length,
-  }
-
   const byTab = tab === 'tous' ? classified : classified.filter(tx => tx._tab === tab)
   // Liste déroulante plutôt qu'un champ texte : toujours les mêmes poolers (David, 2026-10-17).
   type PoolerRef = { from_pooler?: { name?: string }; to_pooler?: { name?: string } }
@@ -239,9 +230,20 @@ export default function TransactionsClient({
   const playerOptions = Array.from(playerMap).sort((a, b) => a[1].localeCompare(b[1], 'fr'))
   const activePlayer = playerOptions.some(([id]) => id === playerFilter) ? playerFilter : ''
   const matchesPlayer = (item: PlayerRef) => !activePlayer || String(item.players?.id) === activePlayer
-  const visible = !activePlayer ? byPooler : byPooler.filter(tx =>
-    (tx.transaction_items ?? []).some((item: PlayerRef & PoolerRef) => matchesPooler(item) && matchesPlayer(item)),
-  )
+  const matchesFilters = (tx: { transaction_items?: (PlayerRef & PoolerRef)[] }) =>
+    (tx.transaction_items ?? []).some(item => matchesPooler(item) && matchesPlayer(item))
+  const visible = !activePlayer ? byPooler : byPooler.filter(matchesFilters)
+
+  // Compteurs des onglets selon les filtres pooler et joueur (David, 2026-10-18), pas tout le pool.
+  const filtered = poolerFilter || activePlayer ? classified.filter(matchesFilters) : classified
+  const counts: Record<TabKey, number> = {
+    tous: filtered.length,
+    echanges: filtered.filter(tx => tx._tab === 'echanges').length,
+    ballotage: filtered.filter(tx => tx._tab === 'ballotage').length,
+    signatures: filtered.filter(tx => tx._tab === 'signatures').length,
+    ltir: filtered.filter(tx => tx._tab === 'ltir').length,
+    gestion: filtered.filter(tx => tx._tab === 'gestion').length,
+  }
 
   // Échanges gardent leur affichage deux colonnes (TradeCard) ; tout le reste passe en tableau
   // compact — une ligne par mouvement, même en éclatant les items sur plusieurs transactions
