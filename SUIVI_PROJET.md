@@ -29,6 +29,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Lignes colorées selon le statut (`ROW_STYLE`) : réserviste en ambre, LTIR en rouge (fond + étiquette),
   au lieu de l'opacité réduite commune ; PARTI reste gris atténué. Le fond est repris par la cellule
   figée du nom.
+- Commit : `f58099b` — validé par David en staging, promu en prod le 2026-10-18.
 
 ### 2026-10-17
 
