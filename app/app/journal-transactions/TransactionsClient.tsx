@@ -215,10 +215,13 @@ export default function TransactionsClient({
     transactions.flatMap((tx: any) => (tx.transaction_items ?? []).flatMap((item: PoolerRef) =>
       [item.from_pooler?.name, item.to_pooler?.name])),
   )).filter((n): n is string => !!n).sort((a, b) => a.localeCompare(b, 'fr'))
+  // Filtre ligne par ligne (David, 2026-10-18) : une transaction peut regrouper plusieurs poolers
+  // (ex. activation automatique des recrues à protection expirée, une seule transaction pour
+  // tout le pool) — sans ça, choisir un pooler montrait aussi les joueurs des autres.
+  const matchesPooler = (item: PoolerRef) =>
+    !poolerFilter || item.from_pooler?.name === poolerFilter || item.to_pooler?.name === poolerFilter
   const byPooler = !poolerFilter ? byTab : byTab.filter(tx =>
-    (tx.transaction_items ?? []).some((item: PoolerRef) =>
-      item.from_pooler?.name === poolerFilter || item.to_pooler?.name === poolerFilter,
-    ),
+    (tx.transaction_items ?? []).some(matchesPooler),
   )
   // Filtre par joueur (David, 2026-10-18 — suivre les mouvements d'un joueur pour valider ses
   // matchs comptés) : seulement les joueurs présents dans les mouvements déjà filtrés (onglet,
@@ -227,8 +230,8 @@ export default function TransactionsClient({
   const playerMap = new Map<string, string>()
   const nhlIdByPlayer = new Map<string, number | null>()
   for (const tx of byPooler) {
-    for (const item of (tx.transaction_items ?? []) as PlayerRef[]) {
-      if (!item.players) continue
+    for (const item of (tx.transaction_items ?? []) as (PlayerRef & PoolerRef)[]) {
+      if (!item.players || !matchesPooler(item)) continue
       playerMap.set(String(item.players.id), `${item.players.last_name}, ${item.players.first_name}`)
       nhlIdByPlayer.set(String(item.players.id), item.players.nhl_id)
     }
@@ -237,7 +240,7 @@ export default function TransactionsClient({
   const activePlayer = playerOptions.some(([id]) => id === playerFilter) ? playerFilter : ''
   const matchesPlayer = (item: PlayerRef) => !activePlayer || String(item.players?.id) === activePlayer
   const visible = !activePlayer ? byPooler : byPooler.filter(tx =>
-    (tx.transaction_items ?? []).some(matchesPlayer),
+    (tx.transaction_items ?? []).some((item: PlayerRef & PoolerRef) => matchesPooler(item) && matchesPlayer(item)),
   )
 
   // Échanges gardent leur affichage deux colonnes (TradeCard) ; tout le reste passe en tableau
@@ -246,7 +249,7 @@ export default function TransactionsClient({
   const tradeTxs = visible.filter(tx => tx._tab === 'echanges')
   const tableTxs = visible.filter(tx => tx._tab !== 'echanges')
   const tableRows = tableTxs.flatMap(tx =>
-    (tx.transaction_items ?? []).filter(matchesPlayer).map((item: { id: number }) => ({ tx, item, ...rowInfo(item) })),
+    (tx.transaction_items ?? []).filter((item: PlayerRef & PoolerRef) => matchesPooler(item) && matchesPlayer(item)).map((item: { id: number }) => ({ tx, item, ...rowInfo(item) })),
   )
 
   return (

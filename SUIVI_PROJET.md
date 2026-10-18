@@ -21,6 +21,12 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-18
 
+**[Fix] — Journal des activités : filtre pooler ligne par ligne** (`app/app/journal-transactions/TransactionsClient.tsx`) :
+- En choisissant Vincent, des joueurs des autres poolers apparaissaient : la transaction 1
+  (« Ajustement pré-saison », 2026-10-02, activation automatique des recrues à protection expirée)
+  regroupe les 8 poolers, et le filtre gardait la transaction entière. Le filtre s'applique
+  maintenant à chaque ligne (tableau et liste des joueurs) ; un échange reste affiché en entier.
+
 **[Fix] — Matchs joués des gardiens gonflés par les substituts** (`python_script/import_regular_stats.py`, `import_playoff_stats.py`, `backfill_regular_game_logs.py`, `backfill_playoff_game_logs.py`, nouveau `cleanup_goalie_backup_logs.py`) :
 - Signalé par Vincent : Scott Wedgewood avait 8 MJ, 2 selon la LNH. La feuille de match liste les deux
   gardiens habillés ; l'import créait une ligne `player_game_logs` (à zéro) pour le substitut resté au
