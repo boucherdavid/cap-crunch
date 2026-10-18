@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { poolDraftYear } from '@/lib/poolDraftYear'
 import { JOURNAL_NOTES_BALLOTAGE } from '@/lib/transactionJournal'
+import ActivePeriodsPanel, { type JournalPeriod } from './ActivePeriodsPanel'
 
 const DASH = '—'
 
@@ -178,11 +179,15 @@ export default function TransactionsClient({
   saison,
   saisons = [],
   activeSaisonId,
+  periodsByKey = {},
+  nhlSeason,
 }: {
   transactions: any[]
   saison: any
   saisons?: any[]
   activeSaisonId?: number
+  periodsByKey?: Record<string, JournalPeriod[]>
+  nhlSeason: number
 }) {
   const router = useRouter()
   const [tab, setTab] = useState<TabKey>('tous')
@@ -218,11 +223,14 @@ export default function TransactionsClient({
   // Filtre par joueur (David, 2026-10-18 — suivre les mouvements d'un joueur pour valider ses
   // matchs comptés) : seulement les joueurs présents dans les mouvements déjà filtrés (onglet,
   // pooler). Dans le tableau, seules les lignes du joueur restent ; un échange reste entier.
-  type PlayerRef = { players?: { id: number; first_name: string; last_name: string } | null }
+  type PlayerRef = { players?: { id: number; nhl_id: number | null; first_name: string; last_name: string } | null }
   const playerMap = new Map<string, string>()
+  const nhlIdByPlayer = new Map<string, number | null>()
   for (const tx of byPooler) {
     for (const item of (tx.transaction_items ?? []) as PlayerRef[]) {
-      if (item.players) playerMap.set(String(item.players.id), `${item.players.last_name}, ${item.players.first_name}`)
+      if (!item.players) continue
+      playerMap.set(String(item.players.id), `${item.players.last_name}, ${item.players.first_name}`)
+      nhlIdByPlayer.set(String(item.players.id), item.players.nhl_id)
     }
   }
   const playerOptions = Array.from(playerMap).sort((a, b) => a[1].localeCompare(b[1], 'fr'))
@@ -307,6 +315,20 @@ export default function TransactionsClient({
           {playerOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
         </select>
       </div>
+
+      {poolerFilter && activePlayer && (() => {
+        const nhlId = nhlIdByPlayer.get(activePlayer) ?? null
+        return (
+          <ActivePeriodsPanel
+            key={`${poolerFilter}|${activePlayer}`}
+            playerName={playerMap.get(activePlayer) ?? ''}
+            poolerName={poolerFilter}
+            nhlId={nhlId}
+            nhlSeason={nhlSeason}
+            periods={nhlId ? periodsByKey[`${poolerFilter}|${nhlId}`] ?? [] : []}
+          />
+        )
+      })()}
 
       {visible.length === 0 && (
         <p className="text-gray-400 text-sm">Aucune activité dans cette catégorie.</p>

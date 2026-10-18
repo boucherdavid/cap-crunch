@@ -1318,6 +1318,9 @@ David, 2026-10-08 :**
 **Lectures de la base — ne jamais relire ce qui est déjà connu (David, 2026-10-14) :**
 La prod tourne sur une machine Nano : son CPU a saturé le 2026-10-14 à cause d'une seule requête
 (dernier match des blessés) qui relisait tous les matchs de chaque joueur à chaque affichage.
+Préoccupation **permanente** (David, 2026-10-18 — « je veux que l'app reste stable ») : dès le plan
+d'une fonctionnalité, dire d'où viennent les données et comment elles sont mises en cache, appels
+externes (API LNH) compris.
 Règles obligatoires pour toute nouvelle lecture, et à appliquer quand on touche une lecture existante :
 - **Toujours borner** une lecture d'une table qui grossit (`player_game_logs`, `roster_change_log`,
   `transactions`, stats, journaux…) par une colonne **indexée** : saison, date, identifiant. Un

@@ -33,6 +33,14 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 **[Feat] — Journal des activités : filtre par joueur** (`app/app/journal-transactions/TransactionsClient.tsx`) :
 - Deuxième liste déroulante à côté du filtre pooler, limitée aux joueurs des mouvements déjà filtrés
   (onglet, pooler). Le tableau ne garde que les lignes du joueur ; un échange reste affiché entier.
+- Pooler + joueur choisis → encadré « Périodes actives » (`ActivePeriodsPanel.tsx`) : chaque période
+  où il était actif chez ce pooler, matchs comptés par Cap Crunch, matchs joués selon la LNH, points ;
+  écart en ambre. Comptés = `getStandings()` (déjà en cache, aucune lecture de plus) ; LNH =
+  `lib/nhlPlayerGames.ts` (relevé du joueur + calendrier de ses équipes pour l'heure de début, en
+  cache 1 h via `unstable_cache`, échec jamais mis en cache), appelé seulement à la sélection.
+  Matchs d'aujourd'hui exclus du compte LNH (import de nuit). Même fenêtre que `buildStandings()`.
+- Consigne de David : stabilité de l'app = préoccupation permanente, données en cache dès le plan
+  (ajouté à CLAUDE.md section 6 « Lectures de la base »).
 
 **[Feat] — Alignement : match du jour et couleurs par statut** (`app/app/poolers/[id]/PoolerPageTabs.tsx`) :
 - Nouvelle colonne « Aujourd'hui » (onglet Alignement de `/poolers/[id]`, inspirée de Marqueur.com) :

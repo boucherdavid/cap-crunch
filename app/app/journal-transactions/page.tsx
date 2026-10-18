@@ -1,5 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import TransactionsClient from './TransactionsClient'
+import { getStandings } from '@/lib/standings'
+import { poolSeasonToNhl } from '@/lib/nhlPlayerGames'
+import type { JournalPeriod } from './ActivePeriodsPanel'
 
 export default async function TransactionsPage({
   searchParams,
@@ -41,15 +44,30 @@ export default async function TransactionsPage({
         id, action_type, old_player_type, new_player_type,
         from_pooler:poolers!from_pooler_id (name),
         to_pooler:poolers!to_pooler_id (name),
-        players (id, first_name, last_name, position, teams (code)),
+        players (id, nhl_id, first_name, last_name, position, teams (code)),
         pick:pool_draft_picks!pick_id (round, pool_seasons (season), original_owner:poolers!original_owner_id (name))
       )
     `)
     .eq('pool_season_id', selectedSaison.id)
     .order('created_at', { ascending: false })
 
+  // Périodes actives par pooler et joueur, pour le filtre par joueur (David, 2026-10-18) : tirées
+  // du classement en cache (getStandings, clé data_versions) — aucune lecture de plus à chaque visite.
+  const standings = await getStandings(selectedSaison.id)
+  const periodsByKey: Record<string, JournalPeriod[]> = {}
+  for (const s of standings) {
+    for (const p of s.players) {
+      if (!p.nhlId) continue
+      periodsByKey[`${s.poolerName}|${p.nhlId}`] = p.periods.map(x => ({
+        addedAt: x.addedAt, removedAt: x.removedAt, gamesPlayed: x.gamesPlayed, points: x.points,
+      }))
+    }
+  }
+
   return (
     <TransactionsClient
+      periodsByKey={periodsByKey}
+      nhlSeason={poolSeasonToNhl(selectedSaison.season)}
       transactions={(transactions ?? []) as any[]}
       saison={selectedSaison}
       saisons={saisons}
