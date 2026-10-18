@@ -29,6 +29,9 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - `cleanup_goalie_backup_logs.py` (dry-run, `--apply`, `--season`, `--game-type`) : retire une ligne
   seulement si la date est absente du relevé officiel du gardien ET la ligne est entièrement à zéro.
   Dry-run prod : 253 lignes en 2026-27 (71 gardiens), 2404 en 2025-26, aucune ligne avec des stats.
+- Roulé en prod avec `--apply` le 2026-10-18 (accord de David) : 253 + 2404 lignes supprimées,
+  Wedgewood à 2 matchs ; cache du classement invalidé par le trigger `data_versions`. Staging pas nettoyé
+  (la prochaine copie prod → staging s'en charge). Commits `6d213d0`, `0bd0c3b`, promus en prod.
 
 **[Feat] — Journal des activités : filtre par joueur** (`app/app/journal-transactions/TransactionsClient.tsx`) :
 - Deuxième liste déroulante à côté du filtre pooler, limitée aux joueurs des mouvements déjà filtrés
