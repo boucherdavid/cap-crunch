@@ -30,6 +30,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   fenêtre active commencée et finie le même jour sans match (Hryckowian, 44 min) n'est plus
   affichée. Affichage seulement : aucun point ne change, la base et le Journal des activités
   gardent les deux lots. Rétroactif. Clé de cache `standings-v1` → `standings-v2`.
+- Commit : `6dae3d3` — validé par David en staging, promu en prod le même jour.
 - Préparé aussi le même jour : archives de sauvegarde des fichiers non versionnés pour le
   changement de portable de David (hors dépôt).
 
