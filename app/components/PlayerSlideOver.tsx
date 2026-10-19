@@ -57,6 +57,51 @@ function fmtCap(n: number | null): string {
   return `${(n / 1_000_000).toLocaleString('fr-CA', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} M$`
 }
 
+const ACTION_CLASS = 'rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50'
+
+/**
+ * Actions de la fiche, à côté de « Ajouter à une liste » (David, 2026-10-19 — demande d'un
+ * pooler). Joueur libre sous contrat : le simuler dans son alignement. Joueur d'un autre pooler :
+ * simuler la transaction (onglet Transaction prérempli) et proposer un échange (même
+ * préremplissage que le marché des échanges). Une recrue de banque ne se simule pas en
+ * transaction (l'onglet n'envoie que les joueurs de l'alignement). Simple navigation, rien n'est lu.
+ */
+function PlayerActions({ summary, onNavigate }: { summary: PlayerPoolSummary; onNavigate: () => void }) {
+  if (!summary.viewerId) return null
+  const owner = summary.owner
+  if (!owner) {
+    const underContract = summary.contracts.some(c => c.season === summary.season)
+    if (!underContract) return null
+    return (
+      <Link href={`/simulation?addPlayer=${summary.id}`} onClick={onNavigate} className={ACTION_CLASS}>
+        Simuler dans mon alignement
+      </Link>
+    )
+  }
+  if (owner.poolerId === summary.viewerId) return null
+  const canSimulate = owner.playerType !== 'recrue'
+  return (
+    <>
+      {canSimulate && (
+        <Link
+          href={`/simulation?onglet=transaction&avec=${owner.poolerId}&recoit=${summary.id}`}
+          onClick={onNavigate}
+          className={ACTION_CLASS}
+        >
+          Simuler une transaction
+        </Link>
+      )}
+      <Link
+        href={`/gestion-effectifs?tab=echanges&avec=${owner.poolerId}&recoit=player-${summary.id}`}
+        onClick={onNavigate}
+        className={ACTION_CLASS}
+      >
+        Proposer un échange
+      </Link>
+    </>
+  )
+}
+
 /** Sommaire propre au pool (David, 2026-10-01) : qui possède le joueur, blessure, contrat. */
 function PoolSummary({ summary, onNavigate }: { summary: PlayerPoolSummary; onNavigate: () => void }) {
   return (
@@ -348,7 +393,11 @@ export default function PlayerSlideOver() {
           )}
 
           {summary && <PoolSummary summary={summary} onNavigate={close} />}
-          {summary && <AddToWatchlist playerId={summary.id} onNavigate={close} />}
+          {summary && (
+            <AddToWatchlist playerId={summary.id} onNavigate={close}>
+              <PlayerActions summary={summary} onNavigate={close} />
+            </AddToWatchlist>
+          )}
 
           {!loading && player && projections.length > 0 && (
             <div className="mb-5 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">

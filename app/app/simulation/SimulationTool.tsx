@@ -59,7 +59,7 @@ function sendEntry(entry: SimEntry, from: ReturnType<typeof useSimState>, to: Re
 }
 
 export default function SimulationTool({
-  me, isAdmin = false, saisonId, season, preloadPlayerId,
+  me, isAdmin = false, saisonId, season, preloadPlayerId, preloadTrade,
 }: {
   me: { id: string; name: string }
   // Admin : peut simuler avec l'alignement d'un autre pooler (David, 2026-10-13) — à titre
@@ -71,8 +71,11 @@ export default function SimulationTool({
   // Ballotage de /gestion-effectifs, David 2026-09-21) — pour évaluer l'impact d'une réclamation
   // avant de s'engager, sans rien soumettre pour de vrai.
   preloadPlayerId?: number
+  // Ouvre l'onglet Transaction avec ce pooler et son joueur déjà envoyé chez moi (bouton
+  // « Simuler une transaction » de la fiche joueur, David 2026-10-19).
+  preloadTrade?: { otherId: string; playerId: number }
 }) {
-  const [tab, setTab] = useState<Tab>('moi')
+  const [tab, setTab] = useState<Tab>(preloadTrade ? 'transaction' : 'moi')
 
   const [loading, setLoading] = useState(true)
   const [loadErr, setLoadErr] = useState<string | null>(null)
@@ -212,6 +215,27 @@ export default function SimulationTool({
   }
 
   const otherName = otherPoolers.find(p => p.id === otherId)?.name ?? ''
+
+  // Préremplissage depuis la fiche joueur : choisir le pooler une fois la liste chargée, puis
+  // envoyer son joueur chez moi une fois son alignement chargé — une seule fois chacun.
+  const [tradeStep, setTradeStep] = useState<'pick' | 'send' | 'done'>(preloadTrade ? 'pick' : 'done')
+  useEffect(() => {
+    if (tradeStep !== 'pick' || loading || !preloadTrade || otherPoolers.length === 0) return
+    if (otherPoolers.some(p => p.id === preloadTrade.otherId)) {
+      handlePickOther(preloadTrade.otherId)
+      setTradeStep('send')
+    } else {
+      setTradeStep('done')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tradeStep, loading, otherPoolers])
+  useEffect(() => {
+    if (tradeStep !== 'send' || otherLoading || !preloadTrade || otherId !== preloadTrade.otherId) return
+    const entry = otherState.entries.find(e => e.canSend && e.playerId === preloadTrade.playerId)
+    if (entry) sendEntry(entry, otherState, myState, otherName)
+    setTradeStep('done')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tradeStep, otherLoading, otherId, otherRoster])
 
   // Tous les poolers (soi-même compris) : sélecteur de l'admin et cibles de l'onglet Transaction.
   const allPoolers = [me, ...otherPoolers]

@@ -416,6 +416,27 @@ const SECTIONS: Section[] = [
     ),
   },
   {
+    id: 'guide-fiche-joueur',
+    tab: 'guide',
+    title: 'Fiche d\'un joueur',
+    keywords: 'fiche joueur recherche nom ajouter liste simuler simulation transaction proposer echange actions',
+    content: (
+      <div>
+        <p className="text-sm text-gray-600 mb-3">
+          Ouvre la fiche de n&apos;importe quel joueur en cliquant son nom, ou avec le champ de recherche de la barre du haut.
+          Elle montre à qui il appartient dans le pool, sa blessure, son contrat et ses stats.
+        </p>
+        <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Boutons sous le propriétaire</h4>
+        <ul className="text-sm text-gray-700 space-y-1.5">
+          <li>• <strong>Ajouter à une liste</strong> : l&apos;ajoute à une de tes listes (voir Mes listes).</li>
+          <li>• <strong>Simuler dans mon alignement</strong> (joueur disponible sous contrat) : ouvre la Simulation avec ce joueur déjà ajouté à ton alignement.</li>
+          <li>• <strong>Simuler une transaction</strong> (joueur d&apos;un autre pooler) : ouvre l&apos;onglet Transaction de la Simulation avec ce pooler, le joueur déjà envoyé chez toi. Il te reste à choisir ce que tu donnes en retour.</li>
+          <li>• <strong>Proposer un échange</strong> (joueur d&apos;un autre pooler) : ouvre l&apos;onglet Échanges de Gestion d&apos;effectifs avec ce pooler et ce joueur déjà choisis. Rien n&apos;est envoyé avant que tu soumettes ta proposition.</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
     id: 'guide-classement',
     tab: 'guide',
     title: 'Classement',

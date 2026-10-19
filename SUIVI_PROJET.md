@@ -21,6 +21,20 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-19
 
+**[Feat] — Fiche joueur : rangée d'actions** (`app/components/PlayerSlideOver.tsx`,
+`AddToWatchlist.tsx`, `player-search-actions.ts`, `app/app/simulation/page.tsx`,
+`SimulationTool.tsx`, `app/app/aide/AideTabs.tsx`) — demande d'un pooler :
+- À côté de « Ajouter à une liste » (même rangée, en haut de la fiche) : joueur disponible sous
+  contrat pour la saison active → « Simuler dans mon alignement » (`/simulation?addPlayer=`,
+  existant) ; joueur d'un autre pooler → « Simuler une transaction » et « Proposer un échange »
+  (`/gestion-effectifs?tab=echanges&avec=&recoit=player-<id>`, préremplissage du marché des
+  échanges). Rien pour ses propres joueurs ni pour un visiteur non connecté.
+- Simulation : `?onglet=transaction&avec=<pooler>&recoit=<joueur>` ouvre l'onglet Transaction,
+  choisit le pooler puis y envoie son joueur chez moi (`sendEntry`), une seule fois. Une recrue de
+  banque n'a que « Proposer un échange » (l'onglet n'envoie que les joueurs de l'alignement).
+- `PlayerPoolSummary.viewerId` (`auth.getUser()` en parallèle des lectures existantes) : aucune
+  nouvelle lecture de table. Nouvelle entrée « Fiche d'un joueur » dans le guide de `/aide`.
+
 **[Fix] — Périodes actives : aller-retour du même jour fusionné** (`app/lib/standings.ts`) :
 - Marchenko (David) affichait 2 périodes : mis en réserve à 14 h 00 le 12 octobre (lot n° 74,
   avec Hryckowian activé) puis réactivé à 14 h 44 (lot n° 75, annulation le jour même). Aucun

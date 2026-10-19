@@ -7,10 +7,15 @@ export const dynamic = 'force-dynamic'
 export default async function SimulationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ addPlayer?: string }>
+  searchParams: Promise<{ addPlayer?: string; onglet?: string; avec?: string; recoit?: string }>
 }) {
-  const { addPlayer } = await searchParams
+  const { addPlayer, onglet, avec, recoit } = await searchParams
   const preloadPlayerId = addPlayer && /^\d+$/.test(addPlayer) ? Number(addPlayer) : undefined
+  // Fiche joueur → « Simuler une transaction » (David, 2026-10-19) : onglet Transaction ouvert
+  // avec ce pooler, et son joueur déjà envoyé chez moi.
+  const preloadTrade = onglet === 'transaction' && avec && recoit && /^\d+$/.test(recoit)
+    ? { otherId: avec, playerId: Number(recoit) }
+    : undefined
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -41,6 +46,7 @@ export default async function SimulationPage({
         saisonId={saison.id}
         season={saison.season}
         preloadPlayerId={preloadPlayerId}
+        preloadTrade={preloadTrade}
       />
     </div>
   )

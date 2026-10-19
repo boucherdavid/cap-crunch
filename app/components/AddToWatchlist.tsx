@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { addWatchlistItemAction, listWatchlistsForPlayerAction, type Watchlist, type WatchlistKind } from '@/app/listes/actions'
 
@@ -10,7 +10,12 @@ import { addWatchlistItemAction, listWatchlistsForPlayerAction, type Watchlist, 
  * repêchage LNH, joueurs sinon) ; un joueur déjà pris reste ajoutable (classé « Déjà pris » dans
  * le panneau des listes). Rien d'affiché si personne n'est connecté (listes privées).
  */
-export default function AddToWatchlist({ playerId, onNavigate }: { playerId: number; onNavigate: () => void }) {
+export default function AddToWatchlist({ playerId, onNavigate, children }: {
+  playerId: number
+  onNavigate: () => void
+  // Autres actions de la fiche (simuler, proposer un échange), sur la même rangée que le bouton.
+  children?: ReactNode
+}) {
   const [data, setData] = useState<{ playerId: number; loggedIn: boolean; kind: WatchlistKind; lists: Watchlist[] } | null>(null)
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -41,14 +46,17 @@ export default function AddToWatchlist({ playerId, onNavigate }: { playerId: num
 
   return (
     <div className="mb-5">
-      <button
-        type="button"
-        onClick={() => setOpen(v => !v)}
-        aria-expanded={open}
-        className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-      >
-        + Ajouter à une liste
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen(v => !v)}
+          aria-expanded={open}
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+        >
+          + Ajouter à une liste
+        </button>
+        {children}
+      </div>
       {open && (
         <div className="mt-2 rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
           {current.lists.length === 0 ? (

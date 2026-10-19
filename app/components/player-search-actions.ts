@@ -33,6 +33,8 @@ export type PlayerPoolSummary = {
   season: string | null  // saison active du pool
   contracts: { season: string; capNumber: number | null; status: string | null }[]
   owner: { poolerId: string; poolerName: string; playerType: string } | null
+  // Pooler connecté (null = personne) — rangée d'actions de la fiche : simuler, proposer un échange.
+  viewerId: string | null
   injury: InjuryInfo | null
   // Trio ou paire actuels et unité d'avantage numérique (Daily Faceoff) — null si inconnu.
   usage: string | null
@@ -133,7 +135,7 @@ export async function getPlayerPoolSummaryAction(ref: { nhlId?: number | null; p
   if (!player) return null
 
   const season = await fetchActiveSeason(supabase)
-  const [{ data: contracts }, { data: roster }, injuries, { data: advancedRows }] = await Promise.all([
+  const [{ data: contracts }, { data: roster }, injuries, { data: advancedRows }, { data: { user } }] = await Promise.all([
     supabase
       .from('player_contracts')
       .select('season, cap_number, contract_status')
@@ -157,6 +159,7 @@ export async function getPlayerPoolSummaryAction(ref: { nhlId?: number | null; p
           .eq('situation', 'all')
           .order('season', { ascending: false })
       : Promise.resolve({ data: [] }),
+    supabase.auth.getUser(),
   ])
 
   // Où joue-t-il en ce moment : ses lignes, puis celles de son équipe pour nommer ses partenaires.
@@ -189,6 +192,7 @@ export async function getPlayerPoolSummaryAction(ref: { nhlId?: number | null; p
       .filter(c => !season || c.season >= season.season)
       .map(c => ({ season: c.season, capNumber: c.cap_number != null ? Number(c.cap_number) : null, status: c.contract_status })),
     owner: own?.poolers ? { poolerId: own.pooler_id, poolerName: own.poolers.name, playerType: own.player_type } : null,
+    viewerId: user?.id ?? null,
     injury: injuries.get(player.id) ?? null,
     usage: summarizePlayerUsage((teamCombos ?? []) as LineComboRow[], player.id),
     advanced: advRows.length
