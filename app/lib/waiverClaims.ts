@@ -6,6 +6,7 @@ import { sendEmailToIds } from '@/lib/email'
 import { getStandings } from '@/lib/standings'
 import { getTodayET, addDaysToDate } from '@/lib/daily-recap'
 import { localMidnightUTC } from '@/lib/dateRanges'
+import { DEFAULT_WAIVER_CLAIM_DAYS } from '@/lib/waiverSettings'
 
 // Délai laissé au gagnant pour compléter lui-même sa transaction (voir resolveExpiredWaiverClaims
 // et resolveExpiredAwardedClaims plus bas) — même ordre de grandeur que les autres délais de
@@ -110,7 +111,7 @@ export async function createWaiverClaimForRelease(saisonId: number, playerId: nu
   ])
   if (!prioritySnapshot) return // ni classement réel ni ordre pré-saison disponible — pas de ballotage possible sans ordre de priorité
 
-  const windowDays = settings?.waiver_claim_days ?? 2
+  const windowDays = settings?.waiver_claim_days ?? DEFAULT_WAIVER_CLAIM_DAYS
   const now = new Date()
   const { deadlineDay, expiresAt } = computeWaiverWindow(windowDays)
 

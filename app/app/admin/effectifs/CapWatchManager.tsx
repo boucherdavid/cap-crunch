@@ -73,13 +73,12 @@ function EntryCard({ entry, onReleased }: { entry: CapWatchEntry; onReleased: (i
 }
 
 export default function CapWatchManager({
-  saisonId, initialEntries, initialMultiplier, initialDeadlineDays, initialWaiverClaimDays,
+  saisonId, initialEntries, initialMultiplier, initialDeadlineDays,
 }: {
   saisonId: number
   initialEntries: CapWatchEntry[]
   initialMultiplier: number
   initialDeadlineDays: number
-  initialWaiverClaimDays: number
 }) {
   const [entries, setEntries] = useState(initialEntries)
   const [activeTab, setActiveTab] = useState<CapWatchEntry['status'] | 'tous'>('flagged')
@@ -88,7 +87,6 @@ export default function CapWatchManager({
 
   const [multiplier, setMultiplier] = useState(String(initialMultiplier))
   const [deadlineDays, setDeadlineDays] = useState(String(initialDeadlineDays))
-  const [waiverClaimDays, setWaiverClaimDays] = useState(String(initialWaiverClaimDays))
   const [savingSettings, setSavingSettings] = useState(false)
   const [settingsMsg, setSettingsMsg] = useState<string | null>(null)
 
@@ -110,7 +108,7 @@ export default function CapWatchManager({
   const handleSaveSettings = async () => {
     setSavingSettings(true)
     setSettingsMsg(null)
-    const result = await updateCapSettingsAction(parseFloat(multiplier), parseInt(deadlineDays, 10), parseInt(waiverClaimDays, 10))
+    const result = await updateCapSettingsAction(parseFloat(multiplier), parseInt(deadlineDays, 10))
     setSavingSettings(false)
     setSettingsMsg(result.error ? `Erreur : ${result.error}` : 'Réglages enregistrés.')
     setTimeout(() => setSettingsMsg(null), 3000)
@@ -141,15 +139,6 @@ export default function CapWatchManager({
                 onChange={e => setDeadlineDays(e.target.value)}
                 className="w-20 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               <span className="text-xs text-gray-400">jours</span>
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Délai de réclamation au ballotage</label>
-            <div className="flex items-center gap-1">
-              <input type="number" min={1} max={14} step={1} value={waiverClaimDays}
-                onChange={e => setWaiverClaimDays(e.target.value)}
-                className="w-20 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              <span className="text-xs text-gray-400">jours + 23 h 59 (ex. : 2 → réclamable jusqu&apos;à 23 h 59 du 2e jour suivant)</span>
             </div>
           </div>
           <button onClick={handleSaveSettings} disabled={savingSettings}

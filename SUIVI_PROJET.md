@@ -21,6 +21,17 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-19
 
+**[Refactor] — Délai de réclamation au ballotage déplacé dans Configuration → Général**
+(`app/app/admin/config/WaiverSettingsForm.tsx`, `waiver-settings-actions.ts`,
+`app/lib/waiverSettings.ts`, `CapWatchManager.tsx`, `cap-watch-actions.ts`,
+`app/app/aide/WaiverDeadlineText.tsx`, `AideTabs.tsx`, `aide/page.tsx`) :
+- David cherchait le réglage (un pooler disait « 3 jours avant ») : il était caché dans l'onglet
+  Conformité cap de Gestion des effectifs. Déplacé sous les chronos des repêchages, avec un
+  exemple calculé (« libéré un lundi, réclamable jusqu'au mercredi 23 h 59, attribué le jeudi »).
+  Valeur en prod au moment du changement : 2 (inchangée).
+- `/aide` (Règlements → Ballotage) affichait « 2e jour suivant » en dur : lit maintenant la
+  valeur en vigueur (`WaiverDaysContext`, même patron que les seuils LTIR).
+
 **[Feat] — Fiche joueur : rangée d'actions** (`app/components/PlayerSlideOver.tsx`,
 `AddToWatchlist.tsx`, `player-search-actions.ts`, `app/app/simulation/page.tsx`,
 `SimulationTool.tsx`, `app/app/aide/AideTabs.tsx`) — demande d'un pooler :

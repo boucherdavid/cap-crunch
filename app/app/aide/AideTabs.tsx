@@ -6,6 +6,7 @@ import type { LtirSettings } from '@/lib/ltirEligibility'
 import LtirRulesContent, { LtirSettingsContext } from './LtirRulesContent'
 import CapFactorContent, { CapFactorContext, type CapFactorInfo } from './CapFactorContent'
 import SigningLimitsContent, { SigningLimitsContext, type SigningLimits } from './SigningLimitsContent'
+import WaiverDeadlineText, { WaiverDaysContext } from './WaiverDeadlineText'
 
 type TabId = 'installation' | 'guide' | 'reglements'
 
@@ -921,7 +922,7 @@ const SECTIONS: Section[] = [
       <ul className="text-sm text-gray-700 space-y-1.5">
         <li>• S&apos;applique uniquement aux libérations en <strong>cours de saison</strong> (pas aux libérations de la phase pré-saison).</li>
         <li>• La priorité de réclamation est l&apos;<strong>ordre inverse du classement</strong> au moment précis de la libération — elle ne change pas même si le classement bouge ensuite. <strong>Avant le 1ᵉʳ novembre</strong> (le classement n&apos;a pas encore de sens en tout début de saison), c&apos;est plutôt l&apos;ordre du repêchage des agents libres pré-saison qui sert de priorité.</li>
-        <li>• Réclamable jusqu&apos;à <strong>23 h 59 (heure de l&apos;Est) du 2e jour suivant</strong> la libération (délai configurable par l&apos;administrateur) — attribué le lendemain de cette date limite.</li>
+        <li>• Réclamable jusqu&apos;à <strong>23 h 59 (heure de l&apos;Est) du <WaiverDeadlineText /></strong>{' '}la libération (délai configurable par l&apos;administrateur) — attribué le lendemain de cette date limite.</li>
         <li>• En cas de réclamations multiples sur le même joueur, seule la priorité tranche.</li>
         <li>• Une fois gagné, tu as <strong>48 h</strong> pour l&apos;ajouter toi-même à ton alignement, sinon l&apos;administrateur doit intervenir manuellement.</li>
       </ul>
@@ -973,7 +974,7 @@ function normalize(s: string) {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
 
-export default function AideTabs({ ltirSettings, signingLimits, capFactor }: { ltirSettings: LtirSettings; signingLimits: SigningLimits | null; capFactor: CapFactorInfo | null }) {
+export default function AideTabs({ ltirSettings, signingLimits, capFactor, waiverClaimDays }: { ltirSettings: LtirSettings; signingLimits: SigningLimits | null; capFactor: CapFactorInfo | null; waiverClaimDays: number }) {
   const [activeTab, setActiveTab] = useState<TabId>('installation')
   const [query, setQuery] = useState('')
 
@@ -996,6 +997,7 @@ export default function AideTabs({ ltirSettings, signingLimits, capFactor }: { l
     <LtirSettingsContext.Provider value={ltirSettings}>
     <SigningLimitsContext.Provider value={signingLimits}>
     <CapFactorContext.Provider value={capFactor}>
+    <WaiverDaysContext.Provider value={waiverClaimDays}>
     <div className="max-w-3xl mx-auto px-4 py-10">
       <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
@@ -1098,6 +1100,7 @@ export default function AideTabs({ ltirSettings, signingLimits, capFactor }: { l
         </>
       )}
     </div>
+    </WaiverDaysContext.Provider>
     </CapFactorContext.Provider>
     </SigningLimitsContext.Provider>
     </LtirSettingsContext.Provider>

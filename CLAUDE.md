@@ -1072,8 +1072,9 @@ le joueur) sur un ballotage ouvert, toujours dans l'historique.
   (cas limite), repli sur `presaison_draft_order` plutôt que de bloquer le ballotage. Coupure du
   1er novembre volontairement approximative (pas d'heure de l'Est à la seconde près).
 - **Fenêtre par jour civil, pas par délai roulant (David, 2026-09-21)** — `app_settings.
-  waiver_claim_days` (défaut 2, éditable dans `/admin/effectifs?tab=conformite`, même
-  formulaire que `unsigned_player_cap_multiplier`/`cap_deadline_days`) : un joueur libéré un
+  waiver_claim_days` (défaut 2, éditable dans Configuration → Général de `/admin/pool?tab=config`
+  depuis le 2026-10-19, `WaiverSettingsForm.tsx` + `lib/waiverSettings.ts` ; `/aide` affiche la
+  valeur en vigueur, `WaiverDeadlineText.tsx`) : un joueur libéré un
   jour J reste réclamable jusqu'à **23h59 heure de l'Est du jour J+N**, peu importe l'heure
   exacte de la libération (ex: libéré lundi, `waiver_claim_days=2` → réclamable jusqu'à
   mercredi 23h59, attribué le jeudi) — remplace l'ancien délai roulant en heures

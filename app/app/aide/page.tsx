@@ -1,13 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { fetchLtirSettings } from '@/lib/injuries'
+import { fetchWaiverClaimDays } from '@/lib/waiverSettings'
 import AideTabs from './AideTabs'
 
 export const metadata = { title: 'Aide — Cap Crunch' }
 
 export default async function AidePage() {
   const supabase = await createClient()
-  const [ltirSettings, { data: saison }] = await Promise.all([
+  const [ltirSettings, waiverClaimDays, { data: saison }] = await Promise.all([
     fetchLtirSettings(supabase),
+    fetchWaiverClaimDays(supabase),
     supabase
       .from('pool_seasons')
       .select('season, nhl_cap, cap_multiplier, pool_cap, max_signatures_al, max_signatures_ltir')
@@ -22,5 +24,5 @@ export default async function AidePage() {
   const capFactor = saison
     ? { season: saison.season, nhlCap: Number(saison.nhl_cap), factor: Number(saison.cap_multiplier), poolCap: Number(saison.pool_cap) }
     : null
-  return <AideTabs ltirSettings={ltirSettings} signingLimits={signingLimits} capFactor={capFactor} />
+  return <AideTabs ltirSettings={ltirSettings} signingLimits={signingLimits} capFactor={capFactor} waiverClaimDays={waiverClaimDays} />
 }
