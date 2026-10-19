@@ -31,6 +31,8 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   Valeur en prod au moment du changement : 2 (inchangée).
 - `/aide` (Règlements → Ballotage) affichait « 2e jour suivant » en dur : lit maintenant la
   valeur en vigueur (`WaiverDaysContext`, même patron que les seuils LTIR).
+- Vercel n'avait pas déployé `b10a907` sur staging (aucun déploiement créé, 2 h plus tard) :
+  relancé par un commit vide (`076d5e3`). Validé par David en staging, promu en prod le même jour.
 
 **[Feat] — Fiche joueur : rangée d'actions** (`app/components/PlayerSlideOver.tsx`,
 `AddToWatchlist.tsx`, `player-search-actions.ts`, `app/app/simulation/page.tsx`,
