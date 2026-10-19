@@ -34,6 +34,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   banque n'a que « Proposer un échange » (l'onglet n'envoie que les joueurs de l'alignement).
 - `PlayerPoolSummary.viewerId` (`auth.getUser()` en parallèle des lectures existantes) : aucune
   nouvelle lecture de table. Nouvelle entrée « Fiche d'un joueur » dans le guide de `/aide`.
+- Commit : `cb7d854` — validé par David en staging, promu en prod le même jour.
 
 **[Fix] — Périodes actives : aller-retour du même jour fusionné** (`app/lib/standings.ts`) :
 - Marchenko (David) affichait 2 périodes : mis en réserve à 14 h 00 le 12 octobre (lot n° 74,
