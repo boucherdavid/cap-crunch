@@ -19,6 +19,20 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-19
+
+**[Fix] — Périodes actives : aller-retour du même jour fusionné** (`app/lib/standings.ts`) :
+- Marchenko (David) affichait 2 périodes : mis en réserve à 14 h 00 le 12 octobre (lot n° 74,
+  avec Hryckowian activé) puis réactivé à 14 h 44 (lot n° 75, annulation le jour même). Aucun
+  match entre les deux, aucun point perdu.
+- `tidySameDaySegments()` après `activeSegments()` : deux fenêtres actives séparées par une pause
+  commencée et finie le même jour (heure de l'Est) sans match du joueur sont fusionnées ; une
+  fenêtre active commencée et finie le même jour sans match (Hryckowian, 44 min) n'est plus
+  affichée. Affichage seulement : aucun point ne change, la base et le Journal des activités
+  gardent les deux lots. Rétroactif. Clé de cache `standings-v1` → `standings-v2`.
+- Préparé aussi le même jour : archives de sauvegarde des fichiers non versionnés pour le
+  changement de portable de David (hors dépôt).
+
 ### 2026-10-18
 
 **[Fix] — Journal des activités : filtre pooler ligne par ligne** (`app/app/journal-transactions/TransactionsClient.tsx`) :

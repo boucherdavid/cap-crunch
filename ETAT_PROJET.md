@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-10-18
+**Dernière mise à jour :** 2026-10-19
 
 ---
 
@@ -30,7 +30,7 @@
 
 | Branche | État |
 |---|---|
-| `staging` | = `main` |
+| `staging` | `main` + périodes actives : aller-retour du même jour sans match fusionné en une seule période, fenêtre active vide du même jour masquée (Marchenko/Hryckowian, 12 oct.) — **à valider par David** |
 | `main` (prod) | À jour au 2026-10-18 — Journal des activités : filtre pooler ligne par ligne et compteurs des onglets selon les filtres (validé par David) ; Journal des activités : filtre par joueur + encadré « Périodes actives » (matchs comptés vs LNH) ; imports qui ignorent les gardiens substituts (toi 0:00), nettoyage roulé en prod (253 lignes en 2026-27, 2404 en 2025-26 ; Wedgewood = 2 MJ) ; onglet Alignement : colonne « Aujourd'hui » (match du jour) et lignes colorées réserviste/LTIR, validé par David. Le 17 : délai de réactivation compté en jours civils (désactivé le 17 → activable le 20 dès 0 h) ; onglet « Prochains matchs » : filtre par position, recrues hors de « Tous » ; « Journal des activités » (renommé) avec filtre pooler en liste déroulante ; liens Marqueur retirés des menus (comparaison = onglet admin seulement, message clair pendant les mises à jour de Marqueur) ; bouton Marqueur.com et sélecteur de pooler en guise de titre sur chaque alignement — tout validé par David en staging. Le 16 : délai de réactivation après une remise en banque et journal des lots de Gestion d'effectifs (journal reconstitué en prod), gardiens partants (page qui se met à jour seule + carte de l'accueil), groupe de menu « Soir de match », carte des blessures en cache, rappels avant les dates limites (ballotage, échanges, plafond) et réponses au ballotage pour l'admin, validés par David en staging. Inclut aussi, en plus du 13 : fausse page « Pas de connexion » corrigée (service worker), requête des blessés bornée, classement et blessures en cache, protection recrue unifiée (règle unique, correction et révision des étiquettes, recrue sans contrat bloquée en banque, années de repêchage en une seule année), échange effectif le lendemain si un match d'un joueur impliqué est commencé, pointage de la soirée selon l'alignement à l'heure du match |
 
 - Migrations `data_versions.sql` (2026-10-14) et `deadline_reminders.sql` (2026-10-16) roulées en staging et en prod.

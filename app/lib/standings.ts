@@ -2,6 +2,15 @@ import { unstable_cache } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getDataVersion } from '@/lib/dataVersion'
 
+const etDayFormat = new Intl.DateTimeFormat('fr-CA', {
+  timeZone: 'America/Toronto',
+  year: 'numeric', month: '2-digit', day: '2-digit',
+})
+
+function etDay(ms: number): string {
+  return etDayFormat.format(new Date(ms))
+}
+
 export type PeriodContrib = {
   goals: number
   assists: number
@@ -108,7 +117,7 @@ export function statusAtFromEvents(events: RosterEvent[] | undefined, timeMs: nu
 const cachedStandings = unstable_cache(
   async (seasonId: string, range: DateRange | null, _version: number) =>
     buildStandings(createAdminClient(), seasonId, range ?? undefined),
-  ['standings-v1'],
+  ['standings-v2'],
   { revalidate: 86_400 },
 )
 
@@ -252,6 +261,32 @@ export async function buildStandings(supabase: any, seasonId: string | number, r
     return segments
   }
 
+  // Affichage seulement (David, 2026-10-19) — aucun point ne change, puisqu'aucun match n'a lieu
+  // dans ce qui est fusionné ou retiré. Une désactivation annulée le jour même sans match entre
+  // les deux (ex : Marchenko, réserve 14 h 00 → actif 14 h 44) donne une seule période, et une
+  // fenêtre active de moins d'une journée sans aucun match (l'autre joueur de cet aller-retour)
+  // n'est pas affichée.
+  function tidySameDaySegments(
+    segments: { start: number; end: number | null }[],
+    logs: { game_start_time: string }[],
+  ): { start: number; end: number | null }[] {
+    const gameTimes = logs.map(gl => new Date(gl.game_start_time).getTime())
+    const hasGame = (from: number, to: number | null) =>
+      gameTimes.some(t => t > from && (to === null || t <= to))
+    const sameEtDay = (a: number, b: number) => etDay(a) === etDay(b)
+
+    const merged: { start: number; end: number | null }[] = []
+    for (const seg of segments) {
+      const prev = merged[merged.length - 1]
+      if (prev && prev.end !== null && sameEtDay(prev.end, seg.start) && !hasGame(prev.end, seg.start)) {
+        prev.end = seg.end
+      } else {
+        merged.push({ ...seg })
+      }
+    }
+    return merged.filter(s => !(s.end !== null && sameEtDay(s.start, s.end) && !hasGame(s.start, s.end)))
+  }
+
   const poolerMap = new Map<string, { name: string; players: PlayerContrib[] }>()
 
   // Grouper les roster rows par (pooler.id, player.id)
@@ -288,7 +323,10 @@ export async function buildStandings(supabase: any, seasonId: string | number, r
       const removedAt = row.removed_at ? new Date(row.removed_at) : null
       if (!addedAt) continue
 
-      const segments = activeSegments(key, addedAt.getTime(), removedAt ? removedAt.getTime() : null, row.player_type)
+      const segments = tidySameDaySegments(
+        activeSegments(key, addedAt.getTime(), removedAt ? removedAt.getTime() : null, row.player_type),
+        logs,
+      )
 
       for (const seg of segments) {
         const earned: StatBlock = { goals: 0, assists: 0, goalie_wins: 0, goalie_otl: 0, goalie_shutouts: 0 }
