@@ -21,6 +21,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-21
 
+**[Docs] — Documentation de la vue par position et du regroupement Marqueur** (`CLAUDE.md`,
+`app/app/aide/AideTabs.tsx`) : `/aide` (Guide → Classement) explique le bouton « Par position » ;
+`CLAUDE.md` décrit la vue (section 5, menu Le pool) et le regroupement par panier de l'onglet
+Marqueur (section 6).
+
 **[Feat] — Classement : vue « Par position »** (`app/app/classement/PositionSummaryTable.tsx`,
 `ClassementTable.tsx`) :
 - Sélecteur « Global | Par position » au-dessus du tableau (saison, mensuel, hebdomadaire). La

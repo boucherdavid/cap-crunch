@@ -441,7 +441,7 @@ const SECTIONS: Section[] = [
     id: 'guide-classement',
     tab: 'guide',
     title: 'Classement',
-    keywords: 'classement rang points buts passes victoires gardien direct ce soir pointeurs mise a jour nuit hebdomadaire mensuel semaine mois',
+    keywords: 'classement rang points buts passes victoires gardien direct ce soir pointeurs mise a jour nuit hebdomadaire mensuel semaine mois par position attaquants defenseurs gardiens',
     href: '/classement',
     screenshot: '/guide/classement.png',
     content: (
@@ -452,6 +452,7 @@ const SECTIONS: Section[] = [
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Le tableau affiche le rang, les points totaux et le détail (buts, passes, victoires, défaites prol.).</li>
           <li>• Clique sur le nom d&apos;un pooler pour consulter son alignement complet.</li>
+          <li>• <strong>Par position</strong>{' '}: le bouton « Par position », au-dessus du tableau, montre les points de chaque pooler séparés entre attaquants, défenseurs et gardiens, avec le total. Le meilleur de chaque colonne est en vert ; clique sur Attaquants, Défenseurs, Gardiens ou Total pour trier. Ton choix de vue est gardé pour ta prochaine visite.</li>
           <li>• <strong>Quand les points sont-ils mis à jour ?</strong>{' '}Les points officiels du classement sont mis à jour une fois par nuit, vers 2 h (heure de l&apos;Est), avec les matchs de la veille.</li>
           <li>
             • <strong>En direct</strong>{' '}: pendant les matchs, la page d&apos;accueil affiche le classement de la soirée et les pointeurs de la LNH, mis à jour chaque minute. Le détail par pooler est sur{' '}

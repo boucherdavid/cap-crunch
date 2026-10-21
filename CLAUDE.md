@@ -615,7 +615,7 @@ sont deux natures de contenu différentes.**
 | Section | Contenu |
 |---|---|
 | Mon équipe (nouveau nom de groupe — le lien "Mon alignement", ex-"Mon équipe", garde son nom de page inchangé depuis le renommage plus haut le même jour) | Mon alignement · Gestion d'effectifs · Simulation · Mes listes (ajouté le 2026-09-27) — "ce qui m'appartient / que je contrôle" |
-| Le pool | Classement · Tous les alignements (ex-"Équipes") · Meilleurs joueurs disponibles (2026-10-05) · Marché des échanges (2026-10-03) · Journal des activités (ex-« Journal des transactions », renommé le 2026-10-17, route `/journal-transactions` inchangée) — les liens Marqueur ont été retirés du menu le 2026-10-17 — "ce qui concerne les autres poolers". Le groupe "Classement du pool" a été retiré le 2026-09-30 (David) : un seul lien Classement, avec un sélecteur Saison complète (défaut) / Mensuel / Hebdomadaire en haut de la page (`app/classement/PeriodSelector.tsx`, routes `/classement`, `/classement/mensuel`, `/classement/hebdomadaire` inchangées) |
+| Le pool | Classement · Tous les alignements (ex-"Équipes") · Meilleurs joueurs disponibles (2026-10-05) · Marché des échanges (2026-10-03) · Journal des activités (ex-« Journal des transactions », renommé le 2026-10-17, route `/journal-transactions` inchangée) — les liens Marqueur ont été retirés du menu le 2026-10-17 — "ce qui concerne les autres poolers". Le groupe "Classement du pool" a été retiré le 2026-09-30 (David) : un seul lien Classement, avec un sélecteur Saison complète (défaut) / Mensuel / Hebdomadaire en haut de la page (`app/classement/PeriodSelector.tsx`, routes `/classement`, `/classement/mensuel`, `/classement/hebdomadaire` inchangées ; bouton « Global | Par position » au-dessus du tableau, 2026-10-21 : totaux attaquants/défenseurs/gardiens par pooler, `app/classement/PositionSummaryTable.tsx`, simple addition des `PlayerContrib` déjà chargés, choix gardé dans le navigateur) |
 | Soir de match (2026-10-16) | En direct · Gardiens partants · Trios et paires (sorti d'Analytique) — ce qu'on consulte avant et pendant les matchs ; famille `soir-de-match` (lune, jaune) aussi sur les cartes « Pointage de la soirée » et « Gardiens du pool ce soir » de l'accueil |
 | Calendrier LNH (lien autonome, ex-sous-item de "Statistiques", sorti le 2026-09-23 (suite) — entre Le pool et Statistiques) | Le résumé personnel "mes joueurs cette semaine" a été extrait dans un onglet séparé sur `/poolers/[id]`, voir ci-dessous — cette page ne garde que la navigation jour par jour |
 | Statistiques (ex-partie de "LNH") | LNH · Projections · AHL |
@@ -1273,6 +1273,11 @@ corrigée le 2026-09-20 :**
   en cache). Sans ça, le « TOP 10 en direct » de la colonne de droite passait pour l'alignement.
 - Ligne rouge `trr` sur Marqueur = ancien actif retiré des actifs (période fermée, points gardés) :
   concorde avec tout statut non actif ici, ou avec un joueur parti (David, 2026-10-06 — Sanderson).
+- **Regroupement par panier** (David, 2026-10-21) : chaque écart d'alignement va dans le panier de
+  son dernier mouvement (`roster_change_log` de même `changed_at` pour le pooler — un lot de
+  Gestion d'effectifs partage la même date), du plus ancien au plus récent ; sorties des actifs
+  jumelées aux entrées par position (A/D/G), joueurs déjà concordants du panier en gris. Écarts
+  sans mouvement → « Autres écarts » (`moveGroups`/`otherGaps`, `MarqueurReportView.tsx`).
 - Chaque écart de points porte sa **preuve LNH** (`fetchNhlProof()` : total selon le pointage du
   pool, détail match par match, lien nhl.com) et un verdict — Cap Crunch a raison / Marqueur a raison.
 - Marqueur n'a pas de LTIR : LTIR ici ↔ réserviste là-bas = concordant. Recrues en banque non
