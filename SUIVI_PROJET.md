@@ -19,6 +19,22 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-21
+
+**[Feat] — Onglet Marqueur : écarts regroupés par panier, sorties jumelées aux entrées**
+(`app/lib/marqueur.ts`, `app/app/admin/effectifs/MarqueurReportView.tsx`) :
+- David avait du mal à savoir quel joueur avait remplacé qui en reportant sur Marqueur (liste à
+  plat, alphabétique). Chaque écart va maintenant dans le panier de son dernier mouvement
+  (`roster_change_log` de même `changed_at` pour le pooler — un lot de Gestion d'effectifs
+  partage la même date), du plus ancien au plus récent, titre « Effectif le … ».
+- Dans un panier : sorties des actifs à gauche, entrées à droite, jumelées par position (A/D/G) ;
+  les autres mouvements (ni entrée ni sortie des actifs) en dessous. Les joueurs déjà concordants
+  du panier restent affichés en gris pour situer l'échange. Un joueur qui a bougé de nouveau
+  n'apparaît que dans son panier le plus récent. Écarts sans mouvement → « Autres écarts ».
+- Gestion d'effectifs inchangée (pas de saisie « A contre B » : le panier joue déjà ce rôle).
+  Aucune requête de plus (colonnes ajoutées à la lecture existante du journal).
+- Commit : voir `git log` (feat(marqueur))
+
 ### 2026-10-19
 
 **[Refactor] — Délai de réclamation au ballotage déplacé dans Configuration → Général**

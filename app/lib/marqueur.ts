@@ -16,6 +16,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getStandings } from '@/lib/standings'
 import { CHANGE_LABEL } from '@/lib/rosterChangeLabels'
 import { toNhlSeasonId } from '@/lib/nhl-stats'
+import { getPlayerBucket } from '@/lib/rosterLimits'
 
 const POOL_ID = 76938
 const BASE = 'https://www.marqueur.com/hockey/mbr/tools/pool/stats_03.php'
@@ -31,6 +32,26 @@ export type MarqueurRosterGap = {
   action: string
   /** État dans Cap Crunch et dernier mouvement connu, pour juger de quel côté est l'erreur. */
   context: string
+}
+
+/** Un joueur d'un panier (David, 2026-10-21). */
+export type MarqueurMoveItem = {
+  player: string
+  position: 'A' | 'D' | 'G'
+  /** Effet du mouvement dans Cap Crunch : « actif → recrue (banque) ». */
+  move: string
+  /** Action à faire sur Marqueur ; null = déjà concordant (affiché en gris, pour situer le panier). */
+  action: string | null
+}
+
+/** Mouvements faits au même moment pour un pooler — un panier de Gestion d'effectifs écrit tous
+ * ses mouvements avec le même `changed_at`. Les joueurs qui sortent des actifs sont jumelés, par
+ * position, à ceux qui y entrent : c'est ce qui se saisit ensemble sur Marqueur. */
+export type MarqueurMoveGroup = {
+  when: string  // « le 20 oct. à 15 h 16 (heure de l'Est) »
+  pairs: { out: MarqueurMoveItem | null; in: MarqueurMoveItem | null }[]
+  /** Ni entrée ni sortie des actifs (réserviste libéré, recrue signée en banque...). */
+  others: MarqueurMoveItem[]
 }
 
 /** Preuve tirée de l'API de la LNH (David, 2026-10-06) : les matchs de la saison du joueur, pour
@@ -83,6 +104,10 @@ export type MarqueurPoolerReport = {
   capCrunchTotal: number
   marqueurTotal: number | null
   rosterGaps: MarqueurRosterGap[]
+  /** Écarts d'alignement regroupés par panier, du plus ancien au plus récent. */
+  moveGroups: MarqueurMoveGroup[]
+  /** Écarts sans mouvement journalisé (état depuis le début de saison, nom non jumelé...). */
+  otherGaps: MarqueurRosterGap[]
   pointsGaps: MarqueurPointsGap[]
 }
 
@@ -190,7 +215,7 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
       .select('pooler_id, player_type, added_at, players (first_name, last_name, nhl_id)')
       .eq('pool_season_id', season.id).eq('is_active', true),
     admin.from('roster_change_log')
-      .select('pooler_id, change_type, changed_at, players (first_name, last_name)')
+      .select('pooler_id, change_type, old_type, new_type, changed_at, players (first_name, last_name, position)')
       .eq('pool_season_id', season.id)
       .order('changed_at'),
   ])
@@ -213,9 +238,19 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
     return `le ${fmtDay(iso)} à ${Number(h)} h ${m} (heure de l'Est)`
   }
   const lastMove = new Map<string, string>()
-  for (const r of (logRows ?? []) as unknown as { pooler_id: string; change_type: string; changed_at: string; players: { first_name: string; last_name: string } | null }[]) {
+  // Dernier mouvement brut, par pooler puis par joueur : sert à regrouper les écarts par panier.
+  type LogMove = { at: number; iso: string; oldType: string | null; newType: string | null; position: string | null; name: string }
+  const lastLog = new Map<string, Map<string, LogMove>>()
+  type LogRow = { pooler_id: string; change_type: string; old_type: string | null; new_type: string | null; changed_at: string; players: { first_name: string; last_name: string; position: string | null } | null }
+  for (const r of (logRows ?? []) as unknown as LogRow[]) {
     if (!r.players) continue
-    lastMove.set(`${r.pooler_id}::${norm(`${r.players.first_name} ${r.players.last_name}`)}`, `${CHANGE_LABEL[r.change_type] ?? r.change_type} ${fmtMoment(r.changed_at)}`)
+    const name = `${r.players.first_name} ${r.players.last_name}`
+    lastMove.set(`${r.pooler_id}::${norm(name)}`, `${CHANGE_LABEL[r.change_type] ?? r.change_type} ${fmtMoment(r.changed_at)}`)
+    if (!lastLog.has(r.pooler_id)) lastLog.set(r.pooler_id, new Map())
+    lastLog.get(r.pooler_id)!.set(norm(name), {
+      at: new Date(r.changed_at).getTime(), iso: r.changed_at,
+      oldType: r.old_type, newType: r.new_type, position: r.players.position, name,
+    })
   }
 
   type RosterRow = { pooler_id: string; player_type: string; added_at: string | null; players: { first_name: string; last_name: string; nhl_id: number | null } | null }
@@ -234,7 +269,7 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
   const poolers: MarqueurPoolerReport[] = standings.map(st => {
     const option = matchPooler(st.poolerName, options)
     const base = { poolerName: st.poolerName, capCrunchTotal: st.totalPoints }
-    if (!option) return { ...base, marqueurLabel: null, marqueurTotal: null, rosterGaps: [], pointsGaps: [] }
+    if (!option) return { ...base, marqueurLabel: null, marqueurTotal: null, rosterGaps: [], moveGroups: [], otherGaps: [], pointsGaps: [] }
 
     const mq = pages.get(option.no) ?? []
     type Ours = { name: string; status: string; points: number; nhlId: number | null }
@@ -273,6 +308,9 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
     const moveOf = (name: string) => lastMove.get(`${st.poolerId}::${norm(name)}`)
     const rosterGaps: MarqueurRosterGap[] = []
     const pointsGaps: MarqueurPointsGap[] = []
+    // Écart → clé du joueur (nom normalisé), pour le retrouver dans son panier.
+    const gapKey = new Map<MarqueurRosterGap, string>()
+    const addGap = (name: string, gap: MarqueurRosterGap) => { rosterGaps.push(gap); gapKey.set(gap, norm(name)) }
 
     for (const { m, o } of pairs) {
       const move = moveOf(o.name)
@@ -282,7 +320,7 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
         continue
       }
       if (!inLineup(o)) {
-        rosterGaps.push({
+        addGap(o.name, {
           player: o.name,
           action: o.status === 'ltir'
             ? `Passer réserviste sur Marqueur (${STATUS_LABEL[m.status]} là-bas)`
@@ -292,7 +330,7 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
         continue
       }
       {
-        rosterGaps.push({
+        addGap(o.name, {
           player: o.name,
           action: `Changer le statut sur Marqueur : ${STATUS_LABEL[m.status]} → ${STATUS_LABEL[o.status]}`,
           context: `Dans Cap Crunch : ${STATUS_LABEL[o.status]}${move ? ` — ${move}` : ''}`,
@@ -301,7 +339,7 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
     }
     for (const o of oursLeft.filter(inLineup)) {
       const move = moveOf(o.name)
-      rosterGaps.push({
+      addGap(o.name, {
         player: o.name,
         action: `Ajouter sur Marqueur (${STATUS_LABEL[o.status]})`,
         context: `Dans Cap Crunch : ${STATUS_LABEL[o.status]}${move ? ` — ${move}` : ''}`,
@@ -309,17 +347,65 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
     }
     for (const m of mqLeft) {
       if (m.status === 'inactif') continue  // ancien actif là-bas, parti d'ici : concordant
-      rosterGaps.push({
+      addGap(m.name, {
         player: m.name,
         action: `Retirer de l'alignement sur Marqueur (${STATUS_LABEL[m.status]} là-bas)`,
         context: `Dans Cap Crunch : absent de cet alignement${moveOf(m.name) ? ` — ${moveOf(m.name)}` : ''}`,
       })
     }
 
+    // Regroupement par panier (David, 2026-10-21) : chaque écart va dans le panier de son dernier
+    // mouvement ; le panier montre aussi ses joueurs déjà concordants, pour savoir qui a remplacé qui.
+    // Un joueur qui a bougé de nouveau plus tard n'apparaît que dans son panier le plus récent.
+    const logs = lastLog.get(st.poolerId) ?? new Map<string, LogMove>()
+    const groupAts = new Set<number>()
+    const otherGaps: MarqueurRosterGap[] = []
+    const gapByKey = new Map<string, MarqueurRosterGap>()
+    for (const gap of rosterGaps) {
+      const key = gapKey.get(gap)!
+      const log = logs.get(key)
+      if (!log) { otherGaps.push(gap); continue }
+      groupAts.add(log.at)
+      gapByKey.set(key, gap)
+    }
+    const statusText = (t: string | null) => (t ? STATUS_LABEL[t] ?? t : "hors de l'alignement")
+    const toItem = (key: string, log: LogMove): MarqueurMoveItem => {
+      const bucket = getPlayerBucket(log.position)
+      return {
+        player: log.name,
+        position: bucket === 'goalie' ? 'G' : bucket === 'defense' ? 'D' : 'A',
+        move: `${statusText(log.oldType)} → ${statusText(log.newType)}`,
+        action: gapByKey.get(key)?.action ?? null,
+      }
+    }
+    const moveGroups: MarqueurMoveGroup[] = [...groupAts].sort((a, b) => a - b).map(at => {
+      const members = [...logs.entries()].filter(([, l]) => l.at === at).sort(([, a], [, b]) => a.name.localeCompare(b.name))
+      const outs: MarqueurMoveItem[] = []
+      const ins: MarqueurMoveItem[] = []
+      const others: MarqueurMoveItem[] = []
+      for (const [key, l] of members) {
+        const item = toItem(key, l)
+        if (l.oldType === 'actif' && l.newType !== 'actif') outs.push(item)
+        else if (l.newType === 'actif' && l.oldType !== 'actif') ins.push(item)
+        else others.push(item)
+      }
+      // Jumelage par position : un gardien sorti contre un gardien entré, etc.
+      const pairs: MarqueurMoveGroup['pairs'] = []
+      const insLeft = [...ins]
+      for (const out of outs) {
+        const i = insLeft.findIndex(x => x.position === out.position)
+        pairs.push({ out, in: i >= 0 ? insLeft.splice(i, 1)[0] : null })
+      }
+      for (const left of insLeft) pairs.push({ out: null, in: left })
+      return { when: fmtMoment(logs.get(members[0][0])!.iso), pairs, others }
+    })
+
     return {
       ...base,
       marqueurLabel: option.label,
       marqueurTotal: mq.reduce((s, p) => s + p.points, 0),
+      moveGroups,
+      otherGaps: otherGaps.sort((a, b) => a.player.localeCompare(b.player)),
       rosterGaps: rosterGaps.sort((a, b) => a.player.localeCompare(b.player)),
       pointsGaps: pointsGaps.sort((a, b) => a.player.localeCompare(b.player)),
     }
