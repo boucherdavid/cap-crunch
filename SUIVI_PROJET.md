@@ -21,6 +21,15 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-21
 
+**[Feat] — Classement : vue « Par position »** (`app/app/classement/PositionSummaryTable.tsx`,
+`ClassementTable.tsx`) :
+- Sélecteur « Global | Par position » au-dessus du tableau (saison, mensuel, hebdomadaire). La
+  vue par position additionne, par pooler, les points des attaquants, défenseurs et gardiens
+  (Pts, MJ, Pts/MJ ; gardiens : Pts, V, BL) + total ; meilleur de chaque colonne en vert, tri au
+  clic sur l'en-tête d'un groupe. Mêmes données que le classement (`PlayerContrib`), aucune
+  lecture de plus. Portrait : colonnes Pts seulement. Choix gardé dans le navigateur
+  (`useSyncExternalStore`, même patron que `LiveNightCards`).
+
 **[Feat] — Onglet Marqueur : écarts regroupés par panier, sorties jumelées aux entrées**
 (`app/lib/marqueur.ts`, `app/app/admin/effectifs/MarqueurReportView.tsx`) :
 - David avait du mal à savoir quel joueur avait remplacé qui en reportant sur Marqueur (liste à

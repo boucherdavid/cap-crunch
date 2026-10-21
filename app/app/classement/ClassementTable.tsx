@@ -1,13 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { fmtPts, fmtPtsPerGame } from '@/lib/nhl-stats'
 import SummaryTable from '@/components/SummaryTable'
+import PositionSummaryTable from './PositionSummaryTable'
 import PlayerLink from '@/components/PlayerLink'
 import type { PoolerStanding, PlayerContrib, PeriodContrib } from '@/lib/standings'
 
 const RANK_COLOR = ['text-yellow-500', 'text-gray-400', 'text-amber-600']
+const VIEW_STORAGE_KEY = 'classementView'
+type View = 'global' | 'position'
+const noopSubscribe = () => () => {}
+function readSavedView(): View {
+  try { return window.localStorage.getItem(VIEW_STORAGE_KEY) === 'position' ? 'position' : 'global' } catch { return 'global' }
+}
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleString('fr-CA', {
@@ -161,6 +168,15 @@ export default function ClassementTable({ standings }: { standings: PoolerStandi
   const [expanded, setExpanded] = useState<string | null>(null)
   const [_mode] = useState<Mode>('saison')
   const [periodPopup, setPeriodPopup] = useState<PlayerContrib | null>(null)
+  // Vue du tableau (David, 2026-10-21), gardée dans le navigateur — même patron que
+  // LiveNightCards : useSyncExternalStore pour la lecture, `override` dès que le pooler choisit.
+  const saved = useSyncExternalStore(noopSubscribe, readSavedView, () => 'global' as const)
+  const [override, setOverride] = useState<View | null>(null)
+  const view = override ?? saved
+  const chooseView = (v: View) => {
+    setOverride(v)
+    try { localStorage.setItem(VIEW_STORAGE_KEY, v) } catch {}
+  }
 
   return (
     <div>
@@ -173,7 +189,21 @@ export default function ClassementTable({ standings }: { standings: PoolerStandi
           onClose={() => setPeriodPopup(null)}
         />
       )}
-      <SummaryTable standings={standings} />
+      <div className="flex justify-end mb-2">
+        <div className="inline-flex rounded-lg border border-gray-200 bg-white text-sm overflow-hidden">
+          {(['global', 'position'] as const).map(v => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => chooseView(v)}
+              className={`px-3 py-1.5 ${view === v ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+            >
+              {v === 'global' ? 'Global' : 'Par position'}
+            </button>
+          ))}
+        </div>
+      </div>
+      {view === 'global' ? <SummaryTable standings={standings} /> : <PositionSummaryTable standings={standings} />}
 
       <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3 mt-6">Détail par pooler</h2>
       <div className="space-y-2">
