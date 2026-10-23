@@ -116,7 +116,7 @@
 
 ## 5. Décisions en attente de David
 
-- **Base de prod en manque de mémoire** (2026-10-23) : swap ~380 Mo permanent sur la Nano, alerte Disk IO. Passer à la Micro (1 Go, plan Pro 25 $ US/mois) ? Log Ingestion à 1,25 Go / 1 Go (facturé dès début 2027).
+- **Base de prod en manque de mémoire** (2026-10-23) : swap ~380 Mo permanent sur la Nano, alerte Disk IO. Décision de David : rester sur Supabase (Neon/Aiven écartés — migration trop lourde). Pro + Micro (25 $ US/mois) seulement si les poolers contribuent ; sinon gratuit, et Pro autour du pool (monter la taille pour la soirée). Staging déjà déplacé dans une organisation gratuite séparée. À surveiller : Log Ingestion (1,25 Go / 1 Go, facturé dès début 2027), taille de la base (500 Mo max). Si la prod redevient « Unhealthy » : la redémarrer dans Supabase.
 
 - Délais LTIR (14 / 14 / 3 / 5 / 2 jours, 2 matchs pour la rechute) : à discuter avec les poolers,
   ajustables dans `/admin/effectifs?tab=approbation`.
