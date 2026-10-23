@@ -21,6 +21,22 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-23
 
+**[Perf] — Vérifications de l'accueil : une fois par heure pour tout le site** (`app/lib/homeSyncs.ts`,
+`app/app/page.tsx`) :
+- Alerte Supabase « Disk IO Budget » en prod. `pg_stat_statements` (depuis ~le 12) : nos requêtes
+  ne pèsent presque rien (~25 Mo/jour, lecture + écriture + temporaire). Graphiques de David : swap
+  permanent ~380 Mo pour ~420 Mo de RAM, « Memory commitment » 1,34 Go (SEVERE), pics d'IOwait de
+  30 à 70 % aux 10–15 min alignés sur les pics de swap. Cause : la machine Nano manque de mémoire.
+  Extensions : seulement unaccent, pg_stat_statements, uuid-ossp, plpgsql, pgcrypto (pas de
+  pg_graphql) — rien à retirer. Solution durable : Micro (1 Go, plan Pro) — décision de David.
+- En attendant : `syncLtirReturns`, `syncNhlTransactions` et `syncDeadlines` ne partent plus de
+  l'accueil qu'une fois par heure pour tout le site (`unstable_cache`, revalidate 3600 — cache de
+  données Vercel partagé entre serveurs). Avant : minuteur en mémoire par serveur (5–10 min),
+  remis à zéro à chaque nouveau serveur. Les onglets règlent toujours leurs délais à l'ouverture.
+  Sert aussi de test : si les pics d'IOwait aux 10–15 min persistent, ils viennent de Supabase.
+- Log Ingestion : 1,25 Go sur 1 Go inclus (facturation après la période de grâce, début 2027) ;
+  en baisse depuis le 15 octobre (caches).
+
 **[Feat] — Propriétaire d'origine des choix de repêchage dans les échanges** (`lib/poolDraftYear.ts`,
 `gestion-effectifs/trade-actions.ts`, `TradeOffersTab.tsx`, `marche-echanges/MarcheEchangesClient.tsx`,
 `admin/effectifs/cap-watch-actions.ts`, `lib/tradeOffers.ts`) :

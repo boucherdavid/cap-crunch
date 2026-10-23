@@ -21,9 +21,8 @@ import { MARQUEUR_URL } from '@/lib/externalLinks'
 import { after } from 'next/server'
 import SectionIcon, { sectionBorderClass, type SectionId } from '@/components/SectionIcon'
 import MobileFold from '@/components/MobileFold'
-import { syncLtirReturns } from '@/lib/ltirReturns'
-import { syncDeadlines } from '@/lib/deadlineSync'
-import { syncNhlTransactions, loadRecentNhlTransactions, type NhlTransactionView } from '@/lib/nhlTransactions'
+import { runHomeSyncsHourly } from '@/lib/homeSyncs'
+import { loadRecentNhlTransactions, type NhlTransactionView } from '@/lib/nhlTransactions'
 import { poolDraftYear } from '@/lib/poolDraftYear'
 import { getPoolGoaliesTonight, type PoolGoalieTonight } from '@/lib/startingGoalies'
 
@@ -931,12 +930,9 @@ export default async function Home() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Retours au jeu des joueurs sur LTIR : détection en arrière-plan, sans ralentir l'accueil.
-  after(() => syncLtirReturns())
-  // Signatures et échanges de la LNH (ESPN) : même principe, avertit les admins des nouveautés.
-  after(() => syncNhlTransactions())
-  // Ballotage, échanges et plafond : règlement des délais échus et rappels (2026-10-16).
-  after(() => syncDeadlines())
+  // Retours de LTIR, signatures/échanges de la LNH, délais (ballotage, échanges, plafond) :
+  // en arrière-plan, au plus une fois par heure pour tout le site (lib/homeSyncs.ts).
+  after(() => runHomeSyncsHourly())
 
   const [{ data: saison }, { data: seriesSaison }, { data: me }] = await Promise.all([
     supabase.from('pool_seasons').select('id, season, pool_cap, season_started, season_started_at').eq('is_active', true).eq('is_playoff', false).single(),

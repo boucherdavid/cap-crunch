@@ -1044,7 +1044,7 @@ revue le 2026-09-14 :**
   automatique.
 
 **Dates limites des poolers (`app/lib/deadlineSync.ts`) — David, 2026-10-16 :** ballotage,
-échanges et plafond sont réglés aussi depuis l'accueil (`after()`, aux 5 min par instance), plus
+échanges et plafond sont réglés aussi depuis l'accueil (`after()`, une fois par heure, `lib/homeSyncs.ts`), plus
 seulement à l'ouverture de leur onglet. Un rappel push + courriel par délai, une seule fois
 (colonnes `*_reminder_sent_at`) : ballotage le dernier jour aux poolers sans réponse, ballotage
 remporté 24 h avant la fin, échange 1 jour avant, plafond 2 jours avant ; avis aux admins quand
@@ -1318,8 +1318,8 @@ David, 2026-10-08 :**
   blessés, ballotage et essais écartés) et alignements de l'API de la LNH (`/v1/roster/<code>/current`)
   comparés à `players.team_id` (clé `equipe|nhl_id|équipe`, signalé une seule fois). ESPN n'a
   jamais listé l'échange Marchenko–Knies ; les alignements le montraient.
-- Détection paresseuse (`syncNhlTransactions()`, accueil via `after()`, au plus aux 10 min par
-  instance). Nouveautés → push + courriel aux admins, lien vers `/admin/donnees`. Première lecture
+- Détection paresseuse (`syncNhlTransactions()`, accueil via `after()`, au plus une fois par
+  heure pour tout le site, `lib/homeSyncs.ts`). Nouveautés → push + courriel aux admins, lien vers `/admin/donnees`. Première lecture
   (table vide) : enregistrée sans avis. Aucun avis depuis un poste local.
 - Carte « Signatures et échanges dans la LNH » sur l'accueil (7 jours, 10 lignes, lue dans la
   table), surlignée quand un joueur nommé appartient à un pooler. Descriptions d'ESPN en anglais,
@@ -1665,7 +1665,7 @@ Lots antérieurs : `python_script/backfill_journal_gestion.py` (dry-run, `--appl
 - Joueur plus listé blessé par **aucune** source mais qui n'a pas encore joué : admins seulement
   (`reason='not_injured'`), sans date limite ; passe à `played` au premier match.
 - Détection paresseuse (`syncLtirReturns()`), pas de tâche planifiée : accueil (`after()`, au plus
-  aux 5 min par instance), Gestion d'effectifs et panneau Approbations. L'index unique partiel
+  une fois par heure pour tout le site — `lib/homeSyncs.ts`, cache de données Vercel partagé), Gestion d'effectifs et panneau Approbations. L'index unique partiel
   (un suivi ouvert par joueur) et les mises à jour conditionnelles évitent les notifications en
   double. Suivi fermé (`resolved_at`) dès que le joueur n'est plus sur LTIR chez ce pooler.
   Inactif tant que `season_started=false`.
