@@ -11,6 +11,7 @@ import {
   MARKET_CATEGORY_LABEL, tradeOfferHref,
   type MarketCategory, type MarketListingView, type MarketRequestView,
 } from '@/lib/tradeMarketShared'
+import { pickLabel } from '@/lib/poolDraftYear'
 
 const fmtCap = (n: number) =>
   new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
@@ -34,7 +35,7 @@ function itemKey(i: TradeableItem): string {
 function itemLabel(i: TradeableItem): string {
   return i.kind === 'player'
     ? `${i.name}${i.position ? ` (${i.position}${i.teamCode ? ', ' + i.teamCode : ''})` : ''}`
-    : `Choix ronde ${i.round} (${i.season})`
+    : pickLabel(i.round, i.season, i.originalOwnerName)
 }
 
 export default function MarcheEchangesClient({ saisonId, selfPoolerId, today, listings, requests }: {

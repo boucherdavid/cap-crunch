@@ -10,7 +10,7 @@ import { getEffectiveCap } from '@/lib/capUtils'
 import { adminDecideTradeOffer, loadTradeMessages, type TradeMessageView } from '@/lib/tradeOffers'
 import { listPendingLtirRequestsForAdmin, decideLtirRequest, type LtirRequestView } from '@/lib/ltirRequests'
 import type { LtirSettings } from '@/lib/ltirEligibility'
-import { poolDraftYear } from '@/lib/poolDraftYear'
+import { poolDraftYear, pickLabel as formatPickLabel } from '@/lib/poolDraftYear'
 
 async function requireAdmin() {
   const supabase = await createClient()
@@ -327,12 +327,12 @@ export async function getPendingTradeOffersForAdminAction(saisonId: number): Pro
   const pickIds = (itemRows ?? []).filter(i => i.item_type === 'pick').map(i => i.pick_id!)
   const [{ data: players }, { data: picks }] = await Promise.all([
     playerIds.length > 0 ? db.from('players').select('id, first_name, last_name, position, player_contracts (season, cap_number, contract_status)').in('id', playerIds) : Promise.resolve({ data: [] }),
-    pickIds.length > 0 ? db.from('pool_draft_picks').select('id, round, pool_seasons (season)').in('id', pickIds) : Promise.resolve({ data: [] }),
+    pickIds.length > 0 ? db.from('pool_draft_picks').select('id, round, pool_seasons (season), original_owner:poolers!original_owner_id (name)').in('id', pickIds) : Promise.resolve({ data: [] }),
   ])
   const playerLabel = new Map((players ?? []).map(p => [p.id, `${p.last_name}, ${p.first_name}${p.position ? ` (${p.position})` : ''}`]))
   const playerCap = new Map((players ?? []).map(p => [p.id, getEffectiveCap(p.player_contracts, season, unsignedMultiplier).cap]))
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pickLabel = new Map(((picks ?? []) as any[]).map(p => [p.id, `Choix ronde ${p.round} (${poolDraftYear(p.pool_seasons?.season)})`]))
+  const pickLabel = new Map(((picks ?? []) as any[]).map(p => [p.id, formatPickLabel(p.round, poolDraftYear(p.pool_seasons?.season), p.original_owner?.name)]))
 
   return {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

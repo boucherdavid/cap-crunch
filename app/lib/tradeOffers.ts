@@ -650,7 +650,7 @@ async function announceTradeToPool(admin: ReturnType<typeof createAdminClient>, 
     .select('proposer_pooler_id, target_pooler_id').eq('id', tradeOfferId).single()
   if (!offer) return
   const { data: items } = await admin.from('trade_offer_items')
-    .select('to_pooler_id, item_type, players (first_name, last_name), pick:pool_draft_picks!pick_id (round, pool_seasons (season))')
+    .select('to_pooler_id, item_type, players (first_name, last_name), pick:pool_draft_picks!pick_id (round, pool_seasons (season), original_owner:poolers!original_owner_id (name))')
     .eq('trade_offer_id', tradeOfferId)
   const [proposerName, targetName] = await Promise.all([
     poolerName(admin, offer.proposer_pooler_id), poolerName(admin, offer.target_pooler_id),
@@ -658,11 +658,11 @@ async function announceTradeToPool(admin: ReturnType<typeof createAdminClient>, 
   const received = (poolerId: string) => ((items ?? []) as unknown as {
     to_pooler_id: string; item_type: string
     players: { first_name: string; last_name: string } | null
-    pick: { round: number; pool_seasons: { season: string } | null } | null
+    pick: { round: number; pool_seasons: { season: string } | null; original_owner: { name: string } | null } | null
   }[])
     .filter(i => i.to_pooler_id === poolerId)
     .map(i => i.item_type === 'pick'
-      ? `choix de ${i.pick?.round ?? '?'}${i.pick?.round === 1 ? 're' : 'e'} ronde${i.pick?.pool_seasons ? ` (${poolDraftYear(i.pick.pool_seasons.season)})` : ''}`
+      ? `choix de ${i.pick?.round ?? '?'}${i.pick?.round === 1 ? 're' : 'e'} ronde${i.pick?.pool_seasons ? ` (${poolDraftYear(i.pick.pool_seasons.season)})` : ''}${i.pick?.original_owner?.name ? ` de ${i.pick.original_owner.name}` : ''}`
       : `${i.players?.first_name ?? ''} ${i.players?.last_name ?? ''}`.trim())
     .join(', ') || 'rien'
   await announceToPool({

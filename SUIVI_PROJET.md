@@ -19,6 +19,18 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-23
+
+**[Feat] — Propriétaire d'origine des choix de repêchage dans les échanges** (`lib/poolDraftYear.ts`,
+`gestion-effectifs/trade-actions.ts`, `TradeOffersTab.tsx`, `marche-echanges/MarcheEchangesClient.tsx`,
+`admin/effectifs/cap-watch-actions.ts`, `lib/tradeOffers.ts`) :
+- Demande de David : avec deux choix de 3e ronde (le sien et un acquis), l'offre affichait
+  « Choix ronde 3 (2027) » sans dire lequel. Nouveau `pickLabel()` partagé : « Choix ronde 3 (2027)
+  de Sébastien F. » — sélection des éléments, cartes « Mes transactions », approbation admin,
+  marché des échanges (sélection) et annonce de l'échange au pool.
+- Simple jointure `original_owner` ajoutée aux lectures existantes de `pool_draft_picks`, aucune
+  nouvelle requête.
+
 ### 2026-10-21
 
 **[Docs] — Documentation de la vue par position et du regroupement Marqueur** (`CLAUDE.md`,

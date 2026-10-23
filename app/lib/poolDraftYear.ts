@@ -7,3 +7,12 @@
 export function poolDraftYear(season: string | null | undefined): string {
   return season ? season.slice(0, 4) : '?'
 }
+
+/**
+ * Libellé d'un choix du pool, avec son propriétaire d'origine (David, 2026-10-23) : un pooler peut
+ * détenir plusieurs choix de la même ronde (le sien et un choix acquis) — sans le nom, impossible de
+ * savoir lequel est offert. `year` est déjà passé par poolDraftYear().
+ */
+export function pickLabel(round: number | null | undefined, year: string, originalOwnerName?: string | null): string {
+  return `Choix ronde ${round ?? '?'} (${year})${originalOwnerName ? ` de ${originalOwnerName}` : ''}`
+}

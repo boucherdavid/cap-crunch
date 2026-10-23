@@ -11,6 +11,7 @@ import { refreshPoolerTodo } from '@/components/usePoolerTodo'
 import { listOtherPoolersAction, listScenariosAction, loadScenarioAction } from '../simulation/actions'
 import { getPlayerBucket, ACTIVE_LIMITS } from '@/lib/rosterLimits'
 import TradeChat from './TradeChat'
+import { pickLabel } from '@/lib/poolDraftYear'
 
 const MESSAGE_MAX = 500
 
@@ -81,7 +82,7 @@ function ItemPicker({
                 const k = itemKey(i)
                 const label = i.kind === 'player'
                   ? `${i.name}${i.position ? ` (${i.position}${i.teamCode ? ', ' + i.teamCode : ''})` : ''}`
-                  : `Choix ronde ${i.round} (${i.season})`
+                  : pickLabel(i.round, i.season, i.originalOwnerName)
                 return (
                   <label key={k} className="flex items-center justify-between gap-2 px-2 py-1.5 text-sm hover:bg-gray-50 cursor-pointer">
                     <span className="flex items-center gap-2 min-w-0">

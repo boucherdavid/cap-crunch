@@ -9,14 +9,14 @@ import {
   counterTradeOffer, reviseTradeOffer, tradeOfferVersion, withdrawTradeOffer, postTradeMessage, setTradeChatShared, purgeOldTradeMessages, loadTradeMessages,
   type TradeItemInput, type TradeExtraAction, type TradeMessageView,
 } from '@/lib/tradeOffers'
-import { poolDraftYear } from '@/lib/poolDraftYear'
+import { poolDraftYear, pickLabel } from '@/lib/poolDraftYear'
 
 // ─── Parcourir les actifs échangeables d'un pooler (soi-même ou un autre — déjà public via
 // /poolers/[id], voir app/app/simulation/actions.ts pour le même principe) ────────────────────
 
 export type TradeableItem =
   | { kind: 'player'; playerId: number; name: string; position: string | null; teamCode: string | null; playerType: 'actif' | 'reserviste' | 'ltir' | 'recrue'; capNumber: number; recrueEligible: boolean }
-  | { kind: 'pick'; pickId: number; round: number; season: string }
+  | { kind: 'pick'; pickId: number; round: number; season: string; originalOwnerName: string | null }
 
 // Joueurs sur LTIR inclus (David, 2026-10-05) : échangeables et affichables au marché. Chez le
 // receveur, ils arrivent comme actif ou réserviste (choix à la confirmation, comme tout joueur qui
@@ -36,7 +36,7 @@ export async function listTradeableAssetsAction(poolerId: string, saisonId: numb
       .in('player_type', ['actif', 'reserviste', 'ltir', 'recrue']),
     supabase
       .from('pool_draft_picks')
-      .select('id, round, pool_seasons (season)')
+      .select('id, round, pool_seasons (season), original_owner:poolers!original_owner_id (name)')
       .eq('current_owner_id', poolerId).eq('is_used', false),
   ])
   const season = saison?.season ?? ''
@@ -61,6 +61,7 @@ export async function listTradeableAssetsAction(poolerId: string, saisonId: numb
     pickId: p.id,
     round: p.round,
     season: poolDraftYear(p.pool_seasons?.season),
+    originalOwnerName: p.original_owner?.name ?? null,
   }))
 
   return [...players, ...picks]
@@ -234,9 +235,9 @@ async function resolveItemLabels(
     }
   }
   if (pickIds.length > 0) {
-    const { data } = await db.from('pool_draft_picks').select('id, round, pool_seasons (season)').in('id', pickIds)
+    const { data } = await db.from('pool_draft_picks').select('id, round, pool_seasons (season), original_owner:poolers!original_owner_id (name)').in('id', pickIds)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const p of (data ?? []) as any[]) labels.set(`pick-${p.id}`, `Choix ronde ${p.round} (${poolDraftYear(p.pool_seasons?.season)})`)
+    for (const p of (data ?? []) as any[]) labels.set(`pick-${p.id}`, pickLabel(p.round, poolDraftYear(p.pool_seasons?.season), p.original_owner?.name))
   }
   return { labels, caps, positions }
 }
