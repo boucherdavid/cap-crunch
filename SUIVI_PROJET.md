@@ -21,6 +21,12 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-24
 
+**[Style] — Onglet Échanges : alignement en colonne étroite** (`app/app/gestion-effectifs/GestionEffectifsManager.tsx`) :
+- Demande de David : les listes « Tu donnes » / « Tu reçois » coupaient les noms et les choix
+  de repêchage (avec le propriétaire d'origine ajouté le 23). Sur l'onglet Échanges seulement,
+  l'alignement passe à 24 rem à droite (au lieu de la moitié) et la page à `max-w-7xl`.
+  Mouvements et Ballotage inchangés.
+
 **[Feat] — Stats avancées des gardiens : danger élevé, tandems, équipe devant lui**
 (`python_script/import_advanced_stats.py`, `app/lib/advancedMetrics.ts`,
 `app/app/analytique/stats-avancees/StatsAvanceesTable.tsx`) :

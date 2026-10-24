@@ -1309,10 +1309,12 @@ export default function GestionEffectifsManager({
   const currentRosterPreview = roster ? (
     <RosterPreview roster={roster} projected={roster} poolCap={poolCap} capUsed={computeCap(roster)} hasCart={false} />
   ) : null
-  const tabLayout = (content: React.ReactNode, preview: React.ReactNode = currentRosterPreview) => (
-    <div className={isAdmin ? '' : 'max-w-6xl mx-auto'}>
+  // `wide` (Échanges, David 2026-10-24) : l'alignement en colonne étroite à droite, pour laisser la
+  // place aux listes « Tu donnes » / « Tu reçois » (noms et choix de repêchage coupés sinon).
+  const tabLayout = (content: React.ReactNode, preview: React.ReactNode = currentRosterPreview, wide = false) => (
+    <div className={isAdmin ? '' : wide ? 'max-w-7xl mx-auto' : 'max-w-6xl mx-auto'}>
       {tabs}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      <div className={`grid grid-cols-1 gap-6 items-start ${wide ? 'lg:grid-cols-[minmax(0,1fr)_24rem]' : 'lg:grid-cols-2'}`}>
         {content}
         {preview}
       </div>
@@ -1372,7 +1374,7 @@ export default function GestionEffectifsManager({
   }
 
   if (activeTab === 'echanges' && selfPoolerId) {
-    return tabLayout(<TradeOffersTab saisonId={saisonId} selfPoolerId={selfPoolerId} poolCap={poolCap} onDraftChange={setTradeDraft} prefill={tradePrefill} />, tradePreview)
+    return tabLayout(<TradeOffersTab saisonId={saisonId} selfPoolerId={selfPoolerId} poolCap={poolCap} onDraftChange={setTradeDraft} prefill={tradePrefill} />, tradePreview, true)
   }
 
   // Pooler : formulaire et alignement côte à côte sur grand écran, empilés sinon.
