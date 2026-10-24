@@ -71,6 +71,8 @@ const GOALIE_COLUMNS: Column[] = [
   { key: 'toi', label: 'Min', help: 'Minutes jouées', value: r => r.icetime / 60, format: int },
   { key: 'wins', label: 'V', help: 'Victoires (source : LNH) — affichées en « Toutes situations » seulement', value: r => r.stats.wins ?? null, format: int },
   { key: 'so', label: 'BL', help: 'Blanchissages (source : LNH) — affichés en « Toutes situations » seulement', value: r => r.stats.shutouts ?? null, format: int },
+  { key: 'starts', label: 'Dép.', help: 'Départs : matchs commencés devant le filet (source : LNH) — affichés en « Toutes situations » seulement', value: r => r.stats.starts ?? null, format: int },
+  { key: 'startshare', label: '% dép. éq.', help: "Part des matchs de son équipe où il a été le gardien partant : repère les tandems et les vrais numéros un — « Toutes situations » seulement", value: r => (r.stats.starts != null && r.stats.team_gp ? r.stats.starts / r.stats.team_gp : null), format: pct(0) },
   { key: 'sa', label: 'Tirs', help: 'Tirs au but reçus', value: r => s(r, 'sa'), format: int },
   { key: 'ga', label: 'BA', help: 'Buts alloués', value: r => s(r, 'ga'), format: int },
   { key: 'svpct', label: '% arr.', help: "Pourcentage d'arrêts", value: r => { const v = ratio(s(r, 'ga'), s(r, 'sa')); return v === null ? null : 1 - v }, format: v => v.toFixed(3) },
@@ -79,6 +81,10 @@ const GOALIE_COLUMNS: Column[] = [
   { key: 'gsax60', label: 'BSxB/60', help: 'Buts sauvés au-dessus des attentes par 60 minutes', value: r => per60(r, s(r, 'xga') - s(r, 'ga')), format: signed(2) },
   { key: 'hdgsax', label: 'BSxB DÉ', help: 'Buts sauvés au-dessus des attentes sur les tirs de danger élevé', value: r => s(r, 'hd_xga') - s(r, 'hd_ga'), format: signed(1) },
   { key: 'hdsa', label: 'Tirs DÉ', help: 'Tentatives de danger élevé reçues', value: r => s(r, 'hd_sa'), format: int },
+  { key: 'hdsvpct', label: '% arr. DÉ', help: "Pourcentage d'arrêts sur les tirs de danger élevé : ne flanche-t-il pas quand l'adversaire s'installe dans l'enclave ? Selon MoneyPuck, un tir de danger élevé a plus de 20 % de chances de devenir un but : autour de ,700 à ,750 est normal", value: r => { const v = ratio(s(r, 'hd_ga'), s(r, 'hd_sa')); return v === null ? null : 1 - v }, format: v => v.toFixed(3) },
+  { key: 'rebctl', label: 'Reb. évités', help: 'Rebonds attendus moins rebonds accordés : positif = contrôle des rebonds meilleur que prévu', value: r => s(r, 'x_rebounds') - s(r, 'rebounds'), format: signed(1) },
+  { key: 'teamxg', label: 'xB % éq.', help: "Part des buts attendus en faveur de son équipe (50 % = neutre) : une équipe qui domine lui donne plus de chances de victoire", value: r => r.stats.team_xg_pct ?? null, format: pct(1) },
+  { key: 'teamxga60', label: 'xBA/60 éq.', help: "Buts attendus accordés par son équipe par 60 minutes : la qualité de la défense devant lui (plus bas = mieux)", value: r => (r.stats.team_xga != null && r.stats.team_icetime ? r.stats.team_xga / (r.stats.team_icetime / 3600) : null), format: fixed(2) },
 ]
 
 const OWNER_TYPE_LABEL: Record<string, string> = { actif: 'A', reserviste: 'R', recrue: 'Rc', ltir: 'LTIR' }

@@ -17,6 +17,12 @@ pool) — complétés à partir de l'API stats de la LNH (`goalie/summary`, mêm
 rangés dans le même JSONB (`wins`, `losses`, `ot_losses`, `shutouts`, `starts`), pour que l'app
 lise tout depuis la base sans appeler la LNH à chaque affichage (David, 2026-10-01).
 
+Contexte de l'équipe devant le gardien (David, 2026-10-24) : `teams.csv` de la même page donne
+les stats de chaque équipe par situation. Rangées dans le JSONB de chaque gardien, même situation
+(`team_gp`, `team_xg_pct`, `team_xga`, `team_icetime`) — jumelage par le code d'équipe MoneyPuck,
+le même dans les deux fichiers. Pas de table à part : les pages lisent déjà les gardiens. Un
+gardien échangé en cours de saison reçoit le contexte de sa dernière équipe.
+
 Trios et paires (David, 2026-10-02) : `lines.csv` de la même page donne, pour chaque
 combinaison réellement utilisée à 5 contre 5, son temps de glace et ses résultats — importés
 dans `line_advanced_stats` (page /analytique/trios, sous l'alignement actuel de Daily Faceoff).
@@ -207,7 +213,7 @@ def fetch_rows(season: int, kind: str) -> list[dict] | None:
     if res.status_code == 404:
         return None
     res.raise_for_status()
-    if not res.text.startswith(('playerId', 'lineId')):
+    if not res.text.startswith(('playerId', 'lineId', 'team')):
         raise RuntimeError(f'Format inattendu pour {url} (page HTML au lieu du CSV ?)')
     return list(csv.DictReader(io.StringIO(res.text)))
 
@@ -226,6 +232,20 @@ def fetch_nhl_goalie_results(season: int) -> dict[int, dict]:
             'starts': g.get('gamesStarted'),
         }
         for g in res.json().get('data', []) if g.get('playerId')
+    }
+
+
+def fetch_team_context(season: int) -> dict[tuple[str, str], dict]:
+    """{(équipe, situation): stats de l'équipe} — contexte des gardiens."""
+    rows = fetch_rows(season, 'teams') or []
+    return {
+        (r['team'], r['situation']): {
+            'team_gp': num(r.get('games_played')),
+            'team_xg_pct': num(r.get('xGoalsPercentage')),
+            'team_xga': num(r.get('xGoalsAgainst')),
+            'team_icetime': num(r.get('iceTime')),
+        }
+        for r in rows if r.get('situation') in SITUATIONS and r.get('team')
     }
 
 
@@ -284,6 +304,17 @@ def main():
                           f'({len(results)} gardiens).')
                 except Exception as e:
                     print(f'[ATTENTION] Victoires LNH indisponibles pour {season} ({e}) — import sans elles.')
+                # Force de l'équipe devant le gardien (MoneyPuck teams.csv), même situation.
+                try:
+                    teams = fetch_team_context(season)
+                    for rec in recs:
+                        ctx = teams.get((rec['team'], rec['situation']))
+                        if ctx:
+                            rec['stats'].update(ctx)
+                    print(f'[INFO] {season}-{(season + 1) % 100:02d} gardiens : contexte des équipes ajouté '
+                          f'({len({t for t, _ in teams})} équipes).')
+                except Exception as e:
+                    print(f'[ATTENTION] Stats des équipes indisponibles pour {season} ({e}) — import sans elles.')
             print(f'[INFO] {season}-{(season + 1) % 100:02d} {kind} : {len(recs)} ligne(s) '
                   f'({len({r["nhl_id"] for r in recs})} joueurs).')
             records.extend(recs)

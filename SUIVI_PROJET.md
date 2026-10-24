@@ -19,6 +19,26 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-24
+
+**[Feat] — Stats avancées des gardiens : danger élevé, tandems, équipe devant lui**
+(`python_script/import_advanced_stats.py`, `app/lib/advancedMetrics.ts`,
+`app/app/analytique/stats-avancees/StatsAvanceesTable.tsx`) :
+- Demande de David (stats les plus utiles pour un pool axé victoires/blanchissages). GSAx,
+  départs et BSxB DÉ existaient déjà. Ajouts : % d'arrêts sur les tirs de danger élevé, rebonds
+  évités (attendus − accordés), départs et part des départs de l'équipe (tandems), xB % et
+  xBA/60 de l'équipe devant le gardien. WAR écarté (aucune source gratuite).
+- Contexte d'équipe : `teams.csv` de MoneyPuck, lu par l'import quotidien et rangé dans le JSONB
+  de chaque gardien (`team_gp`, `team_xg_pct`, `team_xga`, `team_icetime`, même situation) —
+  pas de table ni de migration, aucune lecture de plus dans l'app. Codes d'équipe identiques
+  dans les deux fichiers. Coût : ~100 lignes de gardiens réécrites de plus par jour (celles des
+  équipes qui ont joué).
+- HD = tirs à plus de 20 % de chances de but selon MoneyPuck : un % d'arrêts autour de ,700–,750
+  est normal (précisé dans l'aide de la colonne).
+- Import roulé en staging. En prod, les nouvelles colonnes se remplissent au prochain import
+  quotidien après la promotion (saison courante ; saisons passées : vides tant qu'elles ne sont
+  pas réimportées avec `--seasons`).
+
 ### 2026-10-23
 
 **[Perf] — Vérifications de l'accueil : une fois par heure pour tout le site** (`app/lib/homeSyncs.ts`,

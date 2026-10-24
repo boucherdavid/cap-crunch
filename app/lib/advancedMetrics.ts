@@ -56,6 +56,11 @@ export function goalieMetrics(r: AdvancedStatRow, capM: number | null, age: numb
   const ga = div(s('ga'), s('sa'))
   const wins = r.stats.wins ?? null
   const starts = r.stats.starts ?? null
+  const hdGa = div(s('hd_ga'), s('hd_sa'))
+  // Contexte de l'équipe (MoneyPuck teams.csv, ajouté au JSONB à l'import) — null si absent.
+  const teamGp = r.stats.team_gp ?? null
+  const teamXga = r.stats.team_xga ?? null
+  const teamHours = (r.stats.team_icetime ?? 0) / 3600
   return {
     cap: capM,
     age,
@@ -74,6 +79,11 @@ export function goalieMetrics(r: AdvancedStatRow, capM: number | null, age: numb
     gsax: s('xga') - s('ga'),
     gsax60: div(s('xga') - s('ga'), hours),
     hdGsax: s('hd_xga') - s('hd_ga'),
+    hdSvPct: hdGa === null ? null : (1 - hdGa) * 100,
+    reboundCtl: s('x_rebounds') - s('rebounds'),
+    startShare: starts !== null && teamGp ? (starts / teamGp) * 100 : null,
+    teamXgPct: r.stats.team_xg_pct != null ? r.stats.team_xg_pct * 100 : null,
+    teamXga60: teamXga !== null && teamHours ? teamXga / teamHours : null,
   }
 }
 
@@ -118,6 +128,11 @@ export const GOALIE_METRICS: Metric[] = [
   { key: 'gsax', label: 'Buts sauvés au-dessus des attentes', short: 'BSxB', help: 'xBA − BA : la meilleure mesure du gardien lui-même, indépendante de sa défense', d: 1, signed: true },
   { key: 'gsax60', label: 'Buts sauvés au-dessus des attentes / 60 min', short: 'BSxB/60', help: 'Buts sauvés au-dessus des attentes par 60 minutes', d: 2, signed: true },
   { key: 'hdGsax', label: 'Buts sauvés, tirs de danger élevé', short: 'BSxB DÉ', help: 'Buts sauvés au-dessus des attentes sur les tirs de danger élevé', d: 1, signed: true },
+  { key: 'hdSvPct', label: "% d'arrêts, danger élevé", short: '% arr. DÉ', help: "Pourcentage d'arrêts sur les tirs de danger élevé (plus de 20 % de chances de but selon MoneyPuck) : autour de 70 à 75 est normal", d: 1 },
+  { key: 'reboundCtl', label: 'Rebonds évités', short: 'Reb. évités', help: 'Rebonds attendus moins rebonds accordés : positif = contrôle des rebonds meilleur que prévu', d: 1, signed: true },
+  { key: 'startShare', label: "Part des départs de l'équipe", short: '% dép. éq.', help: "Part des matchs de son équipe où il a été le gardien partant : repère les tandems et les vrais numéros un", d: 0 },
+  { key: 'teamXgPct', label: "xB % de l'équipe", short: 'xB % éq.', help: "Part des buts attendus en faveur de son équipe (50 = neutre) : une équipe qui domine lui donne plus de chances de victoire", d: 1 },
+  { key: 'teamXga60', label: "xBA / 60 min de l'équipe", short: 'xBA/60 éq.', help: "Buts attendus accordés par son équipe par 60 minutes : la qualité de la défense devant lui (plus bas = mieux)", d: 2 },
 ]
 
 export const metricsFor = (kind: AdvancedKind) => (kind === 'goalie' ? GOALIE_METRICS : SKATER_METRICS)
