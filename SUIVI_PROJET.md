@@ -21,6 +21,12 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-25
 
+**[Data] — Scraping PuckPedia incomplet, 6 équipes rescrapées** (`python_script/teams_offline/*.csv`, `PuckPedia_*.csv`) :
+- Signalé par David : Hellebuyck toujours à WPG après le scraping du matin. Le run de 12 h 38 (sans journal `run_pipeline_staging`) avait réécrit 27 équipes ; CAR, CGY, NJD, NSH, NYI et TBL avaient échoué deux fois (Chrome planté, « HTML introuvable, équipe ignorée ») et gardaient leurs CSV du 21 octobre. Hellebuyck avait donc disparu de WPG sans apparaître chez NJD. Les CSV n'avaient pas été commités : la prod n'avait rien reçu.
+- Rescrapé ces 6 équipes (TBL en deux essais), fusion régénérée (1539 joueurs, 32 équipes), import staging sans erreur, CSV poussés sur `main` → import prod réussi. Mouvements : Hellebuyck ↔ Mercer/Daws/Bjugstad (NJD↔WPG), Räty, Buhr, Quillan, Hunt, St. Ivany.
+- Question ouverte : PuckPedia donne à Hellebuyck 8 098 182 $ en 2026-27 chez NJD (8,5 M$ ensuite), sans salaire retenu à WPG. Aucun pooler ne l'a pour l'instant.
+- Commit : `849a8a6`
+
 **[Feat] — Avis à l'admin : mouvements d'alignement et réclamations au ballotage** (`app/lib/adminRosterNotice.ts`, `app/lib/waiverClaims.ts`, `app/lib/push.ts`, `app/app/gestion-effectifs/actions.ts`, `app/app/gestion-effectifs/waiver-actions.ts`, `app/app/repechage-agents-libres/actions.ts`, `app/app/admin/communaute/NotificationsList.tsx`) :
 - Demande de David : aucune notification quand un pooler réclame au ballotage ou ajuste son alignement.
 - Mouvements : un avis push par lot soumis par un pooler (Gestion d'effectifs, `writeJournal`, et libre-service pré-saison), jamais pour un admin qui agit. Texte : « Paule : X : actif → réserviste · libère Y ». Lien : Journal des activités.
