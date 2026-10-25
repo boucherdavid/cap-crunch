@@ -164,7 +164,9 @@ function PlayerRow({ p, onPeriodClick }: { p: PlayerContrib; onPeriodClick?: (p:
   )
 }
 
-export default function ClassementTable({ standings }: { standings: PoolerStanding[] }) {
+// `onlyPlayed` : vue Quotidien (2026-10-25) — le détail ne liste que les joueurs qui ont joué ce
+// jour-là comme actifs, plutôt que tout l'alignement à 0.
+export default function ClassementTable({ standings, onlyPlayed = false }: { standings: PoolerStanding[]; onlyPlayed?: boolean }) {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [_mode] = useState<Mode>('saison')
   const [periodPopup, setPeriodPopup] = useState<PlayerContrib | null>(null)
@@ -208,7 +210,7 @@ export default function ClassementTable({ standings }: { standings: PoolerStandi
       <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3 mt-6">Détail par pooler</h2>
       <div className="space-y-2">
         {standings.map((pooler, i) => {
-          const sorted = groupAndSort(pooler.players)
+          const sorted = groupAndSort(onlyPlayed ? pooler.players.filter(p => p.gamesPlayed > 0) : pooler.players)
 
           return (
             <div key={pooler.poolerId} className="bg-white rounded-lg shadow overflow-hidden">

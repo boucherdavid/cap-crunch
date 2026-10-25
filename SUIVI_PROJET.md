@@ -21,6 +21,14 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-25
 
+**[Feat] — Classement quotidien** (`app/app/classement/quotidien/`, `PeriodSelector.tsx`, `ClassementTable.tsx`, `lib/dateRanges.ts`, `components/live/DailyStandingsCards.tsx`, `app/page.tsx`, `app/en-direct/LiveNightDetail.tsx`, `app/a-propos/page.tsx`) :
+- Demande de David : un classement de la veille plus intuitif qu'En direct, qui ne sert que le soir des matchs.
+- `/classement/quotidien?jour=AAAA-MM-JJ` : 4e choix du sélecteur, hier par défaut, navigation jour par jour. `getStandings()` borné à une journée (`dayRange()`), même cache que l'hebdo/mensuel ; le détail ne liste que les joueurs qui ont joué (`onlyPlayed`).
+- Accueil : quand la soirée de `getLiveNight()` est terminée et que ses points officiels sont importés (au moins un match compté), `DailyStandingsCards` (classement de la soirée + pointeurs du pool, points officiels) remplace les cartes « ce soir ». Pendant les matchs et jusqu'à l'import de nuit : pointage en direct inchangé. Une page laissée ouverte ne bascule pas d'elle-même (pas de sondage sur la version officielle).
+- En direct : bandeau « matchs terminés » avec lien vers le classement quotidien de la soirée.
+- `/resultats` (ancien récap, hors menu) non touché.
+- Commit : à venir
+
 **[Fix] — Blanchissages manquants : règle des 60:00 de jeu remplacée** (`python_script/import_regular_stats.py`, `backfill_regular_game_logs.py`, `import_playoff_stats.py`, `backfill_playoff_game_logs.py`, `app/lib/liveNight.ts`) :
 - Signalé par David : Kochetkov (CAR) blanchit STL le 24 oct., victoire comptée mais pas le blanchissage. Cause : la règle exigeait `toi >= 3600` ; il a joué 59:50 (retiré quelques secondes pour un 6e attaquant, pénalité différée).
 - Nouvelle règle : 0 but accordé, décision, et **seul gardien de son équipe à avoir joué** (`goalies_played == 1`). En plus, `enrich_goalie_stats` prend la valeur officielle `shutouts` du game-log de la LNH. Même règle dans le pointage en direct.

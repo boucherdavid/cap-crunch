@@ -71,3 +71,15 @@ export function monthRange(monthStr: string): DateRange {
   const to = `${addMonths(monthStr, 1)}-01`
   return { from: localMidnightUTC(from).toISOString(), to: localMidnightUTC(to).toISOString() }
 }
+
+// ─── Jour ─────────────────────────────────────────────────────────────────────
+
+/** Hier (YYYY-MM-DD, heure de l'Est) — dernière journée aux points officiels (import de nuit). */
+export function yesterdayET(): string {
+  return addDaysToDate(getTodayET(), -1)
+}
+
+/** [jour 00:00 ET, lendemain 00:00 ET[ */
+export function dayRange(dateStr: string): DateRange {
+  return { from: localMidnightUTC(dateStr).toISOString(), to: localMidnightUTC(addDaysToDate(dateStr, 1)).toISOString() }
+}

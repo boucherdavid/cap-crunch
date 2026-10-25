@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 import TeamBadge from '@/components/TeamBadge'
 import type { LiveNight, LivePooler } from '@/lib/liveNight'
@@ -91,6 +92,17 @@ export default function LiveNightDetail({ initial, myId }: { initial: LiveNight;
         actifs comptent. Les points officiels du classement sont mis à jour chaque nuit vers 2 h
         (heure de l&apos;Est).
       </p>
+
+      {/* Soirée terminée : renvoi vers le classement quotidien officiel (David, 2026-10-25). */}
+      {night.allFinal && (
+        <p className="text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
+          Les matchs de la soirée sont terminés. Le classement officiel de la soirée est dans{' '}
+          <Link href={`/classement/quotidien?jour=${night.date}`} className="font-medium underline hover:text-blue-600">
+            Classement → Quotidien
+          </Link>
+          , une fois les points importés pendant la nuit.
+        </p>
+      )}
 
       {night.error && (
         <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">

@@ -42,7 +42,7 @@ const CATEGORIES: Category[] = [
       {
         title: 'Classement',
         href: '/classement',
-        description: 'Rang, points totaux et détail (buts, passes, victoires, défaites en prolongation) pour chaque pooler, sur la saison complète, le mois ou la semaine (sélecteur en haut de la page). Clique sur un joueur pour voir sa contribution détaillée.',
+        description: 'Rang, points totaux et détail (buts, passes, victoires, défaites en prolongation) pour chaque pooler, sur la saison complète, le mois, la semaine ou une seule soirée (sélecteur en haut de la page ; Quotidien = points officiels d’hier par défaut). Clique sur un joueur pour voir sa contribution détaillée.',
       },
       {
         title: 'Tous les alignements',
@@ -73,7 +73,7 @@ const CATEGORIES: Category[] = [
       {
         title: 'En direct',
         href: '/en-direct',
-        description: "Le pointage non officiel de la soirée, mis à jour chaque minute pendant les matchs : classement de la soirée par pooler et tous les pointeurs de la LNH, avec leur propriétaire.",
+        description: "Le pointage non officiel de la soirée, mis à jour chaque minute pendant les matchs : classement de la soirée par pooler et tous les pointeurs de la LNH, avec leur propriétaire. Une fois les points officiels importés, l’accueil affiche plutôt le classement quotidien.",
       },
       {
         title: 'Gardiens partants',

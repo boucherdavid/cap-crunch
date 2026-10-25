@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getDataVersion } from '@/lib/dataVersion'
 import { unstable_cache } from 'next/cache'
 import { getStandings } from '@/lib/standings'
+import { dayRange, yesterdayET } from '@/lib/dateRanges'
 import { fmtPts } from '@/lib/nhl-stats'
 import SummaryTable from '@/components/SummaryTable'
 import { getPlayoffStandingsCached } from '@/app/gestion-series/playoff-pool-actions'
@@ -17,6 +18,7 @@ import { fetchInjuriesByPlayerId } from '@/lib/injuries'
 import { loadTradeMarket } from '@/lib/tradeMarket'
 import { getLiveNight, type LiveNight } from '@/lib/liveNight'
 import LiveNightCards from '@/components/live/LiveNightCards'
+import DailyStandingsCards from '@/components/live/DailyStandingsCards'
 import { MARQUEUR_URL } from '@/lib/externalLinks'
 import { after } from 'next/server'
 import SectionIcon, { sectionBorderClass, type SectionId } from '@/components/SectionIcon'
@@ -959,6 +961,15 @@ export default async function Home() {
     hasGames && !seriesSaison ? getPoolGoaliesTonight().then(r => r.items).catch(() => []) : Promise.resolve([] as PoolGoalieTonight[]),
   ])
 
+  // Soirée terminée et ses points officiels importés (vers 2 h) → classement quotidien officiel à la
+  // place du pointage en direct, même information (David, 2026-10-25). Pendant les matchs, et entre
+  // la fin des matchs et l'import, le pointage en direct reste affiché.
+  const dailyDay = liveNight && saison
+    ? (liveNight.games.length === 0 ? yesterdayET() : liveNight.allFinal ? liveNight.date : null)
+    : null
+  const dailyStandings = dailyDay && saison ? await getStandings(saison.id, dayRange(dailyDay)) : null
+  const showDaily = !!dailyStandings?.some(s => s.players.some(p => p.gamesPlayed > 0))
+
   // Classement séries depuis le cache BD + récap d'hier + joueurs en action séries
   let playoffStandings: { poolerId: string; poolerName: string; totalPoints: number; hierPts: number }[] = []
   let activity: PoolerActivity[]
@@ -1076,7 +1087,9 @@ export default async function Home() {
             )
           )}
 
-          {liveNight && <LiveNightCards initial={liveNight} myId={me?.id ?? null} />}
+          {showDaily && dailyDay && dailyStandings
+            ? <DailyStandingsCards day={dailyDay} standings={dailyStandings} myId={me?.id ?? null} />
+            : liveNight && <LiveNightCards initial={liveNight} myId={me?.id ?? null} />}
 
           {/* Téléphone : les matchs remontent ici, avant les cartes repliées (colonne de droite à partir de lg). */}
           <div className="lg:hidden">
