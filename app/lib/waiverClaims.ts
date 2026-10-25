@@ -1,7 +1,7 @@
 import { emailLinkHtml } from '@/lib/siteUrl'
 import { after } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendPushToUsers, sendPushToAdmins } from '@/lib/push'
+import { sendPushToUsers, sendPushToAdmins, sendPushToSomeAdmins } from '@/lib/push'
 import { sendEmailToIds } from '@/lib/email'
 import { getStandings } from '@/lib/standings'
 import { getTodayET, addDaysToDate } from '@/lib/daily-recap'
@@ -21,6 +21,7 @@ const COMPLETION_GRACE_HOURS = 48
 const BALLOTAGE_TAB_PATH = '/gestion-effectifs?tab=ballotage'
 const MOUVEMENTS_PATH = '/gestion-effectifs'
 const ADMIN_TRANSACTIONS_PATH = '/admin/transactions'
+const ADMIN_CLAIM_TITLE = 'Cap Crunch — Réclamation au ballotage'
 
 // Ballotage en cours de saison — file de réclamation par priorité quand un pooler libère un
 // joueur (saison démarrée seulement, voir CLAUDE.md section 6). Pas d'import depuis
@@ -199,6 +200,59 @@ export async function checkGuaranteedWaiverWinner(waiverClaimId: number) {
   ]))
 }
 
+// Réclamations au ballotage pour les admins (David, 2026-10-25). Un admin est aussi pooler : il
+// n'apprend qui a réclamé qu'une fois qu'il a lui-même refusé le joueur, ou s'il l'a libéré —
+// même règle que l'affichage des réponses (getWaiverClaimsAction). Sinon, il l'apprend par
+// notifyAdminsOfPendingClaims (à son refus) ou par le résumé de fin de ballotage.
+async function adminsAllowedToSee(
+  admin: ReturnType<typeof createAdminClient>, waiverClaimId: number, releasedById: string, excludeId: string,
+): Promise<string[]> {
+  const adminIds = (await loadAdminIds(admin)).filter(id => id !== excludeId)
+  if (adminIds.length === 0) return []
+  const { data: refused } = await admin.from('waiver_claim_requests').select('pooler_id')
+    .eq('waiver_claim_id', waiverClaimId).eq('status', 'refused').in('pooler_id', adminIds)
+  const refusedIds = new Set((refused ?? []).map(r => r.pooler_id as string))
+  return adminIds.filter(id => id === releasedById || refusedIds.has(id))
+}
+
+/** Après une réclamation : avise les admins qui ont déjà le droit de la voir. */
+export async function notifyAdminsOfWaiverClaim(waiverClaimId: number, claimantId: string) {
+  const admin = createAdminClient()
+  const { data: claim } = await admin.from('waiver_claims')
+    .select('player_id, released_by_pooler_id').eq('id', waiverClaimId).single()
+  if (!claim) return
+  const ids = await adminsAllowedToSee(admin, waiverClaimId, claim.released_by_pooler_id, claimantId)
+  if (ids.length === 0) return
+  const [label, { data: who }] = await Promise.all([
+    playerLabel(admin, claim.player_id),
+    admin.from('poolers').select('name').eq('id', claimantId).single(),
+  ])
+  await sendPushToSomeAdmins(ids, {
+    title: ADMIN_CLAIM_TITLE, body: `${who?.name ?? 'Un pooler'} réclame ${label}.`, url: BALLOTAGE_TAB_PATH,
+  })
+}
+
+/** Après le refus d'un admin : lui donne les réclamations déjà reçues, qu'il ne pouvait pas voir avant. */
+export async function notifyAdminsOfPendingClaims(waiverClaimId: number, adminId: string) {
+  const admin = createAdminClient()
+  if (!(await loadAdminIds(admin)).includes(adminId)) return  // refus d'un pooler qui n'est pas admin
+  const { data: requests } = await admin.from('waiver_claim_requests')
+    .select('poolers (name)').eq('waiver_claim_id', waiverClaimId).eq('status', 'claimed')
+  const names = ((requests ?? []) as unknown as { poolers: { name: string } | null }[])
+    .map(r => r.poolers?.name).filter((n): n is string => !!n)
+  if (names.length === 0) return
+  const { data: claim } = await admin.from('waiver_claims').select('player_id').eq('id', waiverClaimId).single()
+  if (!claim) return
+  const label = await playerLabel(admin, claim.player_id)
+  await sendPushToSomeAdmins([adminId], {
+    title: ADMIN_CLAIM_TITLE,
+    body: names.length > 1
+      ? `Réclamations déjà reçues pour ${label} : ${names.join(', ')}.`
+      : `Réclamation déjà reçue pour ${label} : ${names[0]}.`,
+    url: BALLOTAGE_TAB_PATH,
+  })
+}
+
 // Résout les claims dont la fenêtre est expirée — appelé paresseusement au chargement de
 // l'onglet Ballotage (même patron que syncExpiredRookieProtection, admin/presaison/actions.ts) :
 // pas de tâche planifiée, la résolution se fait au premier chargement de page qui suit
@@ -248,6 +302,15 @@ export async function resolveExpiredWaiverClaims(saisonId: number) {
     if (!updated || updated.length === 0) continue
 
     const label = await playerLabel(admin, claim.player_id)
+    // Résumé aux admins (David, 2026-10-25) : le ballotage est terminé, plus rien de confidentiel.
+    const { data: names } = await admin.from('poolers').select('id, name').in('id', [...requesterIds])
+    const nameOf = new Map((names ?? []).map(p => [p.id as string, p.name as string]))
+    const claimants = claim.priority_snapshot.filter(id => requesterIds.has(id)).map(id => nameOf.get(id) ?? '?')
+    after(() => sendPushToAdmins({
+      title: 'Cap Crunch — Ballotage terminé',
+      body: `${label} : attribué à ${nameOf.get(winnerId) ?? '?'} (réclamé par ${claimants.join(', ')}).`,
+      url: BALLOTAGE_TAB_PATH,
+    }).catch(() => {}))
     after(() => Promise.all([
       sendPushToUsers([winnerId], {
         title: 'Cap Crunch — Ballotage',

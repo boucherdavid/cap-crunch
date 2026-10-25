@@ -21,6 +21,13 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-25
 
+**[Feat] — Avis à l'admin : mouvements d'alignement et réclamations au ballotage** (`app/lib/adminRosterNotice.ts`, `app/lib/waiverClaims.ts`, `app/lib/push.ts`, `app/app/gestion-effectifs/actions.ts`, `app/app/gestion-effectifs/waiver-actions.ts`, `app/app/repechage-agents-libres/actions.ts`, `app/app/admin/communaute/NotificationsList.tsx`) :
+- Demande de David : aucune notification quand un pooler réclame au ballotage ou ajuste son alignement.
+- Mouvements : un avis push par lot soumis par un pooler (Gestion d'effectifs, `writeJournal`, et libre-service pré-saison), jamais pour un admin qui agit. Texte : « Paule : X : actif → réserviste · libère Y ». Lien : Journal des activités.
+- Ballotage, confidentialité respectée (choix de David) : l'admin est aussi pooler, donc avis immédiat « X réclame Y » seulement s'il a déjà refusé le joueur ou l'a libéré (même règle que l'affichage des réponses). À son refus, il reçoit les réclamations déjà reçues. À l'attribution, résumé à tous les admins (« attribué à W, réclamé par A, B »). `sendPushToSomeAdmins()` (push ciblé + journal Communication).
+- Communication : filtres « Mouvements » et « Ballotage ». Push seulement, pas de courriel (comme les autres avis d'admin).
+- Commit : à venir
+
 **[Feat] — Classement quotidien** (`app/app/classement/quotidien/`, `PeriodSelector.tsx`, `ClassementTable.tsx`, `lib/dateRanges.ts`, `components/live/DailyStandingsCards.tsx`, `app/page.tsx`, `app/en-direct/LiveNightDetail.tsx`, `app/a-propos/page.tsx`) :
 - Demande de David : un classement de la veille plus intuitif qu'En direct, qui ne sert que le soir des matchs.
 - `/classement/quotidien?jour=AAAA-MM-JJ` : 4e choix du sélecteur, hier par défaut, navigation jour par jour. `getStandings()` borné à une journée (`dayRange()`), même cache que l'hebdo/mensuel ; le détail ne liste que les joueurs qui ont joué (`onlyPlayed`).

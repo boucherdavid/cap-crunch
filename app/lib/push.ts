@@ -72,6 +72,19 @@ export async function sendPushToAdmins(payload: PushPayload, excludeUserId?: str
   ])
 }
 
+/**
+ * Avis à certains admins seulement (David, 2026-10-25 — réclamations au ballotage : un admin est
+ * aussi pooler et ne doit pas tout voir avant d'avoir décidé). Inscrit aussi dans Communication.
+ */
+export async function sendPushToSomeAdmins(adminIds: string[], payload: PushPayload) {
+  if (adminIds.length === 0) return
+  const supabase = createAdminClient()
+  await Promise.all([
+    sendPushToUsers(adminIds, payload),
+    supabase.from('notification_log').insert({ title: payload.title, body: payload.body, url: payload.url ?? null }),
+  ])
+}
+
 export async function sendPushToUser(userId: string, payload: PushPayload) {
   const supabase = createAdminClient()
 

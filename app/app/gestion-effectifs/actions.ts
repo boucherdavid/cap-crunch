@@ -15,6 +15,7 @@ import { validateRosterLimits, getPlayerBucket, ACTIVE_LIMITS, type Bucket } fro
 import { createWaiverClaimForRelease, isPlayerUnderActiveWaiverClaim } from '@/lib/waiverClaims'
 import { fetchInjuriesByPlayerId, type InjuryInfo } from '@/lib/injuries'
 import { journalActionType, JOURNAL_NOTES_GESTION, JOURNAL_NOTES_BALLOTAGE } from '@/lib/transactionJournal'
+import { notifyAdminsOfRosterMoves } from '@/lib/adminRosterNotice'
 
 export type PlayerType = 'actif' | 'reserviste' | 'ltir' | 'recrue'
 
@@ -558,6 +559,9 @@ export async function submitBatchAction(input: {
     } catch (e) {
       console.error('Journal des transactions (Gestion d\'effectifs) :', e)
     }
+    // Avis aux admins quand c'est un pooler qui agit (David, 2026-10-25, lib/adminRosterNotice.ts).
+    const moves = journalItems.map(i => ({ playerId: i.player_id, oldType: i.old_player_type, newType: i.new_player_type }))
+    after(() => notifyAdminsOfRosterMoves(user!.id, input.poolerId, moves).catch(() => {}))
   }
 
   async function checkReactivationDelay(playerId: number, position: string | null) {

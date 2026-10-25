@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
+import { notifyAdminsOfRosterMoves } from '@/lib/adminRosterNotice'
 import { applyTransactionItems, type TxItemPayload } from '../admin/transactions/actions'
 import { isRookieProtected, type RookieTag } from '@/lib/rookieProtection'
 import { leaveQueueForPoolerAction } from '../admin/presaison/actions'
@@ -154,6 +155,13 @@ export async function submitSelfServiceAction(
     })
     revalidatePath('/repechage-agents-libres')
     revalidatePath('/admin/init')
+    // Avis aux admins (David, 2026-10-25, lib/adminRosterNotice.ts) — rien si c'est un admin qui agit.
+    const moves = items.map(it => ({
+      playerId: it.player_id,
+      oldType: it.action_type === 'promote' ? 'recrue' : it.action_type === 'type_change' ? it.old_player_type : 'actif',
+      newType: it.action_type === 'release' ? null : it.new_player_type,
+    }))
+    after(() => notifyAdminsOfRosterMoves(user.id, user.id, moves).catch(() => {}))
   }
   return result
 }

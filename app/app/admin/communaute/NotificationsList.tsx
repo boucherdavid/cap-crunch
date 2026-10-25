@@ -8,10 +8,12 @@ export type AdminNotification = { id: string; title: string; body: string; url: 
 // Type d'une notification, déduit de son titre (David, 2026-10-13) — notification_log n'a pas de
 // colonne de type. Tout nouveau titre envoyé par sendPushToAdmins doit être reconnu ici, sinon il
 // tombe dans « Autres ».
-type Kind = 'approbations' | 'ltir' | 'lnh' | 'retours' | 'planification' | 'series' | 'autres'
+type Kind = 'approbations' | 'mouvements' | 'ballotage' | 'ltir' | 'lnh' | 'retours' | 'planification' | 'series' | 'autres'
 
 const KINDS: { id: Kind; label: string; badge: string; match: RegExp }[] = [
   { id: 'approbations',  label: 'Approbations',        badge: 'bg-blue-100 text-blue-700',       match: /à approuver|Discussion partagée/i },
+  { id: 'mouvements',    label: 'Mouvements',          badge: 'bg-violet-100 text-violet-700',   match: /Mouvement d.alignement/i },
+  { id: 'ballotage',     label: 'Ballotage',           badge: 'bg-amber-100 text-amber-700',     match: /ballotage/i },
   { id: 'ltir',          label: 'Retours de LTIR',     badge: 'bg-red-100 text-red-700',         match: /retour de LTIR/i },
   { id: 'lnh',           label: 'LNH',                 badge: 'bg-slate-200 text-slate-700',     match: /^LNH\s*:/ },
   { id: 'retours',       label: 'Retours des poolers', badge: 'bg-pink-100 text-pink-700',       match: /—\s*(Bug|Suggestion|Commentaire|Retour)$/ },

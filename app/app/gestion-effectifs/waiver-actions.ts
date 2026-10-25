@@ -1,8 +1,9 @@
 'use server'
 
+import { after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { resolveExpiredWaiverClaims, resolveExpiredAwardedClaims, checkGuaranteedWaiverWinner } from '@/lib/waiverClaims'
+import { resolveExpiredWaiverClaims, resolveExpiredAwardedClaims, checkGuaranteedWaiverWinner, notifyAdminsOfWaiverClaim, notifyAdminsOfPendingClaims } from '@/lib/waiverClaims'
 
 export type WaiverClaimView = {
   id: number
@@ -205,6 +206,8 @@ export async function submitWaiverClaimAction(saisonId: number, waiverClaimId: n
   if (error) return { error: error.message }
 
   await checkGuaranteedWaiverWinner(waiverClaimId)
+  // Avis aux admins qui ont le droit de le savoir (David, 2026-10-25, voir lib/waiverClaims.ts).
+  after(() => notifyAdminsOfWaiverClaim(waiverClaimId, user.id).catch(() => {}))
   return {}
 }
 
@@ -229,5 +232,7 @@ export async function refuseWaiverClaimAction(saisonId: number, waiverClaimId: n
   if (error) return { error: error.message }
 
   await checkGuaranteedWaiverWinner(waiverClaimId)
+  // Admin qui refuse : il reçoit maintenant les réclamations qu'il ne pouvait pas voir avant.
+  after(() => notifyAdminsOfPendingClaims(waiverClaimId, user.id).catch(() => {}))
   return {}
 }
