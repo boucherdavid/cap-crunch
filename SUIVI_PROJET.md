@@ -26,7 +26,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Mouvements : un avis push par lot soumis par un pooler (Gestion d'effectifs, `writeJournal`, et libre-service pré-saison), jamais pour un admin qui agit. Texte : « Paule : X : actif → réserviste · libère Y ». Lien : Journal des activités.
 - Ballotage, confidentialité respectée (choix de David) : l'admin est aussi pooler, donc avis immédiat « X réclame Y » seulement s'il a déjà refusé le joueur ou l'a libéré (même règle que l'affichage des réponses). À son refus, il reçoit les réclamations déjà reçues. À l'attribution, résumé à tous les admins (« attribué à W, réclamé par A, B »). `sendPushToSomeAdmins()` (push ciblé + journal Communication).
 - Communication : filtres « Mouvements » et « Ballotage ». Push seulement, pas de courriel (comme les autres avis d'admin).
-- Commit : à venir
+- Commit : `f01f57a`
 
 **[Feat] — Classement quotidien** (`app/app/classement/quotidien/`, `PeriodSelector.tsx`, `ClassementTable.tsx`, `lib/dateRanges.ts`, `components/live/DailyStandingsCards.tsx`, `app/page.tsx`, `app/en-direct/LiveNightDetail.tsx`, `app/a-propos/page.tsx`) :
 - Demande de David : un classement de la veille plus intuitif qu'En direct, qui ne sert que le soir des matchs.
