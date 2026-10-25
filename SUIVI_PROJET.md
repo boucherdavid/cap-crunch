@@ -27,7 +27,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Accueil : quand la soirée de `getLiveNight()` est terminée et que ses points officiels sont importés (au moins un match compté), `DailyStandingsCards` (classement de la soirée + pointeurs du pool, points officiels) remplace les cartes « ce soir ». Pendant les matchs et jusqu'à l'import de nuit : pointage en direct inchangé. Une page laissée ouverte ne bascule pas d'elle-même (pas de sondage sur la version officielle).
 - En direct : bandeau « matchs terminés » avec lien vers le classement quotidien de la soirée.
 - `/resultats` (ancien récap, hors menu) non touché.
-- Commit : à venir
+- Commit : `634830b`
 
 **[Fix] — Blanchissages manquants : règle des 60:00 de jeu remplacée** (`python_script/import_regular_stats.py`, `backfill_regular_game_logs.py`, `import_playoff_stats.py`, `backfill_playoff_game_logs.py`, `app/lib/liveNight.ts`) :
 - Signalé par David : Kochetkov (CAR) blanchit STL le 24 oct., victoire comptée mais pas le blanchissage. Cause : la règle exigeait `toi >= 3600` ; il a joué 59:50 (retiré quelques secondes pour un 6e attaquant, pénalité différée).
