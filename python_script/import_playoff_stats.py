@@ -106,6 +106,11 @@ def parse_boxscore(
                     'goalie_shutouts': 0,
                 })
 
+        # Blanchissage : gardien seul de son équipe à avoir joué, 0 but accordé, avec décision —
+        # pas « 60:00 de jeu » : retiré quelques secondes pour un 6e attaquant (pénalité différée),
+        # il a 59:50 et garde son blanchissage (David, 2026-10-25 — Kochetkov). Le game-log
+        # officiel le confirme ensuite (enrich_goalie_stats).
+        goalies_played = sum(1 for x in team.get('goalies', []) if _toi_seconds(x.get('toi', '0:00')) > 0)
         for g in team.get('goalies', []):
             nhl_id = g.get('playerId')
             if not nhl_id or nhl_id not in nhl_to_db:
@@ -124,7 +129,7 @@ def parse_boxscore(
                 otl = 1 if (decision == 'L' and toi_secs > 3600) else 0
             else:
                 otl = 1 if decision == 'O' else 0
-            shutouts = 1 if (goals_ag == 0 and decision is not None and toi_secs >= 3600) else 0
+            shutouts = 1 if (goals_ag == 0 and decision is not None and goalies_played == 1) else 0
 
             # goals/assists = 0 pour l'instant, enrichis après via game-log
             rows.append({
@@ -150,7 +155,7 @@ def enrich_goalie_stats(
     season: int,
     game_type: int,
 ) -> None:
-    """Corrige les buts/passes des gardiens via leur game-log individuel.
+    """Corrige les buts/passes (et le blanchissage officiel) des gardiens via leur game-log individuel.
     Le boxscore NHL n'inclut pas ces champs dans la section goalies."""
     index: dict[tuple[int, str], dict] = {
         (row['nhl_id'], row['game_date']): row
@@ -165,6 +170,8 @@ def enrich_goalie_stats(
                 if key in index:
                     index[key]['goals']   = int(g.get('goals', 0) or 0)
                     index[key]['assists'] = int(g.get('assists', 0) or 0)
+                    if 'shutouts' in g:
+                        index[key]['goalie_shutouts'] = int(g.get('shutouts', 0) or 0)
             time.sleep(0.2)
         except Exception as e:
             print(f'  Avertissement game-log gardien nhl_id={nhl_id}: {e}')

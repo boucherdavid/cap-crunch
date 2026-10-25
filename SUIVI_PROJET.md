@@ -19,6 +19,15 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-25
+
+**[Fix] — Blanchissages manquants : règle des 60:00 de jeu remplacée** (`python_script/import_regular_stats.py`, `backfill_regular_game_logs.py`, `import_playoff_stats.py`, `backfill_playoff_game_logs.py`, `app/lib/liveNight.ts`) :
+- Signalé par David : Kochetkov (CAR) blanchit STL le 24 oct., victoire comptée mais pas le blanchissage. Cause : la règle exigeait `toi >= 3600` ; il a joué 59:50 (retiré quelques secondes pour un 6e attaquant, pénalité différée).
+- Nouvelle règle : 0 but accordé, décision, et **seul gardien de son équipe à avoir joué** (`goalies_played == 1`). En plus, `enrich_goalie_stats` prend la valeur officielle `shutouts` du game-log de la LNH. Même règle dans le pointage en direct.
+- Audit lecture seule de la prod (324 joueurs : 69 gardiens + patineurs des alignements, saison 2026-27, buts/passes/V/DP/BL vs game-log LNH) : 2 écarts seulement, Kochetkov (24 oct.) et Jake Oettinger (17 oct.). Les deux dates réimportées en prod avec le script corrigé (1 ligne écrite chacune) ; audit refait : 0 écart.
+- Les imports de nuit (GitHub Actions) utilisent le code de `main` : la règle n'y prend effet qu'après la promotion.
+- Commit : à venir
+
 ### 2026-10-24
 
 **[Style] — Onglet Échanges : alignement en colonne étroite** (`app/app/gestion-effectifs/GestionEffectifsManager.tsx`) :

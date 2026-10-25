@@ -286,15 +286,20 @@ async function computeLiveNight(): Promise<LiveNight> {
         const assists = Number(p.assists ?? 0)
         stats.set(p.playerId, makePlayer(p, team, game.label, startMs, ctx, { goals, assists, wins: 0, otl: 0, shutouts: 0 }))
       }
-      for (const p of goalies) {
+      const toiSecs = (p: { toi?: string }) => {
         const toi = String(p.toi ?? '0:00').split(':')
-        const toiSecs = Number(toi[0] ?? 0) * 60 + Number(toi[1] ?? 0)
+        return Number(toi[0] ?? 0) * 60 + Number(toi[1] ?? 0)
+      }
+      const goaliesPlayed = goalies.filter(g => toiSecs(g) > 0).length
+      for (const p of goalies) {
         // Victoire/défaite seulement une fois la décision connue ; blanchissage seulement à la
-        // fin du match (même règle que import_regular_stats.py). Buts/passes d'un gardien :
-        // absents du boxscore, ignorés ici (rarissimes, corrigés par l'import de nuit).
+        // fin du match, pour le seul gardien de son équipe à avoir joué (même règle que
+        // import_regular_stats.py — pas « 60:00 de jeu » : Kochetkov, 59:50 après un retrait
+        // pour un 6e attaquant, 2026-10-25). Buts/passes d'un gardien : absents du boxscore,
+        // ignorés ici (rarissimes, corrigés par l'import de nuit).
         const wins = p.decision === 'W' ? 1 : 0
         const otl = p.decision === 'O' ? 1 : 0
-        const shutouts = final && Number(p.goalsAgainst ?? 0) === 0 && p.decision && toiSecs >= 3600 ? 1 : 0
+        const shutouts = final && Number(p.goalsAgainst ?? 0) === 0 && p.decision && goaliesPlayed === 1 ? 1 : 0
         stats.set(p.playerId, makePlayer(p, team, game.label, startMs, ctx, { goals: 0, assists: 0, wins, otl, shutouts }))
       }
     }
