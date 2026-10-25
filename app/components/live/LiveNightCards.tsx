@@ -149,7 +149,7 @@ function readSavedFilter(): string {
  * navigateur ; « Mes joueurs » suit le pooler connecté plutôt qu'un identifiant figé.
  */
 export function ScorersPanel({
-  scorers, poolers, myId, limit, showGame = false, emptyLabel,
+  scorers, poolers, myId, limit, showGame = false, emptyLabel, activeOnly = false,
 }: {
   scorers: LivePlayer[]
   poolers: LivePooler[]
@@ -157,6 +157,9 @@ export function ScorersPanel({
   limit?: number
   showGame?: boolean
   emptyLabel: string
+  // Classement quotidien officiel (2026-10-25) : seuls les actifs du pool y figurent, donc pas de
+  // choix réservistes / recrues / disponibles.
+  activeOnly?: boolean
 }) {
   // Choix gardé dans le navigateur, lu par useSyncExternalStore (même patron que
   // YourTurnPrompt) ; `override` prend le relais dès que le pooler change le filtre.
@@ -167,9 +170,9 @@ export function ScorersPanel({
   const hasMe = !!myId && poolers.some(p => p.poolerId === myId)
   const others = poolers.filter(p => p.poolerId !== myId).sort((a, b) => a.name.localeCompare(b.name, 'fr-CA'))
   // Un choix gardé qui ne correspond plus à rien (autre compte, pooler parti) retombe sur « Tous ».
-  const mineFilters = [FILTER_MINE, FILTER_MY_RESERVE, FILTER_MY_ROOKIES]
+  const mineFilters = activeOnly ? [FILTER_MINE] : [FILTER_MINE, FILTER_MY_RESERVE, FILTER_MY_ROOKIES]
   const isMine = mineFilters.includes(filter) && hasMe
-  const active = filter === FILTER_AVAILABLE || isMine || others.some(p => p.poolerId === filter)
+  const active = (filter === FILTER_AVAILABLE && !activeOnly) || isMine || others.some(p => p.poolerId === filter)
     ? filter : FILTER_ALL
   const ownerId = isMine ? myId : active
   // Un autre pooler : ses actifs seulement. Soi-même : actifs, réservistes ou recrues, au choix
@@ -202,10 +205,10 @@ export function ScorersPanel({
           >
             <option value={FILTER_ALL}>Tous les pointeurs</option>
             {hasMe && <option value={FILTER_MINE}>Mes joueurs actifs</option>}
-            {hasMe && <option value={FILTER_MY_RESERVE}>Mes réservistes</option>}
-            {hasMe && <option value={FILTER_MY_ROOKIES}>Mes recrues</option>}
+            {hasMe && !activeOnly && <option value={FILTER_MY_RESERVE}>Mes réservistes</option>}
+            {hasMe && !activeOnly && <option value={FILTER_MY_ROOKIES}>Mes recrues</option>}
             {others.map(p => <option key={p.poolerId} value={p.poolerId}>{p.name}</option>)}
-            <option value={FILTER_AVAILABLE}>Joueurs disponibles</option>
+            {!activeOnly && <option value={FILTER_AVAILABLE}>Joueurs disponibles</option>}
           </select>
         </label>
         {active !== FILTER_ALL && active !== FILTER_AVAILABLE && countsForPool && filtered.length > 0 && (

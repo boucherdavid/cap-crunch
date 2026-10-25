@@ -4,7 +4,7 @@ import Link from 'next/link'
 import SectionIcon, { sectionBorderClass } from '@/components/SectionIcon'
 import type { PoolerStanding } from '@/lib/standings'
 import type { LivePlayer, LivePooler } from '@/lib/liveNight'
-import { LiveStandingsTable, ScorersTable } from './LiveNightCards'
+import { LiveStandingsTable, ScorersPanel } from './LiveNightCards'
 import { fmtNightDate } from './useLiveNight'
 
 const SCORERS_LIMIT = 12
@@ -62,8 +62,6 @@ export default function DailyStandingsCards({
   const scorers = poolers.flatMap(p => p.players)
     .filter(p => p.pts > 0)
     .sort((a, b) => b.pts - a.pts || a.name.localeCompare(b.name, 'fr-CA'))
-  const shown = scorers.slice(0, SCORERS_LIMIT)
-  const hidden = scorers.length - shown.length
 
   return (
     <div className="space-y-2">
@@ -77,18 +75,14 @@ export default function DailyStandingsCards({
 
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <CardHeader title="Pointeurs du pool" day={day} />
-          {shown.length === 0 ? (
-            <p className="px-5 py-4 text-sm text-gray-400">Aucun joueur actif du pool n’a marqué de point.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <ScorersTable scorers={shown} />
-            </div>
-          )}
-          {hidden > 0 && (
-            <p className="px-5 py-2 text-xs text-gray-400 border-t border-gray-100">
-              + {hidden} autre{hidden > 1 ? 's' : ''} pointeur{hidden > 1 ? 's' : ''}
-            </p>
-          )}
+          <ScorersPanel
+            scorers={scorers}
+            poolers={poolers}
+            myId={myId}
+            limit={SCORERS_LIMIT}
+            activeOnly
+            emptyLabel="Aucun joueur actif du pool n’a marqué de point."
+          />
         </div>
       </div>
       <div className="text-right">
