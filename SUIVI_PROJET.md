@@ -26,7 +26,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Nouvelle règle : 0 but accordé, décision, et **seul gardien de son équipe à avoir joué** (`goalies_played == 1`). En plus, `enrich_goalie_stats` prend la valeur officielle `shutouts` du game-log de la LNH. Même règle dans le pointage en direct.
 - Audit lecture seule de la prod (324 joueurs : 69 gardiens + patineurs des alignements, saison 2026-27, buts/passes/V/DP/BL vs game-log LNH) : 2 écarts seulement, Kochetkov (24 oct.) et Jake Oettinger (17 oct.). Les deux dates réimportées en prod avec le script corrigé (1 ligne écrite chacune) ; audit refait : 0 écart.
 - Les imports de nuit (GitHub Actions) utilisent le code de `main` : la règle n'y prend effet qu'après la promotion.
-- Commit : à venir
+- Commit : `3a3ff97`
 
 ### 2026-10-24
 
