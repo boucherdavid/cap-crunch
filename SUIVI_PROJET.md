@@ -27,6 +27,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Accueil : quand la soirée de `getLiveNight()` est terminée et que ses points officiels sont importés (au moins un match compté), `DailyStandingsCards` (classement de la soirée + pointeurs du pool, points officiels) remplace les cartes « ce soir ». Pendant les matchs et jusqu'à l'import de nuit : pointage en direct inchangé. Une page laissée ouverte ne bascule pas d'elle-même (pas de sondage sur la version officielle).
 - En direct : bandeau « matchs terminés » avec lien vers le classement quotidien de la soirée.
 - `/resultats` (ancien récap, hors menu) non touché.
+- Correctif (même jour) : accueil en erreur sur staging — `DailyStandingsCards` (composant serveur) appelait `fmtNightDate()` d'un module `'use client'`, refusé par Next.js. Passé en composant client ; vérifié en local contre staging (accueil, Quotidien, En direct : 200).
 - Commit : `634830b`
 
 **[Fix] — Blanchissages manquants : règle des 60:00 de jeu remplacée** (`python_script/import_regular_stats.py`, `backfill_regular_game_logs.py`, `import_playoff_stats.py`, `backfill_playoff_game_logs.py`, `app/lib/liveNight.ts`) :
