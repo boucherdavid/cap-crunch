@@ -615,7 +615,7 @@ sont deux natures de contenu différentes.**
 | Section | Contenu |
 |---|---|
 | Mon équipe (nouveau nom de groupe — le lien "Mon alignement", ex-"Mon équipe", garde son nom de page inchangé depuis le renommage plus haut le même jour) | Mon alignement · Gestion d'effectifs · Simulation · Mes listes (ajouté le 2026-09-27) — "ce qui m'appartient / que je contrôle" |
-| Le pool | Classement · Tous les alignements (ex-"Équipes") · Meilleurs joueurs disponibles (2026-10-05) · Marché des échanges (2026-10-03) · Journal des activités (ex-« Journal des transactions », renommé le 2026-10-17, route `/journal-transactions` inchangée) — les liens Marqueur ont été retirés du menu le 2026-10-17 — "ce qui concerne les autres poolers". Le groupe "Classement du pool" a été retiré le 2026-09-30 (David) : un seul lien Classement, avec un sélecteur Saison complète (défaut) / Mensuel / Hebdomadaire en haut de la page (`app/classement/PeriodSelector.tsx`, routes `/classement`, `/classement/mensuel`, `/classement/hebdomadaire` inchangées ; bouton « Global | Par position » au-dessus du tableau, 2026-10-21 : totaux attaquants/défenseurs/gardiens par pooler, `app/classement/PositionSummaryTable.tsx`, simple addition des `PlayerContrib` déjà chargés, choix gardé dans le navigateur) |
+| Le pool | Classement · Tous les alignements (ex-"Équipes") · Meilleurs joueurs disponibles (2026-10-05) · Marché des échanges (2026-10-03) · Journal des activités (ex-« Journal des transactions », renommé le 2026-10-17, route `/journal-transactions` inchangée) — les liens Marqueur ont été retirés du menu le 2026-10-17 — "ce qui concerne les autres poolers". Le groupe "Classement du pool" a été retiré le 2026-09-30 (David) : un seul lien Classement, avec un sélecteur Quotidien / Saison complète (défaut) / Mensuel / Hebdomadaire en haut de la page (`app/classement/PeriodSelector.tsx`, routes `/classement`, `/classement/mensuel`, `/classement/hebdomadaire` inchangées ; `/classement/quotidien?jour=` ajouté le 2026-10-25 — points officiels d'une journée, hier par défaut ; sur l'accueil, `DailyStandingsCards` remplace les cartes du pointage en direct dès que la soirée est terminée ET importée ; bouton « Global | Par position » au-dessus du tableau, 2026-10-21 : totaux attaquants/défenseurs/gardiens par pooler, `app/classement/PositionSummaryTable.tsx`, simple addition des `PlayerContrib` déjà chargés, choix gardé dans le navigateur) |
 | Soir de match (2026-10-16) | En direct · Gardiens partants · Trios et paires (sorti d'Analytique) — ce qu'on consulte avant et pendant les matchs ; famille `soir-de-match` (lune, jaune) aussi sur les cartes « Pointage de la soirée » et « Gardiens du pool ce soir » de l'accueil |
 | Calendrier LNH (lien autonome, ex-sous-item de "Statistiques", sorti le 2026-09-23 (suite) — entre Le pool et Statistiques) | Le résumé personnel "mes joueurs cette semaine" a été extrait dans un onglet séparé sur `/poolers/[id]`, voir ci-dessous — cette page ne garde que la navigation jour par jour |
 | Statistiques (ex-partie de "LNH") | LNH · Projections · AHL |
@@ -1921,7 +1921,7 @@ Exemples :
 | `supabase_migrations/` | Migrations SQL historiques |
 | `credentials/` | Identifiants poolers générés (staging/prod) — gitignored, jamais commité |
 
-<!-- cce-block-version: 3 -->
+<!-- cce-block-version: 4 -->
 ## Context Engine (CCE)
 
 This project uses Code Context Engine for intelligent code retrieval and
@@ -2001,12 +2001,18 @@ the goal is durable signal, not an event log.
 Both are read-only and cheap. Prefer them over re-running tool calls or
 asking the user to re-paste context.
 
-## Output Style
+### Output style
 
-Be concise. Lead with the answer or action, not reasoning. Skip filler words,
-preamble, and phrases like "I'll help you with that" or "Certainly!". Prefer
-fragments over full sentences in explanations. No trailing summaries of what
-you just did. One sentence if it fits.
+Respond in compressed style. Drop articles (a, an, the) in prose. Use
+sentence fragments over full sentences. Use short synonyms (fix not resolve,
+check not investigate). Pattern: [thing] [action] [reason]. [next step].
+No filler, hedging, pleasantries, trailing summaries, or restating what
+the user said. One sentence if one sentence is enough.
 
-Code blocks, file paths, commands, and error messages are always written in full.
+When suggesting code changes, show only the changed lines with 3 lines of
+context. Never rewrite entire files. Multiple changes in one file: show each
+change separately. Never echo back unchanged code the user already has.
+
+Code blocks, file paths, commands, error messages: always written in full.
+Security warnings and destructive action confirmations: use full clarity.
 <!-- /cce-block -->
