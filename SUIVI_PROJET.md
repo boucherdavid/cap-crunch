@@ -19,6 +19,18 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-26
+
+**[Fix] — Échanges : joueur reçu encore protégé envoyé directement en banque** (`app/lib/tradeOffers.ts`, `app/app/gestion-effectifs/trade-actions.ts`, `app/app/gestion-effectifs/TradeOffersTab.tsx`) :
+- Signalé par David (échange avec Jérôme, Trevor Connelly — actif chez Jérôme, repêché par le pool en 2024, protégé jusqu'en 2028-29) : à la confirmation, un joueur reçu non-recrue ne pouvait arriver qu'Actif ou Réserviste.
+- Nouveau choix « Banque de recrues » (`chosen_type='recrue'`) quand le joueur est encore protégé chez le donneur (`isRookieProtected`), revalidé côté serveur ; hors masse et hors composition dans l'aperçu et la validation.
+- Bogue corrigé au passage : `executeTradeOffer` effaçait `rookie_type`/`pool_draft_year` d'un actif/réserviste échangé (protection perdue une fois l'ELC fini). L'étiquette suit maintenant toujours le joueur ; un joueur jamais étiqueté qui arrive en banque devient `agent_libre`.
+- Commit : à venir
+
+**[Feat] — Corrections manuelles du cap hit à l'import** (`python_script/source/cap_overrides.csv`, `python_script/import_supabase.py`) :
+- Décision de David : Hellebuyck à 8,5 M$ en 2026-27 (PuckPedia : 8 098 182 $). `appliquer_corrections_cap()` remplace la valeur à l'import, après la fusion — le CSV scrapé reste fidèle à PuckPedia, la correction survit aux scrapings. Vérifié en staging.
+- Commit : `adef4af`
+
 ### 2026-10-25
 
 **[Data] — Scraping PuckPedia incomplet, 6 équipes rescrapées** (`python_script/teams_offline/*.csv`, `PuckPedia_*.csv`) :

@@ -7,7 +7,7 @@ import { isRookieProtected } from '@/lib/rookieProtection'
 import {
   createTradeOffer, respondToTradeOffer, confirmTradeReady, resolveExpiredTradeOffers,
   counterTradeOffer, reviseTradeOffer, tradeOfferVersion, withdrawTradeOffer, postTradeMessage, setTradeChatShared, purgeOldTradeMessages, loadTradeMessages,
-  type TradeItemInput, type TradeExtraAction, type TradeMessageView,
+  type TradeItemInput, type TradeExtraAction, type TradeMessageView, type ReceivedPlayerType,
 } from '@/lib/tradeOffers'
 import { poolDraftYear, pickLabel } from '@/lib/poolDraftYear'
 
@@ -163,7 +163,7 @@ export async function respondToTradeOfferAction(tradeOfferId: number, accept: bo
 }
 
 export async function confirmTradeReadyAction(
-  tradeOfferId: number, chosenTypes: Record<number, 'actif' | 'reserviste'>, extraActions: TradeExtraAction[] = [],
+  tradeOfferId: number, chosenTypes: Record<number, ReceivedPlayerType>, extraActions: TradeExtraAction[] = [],
 ): Promise<{ error?: string; deferred?: boolean }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -179,7 +179,10 @@ export type TradeOfferItemView = {
   label: string
   fromPoolerId: string
   toPoolerId: string
-  chosenType: 'actif' | 'reserviste' | null
+  chosenType: ReceivedPlayerType | null
+  // Joueur actif/réserviste chez le donneur et encore protégé : peut arriver dans la banque de
+  // recrues du receveur (David, 2026-10-26, voir confirmTradeReady).
+  recrueEligible: boolean
   // Type actuel du joueur chez le donneur au moment de la lecture (null pour un choix) — sert
   // à savoir si la confirmation doit proposer un choix Actif/Réserviste : une recrue échangée
   // reste une recrue chez le receveur, aucun choix à faire (voir executeTradeOffer,
@@ -300,12 +303,20 @@ export async function getMyTradeOffersAction(saisonId: number): Promise<{
   // actif/réserviste doit être proposé à la confirmation (jamais pour une recrue, voir
   // TradeOfferItemView.currentPlayerType ci-dessus).
   const playerTypeById = new Map<number, 'actif' | 'reserviste' | 'ltir' | 'recrue'>()
+  const bankEligibleIds = new Set<number>()
   const involvedPlayerIds = allItems.filter(i => i.item_type === 'player').map(i => i.player_id!)
   if (involvedPlayerIds.length > 0) {
     const { data: typeRows } = await db
-      .from('pooler_rosters').select('player_id, player_type')
+      .from('pooler_rosters').select('player_id, player_type, rookie_type, pool_draft_year, players (player_contracts (season, is_elc))')
       .eq('pool_season_id', saisonId).eq('is_active', true).in('player_id', involvedPlayerIds)
-    for (const row of typeRows ?? []) playerTypeById.set(row.player_id, row.player_type as 'actif' | 'reserviste' | 'ltir' | 'recrue')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const row of (typeRows ?? []) as any[]) {
+      playerTypeById.set(row.player_id, row.player_type as 'actif' | 'reserviste' | 'ltir' | 'recrue')
+      if ((row.player_type === 'actif' || row.player_type === 'reserviste')
+        && isRookieProtected(row.rookie_type, row.pool_draft_year, row.players?.player_contracts, season)) {
+        bankEligibleIds.add(row.player_id)
+      }
+    }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -320,7 +331,8 @@ export async function getMyTradeOffersAction(saisonId: number): Promise<{
         label: labels.get(key) ?? '?',
         fromPoolerId: item.from_pooler_id,
         toPoolerId: item.to_pooler_id,
-        chosenType: item.chosen_type as 'actif' | 'reserviste' | null,
+        chosenType: item.chosen_type as ReceivedPlayerType | null,
+        recrueEligible: item.item_type === 'player' && bankEligibleIds.has(item.player_id!),
         currentPlayerType: item.item_type === 'player' ? (playerTypeById.get(item.player_id!) ?? null) : null,
         capNumber: caps.get(key) ?? null,
         position: item.item_type === 'player' ? (positions.get(key) ?? null) : null,

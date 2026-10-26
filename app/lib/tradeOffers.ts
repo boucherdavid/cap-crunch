@@ -487,7 +487,7 @@ export type TradeExtraAction =
 async function simulatePostTradeRoster(
   admin: ReturnType<typeof createAdminClient>, poolerId: string, saisonId: number, season: string, unsignedMultiplier: number,
   items: { from_pooler_id: string; to_pooler_id: string; item_type: string; player_id: number | null }[],
-  chosenTypes: Record<number, 'actif' | 'reserviste'>,
+  chosenTypes: Record<number, ReceivedPlayerType>,
   extraActions: TradeExtraAction[],
 ): Promise<RosterLimitEntry[]> {
   const { data: currentRows } = await admin
@@ -531,7 +531,8 @@ async function simulatePostTradeRoster(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const p of (incoming ?? []) as any[]) {
       const chosen = chosenTypes[p.id]
-      if (!chosen) continue // recrue reçue (pas de choix actif/réserviste) — ignorée ici, sans impact cap/composition
+      // Recrue reçue, ou joueur protégé envoyé en banque : sans impact cap/composition.
+      if (!chosen || chosen === 'recrue') continue
       entries.set(p.id, {
         player_type: chosen,
         position: p.position ?? null,
@@ -543,8 +544,12 @@ async function simulatePostTradeRoster(
   return Array.from(entries.values())
 }
 
+// Type d'arrivée d'un joueur reçu (actif ou réserviste chez le donneur). « recrue » (David,
+// 2026-10-26) : un joueur encore protégé peut arriver directement dans la banque de recrues.
+export type ReceivedPlayerType = 'actif' | 'reserviste' | 'recrue'
+
 export async function confirmTradeReady(
-  tradeOfferId: number, poolerId: string, chosenTypes: Record<number, 'actif' | 'reserviste'>,
+  tradeOfferId: number, poolerId: string, chosenTypes: Record<number, ReceivedPlayerType>,
   extraActions: TradeExtraAction[] = [],
 ): Promise<{ error?: string; deferred?: boolean }> {
   const admin = createAdminClient()
@@ -598,6 +603,26 @@ export async function confirmTradeReady(
       if (!hasSignedContract(row.players?.player_contracts, saison?.season ?? '')) {
         return { error: NO_CONTRACT_ERROR(`${row.players?.first_name ?? ''} ${row.players?.last_name ?? ''}`.trim(), saison?.season ?? '') }
       }
+    }
+  }
+
+  // Arrivée en banque : seulement un joueur reçu par ce pooler, encore protégé chez le donneur
+  // (même règle isRookieProtected que la remise en banque).
+  for (const [playerIdStr, type] of Object.entries(chosenTypes)) {
+    if (type !== 'actif' && type !== 'reserviste' && type !== 'recrue') return { error: 'Statut d’arrivée invalide.' }
+    if (type !== 'recrue') continue
+    const playerId = Number(playerIdStr)
+    const item = items.find(i => i.item_type === 'player' && i.player_id === playerId && i.to_pooler_id === poolerId)
+    if (!item) return { error: 'Seul un joueur que tu reçois peut arriver dans ta banque de recrues.' }
+    const { data: src } = await admin
+      .from('pooler_rosters')
+      .select('rookie_type, pool_draft_year, players (player_contracts (season, is_elc))')
+      .eq('pooler_id', item.from_pooler_id).eq('player_id', playerId).eq('pool_season_id', offer.pool_season_id).eq('is_active', true)
+      .maybeSingle()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const contracts = (src as any)?.players?.player_contracts
+    if (!src || !isRookieProtected(src.rookie_type, src.pool_draft_year, contracts, saison?.season ?? '')) {
+      return { error: "Un joueur que tu veux envoyer en banque n'est plus protégé (5 saisons pour un repêché du pool, ELC pour les autres)." }
     }
   }
 
@@ -753,7 +778,13 @@ async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tr
       await admin.from('pooler_rosters').update({ is_active: false, removed_at: effectiveAt }).eq('id', srcRow.id)
       await log(item.player_id, item.from_pooler_id, srcRow.player_type, null)
 
-      const rookieFields = isRecrue ? { rookie_type: srcRow.rookie_type, pool_draft_year: srcRow.pool_draft_year } : { rookie_type: null, pool_draft_year: null }
+      // L'étiquette de protection suit toujours le joueur (David, 2026-10-26) — avant, un actif ou
+      // un réserviste échangé la perdait, et avec elle sa protection une fois l'ELC terminé. Un
+      // joueur jamais étiqueté qui arrive en banque est classé agent libre (comme une remise en banque).
+      const rookieFields = {
+        rookie_type: srcRow.rookie_type ?? (destType === 'recrue' ? 'agent_libre' : null),
+        pool_draft_year: srcRow.pool_draft_year,
+      }
 
       const { data: existingDest } = await admin.from('pooler_rosters').select('id')
         .eq('pooler_id', item.to_pooler_id).eq('player_id', item.player_id).eq('pool_season_id', saisonId).maybeSingle()

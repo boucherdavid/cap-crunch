@@ -327,9 +327,9 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
   }
 
   // ── Confirmation (pending_completion) ─────────────────────────────────────
-  const [chosenTypes, setChosenTypes] = useState<Record<number, Record<number, 'actif' | 'reserviste'>>>({})
+  const [chosenTypes, setChosenTypes] = useState<Record<number, Record<number, 'actif' | 'reserviste' | 'recrue'>>>({})
 
-  function setChosenType(offerId: number, playerId: number, type: 'actif' | 'reserviste') {
+  function setChosenType(offerId: number, playerId: number, type: 'actif' | 'reserviste' | 'recrue') {
     setChosenTypes(prev => ({ ...prev, [offerId]: { ...prev[offerId], [playerId]: type } }))
   }
 
@@ -395,6 +395,7 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
       if (i.kind !== 'player' || i.currentPlayerType === 'recrue') continue
       const chosen = chosenTypes[offer.id]?.[i.id]
       if (!chosen) { pendingChoice = true; continue }
+      if (chosen === 'recrue') continue  // arrive dans la banque : hors masse et hors composition
       entries.set(i.id, { type: chosen, position: i.position, capNumber: i.capNumber ?? 0 })
     }
 
@@ -577,12 +578,13 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
                                 <span className="truncate">{i.label} {i.capNumber != null && <span className="text-xs text-gray-500">{fmtCap(i.capNumber)}</span>}</span>
                                 <select
                                   defaultValue=""
-                                  onChange={e => setChosenType(o.id, i.id, e.target.value as 'actif' | 'reserviste')}
+                                  onChange={e => setChosenType(o.id, i.id, e.target.value as 'actif' | 'reserviste' | 'recrue')}
                                   className="border rounded px-2 py-1 text-xs"
                                 >
                                   <option value="" disabled>Choisir…</option>
                                   <option value="actif">Actif</option>
                                   <option value="reserviste">Réserviste</option>
+                                  {i.recrueEligible && <option value="recrue">Banque de recrues</option>}
                                 </select>
                               </div>
                             ))}
