@@ -121,7 +121,6 @@ export default function BallotageTab({ saisonId }: { saisonId: number }) {
                 <div className="text-xs text-gray-500">
                   Libéré par {c.releasedByName} — {formatExpiry(c.expiresAt)}
                 </div>
-                {c.responses && <WaiverResponses responses={c.responses} />}
               </div>
               <div className="flex flex-wrap items-center gap-2 shrink-0">
                 <Link

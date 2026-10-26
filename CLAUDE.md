@@ -1049,8 +1049,9 @@ seulement à l'ouverture de leur onglet. Un rappel push + courriel par délai, u
 (colonnes `*_reminder_sent_at`) : ballotage le dernier jour aux poolers sans réponse, ballotage
 remporté 24 h avant la fin, échange 1 jour avant, plafond 2 jours avant ; avis aux admins quand
 un ballotage devient bloqué. Toute mise à jour de règlement est conditionnelle au statut attendu.
-Réponses au ballotage visibles par l'admin seulement : après son propre refus (ou s'il a libéré
-le joueur) sur un ballotage ouvert, toujours dans l'historique.
+Réponses au ballotage visibles par l'admin seulement, et **jamais avant la fin du délai** (David,
+2026-10-26 — l'admin est aussi pooler, par équité) : historique de l'onglet Ballotage et résumé
+push à l'attribution (« attribué à W, réclamé par A, B »). Aucun avis par réclamation.
 
 **Ballotage en cours de saison (`app/lib/waiverClaims.ts`) — David, 2026-09-15 :**
 - Déclencheur : un pooler libère un joueur (`/gestion-effectifs`, action "Libération") ou

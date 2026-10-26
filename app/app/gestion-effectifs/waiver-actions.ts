@@ -1,9 +1,8 @@
 'use server'
 
-import { after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { resolveExpiredWaiverClaims, resolveExpiredAwardedClaims, checkGuaranteedWaiverWinner, notifyAdminsOfWaiverClaim, notifyAdminsOfPendingClaims } from '@/lib/waiverClaims'
+import { resolveExpiredWaiverClaims, resolveExpiredAwardedClaims, checkGuaranteedWaiverWinner } from '@/lib/waiverClaims'
 
 export type WaiverClaimView = {
   id: number
@@ -19,8 +18,6 @@ export type WaiverClaimView = {
   myStatus: 'claimed' | 'refused' | null
   canClaim: boolean
   canRefuse: boolean
-  /** Admin seulement, et seulement après son propre refus ou s'il a libéré le joueur. */
-  responses?: WaiverResponse[]
 }
 
 /** Réponse d'un pooler à un ballotage, dans l'ordre de priorité (David, 2026-10-16). */
@@ -85,18 +82,12 @@ export async function getWaiverClaimsAction(saisonId: number): Promise<{
     }
   }
 
-  // Réponses de tous les poolers, pour l'admin seulement (David, 2026-10-16) : sur un ballotage
-  // ouvert, une fois qu'il a lui-même refusé (définitif, il ne peut plus en tirer d'avantage) ou
-  // s'il a libéré le joueur ; dans l'historique, toujours.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const revealOpen = (c: any) => isAdmin && (myStatusByClaimId.get(c.id) === 'refused' || c.released_by_pooler_id === user.id)
+  // Réponses de tous les poolers, pour l'admin seulement et une fois le ballotage terminé (David,
+  // 2026-10-26) : l'admin est aussi pooler, il ne voit rien d'un ballotage ouvert, même après
+  // son propre refus ou s'il a libéré le joueur (règle du 2026-10-16 retirée, par équité).
   const responsesByClaimId = isAdmin
-    ? await loadWaiverResponses([
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ...(openClaims ?? []).filter(revealOpen) as any[],
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ...(history ?? []) as any[],
-      ])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ? await loadWaiverResponses((history ?? []) as any[])
     : new Map<number, WaiverResponse[]>()
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -104,7 +95,6 @@ export async function getWaiverClaimsAction(saisonId: number): Promise<{
     const myStatus = myStatusByClaimId.get(c.id) ?? null
     const isReleaser = c.released_by_pooler_id === user.id
     return {
-      responses: responsesByClaimId.get(c.id),
       id: c.id,
       playerId: c.player_id,
       playerName: `${c.players?.last_name ?? ''}, ${c.players?.first_name ?? ''}`,
@@ -206,8 +196,6 @@ export async function submitWaiverClaimAction(saisonId: number, waiverClaimId: n
   if (error) return { error: error.message }
 
   await checkGuaranteedWaiverWinner(waiverClaimId)
-  // Avis aux admins qui ont le droit de le savoir (David, 2026-10-25, voir lib/waiverClaims.ts).
-  after(() => notifyAdminsOfWaiverClaim(waiverClaimId, user.id).catch(() => {}))
   return {}
 }
 
@@ -232,7 +220,5 @@ export async function refuseWaiverClaimAction(saisonId: number, waiverClaimId: n
   if (error) return { error: error.message }
 
   await checkGuaranteedWaiverWinner(waiverClaimId)
-  // Admin qui refuse : il reçoit maintenant les réclamations qu'il ne pouvait pas voir avant.
-  after(() => notifyAdminsOfPendingClaims(waiverClaimId, user.id).catch(() => {}))
   return {}
 }

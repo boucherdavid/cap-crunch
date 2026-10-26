@@ -21,6 +21,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-26
 
+**[Fix] — Ballotage : l'admin ne voit plus rien avant la fin du délai** (`app/lib/waiverClaims.ts`, `app/lib/push.ts`, `app/app/gestion-effectifs/waiver-actions.ts`, `BallotageTab.tsx`) :
+- Demande de David, par équité (il est aussi pooler) : retirés l'avis « X réclame Y » (après son refus ou s'il a libéré le joueur), l'avis des réclamations déjà reçues à son refus, et l'affichage des réponses sur un ballotage ouvert (règle du 2026-10-16). Restent : le résumé push à l'attribution et les réponses dans l'historique.
+- `sendPushToSomeAdmins()` retiré (plus utilisé).
+- Commit : à venir
+
 **[Fix] — Échanges : joueur reçu encore protégé envoyé directement en banque** (`app/lib/tradeOffers.ts`, `app/app/gestion-effectifs/trade-actions.ts`, `app/app/gestion-effectifs/TradeOffersTab.tsx`) :
 - Signalé par David (échange avec Jérôme, Trevor Connelly — actif chez Jérôme, repêché par le pool en 2024, protégé jusqu'en 2028-29) : à la confirmation, un joueur reçu non-recrue ne pouvait arriver qu'Actif ou Réserviste.
 - Nouveau choix « Banque de recrues » (`chosen_type='recrue'`) quand le joueur est encore protégé chez le donneur (`isRookieProtected`), revalidé côté serveur ; hors masse et hors composition dans l'aperçu et la validation.
