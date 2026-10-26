@@ -695,7 +695,7 @@ composant, pas de `?subtab=`), donc pas d'accès par URL directe comme pour `/ad
 | Hub | Onglets (`?tab=id` → label) |
 |---|---|
 | `/admin/pool` | `poolers` Poolers · `config` Configuration (sous-onglets `Saisons` / `Général` / `Pointage Saison` — `Général` = ex-"Pool Saison", renommé le 2026-09-01) |
-| `/admin/communaute` | `communication` Communication (feedback + notifs, filtrables par type — `NotificationsList.tsx`, type déduit du titre : tout nouveau titre de `sendPushToAdmins` s'ajoute à `KINDS`) · `babillard` Babillard (publier/supprimer des communications, ajouté le 2026-09-02) · `suivi` Suivi (activité) · `planification` Planification (sondage type Doodle, admin) |
+| `/admin/communaute` | `communication` Communication (feedback + notifs, filtrables par type — `NotificationsList.tsx`, type déduit du titre : tout nouveau titre de `sendPushToAdmins` s'ajoute à `KINDS` ; « Mouvements » = lots soumis par un pooler, `lib/adminRosterNotice.ts`, jamais pour un admin qui agit ; « Ballotage » = résumé à l'attribution et ballotage bloqué) · `babillard` Babillard (publier/supprimer des communications, ajouté le 2026-09-02) · `suivi` Suivi (activité) · `planification` Planification (sondage type Doodle, admin) |
 | `/admin/init` | `rosters` Rosters initiaux · `recrues` Banque de recrues · `choix` Choix de repêchage (← réassigner le propriétaire d'un pick échangé hors-app) — réglages one-shot déjà en place pour la saison courante |
 | `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `approbation` Approbation (transactions entre poolers en attente, `TradeApprovalManager.tsx` — onglet ajouté le 2026-09-21) · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) · `marqueur` Marqueur (écarts avec notre pool sur Marqueur.com, 2026-10-05) |
 | `/admin/donnees` | `pipeline` Pipeline salaires/contrats/repêchages (doc, `PlayerMerge`) · `prospects` Classement des prospects |
@@ -1370,6 +1370,21 @@ Règles obligatoires pour toute nouvelle lecture, et à appliquer quand on touch
   relit l'existant et passe par `python_script/db_diff.py` (`diff_rows`, `fetch_all`,
   `rows_differ`) — jamais de remplacement complet d'une table à chaque passage.
 - `csv_path` doit être relatif à `BASE_DIR` (requis pour GitHub Actions)
+- **Corrections manuelles du cap hit (David, 2026-10-26)** : `python_script/source/cap_overrides.csv`
+  (`Joueur;Saison;Cap;Raison`), appliqué par `appliquer_corrections_cap()` dans `import_supabase.py`
+  après la fusion des doublons — jamais en éditant les CSV scrapés (écrasés au prochain scraping).
+  Ex. : Hellebuyck 2026-27 à 8,5 M$ (PuckPedia : 8 098 182 $ chez NJD). Retirer une ligne caduque.
+- **Blanchissages (David, 2026-10-25)** : valeur officielle `shutouts` du game-log de chaque gardien
+  (`enrich_goalie_stats`, les 4 imports). Sans game-log (échec de lecture) et dans le pointage en
+  direct (`liveNight.ts`) : déduit du boxscore — 0 but accordé, décision, **seul gardien de son
+  équipe à avoir joué**. Jamais « 60:00 de jeu » : Kochetkov (59:50, retiré pour un 6e attaquant)
+  perdait son blanchissage. Vérification : comparer `player_game_logs` au game-log LNH (audit du
+  2026-10-25 dans `SUIVI_PROJET.md`).
+- **Scraping incomplet (2026-10-25)** : une équipe dont la page échoue deux fois est **sautée**
+  (« HTML introuvable, équipe ignorée ») et garde son ancien CSV. Toujours passer par
+  `./run_pipeline_staging.ps1` (journal dans `python_script/logs/`) et vérifier la date des
+  fichiers de `teams_offline/` avant de pousser ; relancer les équipes manquées seules
+  (`scraper_depuis_csv_source(csv_path=<liste filtrée>)`), puis `fusionner_equipes()`.
 - **Gardiens substituts (David, 2026-10-18)** : la feuille de match de la LNH liste les deux
   gardiens habillés ; un gardien à `toi` 0:00 n'est **pas** un match joué et ne doit jamais créer
   de ligne `player_game_logs` (4 imports : `import_regular_stats.py`, `import_playoff_stats.py`,

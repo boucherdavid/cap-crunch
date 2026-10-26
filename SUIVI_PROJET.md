@@ -21,6 +21,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-26
 
+**[Docs] — Documentation des changements des 25 et 26 octobre** (`app/app/aide/AideTabs.tsx`, `CLAUDE.md`) :
+- `/aide`, guide Classement : classement quotidien, cartes officielles de la soirée sur l'accueil, blanchissages selon le relevé officiel de la LNH. Guide et règlement Échanges : arrivée en banque d'un joueur encore protégé, protection conservée à l'échange ; « pas de contre-offre » (périmé) corrigé. Règlement Ballotage : personne, admin compris, ne voit les réclamations avant la fin du délai.
+- `CLAUDE.md` : corrections de cap (`cap_overrides.csv`), source des blanchissages, scraping incomplet (équipes sautées), avis « Mouvements »/« Ballotage » dans Communication.
+- Commit : à venir
+
 **[Fix] — Ballotage : l'admin ne voit plus rien avant la fin du délai** (`app/lib/waiverClaims.ts`, `app/lib/push.ts`, `app/app/gestion-effectifs/waiver-actions.ts`, `BallotageTab.tsx`) :
 - Demande de David, par équité (il est aussi pooler) : retirés l'avis « X réclame Y » (après son refus ou s'il a libéré le joueur), l'avis des réclamations déjà reçues à son refus, et l'affichage des réponses sur un ballotage ouvert (règle du 2026-10-16). Restent : le résumé push à l'attribution et les réponses dans l'historique.
 - `sendPushToSomeAdmins()` retiré (plus utilisé).

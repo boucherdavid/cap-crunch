@@ -264,6 +264,7 @@ const SECTIONS: Section[] = [
           <li>• Une fois l&apos;échange accepté, la contre-offre n&apos;est plus possible, mais l&apos;un ou l&apos;autre peut l&apos;<strong>abandonner</strong> tant qu&apos;il n&apos;est pas exécuté.</li>
           <li>• Si accepté, l&apos;<strong>admin doit approuver</strong> l&apos;échange avant que quoi que ce soit ne bouge.</li>
           <li>• Une fois approuvé, tu as un délai pour <strong>confirmer</strong> que le résultat entre dans ta masse salariale et ta composition (12/6/2 + réservistes) — si ça ne rentre pas encore, une section dédiée directement dans cet onglet te permet d&apos;ajuster au passage (libérer, changer actif/réserviste, activer ou remettre en banque une recrue), pas besoin d&apos;aller dans Mouvements séparément.</li>
+          <li>• Un joueur reçu qui est <strong>encore protégé</strong>{' '}(recrue repêchée par le pool depuis moins de 5 saisons, ou sous ELC) peut arriver directement dans ta <strong>banque de recrues</strong>{' '}: choisis « Banque de recrues » à la confirmation. Il ne compte alors ni dans ta masse salariale ni dans ta composition.</li>
           <li>• Un joueur <strong>sur le LTIR</strong> peut aussi être échangé. Chez le pooler qui le reçoit, il arrive comme <strong>actif ou réserviste</strong> (choix à la confirmation) et son salaire compte dans la masse salariale. S&apos;il est encore blessé, c&apos;est au nouveau propriétaire de faire sa propre demande de LTIR.</li>
           <li>• L&apos;échange s&apos;exécute seulement une fois que <strong>les deux poolers</strong> ont confirmé. Si l&apos;un des deux ne confirme pas à temps, l&apos;échange est annulé pour les deux — personne ne perd rien, à refaire au besoin.</li>
           <li>• Il prend effet à la seconde confirmation, ou <strong>le lendemain</strong> si un match d&apos;un joueur impliqué est déjà commencé ce jour-là.</li>
@@ -441,7 +442,7 @@ const SECTIONS: Section[] = [
     id: 'guide-classement',
     tab: 'guide',
     title: 'Classement',
-    keywords: 'classement rang points buts passes victoires gardien direct ce soir pointeurs mise a jour nuit hebdomadaire mensuel semaine mois par position attaquants defenseurs gardiens',
+    keywords: 'classement rang points buts passes victoires blanchissage gardien direct ce soir pointeurs mise a jour nuit quotidien veille soiree hebdomadaire mensuel semaine mois par position attaquants defenseurs gardiens',
     href: '/classement',
     screenshot: '/guide/classement.png',
     content: (
@@ -454,19 +455,23 @@ const SECTIONS: Section[] = [
           <li>• Clique sur le nom d&apos;un pooler pour consulter son alignement complet.</li>
           <li>• <strong>Par position</strong>{' '}: le bouton « Par position », au-dessus du tableau, montre les points de chaque pooler séparés entre attaquants, défenseurs et gardiens, avec le total. Le meilleur de chaque colonne est en vert ; clique sur Attaquants, Défenseurs, Gardiens ou Total pour trier. Ton choix de vue est gardé pour ta prochaine visite.</li>
           <li>• <strong>Quand les points sont-ils mis à jour ?</strong>{' '}Les points officiels du classement sont mis à jour une fois par nuit, vers 2 h (heure de l&apos;Est), avec les matchs de la veille.</li>
+          <li>• Les victoires, défaites en prolongation et blanchissages des gardiens sont ceux du <strong>relevé officiel de la LNH</strong>. Un gardien retiré quelques secondes pour un 6ᵉ attaquant garde son blanchissage.</li>
           <li>
             • <strong>En direct</strong>{' '}: pendant les matchs, la page d&apos;accueil affiche le classement de la soirée et les pointeurs de la LNH, mis à jour chaque minute. Le détail par pooler est sur{' '}
             <Link href="/en-direct" className="text-blue-600 hover:underline font-medium">Soir de match → En direct</Link>.
             Le menu « Afficher » du tableau des pointeurs permet de ne voir que tes joueurs actifs, tes réservistes ou tes recrues (ou les actifs d&apos;un autre pooler){' '}: pratique le lendemain matin pour savoir qui t&apos;a donné tes points.
             Ce pointage est <strong>non officiel</strong>{' '}: seuls les joueurs actifs comptent, et les points officiels sont ceux de la nuit.
           </li>
+          <li>• <strong>Le lendemain</strong>{' '}: une fois les points officiels importés, la page d&apos;accueil remplace le pointage en direct par le <strong>classement officiel de la soirée</strong>{' '}et les pointeurs du pool, avec le même menu « Afficher » pour voir les joueurs d&apos;un pooler.</li>
         </ul>
         <p className="text-sm text-gray-600 mt-3">
-          Le sélecteur en haut de la page propose, en plus de la <strong>saison complète</strong> (par défaut), deux fenêtres bornées dans le temps avec les mêmes colonnes : le{' '}
+          Le sélecteur en haut de la page propose, en plus de la <strong>saison complète</strong> (par défaut), trois fenêtres bornées dans le temps avec les mêmes colonnes : le{' '}
+          <Link href="/classement/quotidien" className="text-blue-600 hover:underline font-medium">classement quotidien</Link>{' '}
+          (une soirée, hier par défaut ; le détail ne montre que les joueurs qui ont joué), le{' '}
           <Link href="/classement/hebdomadaire" className="text-blue-600 hover:underline font-medium">classement hebdomadaire</Link>{' '}
           (lundi à dimanche) et le{' '}
           <Link href="/classement/mensuel" className="text-blue-600 hover:underline font-medium">classement mensuel</Link>{' '}
-          — chacun avec une navigation précédent/suivant pour parcourir les semaines ou mois passés.
+          — chacun avec une navigation précédent/suivant pour parcourir les jours, semaines ou mois passés.
         </p>
       </div>
     ),
@@ -925,6 +930,7 @@ const SECTIONS: Section[] = [
         <li>• La priorité de réclamation est l&apos;<strong>ordre inverse du classement</strong> au moment précis de la libération — elle ne change pas même si le classement bouge ensuite. <strong>Avant le 1ᵉʳ novembre</strong> (le classement n&apos;a pas encore de sens en tout début de saison), c&apos;est plutôt l&apos;ordre du repêchage des agents libres pré-saison qui sert de priorité.</li>
         <li>• Réclamable jusqu&apos;à <strong>23 h 59 (heure de l&apos;Est) du <WaiverDeadlineText /></strong>{' '}la libération (délai configurable par l&apos;administrateur) — attribué le lendemain de cette date limite.</li>
         <li>• En cas de réclamations multiples sur le même joueur, seule la priorité tranche.</li>
+        <li>• <strong>Personne ne voit qui a réclamé</strong>, pas même l&apos;administrateur (qui est aussi pooler), avant la fin du délai. Les réponses de chacun apparaissent ensuite dans l&apos;historique de l&apos;onglet Ballotage.</li>
         <li>• Une fois gagné, tu as <strong>48 h</strong> pour l&apos;ajouter toi-même à ton alignement, sinon l&apos;administrateur doit intervenir manuellement.</li>
       </ul>
     ),
@@ -938,7 +944,8 @@ const SECTIONS: Section[] = [
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
         <li>• Peuvent inclure des joueurs actif/réserviste/recrue et des choix de repêchage, dans n&apos;importe quelle combinaison.</li>
-        <li>• Le pooler visé peut seulement <strong>accepter ou refuser</strong> — pas de contre-offre pour l&apos;instant.</li>
+        <li>• Un joueur garde sa <strong>protection recrue</strong>{' '}quand il est échangé. S&apos;il est encore protégé, celui qui le reçoit peut le placer directement dans sa banque de recrues.</li>
+        <li>• Le pooler visé peut <strong>accepter</strong>, <strong>refuser</strong>{' '}ou faire une <strong>contre-offre</strong>, qui remplace l&apos;offre actuelle.</li>
         <li>• Une fois accepté, l&apos;<strong>administrateur doit approuver</strong> avant que quoi que ce soit ne bouge.</li>
         <li>• Une fois approuvé, les deux poolers ont un délai (configurable par l&apos;administrateur, par défaut 3 jours) pour confirmer que le résultat respecte leurs limites d&apos;alignement (12/6/2 + cap).</li>
         <li>• Si l&apos;un des deux ne confirme pas à temps, l&apos;échange est <strong>annulé pour les deux</strong> — rien n&apos;a changé, à refaire au besoin.</li>
