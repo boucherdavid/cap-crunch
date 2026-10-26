@@ -237,9 +237,9 @@ const SECTIONS: Section[] = [
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Clique <strong>Réclamer</strong> pour signaler ton intérêt — tu peux réclamer plusieurs joueurs en même temps. <strong>Refuser</strong> est optionnel, mais si tous les poolers plus prioritaires que toi refusent, tu es averti que tu vas l&apos;obtenir sans attendre la fin du délai.</li>
-          <li>• Si plusieurs poolers réclament le même joueur, celui avec la <strong>priorité la plus haute</strong> (pire classé au moment de la libération) le remporte.</li>
+          <li>• Si plusieurs poolers réclament le même joueur, celui avec la <strong>priorité la plus haute</strong> (pire classé au moment de la libération ; avant le 1ᵉʳ novembre, l&apos;ordre du repêchage des agents libres) le remporte. Personne ne voit qui a réclamé avant la fin du délai.</li>
           <li>• Si personne ne réclame avant la fin du délai, le joueur redevient simplement un agent libre normal.</li>
-          <li>• Une fois gagné, un bandeau apparaît dans l&apos;onglet <strong>Mouvements</strong> pour l&apos;ajouter toi-même à ton alignement (actif ou réserviste, au choix) — ajuste au besoin (libération) pour rester conforme, tu as 48 h pour le faire.</li>
+          <li>• Une fois gagné, tu es averti par notification et par courriel, et un bandeau apparaît dans l&apos;onglet <strong>Mouvements</strong> pour l&apos;ajouter toi-même à ton alignement (actif ou réserviste, au choix) — ajuste au besoin (libération) pour rester conforme, tu as 48 h pour le faire.</li>
         </ul>
       </div>
     ),
