@@ -21,6 +21,10 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-26
 
+**[Docs] — `CLAUDE.md` : procédure du pipeline avec le filet de sécurité** :
+- Section 2 : vérifications du log avant de pousser (scraping incomplet, rapport « Salaires modifiés », `cap_overrides.csv`) ; commandes `--equipes` et `compare_salaires.py`. Section 3 : `compare_salaires.py`, `source/cap_overrides.csv`. Section 5 : section « Salaires modifiés » de `/admin/donnees`.
+- Test en staging du 2026-10-26 : Duchene remis à 6 055 556 $ en base, import → ramené à 4 500 000 $ et alerte enregistrée (`[ALERTE] 1 salaire(s) modifié(s)`). Section `/admin/donnees` et notification vérifiées par David sur staging. Migration roulée en staging et en prod.
+
 **[Feat] — Filet de sécurité : salaires modifiés d'un import à l'autre** (`python_script/compare_salaires.py`, `run_pipeline.py`, `import_supabase.py`, `scrape_puckpedia.py`, `supabase_migrations/contract_change_alerts.sql`, `app/lib/contractChangeAlerts.ts`, `app/lib/homeSyncs.ts`, `app/app/admin/donnees/ContractChangeAlertsPanel.tsx`, `contract-alert-actions.ts`, `NotificationsList.tsx`) :
 - Demande de David après Duchene : être averti quand un salaire change, ce qui n'est pas normal.
 - Rapport local avant de pousser (`compare_salaires.py`, étape 1b du pipeline) : salaire après la même fusion que l'import, nouveau CSV vs version du dépôt. Testé sur la version d'avant le correctif des rachats : signale Duchene (chez Vincent), Veleno, White et les 10 joueurs disparus.

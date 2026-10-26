@@ -96,6 +96,12 @@ cd app && npm run dev
 ./run_pipeline_staging.ps1 --no-scrape
 ```
 
+**Avant de pousser — vérifier le log** (David, 2026-10-26) : (1) le scraping ne doit pas s'être
+arrêté sur « 🛑 Scraping incomplet » (une équipe non rafraîchie garde son ancien CSV — relancer
+avec `--equipes`) ; (2) lire le rapport « Salaires modifiés » (étape 1b) : un salaire déjà connu
+qui change n'est pas normal — vérifier sur PuckPedia, corriger au besoin dans
+`python_script/source/cap_overrides.csv` (voir section 6, « Python »).
+
 **Convention** : après avoir validé un log `run_pipeline_staging_*.log` sans erreur, committer
 et pousser les CSV modifiés (`python_script/PuckPedia_*.csv`, `python_script/teams_offline/*.csv`)
 sur `main` — sans attendre la demande. Ça déclenche automatiquement
@@ -114,8 +120,10 @@ python run_pipeline.py
 python run_pipeline.py --no-scrape
 
 # Étapes individuelles
-python scrape_puckpedia.py     # 1. Scraping PuckPedia → CSV
-python import_supabase.py      # 2. Import joueurs/contrats → Supabase
+python scrape_puckpedia.py     # 1. Scraping PuckPedia → CSV (code 2 si une équipe a échoué)
+python scrape_puckpedia.py --equipes CAR,NJD   # relance ciblée des équipes en échec
+python compare_salaires.py     # 1b. Salaires modifiés vs version du dépôt (lecture seule)
+python import_supabase.py      # 2. Import joueurs/contrats → Supabase (+ contract_change_alerts)
 python import_drafts.py        # 3. Import repêchages NHL (5 dernières saisons)
 ```
 
@@ -239,6 +247,8 @@ Hockey_Pool_App/
 │   ├── scrape_injuries.py      ← Scrape les blessures LNH, CBS + ESPN + MoneyPuck (voir section 2)
 │   ├── import_advanced_stats.py ← Stats avancées MoneyPuck (voir section 2)
 │   ├── scrape_line_combos.py   ← Trios et paires actuels, Daily Faceoff (dry-run par défaut, --apply)
+│   ├── compare_salaires.py     ← Rapport des salaires modifiés avant de pousser les CSV (lecture seule)
+│   ├── source/cap_overrides.csv ← Corrections manuelles du cap hit, appliquées à l'import
 │   ├── source/                ← CSV générés par le scraping
 │   ├── teams_offline/
 │   ├── diagnostics/
@@ -700,7 +710,7 @@ composant, pas de `?subtab=`), donc pas d'accès par URL directe comme pour `/ad
 | `/admin/communaute` | `communication` Communication (feedback + notifs, filtrables par type — `NotificationsList.tsx`, type déduit du titre : tout nouveau titre de `sendPushToAdmins` s'ajoute à `KINDS` ; « Mouvements » = lots soumis par un pooler, `lib/adminRosterNotice.ts`, jamais pour un admin qui agit ; « Ballotage » = résumé à l'attribution et ballotage bloqué) · `babillard` Babillard (publier/supprimer des communications, ajouté le 2026-09-02) · `suivi` Suivi (activité) · `planification` Planification (sondage type Doodle, admin) |
 | `/admin/init` | `rosters` Rosters initiaux · `recrues` Banque de recrues · `choix` Choix de repêchage (← réassigner le propriétaire d'un pick échangé hors-app) — réglages one-shot déjà en place pour la saison courante |
 | `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `approbation` Approbation (transactions entre poolers en attente, `TradeApprovalManager.tsx` — onglet ajouté le 2026-09-21) · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) · `marqueur` Marqueur (écarts avec notre pool sur Marqueur.com, 2026-10-05) |
-| `/admin/donnees` | `pipeline` Pipeline salaires/contrats/repêchages (doc, `PlayerMerge`) · `prospects` Classement des prospects |
+| `/admin/donnees` | `pipeline` Pipeline salaires/contrats/repêchages (« Salaires modifiés » — alertes `contract_change_alerts` avec bouton Vu, 2026-10-26 ; mises à jour automatiques ; doc ; `PlayerMerge`) · `prospects` Classement des prospects |
 | `/admin/series` | pas d'onglets — vue unique (avancement des séries), message si aucune saison séries active. Retiré du dropdown Admin le 2026-08-28 (ne servait qu'aux tests, pas d'usage normal du pool des séries) — route et code conservés, toujours atteignable directement par URL. Depuis le 2026-08-30, également retiré du sous-menu "Pool Séries" côté pooler (voir ci-dessous) — plus aucun point d'entrée dans la nav, seulement l'URL directe |
 
 `/admin/pool` et `/admin/communaute` (2026-09-01) : `/admin/pool` regroupait auparavant les 5
