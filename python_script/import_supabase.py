@@ -570,6 +570,40 @@ def merge_alias_duplicates(supabase):
         print(f"[DEDUP-ALIAS] {nb} doublon(s) d'alias fusionné(s).")
 
 
+def detecter_salaires_modifies(to_update, existing_contracts, nhl_season):
+    """Filet de sécurité (David, 2026-10-26) : un cap existant d'une saison active ou future qui
+    change de valeur, ou qui passe à vide, n'est pas normal d'un import à l'autre (Duchene : rachat
+    NSH additionné à son contrat DAL). Une nouvelle signature (vide → montant) n'est pas signalée."""
+    first_season = f'{nhl_season[:4]}-{nhl_season[6:8]}'  # '20262027' -> '2026-27'
+    old_by_key = {(c['player_id'], c['season']): c for c in existing_contracts}
+    alerts = []
+    for c in to_update:
+        if c['season'] < first_season:
+            continue
+        old = old_by_key.get((c['player_id'], c['season']))
+        old_cap = old.get('cap_number') if old else None
+        if old_cap is None:
+            continue
+        new_cap = c.get('cap_number')
+        if new_cap is not None and round(float(new_cap)) == round(float(old_cap)):
+            continue
+        alerts.append({'player_id': c['player_id'], 'season': c['season'], 'old_cap': old_cap, 'new_cap': new_cap})
+    return alerts
+
+
+def enregistrer_salaires_modifies(supabase, alerts):
+    if not alerts:
+        return
+    print(f'[ALERTE] {len(alerts)} salaire(s) modifié(s) — à vérifier sur /admin/donnees :')
+    for a in alerts:
+        print(f"    joueur {a['player_id']} {a['season']} : {a['old_cap']} -> {a['new_cap']}")
+    try:
+        supabase.table('contract_change_alerts').insert(alerts).execute()
+    except Exception as e:
+        # Table absente (migration contract_change_alerts.sql pas encore roulée) : l'import continue.
+        print(f'[ALERTE] Enregistrement impossible : {e}')
+
+
 CAP_OVERRIDES_CSV = os.path.join(BASE_DIR, 'source', 'cap_overrides.csv')
 
 
@@ -872,6 +906,7 @@ def upload_vers_supabase(csv_path=None):
     print(f'[INFO] Contrats : {len(to_insert)} nouveau(x), {len(to_update)} modifié(s), '
           f'{len(dedup) - len(to_insert) - len(to_update)} inchangé(s)')
     contracts_to_upsert = to_insert + to_update
+    salary_alerts = detecter_salaires_modifies(to_update, existing_contracts, nhl_season)
 
     nb_contracts = 0
     for i in range(0, len(contracts_to_upsert), BATCH_SIZE):
@@ -881,6 +916,8 @@ def upload_vers_supabase(csv_path=None):
             nb_contracts += len(batch)
         except Exception as e:
             print(f'[ERREUR CONTRAT] Batch {i//BATCH_SIZE + 1}: {e}')
+
+    enregistrer_salaires_modifies(supabase, salary_alerts)
 
     # Second passage de dédup : nettoie les doublons créés par les inserts ci-dessus
     deduplicate_players(supabase, roster_ambiguous, roster_by_team, teams_id_to_code, ambiguous_names)

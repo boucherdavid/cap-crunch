@@ -690,9 +690,13 @@ def scraper_depuis_html(fichier_html, sigle, headless=True, driver=None):
     print(f"✅ Extraction finale pour {sigle} : {len(df)} joueurs retenus")
     return df
 
-def scraper_depuis_csv_source(csv_path=DEFAULT_SOURCE_CSV, headless=True):
+def scraper_depuis_csv_source(csv_path=DEFAULT_SOURCE_CSV, headless=True, equipes=None):
+    """Retourne la liste des équipes à relancer (échec de téléchargement ou d'extraction).
+    `equipes` : sigles à traiter seulement (relance ciblée, --equipes) — sinon toutes."""
     print(f"\n📁 Chargement du fichier source : {csv_path}")
     df_urls = pd.read_csv(csv_path, sep=';')
+    if equipes:
+        df_urls = df_urls[df_urls['Team'].isin(equipes)]
     print(f"🔢 Total d’équipes à traiter : {len(df_urls)}")
 
     os.makedirs(DIAGNOSTICS_DIR, exist_ok=True)
@@ -705,6 +709,7 @@ def scraper_depuis_csv_source(csv_path=DEFAULT_SOURCE_CSV, headless=True):
     fermer_chrome_orphelins()
     driver = get_driver(headless)
     equipes_perimees = []
+    equipes_en_echec = []
     try:
         for _, row in df_urls.iterrows():
             url = row['URL']
@@ -734,6 +739,7 @@ def scraper_depuis_csv_source(csv_path=DEFAULT_SOURCE_CSV, headless=True):
                     equipes_perimees.append(sigle)
                 else:
                     print(f"❌ HTML introuvable pour {sigle}, équipe ignorée")
+                    equipes_en_echec.append(sigle)
                     continue
 
             try:
@@ -742,6 +748,7 @@ def scraper_depuis_csv_source(csv_path=DEFAULT_SOURCE_CSV, headless=True):
                 all_table = pd.concat([all_table, df], ignore_index=True)
             except Exception as e:
                 print(f"❌ Erreur avec {sigle} : {e}")
+                equipes_en_echec.append(sigle)
     finally:
         # quit() d'abord (fermeture propre), puis l'arbre de processus au cas
         # où une fenêtre aurait survécu (interruption, driver déjà mort).
@@ -751,8 +758,12 @@ def scraper_depuis_csv_source(csv_path=DEFAULT_SOURCE_CSV, headless=True):
             pass
         tuer_driver(driver)
 
-    all_table.to_csv(OFFLINE_CSV, index=False, sep=';')
-    print(f"\n📦 Fichier global sauvegardé : ./PuckPedia_offline.csv")
+    if not equipes:
+        all_table.to_csv(OFFLINE_CSV, index=False, sep=';')
+        print(f"\n📦 Fichier global sauvegardé : ./PuckPedia_offline.csv")
+
+    if equipes_en_echec:
+        print(f"\n❌ {len(equipes_en_echec)} équipe(s) NON mise(s) à jour (ancien CSV conservé) : {equipes_en_echec}")
 
     if equipes_perimees:
         print(f"\n⚠️  {len(equipes_perimees)} équipe(s) avec données potentiellement PÉRIMÉES (échec de retéléchargement) : {equipes_perimees}")
@@ -767,10 +778,26 @@ def scraper_depuis_csv_source(csv_path=DEFAULT_SOURCE_CSV, headless=True):
     else:
         print("⚠️ Aucune équipe n’a été traitée avec succès.")
 
+    return sorted(set(equipes_en_echec) | set(equipes_perimees))
+
 
 def main():
-    scraper_depuis_csv_source(headless=False)
+    # Relance ciblée : python scrape_puckpedia.py --equipes CAR,NJD (David, 2026-10-26).
+    equipes = None
+    if '--equipes' in sys.argv:
+        i = sys.argv.index('--equipes')
+        equipes = [e.strip().upper() for e in sys.argv[i + 1].split(',') if e.strip()]
+    a_relancer = scraper_depuis_csv_source(headless=False, equipes=equipes)
     fusionner_equipes()
+    fusionner_equipes(fichier_sortie=OFFLINE_CSV)
+    # Une équipe sautée garde son ancien CSV : ne jamais importer dans cet état (2026-10-25 —
+    # Hellebuyck parti de WPG sans arriver chez NJD). Code d'erreur → run_pipeline.py s'arrête
+    # avant l'import.
+    if a_relancer or FICHES_EN_ECHEC:
+        print("\n🛑 Scraping incomplet. Relance seulement ces équipes, puis l'import :")
+        print(f"    python scrape_puckpedia.py --equipes {','.join(a_relancer) or '<équipe des fiches en échec>'}")
+        print("    ./run_pipeline_staging.ps1 --no-scrape")
+        sys.exit(2)
 
 if __name__ == "__main__":
     main()

@@ -23,6 +23,13 @@ STEPS = [
         'description': 'Télécharge les données de contrats depuis PuckPedia (nécessite Chrome)',
     },
     {
+        'name': '1b. Salaires modifiés (rapport)',
+        'script': 'compare_salaires.py',
+        'skip_flag': None,
+        'description': 'Compare les salaires au CSV du dépôt (lecture seule)',
+        'optional': True,
+    },
+    {
         'name': '2. Import joueurs et contrats → Supabase',
         'script': 'import_supabase.py',
         'skip_flag': None,

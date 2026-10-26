@@ -2,6 +2,7 @@ import { unstable_cache } from 'next/cache'
 import { syncLtirReturns } from '@/lib/ltirReturns'
 import { syncNhlTransactions } from '@/lib/nhlTransactions'
 import { syncDeadlines } from '@/lib/deadlineSync'
+import { syncContractChangeAlerts } from '@/lib/contractChangeAlerts'
 
 // Vérifications lancées depuis l'accueil (David, 2026-10-23) : au plus une fois par heure pour
 // tout le site. Le minuteur en mémoire de chaque sync ne vaut que pour un serveur, et Vercel en
@@ -11,7 +12,7 @@ import { syncDeadlines } from '@/lib/deadlineSync'
 // inutile coûte des I/O. Les onglets concernés (ballotage, échanges, LTIR) règlent toujours
 // leurs délais eux-mêmes à l'ouverture.
 const runHomeSyncs = unstable_cache(async (): Promise<number> => {
-  await Promise.allSettled([syncLtirReturns(true), syncNhlTransactions(true), syncDeadlines(true)])
+  await Promise.allSettled([syncLtirReturns(true), syncNhlTransactions(true), syncDeadlines(true), syncContractChangeAlerts()])
   return Date.now()
 }, ['home-syncs-v1'], { revalidate: 3600 })
 

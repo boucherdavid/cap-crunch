@@ -11,6 +11,8 @@ import { canDispatchWorkflows, fetchLastWorkflowRun } from '@/lib/githubDispatch
 import StagingSyncPanel from './StagingSyncPanel'
 import DataUpdatesPanel from './DataUpdatesPanel'
 import { getDataUpdateRunsAction } from './data-update-actions'
+import ContractChangeAlertsPanel from './ContractChangeAlertsPanel'
+import { loadContractChangeAlerts } from '@/lib/contractChangeAlerts'
 
 export const dynamic = 'force-dynamic'
 
@@ -77,6 +79,7 @@ export default async function AdminDonneesPage({
           {getAppEnv() !== 'production' && (
             <StagingSyncPanel initialRun={await fetchLastWorkflowRun('sync_prod_to_staging.yml')} canTrigger={canDispatchWorkflows()} />
           )}
+          <ContractChangeAlertsPanel alerts={await loadContractChangeAlerts()} />
           <DataUpdatesPanel initialRuns={await getDataUpdateRunsAction()} canTrigger={canDispatchWorkflows()} />
           <div>
             <h1 className="text-2xl font-bold text-gray-800">{'Mise à jour des données'}</h1>
