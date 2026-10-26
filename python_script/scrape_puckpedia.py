@@ -451,13 +451,16 @@ def scraper_depuis_html(fichier_html, sigle, headless=True, driver=None):
     SECTIONS_TO_SKIP = ['buyout']
 
     for idx, table in enumerate(tables):
-        # Détecter le titre de section précédant ce tableau
-        section_heading = ""
-        for tag in ['h1', 'h2', 'h3', 'h4']:
-            heading = table.find_previous(tag)
-            if heading:
-                section_heading = heading.get_text(strip=True).lower()
-                break
+        # Titre de section le plus proche avant ce tableau. PuckPedia les met dans un
+        # <div class="... font-bold ...">, pas dans un <h…> (David, 2026-10-26) : l'ancienne
+        # recherche prenait toujours le <h1> de la page (nom de l'équipe), si bien que les
+        # rachats n'étaient jamais ignorés — Duchene (rachat NSH 1 555 556 $) sommé à son
+        # contrat DAL de 4,5 M$ par import_supabase.fusionner_doublons.
+        heading = table.find_previous(
+            lambda t: t.name in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6')
+            or (t.name == 'div' and 'font-bold' in (t.get('class') or []))
+        )
+        section_heading = heading.get_text(' ', strip=True).lower() if heading else ""
 
         if any(keyword in section_heading for keyword in SECTIONS_TO_SKIP):
             print(f"⏭️  Tableau {idx+1} ignoré (section : '{section_heading}')")

@@ -1380,6 +1380,9 @@ Règles obligatoires pour toute nouvelle lecture, et à appliquer quand on touch
   équipe à avoir joué**. Jamais « 60:00 de jeu » : Kochetkov (59:50, retiré pour un 6e attaquant)
   perdait son blanchissage. Vérification : comparer `player_game_logs` au game-log LNH (audit du
   2026-10-25 dans `SUIVI_PROJET.md`).
+- **Rachats de contrat (2026-10-26)** : le scraper ignore la section « Buyout & Cap Charges »
+  (titre de section = `<div class="font-bold">` le plus proche, pas un `<h…>`). Sinon
+  `fusionner_doublons` prend le rachat pour un salaire retenu et l'additionne au contrat actuel.
 - **Scraping incomplet (2026-10-25)** : une équipe dont la page échoue deux fois est **sautée**
   (« HTML introuvable, équipe ignorée ») et garde son ancien CSV. Toujours passer par
   `./run_pipeline_staging.ps1` (journal dans `python_script/logs/`) et vérifier la date des
