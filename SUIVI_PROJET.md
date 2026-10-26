@@ -25,7 +25,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Signalé par David : Duchene à 6 055 556 $ au lieu de 4,5 M$. Cause : la détection de section du scraper prenait toujours le `<h1>` de la page (nom de l'équipe) — les titres réels sont des `<div class="… font-bold">` — donc `SECTIONS_TO_SKIP = ['buyout']` n'a jamais rien ignoré. Le rachat NSH (1 555 556 $) passait pour un fragment de salaire retenu et `fusionner_doublons` l'additionnait au contrat DAL.
 - 15 lignes de rachat sur 32 équipes. Salaires gonflés en prod : Duchene (Vincent, LTIR), Colin White (1 775 000 → 900 000), Veleno (1 579 167 → 1 200 000). Ekman-Larsson non touché (somme refusée, rachats plus gros que son contrat TOR). Les autres (Skinner, Brodie, Campbell, Richards, Parise, Suter, Turris, Jones, Vlasic, Drouin) n'existaient que par leur rachat ; leurs anciennes lignes `player_contracts` restent en base, sans effet (aucun pooler).
 - Correctif : section = élément `<h…>` ou `<div class="font-bold">` le plus proche. Lignes de rachat retirées des CSV d'équipe (même résultat que le scraper corrigé), fusion régénérée (1 524 joueurs), import staging vérifié.
-- Commit : à venir
+- Commit : `7ff7e49`
 
 **[Docs] — Documentation des changements des 25 et 26 octobre** (`app/app/aide/AideTabs.tsx`, `CLAUDE.md`) :
 - `/aide`, guide Classement : classement quotidien, cartes officielles de la soirée sur l'accueil, blanchissages selon le relevé officiel de la LNH. Guide et règlement Échanges : arrivée en banque d'un joueur encore protégé, protection conservée à l'échange ; « pas de contre-offre » (périmé) corrigé. Règlement Ballotage : personne, admin compris, ne voit les réclamations avant la fin du délai.
