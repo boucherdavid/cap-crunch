@@ -570,6 +570,29 @@ def merge_alias_duplicates(supabase):
         print(f"[DEDUP-ALIAS] {nb} doublon(s) d'alias fusionné(s).")
 
 
+CAP_OVERRIDES_CSV = os.path.join(BASE_DIR, 'source', 'cap_overrides.csv')
+
+
+def appliquer_corrections_cap(df):
+    """Corrections manuelles du cap hit (David, 2026-10-26) : source/cap_overrides.csv
+    (Joueur;Saison;Cap;Raison). Appliquées à l'import, pas au scraping — le CSV scrapé reste
+    fidèle à PuckPedia et la correction survit à chaque nouveau scraping. Retirer la ligne dès
+    qu'elle n'a plus lieu d'être."""
+    if not os.path.exists(CAP_OVERRIDES_CSV):
+        return df
+    corrections = pd.read_csv(CAP_OVERRIDES_CSV, sep=';', dtype=str)
+    for _, c in corrections.iterrows():
+        joueur, saison, cap = str(c['Joueur']).strip(), str(c['Saison']).strip(), str(c['Cap']).strip()
+        masque = df['Joueur'].astype(str).str.strip() == joueur
+        if saison not in df.columns or not masque.any():
+            print(f'[CORRECTION] Ignorée (joueur ou saison introuvable) : {joueur} {saison}')
+            continue
+        avant = df.loc[masque, saison].tolist()
+        df.loc[masque, saison] = cap
+        print(f'[CORRECTION] {joueur} {saison} : {avant} -> {cap}')
+    return df
+
+
 def upload_vers_supabase(csv_path=None):
     if csv_path is None:
         csv_path = os.path.join(BASE_DIR, 'PuckPedia_update.csv')
@@ -597,6 +620,7 @@ def upload_vers_supabase(csv_path=None):
     roster_map, roster_ambiguous, roster_by_team = charger_rosters_nhl(nhl_season)
     df = fusionner_doublons(df, roster_map)
     print(f'[INFO] {len(df)} joueurs apres fusion')
+    df = appliquer_corrections_cap(df)
 
     teams_map = {t['code']: t['id'] for t in supabase.table('teams').select('id, code').execute().data}
     teams_id_to_code = {v: k for k, v in teams_map.items()}
