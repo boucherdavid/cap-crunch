@@ -21,6 +21,14 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-10-26
 
+**[Feat] — Filet de sécurité : salaires modifiés d'un import à l'autre** (`python_script/compare_salaires.py`, `run_pipeline.py`, `import_supabase.py`, `scrape_puckpedia.py`, `supabase_migrations/contract_change_alerts.sql`, `app/lib/contractChangeAlerts.ts`, `app/lib/homeSyncs.ts`, `app/app/admin/donnees/ContractChangeAlertsPanel.tsx`, `contract-alert-actions.ts`, `NotificationsList.tsx`) :
+- Demande de David après Duchene : être averti quand un salaire change, ce qui n'est pas normal.
+- Rapport local avant de pousser (`compare_salaires.py`, étape 1b du pipeline) : salaire après la même fusion que l'import, nouveau CSV vs version du dépôt. Testé sur la version d'avant le correctif des rachats : signale Duchene (chez Vincent), Veleno, White et les 10 joueurs disparus.
+- À l'import (staging et prod) : `contract_change_alerts` (saison active et suivantes ; montant → autre montant ou vide ; pas les nouvelles signatures). L'app avise les admins une fois par lot (push + courriel, vérifications horaires de l'accueil) ; section « Salaires modifiés » sur `/admin/donnees` avec « Vu » ; filtre « Salaires modifiés » dans Communication.
+- Scraper : code d'erreur si une équipe n'a pas été rafraîchie (le pipeline s'arrête avant l'import) ; relance ciblée `--equipes CAR,NJD`. Remplace l'idée d'un contrôle par date de fichier (fausses alertes dès qu'un CSV est corrigé à la main).
+- Migration `contract_change_alerts.sql` à rouler (staging puis prod) ; sans elle, l'import affiche l'alerte dans son journal et continue.
+- Commit : `761e6aa`
+
 **[Fix] — Rachats de contrat additionnés au salaire des joueurs (Duchene à 6 055 556 $)** (`python_script/scrape_puckpedia.py`, `teams_offline/*.csv`) :
 - Signalé par David : Duchene à 6 055 556 $ au lieu de 4,5 M$. Cause : la détection de section du scraper prenait toujours le `<h1>` de la page (nom de l'équipe) — les titres réels sont des `<div class="… font-bold">` — donc `SECTIONS_TO_SKIP = ['buyout']` n'a jamais rien ignoré. Le rachat NSH (1 555 556 $) passait pour un fragment de salaire retenu et `fusionner_doublons` l'additionnait au contrat DAL.
 - 15 lignes de rachat sur 32 équipes. Salaires gonflés en prod : Duchene (Vincent, LTIR), Colin White (1 775 000 → 900 000), Veleno (1 579 167 → 1 200 000). Ekman-Larsson non touché (somme refusée, rachats plus gros que son contrat TOR). Les autres (Skinner, Brodie, Campbell, Richards, Parise, Suter, Turris, Jones, Vlasic, Drouin) n'existaient que par leur rachat ; leurs anciennes lignes `player_contracts` restent en base, sans effet (aucun pooler).

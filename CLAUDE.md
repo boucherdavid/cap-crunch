@@ -275,6 +275,8 @@ Hockey_Pool_App/
 - `ltir_requests` (demandes de mise sur LTIR en attente d'approbation admin — voir section 6)
 - `nhl_transaction_alerts` (signatures, échanges et changements d'équipe de la LNH déjà signalés —
   voir section 6, « Signatures et échanges de la LNH »)
+- `contract_change_alerts` (salaires modifiés d'un import à l'autre — filet de sécurité, voir
+  section 6, « Python »)
 - `ltir_return_watch` (joueurs sur LTIR de retour au jeu, avec date limite de réintégration —
   voir section 6)
 - `trade_market_listings`/`trade_market_requests` (marché des échanges, `/marche-echanges` —
@@ -1380,14 +1382,24 @@ Règles obligatoires pour toute nouvelle lecture, et à appliquer quand on touch
   équipe à avoir joué**. Jamais « 60:00 de jeu » : Kochetkov (59:50, retiré pour un 6e attaquant)
   perdait son blanchissage. Vérification : comparer `player_game_logs` au game-log LNH (audit du
   2026-10-25 dans `SUIVI_PROJET.md`).
+- **Filet de sécurité des salaires (David, 2026-10-26)** — un salaire déjà connu ne devrait pas
+  changer d'un import à l'autre. (1) `compare_salaires.py` (étape 1b de `run_pipeline.py`, lecture
+  seule) : compare le salaire **après la même fusion que l'import** entre `PuckPedia_update.csv`
+  et la version du dépôt, joueurs d'un pooler en premier — à lire avant de pousser les CSV.
+  (2) `import_supabase.py` (`detecter_salaires_modifies`) inscrit chaque cap d'une saison active
+  ou future qui change de valeur, ou passe à vide, dans `contract_change_alerts` (une nouvelle
+  signature, vide → montant, n'est pas signalée). L'app avise les admins (push + courriel, une
+  fois par lot, vérifications horaires de l'accueil, `lib/contractChangeAlerts.ts`) et les liste
+  sur `/admin/donnees` (« Salaires modifiés », bouton Vu). (3) `scrape_puckpedia.py` sort en code
+  d'erreur si une équipe n'a pas pu être rafraîchie → le pipeline s'arrête avant l'import ;
+  relance ciblée : `python scrape_puckpedia.py --equipes CAR,NJD`.
 - **Rachats de contrat (2026-10-26)** : le scraper ignore la section « Buyout & Cap Charges »
   (titre de section = `<div class="font-bold">` le plus proche, pas un `<h…>`). Sinon
   `fusionner_doublons` prend le rachat pour un salaire retenu et l'additionne au contrat actuel.
 - **Scraping incomplet (2026-10-25)** : une équipe dont la page échoue deux fois est **sautée**
   (« HTML introuvable, équipe ignorée ») et garde son ancien CSV. Toujours passer par
-  `./run_pipeline_staging.ps1` (journal dans `python_script/logs/`) et vérifier la date des
-  fichiers de `teams_offline/` avant de pousser ; relancer les équipes manquées seules
-  (`scraper_depuis_csv_source(csv_path=<liste filtrée>)`), puis `fusionner_equipes()`.
+  `./run_pipeline_staging.ps1` (journal dans `python_script/logs/`). Depuis le 2026-10-26, le
+  scraper s'arrête alors en erreur : relancer les équipes indiquées avec `--equipes`.
 - **Gardiens substituts (David, 2026-10-18)** : la feuille de match de la LNH liste les deux
   gardiens habillés ; un gardien à `toi` 0:00 n'est **pas** un match joué et ne doit jamais créer
   de ligne `player_game_logs` (4 imports : `import_regular_stats.py`, `import_playoff_stats.py`,
