@@ -1452,7 +1452,10 @@ Règles obligatoires pour toute nouvelle lecture, et à appliquer quand on touch
   transférés tels quels) — aucun choix actif/réserviste à faire, aucun impact cap/composition.
   Un choix de repêchage transfère juste `pool_draft_picks.current_owner_id`. Seuls les joueurs
   actif/réserviste ont un type à choisir à la confirmation (`chosen_type` sur
-  `trade_offer_items`) et comptent dans la validation 12/6/2 + cap.
+  `trade_offer_items`) et comptent dans la validation 12/6/2 + cap. Depuis le 2026-10-26 (David) :
+  un joueur reçu encore protégé chez le donneur (`isRookieProtected`) peut aussi arriver en
+  « Banque de recrues » (`chosen_type='recrue'`, hors masse/composition), et l'étiquette
+  `rookie_type`/`pool_draft_year` suit toujours le joueur échangé (avant, un actif la perdait).
 - **Ajustements supplémentaires à la confirmation (David, 2026-09-22)** — Mouvements exige
   TOUJOURS exactement 12/6/2 à la soumission (`validateRosterLimits`), donc un pooler ne peut
   pas y libérer un joueur "pour faire de la place" avant que l'échange ne s'exécute (tomberait
