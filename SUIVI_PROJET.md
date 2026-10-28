@@ -19,6 +19,13 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-28
+
+**[Feat] — Onglet Marqueur : « avant les matchs du jour » aussi pour un mouvement à heure précise** (`app/lib/marqueur.ts`) :
+- Demande de David : l'heure seule (« le 21 oct. à 20 h 17 ») ne dit pas, sans le calendrier, si le mouvement compte pour les matchs du jour.
+- Horaire LNH lu par semaine (`fetchGameStartsByDay`, cache 1 h) pour les jours des mouvements ; si aucun match des équipes des joueurs du panier (ou du joueur, pour le contexte d'un écart) n'était commencé à ce moment → « …à 20 h 17 (heure de l'Est), avant les matchs du jour ». Horaire indisponible → l'heure seule, comme avant.
+- Équipe = équipe actuelle du joueur (un joueur échangé depuis peut donner un résultat approximatif — rare, accepté).
+
 ### 2026-10-26
 
 **[Docs] — `CLAUDE.md` : procédure du pipeline avec le filet de sécurité** :

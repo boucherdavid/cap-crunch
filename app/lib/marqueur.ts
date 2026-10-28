@@ -18,6 +18,43 @@ import { CHANGE_LABEL } from '@/lib/rosterChangeLabels'
 import { toNhlSeasonId } from '@/lib/nhl-stats'
 import { getPlayerBucket } from '@/lib/rosterLimits'
 
+const dayET = (iso: string) => new Intl.DateTimeFormat('fr-CA', { timeZone: 'America/Toronto', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
+
+// Début des matchs LNH par jour (heure de l'Est) puis par équipe. Une requête par semaine
+// (l'API renvoie 7 jours à partir de la date demandée) ; jours passés stables, d'où le cache.
+// Horaire indisponible → null.
+async function fetchGameStartsByDay(days: Set<string>): Promise<Map<string, Map<string, number[]>> | null> {
+  const result = new Map<string, Map<string, number[]>>()
+  const pending = [...days].sort()
+  try {
+    while (pending.length > 0) {
+      const res = await fetch(`https://api-web.nhle.com/v1/schedule/${pending[0]}`, { signal: AbortSignal.timeout(5000), next: { revalidate: 3600 } })
+      if (!res.ok) return null
+      const data = await res.json()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const d of (data.gameWeek ?? []) as any[]) {
+        const byTeam = new Map<string, number[]>()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        for (const g of (d.games ?? []) as any[]) {
+          if (!g.startTimeUTC) continue
+          const start = new Date(g.startTimeUTC).getTime()
+          for (const t of [g.awayTeam?.abbrev, g.homeTeam?.abbrev]) {
+            if (t) byTeam.set(t, [...(byTeam.get(t) ?? []), start])
+          }
+        }
+        result.set(d.date, byTeam)
+      }
+      const fetched = pending.shift()!
+      // Jour absent de la réponse : on le marque vide pour ne pas boucler.
+      if (!result.has(fetched)) result.set(fetched, new Map())
+      while (pending.length > 0 && result.has(pending[0])) pending.shift()
+    }
+    return result
+  } catch {
+    return null
+  }
+}
+
 const POOL_ID = 76938
 const BASE = 'https://www.marqueur.com/hockey/mbr/tools/pool/stats_03.php'
 
@@ -215,7 +252,7 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
       .select('pooler_id, player_type, added_at, players (first_name, last_name, nhl_id)')
       .eq('pool_season_id', season.id).eq('is_active', true),
     admin.from('roster_change_log')
-      .select('pooler_id, change_type, old_type, new_type, changed_at, players (first_name, last_name, position)')
+      .select('pooler_id, change_type, old_type, new_type, changed_at, players (first_name, last_name, position, teams (code))')
       .eq('pool_season_id', season.id)
       .order('changed_at'),
   ])
@@ -229,27 +266,34 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
   // convention « date sans heure » (date forcée, ou mouvement reporté au lendemain parce qu'un
   // joueur du lot avait déjà commencé son match) : effectif pour toute la journée, donc avant
   // les matchs de ce jour-là.
-  const fmtMoment = (iso: string) => {
-    const d = new Date(iso)
-    if (d.getUTCHours() === 12 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) {
-      return `le ${fmtDay(iso)}, avant les matchs du jour`
-    }
-    const [h, m] = d.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Toronto' }).split(/[: h]+/)
-    return `le ${fmtDay(iso)} à ${Number(h)} h ${m} (heure de l'Est)`
+  // Un mouvement à heure précise est aussi « avant les matchs du jour » si aucun match des joueurs
+  // touchés n'était commencé à ce moment (David, 2026-10-28 — l'heure seule ne dit rien sans le
+  // calendrier). Horaire LNH indisponible → l'heure seule, comme avant.
+  type LogRow = { pooler_id: string; change_type: string; old_type: string | null; new_type: string | null; changed_at: string; players: { first_name: string; last_name: string; position: string | null; teams: { code: string } | null } | null }
+  const typedLogs = (logRows ?? []) as unknown as LogRow[]
+  const isNoonUtc = (iso: string) => { const d = new Date(iso); return d.getUTCHours() === 12 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0 }
+  const gameStarts = await fetchGameStartsByDay(new Set(typedLogs.filter(r => !isNoonUtc(r.changed_at)).map(r => dayET(r.changed_at))))
+  const fmtMoment = (iso: string, teams: string[]) => {
+    if (isNoonUtc(iso)) return `le ${fmtDay(iso)}, avant les matchs du jour`
+    const [h, m] = new Date(iso).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Toronto' }).split(/[: h]+/)
+    const day = gameStarts?.get(dayET(iso))
+    const at = new Date(iso).getTime()
+    const before = !!gameStarts && teams.length > 0 && teams.every(t => (day?.get(t) ?? []).every(start => start > at))
+    return `le ${fmtDay(iso)} à ${Number(h)} h ${m} (heure de l'Est)${before ? ', avant les matchs du jour' : ''}`
   }
   const lastMove = new Map<string, string>()
   // Dernier mouvement brut, par pooler puis par joueur : sert à regrouper les écarts par panier.
-  type LogMove = { at: number; iso: string; oldType: string | null; newType: string | null; position: string | null; name: string }
+  type LogMove = { at: number; iso: string; oldType: string | null; newType: string | null; position: string | null; name: string; team: string | null }
   const lastLog = new Map<string, Map<string, LogMove>>()
-  type LogRow = { pooler_id: string; change_type: string; old_type: string | null; new_type: string | null; changed_at: string; players: { first_name: string; last_name: string; position: string | null } | null }
-  for (const r of (logRows ?? []) as unknown as LogRow[]) {
+  for (const r of typedLogs) {
     if (!r.players) continue
     const name = `${r.players.first_name} ${r.players.last_name}`
-    lastMove.set(`${r.pooler_id}::${norm(name)}`, `${CHANGE_LABEL[r.change_type] ?? r.change_type} ${fmtMoment(r.changed_at)}`)
+    const team = r.players.teams?.code ?? null
+    lastMove.set(`${r.pooler_id}::${norm(name)}`, `${CHANGE_LABEL[r.change_type] ?? r.change_type} ${fmtMoment(r.changed_at, team ? [team] : [])}`)
     if (!lastLog.has(r.pooler_id)) lastLog.set(r.pooler_id, new Map())
     lastLog.get(r.pooler_id)!.set(norm(name), {
       at: new Date(r.changed_at).getTime(), iso: r.changed_at,
-      oldType: r.old_type, newType: r.new_type, position: r.players.position, name,
+      oldType: r.old_type, newType: r.new_type, position: r.players.position, name, team,
     })
   }
 
@@ -397,7 +441,8 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
         pairs.push({ out, in: i >= 0 ? insLeft.splice(i, 1)[0] : null })
       }
       for (const left of insLeft) pairs.push({ out: null, in: left })
-      return { when: fmtMoment(logs.get(members[0][0])!.iso), pairs, others }
+      const teams = [...new Set(members.map(([, l]) => l.team).filter((t): t is string => !!t))]
+      return { when: fmtMoment(logs.get(members[0][0])!.iso, teams), pairs, others }
     })
 
     return {

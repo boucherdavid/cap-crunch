@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-10-25
+**Dernière mise à jour :** 2026-10-28
 
 ---
 
@@ -90,6 +90,7 @@
 - **Déconnexions sur Android** signalées par un pooler : cause non trouvée.
 - **Vidéos de l'Aide** : David enregistre sur staging, téléverse sur YouTube en « Non répertoriée »
   et envoie les liens avec la section visée.
+- **Staging, à valider (2026-10-28)** : onglet Marqueur — « avant les matchs du jour » ajouté aux mouvements à heure précise quand aucun match des joueurs n'était commencé.
 - **Comparaison Marqueur les soirs de matchs** : garde-fou en place, cause du 6 octobre non établie.
 - **Import de nuit par Vercel Cron** : jamais confirmé qu'une exécution part bien vers 2 h-3 h ET
   (panneau « Mises à jour automatiques »).
