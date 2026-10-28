@@ -1291,6 +1291,10 @@ corrigée le 2026-09-20 :**
   Gestion d'effectifs partage la même date), du plus ancien au plus récent ; sorties des actifs
   jumelées aux entrées par position (A/D/G), joueurs déjà concordants du panier en gris. Écarts
   sans mouvement → « Autres écarts » (`moveGroups`/`otherGaps`, `MarqueurReportView.tsx`).
+- **Moment d'effet affiché** (David, 2026-10-28) : date sans heure (`T12:00:00Z`) → « avant les
+  matchs du jour » ; heure précise → l'heure, plus « avant les matchs du jour » si aucun match des
+  équipes des joueurs du panier n'était commencé (`fetchGameStartsByDay()`, horaire LNH par
+  semaine, cache 1 h ; équipe actuelle du joueur). Horaire indisponible → l'heure seule.
 - Chaque écart de points porte sa **preuve LNH** (`fetchNhlProof()` : total selon le pointage du
   pool, détail match par match, lien nhl.com) et un verdict — Cap Crunch a raison / Marqueur a raison.
 - Marqueur n'a pas de LTIR : LTIR ici ↔ réserviste là-bas = concordant. Recrues en banque non
