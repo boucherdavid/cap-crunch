@@ -19,6 +19,11 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-30 (suite 2)
+
+**[UX] — Ballotage : « Retirer ma réclamation »** (`app/app/gestion-effectifs/BallotageTab.tsx`, `aide/AideTabs.tsx`) :
+- Après avoir réclamé, le bouton « Refuser » portait à confusion (question d'un pooler relayée par David) : il s'appelle maintenant « Retirer ma réclamation », avec une confirmation qui rappelle que c'est définitif. Comportement inchangé (`refuseWaiverClaimAction`). Texte de l'onglet et `/aide` précisés.
+
 ### 2026-10-30 (suite)
 
 **[Perf] — Alerte Vercel : 90 % du CPU gratuit du mois** (`components/visiblePolling.ts`, `usePoolerTodo.ts`, `AdminApprovalsPanel.tsx`, `AutoReload.tsx`, `RookieTurnBanner.tsx`, `live/useLiveNight.ts`, `TradeChat.tsx`) :

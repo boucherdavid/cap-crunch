@@ -83,7 +83,9 @@ export default function BallotageTab({ saisonId }: { saisonId: number }) {
     })
   }
 
-  function handleRefuse(id: number) {
+  // Après une réclamation, « Refuser » la retire — définitif (David, 2026-10-30).
+  function handleRefuse(id: number, alreadyClaimed: boolean) {
+    if (alreadyClaimed && !confirm('Retirer ta réclamation ? Tu ne pourras plus réclamer ce joueur.')) return
     setError(null)
     startTransition(async () => {
       const res = await refuseWaiverClaimAction(saisonId, id)
@@ -105,7 +107,8 @@ export default function BallotageTab({ saisonId }: { saisonId: number }) {
           Quand un joueur est libéré en cours de saison, il devient réclamable ici pendant un
           délai — la priorité va au pooler le moins bien classé au moment de la libération.
           Refuser est optionnel, mais si tout le monde plus prioritaire que toi refuse, tu es
-          averti par notification que tu vas l&apos;obtenir, sans attendre la fin du délai.
+          averti par notification que tu vas l&apos;obtenir, sans attendre la fin du délai. Tu peux
+          retirer ta réclamation tant que le délai court, mais c&apos;est définitif.
         </p>
         {claims.length === 0 && <p className="text-sm text-gray-400">Aucun joueur au ballotage en ce moment.</p>}
         <div className="space-y-2">
@@ -139,9 +142,9 @@ export default function BallotageTab({ saisonId }: { saisonId: number }) {
                   </button>
                 )}
                 {c.canRefuse && (
-                  <button onClick={() => handleRefuse(c.id)} disabled={isPending}
+                  <button onClick={() => handleRefuse(c.id, c.myStatus === 'claimed')} disabled={isPending}
                     className="border border-gray-300 text-gray-600 px-4 py-1.5 rounded text-sm font-medium hover:bg-gray-50 disabled:opacity-50">
-                    Refuser
+                    {c.myStatus === 'claimed' ? 'Retirer ma réclamation' : 'Refuser'}
                   </button>
                 )}
                 {!c.canClaim && !c.canRefuse && c.myStatus === null && (

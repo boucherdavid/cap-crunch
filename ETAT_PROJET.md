@@ -90,6 +90,7 @@
 - **Déconnexions sur Android** signalées par un pooler : cause non trouvée.
 - **Vidéos de l'Aide** : David enregistre sur staging, téléverse sur YouTube en « Non répertoriée »
   et envoie les liens avec la section visée.
+- **Staging, à valider (2026-10-30)** : ballotage — bouton « Retirer ma réclamation » (avec confirmation) au lieu de « Refuser » après avoir réclamé.
 - **À surveiller — CPU Vercel** (90 % du forfait gratuit le 2026-10-30, sondages réduits en prod le même jour) : suivre « Fluid Active CPU » dans Vercel → Usage ; si ça ne ralentit pas, chercher les routes coûteuses dans Observability.
 - **Comparaison Marqueur les soirs de matchs** : garde-fou en place, cause du 6 octobre non établie.
 - **Import de nuit par Vercel Cron** : jamais confirmé qu'une exécution part bien vers 2 h-3 h ET
