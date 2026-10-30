@@ -1180,6 +1180,8 @@ push à l'attribution (« attribué à W, réclamé par A, B »). Aucun avis par
   nouvelle table : refuser (`refuseWaiverClaimAction`) est toujours permis, y compris après
   avoir réclamé (changer d'avis) ; l'inverse (refusé → réclamé) est bloqué de façon permanente,
   pour ne jamais invalider une garantie déjà notifiée à quelqu'un de moins prioritaire.
+  Après une réclamation, le bouton s'appelle « Retirer ma réclamation », avec une confirmation
+  qui rappelle que c'est définitif (David, 2026-10-30 — « Refuser » portait à confusion).
   `resolveExpiredWaiverClaims` ne considère que `status='claimed'` comme de vraies
   réclamations. `checkGuaranteedWaiverWinner()` (`app/lib/waiverClaims.ts`), appelée après
   chaque réclamation ET chaque refus (pas de tâche planifiée, déclenchée par l'action
