@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { resolveExpiredWaiverClaims, resolveExpiredAwardedClaims, checkGuaranteedWaiverWinner } from '@/lib/waiverClaims'
+import { resolveExpiredWaiverClaims, resolveExpiredAwardedClaims, checkGuaranteedWaiverWinner, renounceAwardedWaiverClaim } from '@/lib/waiverClaims'
 
 export type WaiverClaimView = {
   id: number
@@ -221,4 +221,12 @@ export async function refuseWaiverClaimAction(saisonId: number, waiverClaimId: n
 
   await checkGuaranteedWaiverWinner(waiverClaimId)
   return {}
+}
+
+// Renoncer à un ballotage remporté (David, 2026-10-30) — voir renounceAwardedWaiverClaim.
+export async function renounceAwardedWaiverClaimAction(saisonId: number, waiverClaimId: number): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
+  return renounceAwardedWaiverClaim(saisonId, waiverClaimId, user.id)
 }

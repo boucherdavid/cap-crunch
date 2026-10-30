@@ -6,6 +6,7 @@ import RosterPreview from './RosterPreview'
 import { TodoPills } from '@/components/PoolerTodoIndicator'
 import { markBallotageSeen, refreshPoolerTodo, usePoolerTodo } from '@/components/usePoolerTodo'
 import BallotageTab from './BallotageTab'
+import { renounceAwardedWaiverClaimAction } from './waiver-actions'
 import TradeOffersTab, { type TradeDraft, type TradePrefill } from './TradeOffersTab'
 import {
   getPoolerRosterAction,
@@ -807,6 +808,17 @@ export default function GestionEffectifsManager({
     setAddReturnLtirId(entry.id)
   }
 
+  // Renoncer à un ballotage remporté (David, 2026-10-30) : le joueur passe au réclamant suivant.
+  function handleRenounceAwardedClaim(claim: AwardedClaim) {
+    if (!confirm(`Renoncer à ${claim.playerName} ? Le joueur ira au prochain pooler qui l'a réclamé (ou redeviendra agent libre). C'est définitif.`)) return
+    startTransition(async () => {
+      const result = await renounceAwardedWaiverClaimAction(saisonId, claim.id)
+      if (result.error) { setError(result.error); return }
+      setAwardedClaims(prev => prev.filter(c => c.id !== claim.id))
+      refreshPoolerTodo()
+    })
+  }
+
   function handleCancelLtirRequest(requestId: number) {
     startTransition(async () => {
       const result = await cancelLtirRequestAction(requestId, poolerId)
@@ -1061,7 +1073,7 @@ export default function GestionEffectifsManager({
               )}
             </p>
             <p className="text-xs text-amber-700 mt-0.5">
-              Ajoute-le à ton panier et complète au besoin (libération) pour rester conforme — 48 h pour agir, sinon l&apos;admin devra intervenir.
+              Ajoute-le à ton panier et complète au besoin (libération) pour rester conforme — 48 h pour agir, sinon l&apos;admin devra intervenir. Tu as changé d&apos;idée ? « Renoncer » le passe au prochain pooler qui l&apos;a réclamé.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -1073,6 +1085,12 @@ export default function GestionEffectifsManager({
               className="border border-amber-300 text-amber-700 px-3 py-1.5 rounded text-sm font-medium hover:bg-amber-100">
               Ajouter (Actif)
             </button>
+            {selfPoolerId && (
+              <button onClick={() => handleRenounceAwardedClaim(c)} disabled={isPending}
+                className="text-amber-700 px-2 py-1.5 rounded text-sm hover:underline disabled:opacity-50">
+                Renoncer
+              </button>
+            )}
           </div>
         </div>
       ))}

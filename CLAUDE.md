@@ -1082,8 +1082,10 @@ push à l'attribution (« attribué à W, réclamé par A, B »). Aucun avis par
   sens en tout début de saison (`buildStandings()` retournerait un tableau vide tant qu'aucun
   match n'est joué). **À partir du 1er novembre**, classement réel de la saison en cours
   (`buildStandings()` inversé) comme avant ; si ce classement est encore vide à ce moment-là
-  (cas limite), repli sur `presaison_draft_order` plutôt que de bloquer le ballotage. Coupure du
-  1er novembre volontairement approximative (pas d'heure de l'Est à la seconde près).
+  (cas limite), repli sur `presaison_draft_order` plutôt que de bloquer le ballotage. Bascule à
+  minuit heure de l'Est le 1er novembre (`localMidnightUTC`, 2026-10-30). Égalité de points
+  (David, 2026-10-30) : plus faible moyenne de points par match (matchs joués comme actif) devant,
+  puis l'ordre pré-saison — jamais l'ordre alphabétique (`orderWorstFirst()`).
 - **Fenêtre par jour civil, pas par délai roulant (David, 2026-09-21)** — `app_settings.
   waiver_claim_days` (défaut 2, éditable dans Configuration → Général de `/admin/pool?tab=config`
   depuis le 2026-10-19, `WaiverSettingsForm.tsx` + `lib/waiverSettings.ts` ; `/aide` affiche la
@@ -1125,6 +1127,11 @@ push à l'attribution (« attribué à W, réclamé par A, B »). Aucun avis par
   un `type='ballotage'` non-admin exige un `waiverClaimId` pointant vers un claim `awarded` à ce
   pooler pour ce joueur exact, sinon rejeté — empêche d'ajouter n'importe quel joueur sous cette
   étiquette. Une fois l'ajout réussi, le claim passe `resolved_claimed`.
+- **Renoncer à un ballotage remporté** (David, 2026-10-30 — demande d'un pooler) : bouton
+  « Renoncer » du bandeau de Mouvements, permis au gagnant pendant ses 48 h seulement (ensuite
+  `blocked`, l'admin décide). `renounceAwardedWaiverClaim()` : sa réclamation passe `refused`, le
+  claim va au réclamant suivant de `priority_snapshot` (nouvel `awarded_at`, 48 h, rappel remis à
+  zéro, notifié) ou passe `resolved_unclaimed`. Mise à jour conditionnelle (double clic), avis aux admins.
 - **Garde-fou contre la signature directe d'un joueur au ballotage (David, 2026-09-21)** — un
   joueur avec un claim `open` ou `awarded` est exclu de la recherche libre-service normale
   (`searchPlayersAction`) et, en profondeur, bloqué dans `addNewPlayer` pour tout signingType

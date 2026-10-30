@@ -19,6 +19,13 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-30
+
+**[Feat] — Ballotage : renoncer après l'avoir remporté + ordre de priorité précisé** (`app/lib/waiverClaims.ts`, `app/app/gestion-effectifs/waiver-actions.ts`, `GestionEffectifsManager.tsx`, `aide/AideTabs.tsx`) :
+- Demande d'un pooler : le gagnant peut renoncer pendant ses 48 h (bouton « Renoncer » du bandeau de Mouvements). Le joueur passe au réclamant suivant de la priorité figée à la libération (48 h à lui, notifié, rappel remis à zéro) ou redevient agent libre ; réclamation du renonçant mise à `refused` ; admins avisés. Après 48 h : l'admin décide (inchangé, choix de David).
+- Validation de l'ordre à partir du 1er novembre : classement inversé, figé à la libération — confirmé. Corrigé : bascule à minuit heure de l'Est (était minuit UTC, 20 h la veille). Égalité de points : plus faible moyenne de points par match devant, puis ordre pré-saison (avant : ordre alphabétique inversé).
+- 2 erreurs de lint préexistantes dans `GestionEffectifsManager.tsx` (lignes non touchées).
+
 ### 2026-10-28
 
 **[Feat] — Onglet Marqueur : « avant les matchs du jour » aussi pour un mouvement à heure précise** (`app/lib/marqueur.ts`) :

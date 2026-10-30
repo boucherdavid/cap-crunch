@@ -240,6 +240,7 @@ const SECTIONS: Section[] = [
           <li>• Si plusieurs poolers réclament le même joueur, celui avec la <strong>priorité la plus haute</strong> (pire classé au moment de la libération ; avant le 1ᵉʳ novembre, l&apos;ordre du repêchage des agents libres) le remporte. Personne ne voit qui a réclamé avant la fin du délai.</li>
           <li>• Si personne ne réclame avant la fin du délai, le joueur redevient simplement un agent libre normal.</li>
           <li>• Une fois gagné, tu es averti par notification et par courriel, et un bandeau apparaît dans l&apos;onglet <strong>Mouvements</strong> pour l&apos;ajouter toi-même à ton alignement (actif ou réserviste, au choix) — ajuste au besoin (libération) pour rester conforme, tu as 48 h pour le faire.</li>
+          <li>• Tu as changé d&apos;idée ? Clique <strong>Renoncer</strong> dans ce bandeau (dans les 48 h) : le joueur va au prochain pooler qui l&apos;a réclamé, ou redevient agent libre si personne d&apos;autre ne l&apos;a réclamé.</li>
         </ul>
       </div>
     ),
@@ -927,11 +928,11 @@ const SECTIONS: Section[] = [
     content: (
       <ul className="text-sm text-gray-700 space-y-1.5">
         <li>• S&apos;applique uniquement aux libérations en <strong>cours de saison</strong> (pas aux libérations de la phase pré-saison).</li>
-        <li>• La priorité de réclamation est l&apos;<strong>ordre inverse du classement</strong> au moment précis de la libération — elle ne change pas même si le classement bouge ensuite. <strong>Avant le 1ᵉʳ novembre</strong> (le classement n&apos;a pas encore de sens en tout début de saison), c&apos;est plutôt l&apos;ordre du repêchage des agents libres pré-saison qui sert de priorité.</li>
+        <li>• La priorité de réclamation est l&apos;<strong>ordre inverse du classement</strong> au moment précis de la libération — elle ne change pas même si le classement bouge ensuite. <strong>Avant le 1ᵉʳ novembre</strong> (le classement n&apos;a pas encore de sens en tout début de saison), c&apos;est plutôt l&apos;ordre du repêchage des agents libres pré-saison qui sert de priorité. À égalité de points, la plus faible moyenne de points par match passe devant, puis l&apos;ordre du repêchage pré-saison.</li>
         <li>• Réclamable jusqu&apos;à <strong>23 h 59 (heure de l&apos;Est) du <WaiverDeadlineText /></strong>{' '}la libération (délai configurable par l&apos;administrateur) — attribué le lendemain de cette date limite.</li>
         <li>• En cas de réclamations multiples sur le même joueur, seule la priorité tranche.</li>
         <li>• <strong>Personne ne voit qui a réclamé</strong>, pas même l&apos;administrateur (qui est aussi pooler), avant la fin du délai. Les réponses de chacun apparaissent ensuite dans l&apos;historique de l&apos;onglet Ballotage.</li>
-        <li>• Une fois gagné, tu as <strong>48 h</strong> pour l&apos;ajouter toi-même à ton alignement, sinon l&apos;administrateur doit intervenir manuellement.</li>
+        <li>• Une fois gagné, tu as <strong>48 h</strong> pour l&apos;ajouter toi-même à ton alignement, sinon l&apos;administrateur doit intervenir manuellement. Pendant ces 48 h, tu peux aussi <strong>renoncer</strong> : le joueur va alors au réclamant suivant dans l&apos;ordre de priorité (qui a ses propres 48 h), ou redevient agent libre. Après 48 h, c&apos;est l&apos;administrateur qui décide.</li>
       </ul>
     ),
   },

@@ -3,7 +3,7 @@ import { after } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPushToUsers, sendPushToAdmins } from '@/lib/push'
 import { sendEmailToIds } from '@/lib/email'
-import { getStandings } from '@/lib/standings'
+import { getStandings, type PoolerStanding } from '@/lib/standings'
 import { getTodayET, addDaysToDate } from '@/lib/daily-recap'
 import { localMidnightUTC } from '@/lib/dateRanges'
 import { DEFAULT_WAIVER_CLAIM_DAYS } from '@/lib/waiverSettings'
@@ -31,12 +31,11 @@ const ADMIN_TRANSACTIONS_PATH = '/admin/transactions'
 // réutiliser applyTransactionItems, en dupliquant le strict minimum de sa logique 'sign'.
 
 // Avant le 1er novembre de l'année de début de saison, le classement réel n'a pas encore de
-// sens (peu ou pas de matchs joués) — David, 2026-09-21. Coupure volontairement approximative
-// (pas d'heure de l'Est à la seconde près comme dateRanges.ts) : une différence de quelques
-// heures autour de minuit n'a aucune conséquence réelle sur l'équité du ballotage ici.
+// sens (peu ou pas de matchs joués) — David, 2026-09-21. Bascule à minuit heure de l'Est
+// (2026-10-30 — avant, minuit UTC, soit 20 h la veille).
 function isBeforeNovemberFirst(season: string): boolean {
   const startYear = parseInt(season.split('-')[0], 10)
-  return new Date() < new Date(startYear, 10, 1) // mois 0-indexé : 10 = novembre
+  return Date.now() < localMidnightUTC(`${startYear}-11-01`).getTime()
 }
 
 // Ordre de priorité du ballotage (David, 2026-09-21) — avant le 1er novembre, utilise
@@ -57,8 +56,24 @@ async function computeWaiverPriority(
     return presaisonDraftOrder
   }
   const standings = await getStandings(saisonId)
-  if (standings.length > 0) return standings.map(s => s.poolerId).reverse()
+  if (standings.length > 0) return orderWorstFirst(standings, presaisonDraftOrder ?? [])
   return presaisonDraftOrder && presaisonDraftOrder.length > 0 ? presaisonDraftOrder : null
+}
+
+// Égalité de points (David, 2026-10-30) : la plus faible moyenne de points par match (matchs
+// joués comme actif) passe devant, puis l'ordre pré-saison — jamais l'ordre alphabétique.
+export function orderWorstFirst(standings: PoolerStanding[], presaisonDraftOrder: string[]): string[] {
+  const ppg = (s: PoolerStanding) => {
+    const games = s.players.reduce((n, p) => n + p.gamesPlayed, 0)
+    return games > 0 ? s.totalPoints / games : 0
+  }
+  const presaisonRank = (id: string) => {
+    const i = presaisonDraftOrder.indexOf(id)
+    return i < 0 ? Number.MAX_SAFE_INTEGER : i
+  }
+  return [...standings]
+    .sort((a, b) => a.totalPoints - b.totalPoints || ppg(a) - ppg(b) || presaisonRank(a.poolerId) - presaisonRank(b.poolerId))
+    .map(s => s.poolerId)
 }
 
 // Fenêtre de réclamation par jour civil (heure de l'Est), pas par nombre d'heures fixe (David,
@@ -258,19 +273,75 @@ export async function resolveExpiredWaiverClaims(saisonId: number) {
       body: `${label} : attribué à ${nameOf.get(winnerId) ?? '?'} (réclamé par ${claimants.join(', ')}).`,
       url: BALLOTAGE_TAB_PATH,
     }).catch(() => {}))
-    after(() => Promise.all([
-      sendPushToUsers([winnerId], {
-        title: 'Cap Crunch — Ballotage',
-        body: `Tu as remporté le ballotage pour ${label} — complète ta transaction dans Gestion d'effectifs (48 h).`,
-        url: MOUVEMENTS_PATH,
-      }).catch(() => {}),
-      sendEmailToIds([winnerId], {
-        subject: 'Cap Crunch — Ballotage remporté',
-        html: `<p>Tu as remporté le ballotage pour <strong>${label}</strong>.</p>
-               <p>Rends-toi dans Gestion d'effectifs (onglet Mouvements) pour l'ajouter à ton alignement — un bandeau t'y attend avec le joueur déjà sélectionné. Ajoute au besoin une libération pour rester conforme. Tu as 48 h, après quoi l'admin devra intervenir manuellement.</p>${linkHtml(MOUVEMENTS_PATH)}`,
-      }).catch(() => {}),
-    ]))
+    notifyWaiverWinner(winnerId, label)
   }
+}
+
+function notifyWaiverWinner(winnerId: string, label: string) {
+  after(() => Promise.all([
+    sendPushToUsers([winnerId], {
+      title: 'Cap Crunch — Ballotage',
+      body: `Tu as remporté le ballotage pour ${label} — complète ta transaction dans Gestion d'effectifs (48 h).`,
+      url: MOUVEMENTS_PATH,
+    }).catch(() => {}),
+    sendEmailToIds([winnerId], {
+      subject: 'Cap Crunch — Ballotage remporté',
+      html: `<p>Tu as remporté le ballotage pour <strong>${label}</strong>.</p>
+             <p>Rends-toi dans Gestion d'effectifs (onglet Mouvements) pour l'ajouter à ton alignement — un bandeau t'y attend avec le joueur déjà sélectionné. Ajoute au besoin une libération pour rester conforme. Tu as 48 h, après quoi l'admin devra intervenir manuellement.</p>${linkHtml(MOUVEMENTS_PATH)}`,
+    }).catch(() => {}),
+  ]))
+}
+
+// Renoncer à un ballotage remporté (David, 2026-10-30 — demande d'un pooler) : permis au gagnant
+// tant qu'il n'a pas ajouté le joueur et que ses 48 h ne sont pas écoulées (ensuite, l'admin
+// tranche). Le joueur passe au réclamant suivant dans la priorité figée à la libération, avec
+// ses propres 48 h ; s'il n'y en a plus, il redevient un agent libre. Sa réclamation passe à
+// 'refused' : elle ne compte plus si le suivant renonce à son tour.
+export async function renounceAwardedWaiverClaim(saisonId: number, waiverClaimId: number, poolerId: string): Promise<{ error?: string }> {
+  const admin = createAdminClient()
+  const { data: claim } = await admin
+    .from('waiver_claims')
+    .select('id, pool_season_id, status, player_id, awarded_to_pooler_id, awarded_at, priority_snapshot')
+    .eq('id', waiverClaimId)
+    .single()
+  if (!claim || claim.pool_season_id !== saisonId) return { error: 'Ballotage introuvable.' }
+  if (claim.status !== 'awarded' || claim.awarded_to_pooler_id !== poolerId) return { error: "Ce ballotage ne t'est pas attribué." }
+  if (!claim.awarded_at || Date.now() - new Date(claim.awarded_at).getTime() >= COMPLETION_GRACE_HOURS * 3_600_000) {
+    return { error: "Le délai de 48 h est écoulé : c'est maintenant l'admin qui décide." }
+  }
+
+  const { data: requests } = await admin
+    .from('waiver_claim_requests')
+    .select('pooler_id')
+    .eq('waiver_claim_id', waiverClaimId)
+    .eq('status', 'claimed')
+  const remaining = new Set((requests ?? []).map(r => r.pooler_id as string).filter(id => id !== poolerId))
+  const nextId = (claim.priority_snapshot as string[]).find(id => remaining.has(id)) ?? null
+  const now = new Date().toISOString()
+
+  // Conditionnelle : un double clic ne doit pas sauter deux réclamants.
+  const { data: updated } = await admin.from('waiver_claims').update(nextId
+    ? { awarded_to_pooler_id: nextId, awarded_at: now, completion_reminder_sent_at: null }
+    : { status: 'resolved_unclaimed', awarded_to_pooler_id: null, awarded_at: null, resolved_at: now },
+  ).eq('id', waiverClaimId).eq('status', 'awarded').eq('awarded_to_pooler_id', poolerId).select('id')
+  if (!updated || updated.length === 0) return { error: 'Ce ballotage a déjà changé — recharge la page.' }
+
+  await admin.from('waiver_claim_requests')
+    .update({ status: 'refused' })
+    .eq('waiver_claim_id', waiverClaimId).eq('pooler_id', poolerId)
+
+  const label = await playerLabel(admin, claim.player_id)
+  const ids = nextId ? [poolerId, nextId] : [poolerId]
+  const { data: names } = await admin.from('poolers').select('id, name').in('id', ids)
+  const nameOf = new Map((names ?? []).map(p => [p.id as string, p.name as string]))
+  const outcome = nextId ? `attribué à ${nameOf.get(nextId) ?? '?'}` : 'redevenu agent libre'
+  after(() => sendPushToAdmins({
+    title: 'Cap Crunch — Ballotage',
+    body: `${nameOf.get(poolerId) ?? '?'} a renoncé à ${label} : ${outcome}.`,
+    url: BALLOTAGE_TAB_PATH,
+  }).catch(() => {}))
+  if (nextId) notifyWaiverWinner(nextId, label)
+  return {}
 }
 
 // Filet de sécurité (David, 2026-09-21) — si le gagnant n'a pas complété sa transaction dans le
