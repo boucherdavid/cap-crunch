@@ -87,7 +87,7 @@ export default function LiveNightDetail({ initial, myId }: { initial: LiveNight;
       </div>
 
       <p className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
-        Calculé à partir des feuilles de match de la LNH, mis à jour chaque minute pendant les matchs
+        Calculé à partir des feuilles de match de la LNH, mis à jour aux 2 minutes pendant les matchs
         {night.isLive && ` (dernière mise à jour : ${fmtUpdatedAt(night.updatedAt)})`}. Seuls les joueurs
         actifs comptent. Les points officiels du classement sont mis à jour chaque nuit vers 2 h
         (heure de l&apos;Est).

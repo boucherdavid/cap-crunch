@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { startVisiblePolling } from '@/components/visiblePolling'
 import YourTurnPrompt from '@/components/YourTurnPrompt'
 import RookieSelect, { type RookieOption } from '../admin/repechage/RookieSelect'
 import { formatClock, remainingSeconds, type RookieTimer } from '@/lib/draftTimers'
@@ -57,9 +58,9 @@ export default function RookieTurnBanner({
       })
       setOptimistic(null)
     }).catch(() => {})
-    const id = adminSaisonId !== undefined ? setInterval(load, 5000) : undefined
+    const stop = adminSaisonId !== undefined ? startVisiblePolling(load, 5000) : undefined
     window.addEventListener('rookie-draft-changed', load)
-    return () => { cancelled = true; clearInterval(id); window.removeEventListener('rookie-draft-changed', load) }
+    return () => { cancelled = true; stop?.(); window.removeEventListener('rookie-draft-changed', load) }
   }, [adminSaisonId, saisonId, myPoolerId])
   const onTheClock = live ? live.onTheClock : initialOnTheClock
   const timer = live ? live.timer : initialTimer

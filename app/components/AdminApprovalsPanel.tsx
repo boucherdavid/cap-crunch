@@ -6,8 +6,10 @@ import TradeApprovalManager from '@/app/admin/effectifs/TradeApprovalManager'
 import LtirApprovalManager from '@/app/admin/effectifs/LtirApprovalManager'
 import { getAdminApprovalsAction, type AdminApprovals } from './admin-approvals-actions'
 import { refreshPoolerTodo } from './usePoolerTodo'
+import { startVisiblePolling } from './visiblePolling'
 
-const REFRESH_MS = 30_000
+// 2 minutes, onglet visible seulement (2026-10-30 — CPU Vercel ; avant : 30 s en tout temps).
+const REFRESH_MS = 2 * 60_000
 
 /** Date sans heure (YYYY-MM-DD) → « 5 oct. », sans décalage de fuseau. */
 function fmtDay(day: string | null): string {
@@ -23,7 +25,7 @@ function fmtDate(iso: string | null): string {
  * approuve les transactions entre poolers et les demandes de LTIR sans quitter la page en cours
  * (ex : pendant le repêchage). Réutilise tels quels les composants de l'onglet
  * /admin/effectifs?tab=approbation, qui reste en place (liens des notifications, seuils LTIR).
- * Le compteur se rafraîchit toutes les 30 secondes.
+ * Le compteur se rafraîchit toutes les 2 minutes, onglet visible seulement.
  */
 export default function AdminApprovalsPanel() {
   const [data, setData] = useState<AdminApprovals | null>(null)
@@ -49,8 +51,8 @@ export default function AdminApprovalsPanel() {
     load()
     // Pas de rafraîchissement pendant que le panneau est ouvert : la liste ne doit pas bouger
     // sous le doigt au moment d'approuver.
-    const timer = open ? null : setInterval(load, REFRESH_MS)
-    return () => { cancelled = true; if (timer) clearInterval(timer) }
+    const stop = open ? null : startVisiblePolling(load, REFRESH_MS)
+    return () => { cancelled = true; stop?.() }
   }, [open])
 
   useEffect(() => {

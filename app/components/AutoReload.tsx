@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { startVisiblePolling } from './visiblePolling'
 
 // Bouton de rafraîchissement manuel ajouté (David, 2026-09-10) — le rechargement automatique,
 // même espacé, reste un compromis (clignotement, perte d'interactions non protégées) ; plutôt
@@ -15,12 +16,13 @@ export default function AutoReload({ enabled, intervalMs = 10000 }: { enabled: b
     // qu'il fonctionne.
     // Pas de rechargement pendant qu'on écrit dans un champ (recherche, note de « Mes listes »,
     // etc.) — ce serait perdu ; on réessaie au prochain intervalle (David, 2026-09-27).
-    const id = setInterval(() => {
+    // Onglet caché : pas de rechargement (2026-10-30 — CPU Vercel) ; au retour, rechargé si
+    // l'intervalle est écoulé (startVisiblePolling).
+    return startVisiblePolling(() => {
       const el = document.activeElement
       if (el && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return
       window.location.reload()
     }, intervalMs)
-    return () => clearInterval(id)
   }, [enabled, intervalMs])
 
   return (

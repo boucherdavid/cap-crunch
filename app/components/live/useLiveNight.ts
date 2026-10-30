@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import type { LiveNight } from '@/lib/liveNight'
 
-const POLL_MS = 60_000
+// 2 minutes (2026-10-30 — CPU Vercel ; avant : chaque minute).
+const POLL_MS = 2 * 60_000
 const START_MARGIN_MS = 5 * 60_000
 
 /** Faut-il resonder ? Seulement si un match est en cours, ou si un match pas encore terminé

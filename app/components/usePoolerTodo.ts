@@ -1,11 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 import { getPoolerTodoAction, type PoolerTodo } from './pooler-todo-actions'
+import { startVisiblePolling } from './visiblePolling'
 
 const SEEN_KEY = 'ballotage-vu-le'
 const REFRESH_EVENT = 'pooler-todo-refresh'
-const REFRESH_MS = 60_000
+// 5 minutes, onglet visible seulement (2026-10-30 — CPU Vercel) : les actions du pooler
+// rafraîchissent déjà le compteur sur-le-champ (refreshPoolerTodo), et les push avisent du reste.
+const REFRESH_MS = 5 * 60_000
 const EMPTY: PoolerTodo = { trades: 0, waivers: 0, total: 0, items: [] }
 
 function readSeen(): string | null {
@@ -24,20 +27,38 @@ export function refreshPoolerTodo() {
   window.dispatchEvent(new Event(REFRESH_EVENT))
 }
 
-/** Compteurs « à faire » du pooler connecté (David, 2026-10-03), relus chaque minute et à chaque
- * `refreshPoolerTodo()`. `enabled=false` (personne de connecté) : toujours zéro. */
+/** Compteurs « à faire » du pooler connecté (David, 2026-10-03), relus aux 5 minutes (onglet
+ * visible) et à chaque `refreshPoolerTodo()`. Un seul sondage partagé par tous les composants qui
+ * s'en servent (barre du haut, Gestion d'effectifs). `enabled=false` (personne de connecté) :
+ * toujours zéro. */
+let shared: PoolerTodo = EMPTY
+const listeners = new Set<() => void>()
+let stopPolling: (() => void) | null = null
+
+function loadShared() {
+  getPoolerTodoAction(readSeen())
+    .then(t => { shared = t; listeners.forEach(l => l()) })
+    .catch(() => { /* réseau ou mise à jour de l'app : on réessaiera au prochain tour */ })
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener)
+  if (listeners.size === 1) {
+    loadShared()
+    const stopInterval = startVisiblePolling(loadShared, REFRESH_MS)
+    window.addEventListener(REFRESH_EVENT, loadShared)
+    stopPolling = () => { stopInterval(); window.removeEventListener(REFRESH_EVENT, loadShared) }
+  }
+  return () => {
+    listeners.delete(listener)
+    if (listeners.size === 0 && stopPolling) { stopPolling(); stopPolling = null }
+  }
+}
+
+const noSubscribe = () => () => {}
+const getShared = () => shared
+const getEmpty = () => EMPTY
+
 export function usePoolerTodo(enabled: boolean): PoolerTodo {
-  const [todo, setTodo] = useState<PoolerTodo>(EMPTY)
-  useEffect(() => {
-    if (!enabled) return
-    let cancelled = false
-    const load = () => getPoolerTodoAction(readSeen())
-      .then(t => { if (!cancelled) setTodo(t) })
-      .catch(() => { /* réseau ou mise à jour de l'app : on réessaiera au prochain tour */ })
-    load()
-    const id = setInterval(load, REFRESH_MS)
-    window.addEventListener(REFRESH_EVENT, load)
-    return () => { cancelled = true; clearInterval(id); window.removeEventListener(REFRESH_EVENT, load) }
-  }, [enabled])
-  return enabled ? todo : EMPTY
+  return useSyncExternalStore(enabled ? subscribe : noSubscribe, enabled ? getShared : getEmpty, getEmpty)
 }

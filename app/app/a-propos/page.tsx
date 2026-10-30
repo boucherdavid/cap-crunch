@@ -73,7 +73,7 @@ const CATEGORIES: Category[] = [
       {
         title: 'En direct',
         href: '/en-direct',
-        description: "Le pointage non officiel de la soirée, mis à jour chaque minute pendant les matchs : classement de la soirée par pooler et tous les pointeurs de la LNH, avec leur propriétaire. Une fois les points officiels importés, l’accueil affiche plutôt le classement quotidien.",
+        description: "Le pointage non officiel de la soirée, mis à jour aux 2 minutes pendant les matchs : classement de la soirée par pooler et tous les pointeurs de la LNH, avec leur propriétaire. Une fois les points officiels importés, l’accueil affiche plutôt le classement quotidien.",
       },
       {
         title: 'Gardiens partants',

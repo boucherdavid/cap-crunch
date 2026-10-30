@@ -372,7 +372,7 @@ régulière). **Non officiel**, rien n'est écrit en base : `app/lib/liveNight.t
 de la soirée (date ET de maintenant − 6 h ; soirée d'avant tant qu'aucun match n'est commencé) et
 applique `scoring_config` aux joueurs **actifs** ; tous les pointeurs de la LNH sont listés, avec leur
 propriétaire. Calcul en cache 45 s (`unstable_cache`, client admin) ; les clients sondent
-`/en-direct/donnees` chaque minute pendant les matchs seulement (`components/live/useLiveNight.ts`),
+`/en-direct/donnees` aux 2 minutes pendant les matchs seulement (`components/live/useLiveNight.ts`),
 jamais un rechargement de page. LNH indisponible → `error`, jamais des zéros. Les points officiels
 restent `player_game_logs`, importés chaque nuit vers 2 h ET par Vercel Cron (voir section 6, « Tâches planifiées »). Lien Marqueur.com (notre pool, suivi
 comparatif) : `lib/externalLinks.ts`, carte sur l'accueil et entrée externe du menu Le pool.
@@ -1377,6 +1377,15 @@ Règles obligatoires pour toute nouvelle lecture, et à appliquer quand on touch
 - Après une livraison qui touche des requêtes : relire `pg_stat_statements` en prod (requête dans
   `SUIVI_PROJET.md`, session 2026-10-14) — toute requête au-dessus de ~100 ms en moyenne ou
   appelée à chaque visite est à revoir.
+
+**Sondages côté navigateur — CPU Vercel (David, 2026-10-30)** : le forfait gratuit donne 4 h de
+« Fluid Active CPU » par mois pour la prod ET staging ; au-delà, les projets sont mis en pause. À
+90 % le 2026-10-30, surtout à cause d'onglets oubliés qui relançaient un calcul serveur chaque
+minute, jour et nuit. Tout rafraîchissement périodique passe par `startVisiblePolling()`
+(`components/visiblePolling.ts`) : rien quand l'onglet est caché, relecture au retour. Intervalles :
+« À faire » 5 min (un seul sondage partagé, `usePoolerTodo`), « Approbations » 2 min, En direct
+2 min, discussion d'échange 1 min ; sondages plus courts seulement pendant un repêchage. Préférer
+un rafraîchissement déclenché par l'action (`refreshPoolerTodo()`) ou une notification push.
 
 **Supabase :**
 - La legacy anon key est plus fiable que `sb_publishable_`

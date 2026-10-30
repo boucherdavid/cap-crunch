@@ -458,7 +458,7 @@ const SECTIONS: Section[] = [
           <li>• <strong>Quand les points sont-ils mis à jour ?</strong>{' '}Les points officiels du classement sont mis à jour une fois par nuit, vers 2 h (heure de l&apos;Est), avec les matchs de la veille.</li>
           <li>• Les victoires, défaites en prolongation et blanchissages des gardiens sont ceux du <strong>relevé officiel de la LNH</strong>. Un gardien retiré quelques secondes pour un 6ᵉ attaquant garde son blanchissage.</li>
           <li>
-            • <strong>En direct</strong>{' '}: pendant les matchs, la page d&apos;accueil affiche le classement de la soirée et les pointeurs de la LNH, mis à jour chaque minute. Le détail par pooler est sur{' '}
+            • <strong>En direct</strong>{' '}: pendant les matchs, la page d&apos;accueil affiche le classement de la soirée et les pointeurs de la LNH, mis à jour aux 2 minutes. Le détail par pooler est sur{' '}
             <Link href="/en-direct" className="text-blue-600 hover:underline font-medium">Soir de match → En direct</Link>.
             Le menu « Afficher » du tableau des pointeurs permet de ne voir que tes joueurs actifs, tes réservistes ou tes recrues (ou les actifs d&apos;un autre pooler){' '}: pratique le lendemain matin pour savoir qui t&apos;a donné tes points.
             Ce pointage est <strong>non officiel</strong>{' '}: seuls les joueurs actifs comptent, et les points officiels sont ceux de la nuit.

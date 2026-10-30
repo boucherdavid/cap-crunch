@@ -5,7 +5,8 @@ import { getTradeMessagesAction, postTradeMessageAction, setTradeChatSharedActio
 import type { TradeMessageView } from '@/lib/tradeOffers'
 
 const MAX = 500
-const POLL_MS = 20_000
+// 1 minute (2026-10-30 — CPU Vercel ; avant : 20 s).
+const POLL_MS = 60_000
 
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleString('fr-CA', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Toronto' })

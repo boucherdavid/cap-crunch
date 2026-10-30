@@ -19,6 +19,12 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-10-30 (suite)
+
+**[Perf] — Alerte Vercel : 90 % du CPU gratuit du mois** (`components/visiblePolling.ts`, `usePoolerTodo.ts`, `AdminApprovalsPanel.tsx`, `AutoReload.tsx`, `RookieTurnBanner.tsx`, `live/useLiveNight.ts`, `TradeChat.tsx`) :
+- Cause probable (non confirmée dans le tableau de bord Vercel) : « À faire » relançait `getPoolerTodoAction` chaque minute dans chaque onglet ouvert, même caché, et deux fois sur Gestion d'effectifs ; « Approbations » aux 30 s.
+- `startVisiblePolling()` : sondage seulement si l'onglet est visible, relecture au retour si l'intervalle est écoulé. « À faire » : 5 min, un seul sondage partagé (`useSyncExternalStore`). Approbations : 2 min. En direct : 2 min (textes `/aide`, `/a-propos`, En direct ajustés). Discussion d'échange : 1 min. AutoReload et bandeau admin du repêchage des recrues : pause onglet caché.
+
 ### 2026-10-30
 
 **[Feat] — Ballotage : renoncer après l'avoir remporté + ordre de priorité précisé** (`app/lib/waiverClaims.ts`, `app/app/gestion-effectifs/waiver-actions.ts`, `GestionEffectifsManager.tsx`, `aide/AideTabs.tsx`) :
