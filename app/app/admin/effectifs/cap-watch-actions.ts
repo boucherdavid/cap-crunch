@@ -468,6 +468,11 @@ export async function updateLtirSettingsAction(settings: LtirSettings): Promise<
   if (relapseError) {
     return { error: `Réglages enregistrés, sauf le seuil de rechute (migration ltir_relapse_games.sql à rouler) : ${relapseError.message}` }
   }
+  const { error: bufferError } = await supabase
+    .from('app_settings').update({ ltir_return_buffer_days: settings.returnBufferDays }).eq('id', 1)
+  if (bufferError) {
+    return { error: `Réglages enregistrés, sauf le tampon avant le retour (migration ltir_return_buffer_days.sql à rouler) : ${bufferError.message}` }
+  }
 
   revalidatePath('/admin/effectifs')
   revalidatePath('/statistiques/blessures')

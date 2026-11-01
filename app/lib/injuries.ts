@@ -88,7 +88,7 @@ type SupabaseLike = Awaited<ReturnType<typeof createClient>>
 export async function fetchLtirSettings(supabase: SupabaseLike): Promise<LtirSettings> {
   // Colonne lue à part (2026-10-05) : tant que sa migration n'est pas roulée, une seule requête
   // échouerait en entier et ramènerait tous les seuils à leurs défauts.
-  const [{ data }, { data: returnRow }, { data: recentRow }, { data: relapseRow }] = await Promise.all([
+  const [{ data }, { data: returnRow }, { data: recentRow }, { data: relapseRow }, { data: bufferRow }] = await Promise.all([
     supabase
       .from('app_settings')
       .select('ltir_return_min_days, ltir_injured_min_days, ltir_grace_days, injury_disagreement_days, injury_removal_absence_days')
@@ -97,10 +97,12 @@ export async function fetchLtirSettings(supabase: SupabaseLike): Promise<LtirSet
     supabase.from('app_settings').select('ltir_return_deadline_days').eq('id', 1).maybeSingle(),
     supabase.from('app_settings').select('ltir_recent_game_days').eq('id', 1).maybeSingle(),
     supabase.from('app_settings').select('ltir_relapse_games').eq('id', 1).maybeSingle(),
+    supabase.from('app_settings').select('ltir_return_buffer_days').eq('id', 1).maybeSingle(),
   ])
   const d = DEFAULT_LTIR_SETTINGS
   return {
     returnMinDays: data?.ltir_return_min_days ?? d.returnMinDays,
+    returnBufferDays: bufferRow?.ltir_return_buffer_days ?? d.returnBufferDays,
     injuredMinDays: data?.ltir_injured_min_days ?? d.injuredMinDays,
     graceDays: data?.ltir_grace_days ?? d.graceDays,
     disagreementDays: data?.injury_disagreement_days ?? d.disagreementDays,
