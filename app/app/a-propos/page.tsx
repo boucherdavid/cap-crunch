@@ -52,7 +52,7 @@ const CATEGORIES: Category[] = [
       {
         title: 'Meilleurs joueurs disponibles',
         href: '/meilleurs-disponibles',
-        description: "Les attaquants, défenseurs et gardiens libres les plus productifs, classés selon les points qu'ils auraient rapportés avec le pointage du pool. Total ou points par match, saison en cours ou dernière, avec le salaire de chacun.",
+        description: "Les attaquants, défenseurs et gardiens libres les plus productifs, classés selon les points qu'ils auraient rapportés avec le pointage du pool. Total ou points par match, saison en cours ou dernière, avec le salaire de chacun ; filtres par équipe et par salaire maximum.",
       },
       {
         title: 'Marché des échanges',
