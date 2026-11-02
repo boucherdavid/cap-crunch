@@ -7,7 +7,8 @@ import { updateLtirSettingsAction } from './cap-watch-actions'
 // Réglages d'admissibilité LTIR (David, 2026-09-25) — sujets à changement après discussion avec
 // les poolers. /aide (Règlements → Blessures et LTIR) affiche toujours les valeurs courantes.
 const FIELDS: { key: keyof LtirSettings; label: string; help: string }[] = [
-  { key: 'returnMinDays', label: 'Retour annoncé dans au moins', help: 'jours → admissible' },
+  { key: 'returnMinDays', label: "Absence prévue (du début de la blessure au retour annoncé) d'au moins", help: 'jours → admissible' },
+  { key: 'returnBufferDays', label: 'Tampon : il doit rester au moins', help: 'jours avant le retour annoncé' },
   { key: 'injuredMinDays', label: 'Blessé depuis au moins', help: 'jours (sans date de retour proche) → admissible' },
   { key: 'graceDays', label: 'Période tampon après la date de retour', help: 'jours avant de considérer la blessure prolongée' },
   { key: 'disagreementDays', label: 'Écart CBS/ESPN signalé à partir de', help: 'jours (marqueur ⚠, informatif)' },

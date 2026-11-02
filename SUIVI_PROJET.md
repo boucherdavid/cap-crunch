@@ -19,6 +19,15 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-11-01
+
+**[Règle] — Admissibilité LTIR : durée totale de l'absence prévue** (`app/lib/ltirEligibility.ts`, `lib/injuries.ts`, `admin/effectifs/LtirSettingsForm.tsx`, `admin/effectifs/cap-watch-actions.ts`, `aide/LtirRulesContent.tsx`, `supabase_migrations/ltir_return_buffer_days.sql`) :
+- Cas réel : Mike Matheson, annoncé absent « au moins jusqu'au 14 nov » par les 3 sources, n'était pas admissible le 31 oct (David a approuvé quand même). Cause : la règle 2 comptait les jours *restants à partir d'aujourd'hui* (≥ 14) — 14 le 30 oct, 13 le 31 → période tampon. Un joueur perdait donc l'admissibilité dès le lendemain de l'annonce.
+- Nouvelle règle (option choisie par David) : absence prévue = lendemain du dernier match joué (sinon date de détection) → date de retour, ≥ `returnMinDays` (14), **et** au moins `returnBufferDays` jours avant le retour (nouveau réglage, 2 par défaut, `app_settings.ltir_return_buffer_days`). Comptée en jours civils, heure de l'Est (avant : selon l'heure du calcul). Matheson : 28 oct → 14 nov = 17 jours, admissible jusqu'au 12 nov.
+- Limite : le dernier match n'est connu que s'il date de moins de `recentGameDays` (7) jours ; au-delà, la date de détection sert de début (absence un peu sous-estimée, prudent).
+- Testé (script ponctuel) : Matheson admissible 31 oct et 12 nov, pas les 13 et 14, de nouveau le 18 (blessure prolongée, règle 4) ; absence de 10 jours non admissible.
+- Migration `ltir_return_buffer_days.sql` roulée en staging et en prod par David le 2026-11-01.
+
 ### 2026-10-30 (suite 2)
 
 **[UX] — Ballotage : « Retirer ma réclamation »** (`app/app/gestion-effectifs/BallotageTab.tsx`, `aide/AideTabs.tsx`) :

@@ -1242,6 +1242,7 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 -- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS ltir_grace_days INTEGER NOT NULL DEFAULT 3;
 -- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS injury_disagreement_days INTEGER NOT NULL DEFAULT 5;
 -- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS injury_removal_absence_days INTEGER NOT NULL DEFAULT 2;
+-- ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS ltir_return_buffer_days INTEGER NOT NULL DEFAULT 2;  -- 2026-11-01, supabase_migrations/ltir_return_buffer_days.sql
 
 -- Migration 2026-09-27 : listes de joueurs à surveiller (« Mes listes », David) + fermeture de
 -- l'accès admin aux scénarios de simulation. Listes et scénarios sont PRIVÉS : RLS activée sans

@@ -6,11 +6,16 @@
  * à la décision (pooler ET admin), dans cet ordre :
  * 1. Mis sur la liste des blessés par son équipe LNH (CBS préfixe "IR." / ESPN "Injured
  *    Reserve" / MoneyPuck IR, IR-LT, IR-NR) → toujours admissible, pour coller à la réalité.
- * 2. Retour estimé (`est_return_date`) à `returnMinDays` jours ou plus → admissible.
- * 3. Retour estimé proche (moins de `returnMinDays`, ou dépassé depuis moins de `graceDays`)
- *    → PAS admissible, même blessé depuis longtemps : période tampon anti-abus — un joueur
- *    annoncé de retour le 2 oct ne peut pas être mis sur LTIR le 2 oct, il faut d'abord voir la
- *    blessure se prolonger (date dépassée et toujours listé blessé).
+ * 2. Absence prévue (début de l'absence → `est_return_date`) de `returnMinDays` jours ou plus,
+ *    et au moins `returnBufferDays` jours avant la date de retour → admissible. Revu le
+ *    2026-11-01 (David) : la règle comptait les jours restants à partir d'aujourd'hui, si bien
+ *    qu'un joueur annoncé absent « au moins 2 semaines » perdait son admissibilité dès le
+ *    lendemain de l'annonce (Matheson : 14 jours restants le 30 oct, 13 le 31). Début de
+ *    l'absence = lendemain du dernier match joué, sinon la date de détection (`absenceStart`).
+ * 3. Sinon, retour estimé encore à venir (absence prévue trop courte, ou moins de
+ *    `returnBufferDays` jours avant le retour) ou dépassé depuis moins de `graceDays` → PAS
+ *    admissible, même blessé depuis longtemps : période tampon anti-abus — un joueur annoncé de
+ *    retour le 2 oct ne peut pas être mis sur LTIR le 1er ou le 2 oct.
  * 4. Sinon (aucune date claire, ou date dépassée et toujours blessé) : blessé depuis
  *    `injuredMinDays` jours ou plus (`first_seen_at`) → admissible — couvre le "day-to-day"
  *    qui traîne.
@@ -26,7 +31,8 @@
  */
 
 export type LtirSettings = {
-  returnMinDays: number       // règle 2 — retour annoncé assez loin
+  returnMinDays: number       // règle 2 — absence prévue assez longue
+  returnBufferDays: number    // règle 2 — jours minimum avant la date de retour (anti-abus)
   injuredMinDays: number      // règle 4 — blessé depuis assez longtemps
   graceDays: number           // règle 3 — délai après la date de retour avant "prolongée"
   disagreementDays: number    // écart CBS/ESPN signalé (purement informatif)
@@ -38,6 +44,7 @@ export type LtirSettings = {
 
 export const DEFAULT_LTIR_SETTINGS: LtirSettings = {
   returnMinDays: 14,
+  returnBufferDays: 2,
   injuredMinDays: 14,
   graceDays: 3,
   disagreementDays: 5,
@@ -51,11 +58,33 @@ export type InjuryEligibilityInput = {
   estReturnDate: string | null  // ISO 'YYYY-MM-DD'
   firstSeenAt: string           // ISO timestamp
   onNhlIr: boolean              // voir isOnNhlIr()
-  lastGameAt?: string | null    // dernier match de la LNH joué (ISO), voir fetchLastGameByPlayerId
+  lastGameAt?: string | null    // dernier match de la LNH joué (ISO), voir fetchLastGameByPlayerId — seulement les `recentGameDays` derniers jours
 }
 
 function daysBetween(a: Date, b: Date): number {
   return Math.floor((b.getTime() - a.getTime()) / 86_400_000)
+}
+
+/** Date civile en heure de l'Est ('YYYY-MM-DD') — compte en jours, pas selon l'heure du calcul. */
+function etDate(d: Date): string {
+  return new Intl.DateTimeFormat('fr-CA', {
+    timeZone: 'America/Toronto', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(d)
+}
+
+function calendarDaysBetween(a: string, b: string): number {
+  return Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86_400_000)
+}
+
+/** Premier jour d'absence : lendemain du dernier match joué avant que la blessure soit listée,
+ * sinon le jour de la détection. Le dernier match n'est connu que s'il date de moins de
+ * `recentGameDays` jours : au-delà, la date de détection sous-estime un peu l'absence. */
+function absenceStart(injury: InjuryEligibilityInput): string {
+  const seen = etDate(new Date(injury.firstSeenAt))
+  if (!injury.lastGameAt) return seen
+  const dayAfterGame = new Date(Date.parse(etDate(new Date(injury.lastGameAt)) + 'T12:00:00Z') + 86_400_000)
+    .toISOString().slice(0, 10)
+  return dayAfterGame < seen ? dayAfterGame : seen
 }
 
 /** Placé sur la liste des blessés par son équipe LNH — CBS : statut commençant par "IR." ou
@@ -113,8 +142,9 @@ export function computeLtirEligible(
   if (playedSinceInjury(injury, settings, today)) return false
   if (injury.onNhlIr) return true
   if (injury.estReturnDate) {
-    const daysUntilReturn = daysBetween(today, new Date(injury.estReturnDate + 'T12:00:00'))
-    if (daysUntilReturn >= settings.returnMinDays) return true
+    const daysUntilReturn = calendarDaysBetween(etDate(today), injury.estReturnDate)
+    const plannedAbsence = calendarDaysBetween(absenceStart(injury), injury.estReturnDate)
+    if (plannedAbsence >= settings.returnMinDays && daysUntilReturn >= settings.returnBufferDays) return true
     if (daysUntilReturn > -settings.graceDays) return false  // période tampon
   }
   return daysSinceFirstSeen(injury, today) >= settings.injuredMinDays

@@ -1636,13 +1636,18 @@ un rafraîchissement déclenché par l'action (`refreshPoolerTodo()`) ou une not
 - **Admissibilité LTIR** (`app/lib/ltirEligibility.ts`, `computeLtirEligible()`) — règles de
   David (resserrées le 2026-09-25), dans l'ordre : (1) mis sur IR par son équipe LNH
   (`isOnNhlIr()` — CBS préfixe "IR." / ESPN "Injured Reserve") → toujours admissible ;
-  (2) `est_return_date` à 14+ jours → admissible ; (3) **période tampon anti-abus** : retour
-  annoncé à moins de 14 jours, ou dépassé depuis moins de 3 jours → PAS admissible, même
-  blessé depuis longtemps (il faut voir la blessure se prolonger) ; (4) sinon (pas de date, ou
+  (2) **absence prévue** de 14+ jours (lendemain du dernier match joué, sinon `first_seen_at`,
+  jusqu'à `est_return_date`) ET au moins 2 jours avant le retour → admissible — revu le
+  2026-11-01 (David, cas Matheson) : avant, on comptait les jours restants à partir
+  d'aujourd'hui, et un joueur annoncé absent « au moins 2 semaines » cessait d'être admissible
+  dès le lendemain ; jours civils, heure de l'Est ; (3) **période tampon anti-abus** : absence
+  prévue plus courte, moins de 2 jours avant le retour, ou date dépassée depuis moins de 3 jours
+  → PAS admissible, même blessé depuis longtemps (il faut voir la blessure se prolonger) ; (4) sinon (pas de date, ou
   date dépassée de 3+ jours et toujours listé) blessé depuis 14+ jours (`first_seen_at`) →
   admissible (couvre le "day-to-day" qui traîne).
 - **Seuils paramétrables** (David, 2026-09-25 — sujets à discussion avec les poolers) : 14/14/3/5/2
-  ci-dessus sont des défauts ; valeurs réelles dans `app_settings` (`ltir_return_min_days`,
+  ci-dessus sont des défauts (tampon avant retour : 2, `ltir_return_buffer_days`, 2026-11-01) ;
+  valeurs réelles dans `app_settings` (`ltir_return_min_days`,
   `ltir_injured_min_days`, `ltir_grace_days`, `injury_disagreement_days`,
   `injury_removal_absence_days`), éditées dans `/admin/effectifs?tab=approbation`
   (`LtirSettingsForm.tsx`), lues par `fetchLtirSettings()` (`app/lib/injuries.ts`) et par le
