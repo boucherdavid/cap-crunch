@@ -308,7 +308,7 @@ const SECTIONS: Section[] = [
           <li>• Seuls les joueurs qui ne sont dans <strong>aucun alignement</strong> et qui ont un <strong>contrat pour la saison</strong> sont affichés, en trois sections : attaquants, défenseurs et gardiens.</li>
           <li>• Les points sont calculés avec le <strong>pointage du pool</strong> (buts, passes, victoires, défaites en prolongation et blanchissages).</li>
           <li>• <strong>Total de points</strong> ou <strong>Points par match</strong> : le classement par match exige un minimum de matchs joués, pour éviter qu&apos;un joueur à un seul bon match passe devant tout le monde.</li>
-          <li>• Filtre par <strong>équipe</strong> ou par <strong>salaire maximum</strong> (ex. 2 M$ ou moins) pour voir qui entre dans ton espace sous le plafond. Les filtres s&apos;appliquent aux trois sections.</li>
+          <li>• Filtre par <strong>équipe</strong> ou par <strong>salaire maximum</strong> (tape le montant en millions, ex. 1,5 pour 1,5 M$ ou moins) pour voir qui entre dans ton espace sous le plafond. Les filtres s&apos;appliquent aux trois sections.</li>
           <li>• En début de saison, choisis la <strong>saison dernière</strong> pour avoir un meilleur portrait : la disponibilité et le salaire restent ceux d&apos;aujourd&apos;hui.</li>
           <li>• Clique sur un joueur pour ouvrir sa fiche et l&apos;ajouter à une de tes listes.</li>
         </ul>

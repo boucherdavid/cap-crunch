@@ -13,8 +13,12 @@ type GroupKey = keyof AvailableGroups
 
 const PAGE_SIZE = 15
 
-// Filtre de salaire (David, 2026-11-02) : un maximum, pour voir qui entre dans son espace sous le cap.
-const CAP_LIMITS = [1_000_000, 2_000_000, 3_000_000, 5_000_000, 8_000_000]
+// Filtre de salaire (David, 2026-11-02) : un maximum saisi en M$ (virgule ou point), pour voir qui
+// entre dans son espace sous le cap. Vide ou invalide = tous les salaires.
+function parseMaxCap(text: string): number {
+  const n = Number(text.trim().replace(',', '.'))
+  return text.trim() && Number.isFinite(n) && n > 0 ? Math.round(n * 1_000_000) : 0
+}
 
 const GROUPS: { key: GroupKey; title: string }[] = [
   { key: 'forwards', title: 'Attaquants' },
@@ -145,7 +149,8 @@ export default function MeilleursDisponibles({
 }) {
   const [sortMode, setSortMode] = useState<SortMode>('total')
   const [team, setTeam] = useState('')
-  const [maxCap, setMaxCap] = useState(0)
+  const [maxCapText, setMaxCapText] = useState('')
+  const maxCap = parseMaxCap(maxCapText)
 
   const teams = useMemo(() => Array.from(new Set(
     [...groups.forwards, ...groups.defense, ...groups.goalies].map(r => r.teamAbbrev).filter(Boolean),
@@ -195,10 +200,18 @@ export default function MeilleursDisponibles({
           <option value="">Toutes les équipes</option>
           {teams.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
-        <select value={maxCap} onChange={e => setMaxCap(Number(e.target.value))} className={select} aria-label="Salaire maximum">
-          <option value={0}>Tous les salaires</option>
-          {CAP_LIMITS.map(c => <option key={c} value={c}>{c / 1_000_000} M$ ou moins</option>)}
-        </select>
+        <label className="flex items-center gap-1.5 text-sm text-gray-600">
+          Salaire max
+          <input
+            type="text"
+            inputMode="decimal"
+            value={maxCapText}
+            onChange={e => setMaxCapText(e.target.value)}
+            placeholder="ex. 1,5"
+            className={`${select} w-20 text-right`}
+          />
+          M$
+        </label>
         {sortMode === 'perGame' && (
           <span className="text-xs text-gray-500">
             Minimum {minGamesPerGame} match{minGamesPerGame > 1 ? 's' : ''} joué{minGamesPerGame > 1 ? 's' : ''} ({Math.max(1, Math.round(minGamesPerGame / 2))} pour les gardiens)
