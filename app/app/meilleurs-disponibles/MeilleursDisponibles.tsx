@@ -13,6 +13,9 @@ type GroupKey = keyof AvailableGroups
 
 const PAGE_SIZE = 15
 
+// Filtre de salaire (David, 2026-11-02) : un maximum, pour voir qui entre dans son espace sous le cap.
+const CAP_LIMITS = [1_000_000, 2_000_000, 3_000_000, 5_000_000, 8_000_000]
+
 const GROUPS: { key: GroupKey; title: string }[] = [
   { key: 'forwards', title: 'Attaquants' },
   { key: 'defense', title: 'Défenseurs' },
@@ -141,13 +144,26 @@ export default function MeilleursDisponibles({
   scoring: { goal: number; assist: number; goalie_win: number; goalie_otl: number; goalie_shutout: number }
 }) {
   const [sortMode, setSortMode] = useState<SortMode>('total')
+  const [team, setTeam] = useState('')
+  const [maxCap, setMaxCap] = useState(0)
 
-  const sorted = useMemo(() => ({
-    forwards: sortRows(groups.forwards, sortMode, minGamesPerGame),
-    defense: sortRows(groups.defense, sortMode, minGamesPerGame),
-    // Gardiens : seuil réduit de moitié, ils jouent moins souvent que les patineurs.
-    goalies: sortRows(groups.goalies, sortMode, Math.max(1, Math.round(minGamesPerGame / 2))),
-  }), [groups, sortMode, minGamesPerGame])
+  const teams = useMemo(() => Array.from(new Set(
+    [...groups.forwards, ...groups.defense, ...groups.goalies].map(r => r.teamAbbrev).filter(Boolean),
+  )).sort(), [groups])
+
+  // Filtres appliqués à l'écran : toutes les données sont déjà chargées, aucune lecture de plus.
+  const sorted = useMemo(() => {
+    const keep = (rows: AvailableRow[]) =>
+      rows.filter(r => (!team || r.teamAbbrev === team) && (!maxCap || r.capNumber <= maxCap))
+    return {
+      forwards: sortRows(keep(groups.forwards), sortMode, minGamesPerGame),
+      defense: sortRows(keep(groups.defense), sortMode, minGamesPerGame),
+      // Gardiens : seuil réduit de moitié, ils jouent moins souvent que les patineurs.
+      goalies: sortRows(keep(groups.goalies), sortMode, Math.max(1, Math.round(minGamesPerGame / 2))),
+    }
+  }, [groups, sortMode, minGamesPerGame, team, maxCap])
+
+  const select = 'px-3 py-1.5 text-sm rounded-lg border border-gray-200 bg-white text-gray-700'
 
   const btn = (active: boolean) =>
     `px-3 py-1.5 text-sm rounded-lg transition-colors whitespace-nowrap ${
@@ -175,6 +191,14 @@ export default function MeilleursDisponibles({
           <button type="button" onClick={() => setSortMode('total')} className={btn(sortMode === 'total')}>Total de points</button>
           <button type="button" onClick={() => setSortMode('perGame')} className={btn(sortMode === 'perGame')}>Points par match</button>
         </div>
+        <select value={team} onChange={e => setTeam(e.target.value)} className={select} aria-label="Équipe">
+          <option value="">Toutes les équipes</option>
+          {teams.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <select value={maxCap} onChange={e => setMaxCap(Number(e.target.value))} className={select} aria-label="Salaire maximum">
+          <option value={0}>Tous les salaires</option>
+          {CAP_LIMITS.map(c => <option key={c} value={c}>{c / 1_000_000} M$ ou moins</option>)}
+        </select>
         {sortMode === 'perGame' && (
           <span className="text-xs text-gray-500">
             Minimum {minGamesPerGame} match{minGamesPerGame > 1 ? 's' : ''} joué{minGamesPerGame > 1 ? 's' : ''} ({Math.max(1, Math.round(minGamesPerGame / 2))} pour les gardiens)
@@ -190,7 +214,7 @@ export default function MeilleursDisponibles({
 
       {GROUPS.map(g => (
         <GroupTable
-          key={`${g.key}-${sortMode}-${seasonLabel}`}
+          key={`${g.key}-${sortMode}-${seasonLabel}-${team}-${maxCap}`}
           title={g.title}
           rows={sorted[g.key]}
           isGoalie={g.key === 'goalies'}

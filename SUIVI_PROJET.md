@@ -19,6 +19,12 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-11-02
+
+**[Feat] — Meilleurs joueurs disponibles : filtres équipe et salaire maximum** (`app/app/meilleurs-disponibles/MeilleursDisponibles.tsx`, `aide/AideTabs.tsx`, `a-propos/page.tsx`) :
+- Demande de David : listes déroulantes « Toutes les équipes » et « Tous les salaires / N M$ ou moins » (1, 2, 3, 5, 8 M$), appliquées aux trois sections. Forme « salaire maximum » choisie par David (pas de fourchette, pas d'option « mon espace sous le cap », aucun autre filtre).
+- Filtrage côté navigateur sur les données déjà chargées : aucune lecture de plus dans la base ni à l'API LNH.
+
 ### 2026-11-01
 
 **[Règle] — Admissibilité LTIR : durée totale de l'absence prévue** (`app/lib/ltirEligibility.ts`, `lib/injuries.ts`, `admin/effectifs/LtirSettingsForm.tsx`, `admin/effectifs/cap-watch-actions.ts`, `aide/LtirRulesContent.tsx`, `supabase_migrations/ltir_return_buffer_days.sql`) :
