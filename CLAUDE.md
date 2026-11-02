@@ -351,7 +351,7 @@ offre » ouvre `/gestion-effectifs?tab=echanges&avec=<pooler>&recoit=player-<id>
 attaquants/défenseurs/gardiens absents de tout alignement ET sous contrat pour la saison active,
 classés selon les points avec `scoring_config` ; total ou points par match (minimum 25 % des matchs
 du meneur, moitié pour les gardiens) ; saison en cours ou précédente via `?saison=precedente` ;
-filtres équipe et salaire maximum (2026-11-02), appliqués à l'écran sans lecture de plus)
+filtres équipe et salaire maximum saisi en M$ (2026-11-02), appliqués à l'écran sans lecture de plus)
 `/comparaison-marqueur` (redirection vers `/admin/effectifs?tab=marqueur` depuis le 2026-10-17 —
 voir section 6)
 `/listes` (« Mes listes », menu Mon équipe —
