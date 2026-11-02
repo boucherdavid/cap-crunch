@@ -27,6 +27,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Limite : le dernier match n'est connu que s'il date de moins de `recentGameDays` (7) jours ; au-delà, la date de détection sert de début (absence un peu sous-estimée, prudent).
 - Testé (script ponctuel) : Matheson admissible 31 oct et 12 nov, pas les 13 et 14, de nouveau le 18 (blessure prolongée, règle 4) ; absence de 10 jours non admissible.
 - Migration `ltir_return_buffer_days.sql` roulée en staging et en prod par David le 2026-11-01.
+- Commit : `d30d409` ; validé par David en staging, promu en prod le 2026-11-02 (`b45bf6f`).
 
 ### 2026-10-30 (suite 2)
 
