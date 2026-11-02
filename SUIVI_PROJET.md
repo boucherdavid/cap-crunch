@@ -24,6 +24,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 **[Feat] — Meilleurs joueurs disponibles : filtres équipe et salaire maximum** (`app/app/meilleurs-disponibles/MeilleursDisponibles.tsx`, `aide/AideTabs.tsx`, `a-propos/page.tsx`) :
 - Demande de David : listes déroulantes « Toutes les équipes » et « Tous les salaires / N M$ ou moins » (1, 2, 3, 5, 8 M$), appliquées aux trois sections. Forme « salaire maximum » choisie par David (pas de fourchette, pas d'option « mon espace sous le cap », aucun autre filtre).
 - Filtrage côté navigateur sur les données déjà chargées : aucune lecture de plus dans la base ni à l'API LNH.
+- Commit : `2ef5f52` ; validé par David en staging, promu en prod le 2026-11-02.
 
 ### 2026-11-01
 
