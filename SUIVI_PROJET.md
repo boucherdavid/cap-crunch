@@ -23,6 +23,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 **[Fix] — Compteur « Signatures LTIR » de l'onglet Historique** (`app/app/poolers/[id]/PoolerPageTabs.tsx`) :
 - Signalé par David : signature de Gritsyuk comme remplaçant LTIR, compteur resté à 0/2 et type affiché brut « signature_ltir ». L'onglet comptait encore les `signature_agent_libre` dont `old_type='ltir'` (ancienne logique), alors que Gestion d'effectifs journalise `signature_ltir` et applique la limite sur ce type (`getSigningCountsAction`). Compteurs alignés sur ce calcul, étiquette « Signature (remplaçant LTIR) » ajoutée.
+- Commit `e9508ae`, validé par David, promu en prod le 2026-11-03.
 
 ### 2026-11-02
 
