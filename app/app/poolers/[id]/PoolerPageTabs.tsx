@@ -90,6 +90,7 @@ const CHANGE_LABEL: Record<string, string> = {
   retour_ltir:         'Retour LTIR',
   changement_type:     'Changement de type',
   signature_agent_libre: 'Signature agent libre',
+  signature_ltir:        'Signature (remplaçant LTIR)',
   ballotage:             'Ballotage',
 }
 
@@ -103,6 +104,7 @@ const CHANGE_COLOR: Record<string, string> = {
   retour_ltir:         'bg-teal-100 text-teal-700',
   changement_type:     'bg-gray-100 text-gray-600',
   signature_agent_libre: 'bg-indigo-100 text-indigo-700',
+  signature_ltir:        'bg-indigo-100 text-indigo-700',
   ballotage:             'bg-cyan-100 text-cyan-700',
 }
 
@@ -353,8 +355,9 @@ export default function PoolerPageTabs({
   const totalPts = alignementPlayers.reduce((s, p) => s + p.poolPoints, 0)
   const totalGames = alignementPlayers.reduce((s, p) => s + p.gamesPlayed, 0)
 
-  const signaturesLibres = changeLog.filter(e => e.change_type === 'signature_agent_libre' && e.old_type !== 'ltir').length
-  const signaturesLtir   = changeLog.filter(e => e.change_type === 'signature_agent_libre' && e.old_type === 'ltir').length
+  // Même calcul que la limite appliquée dans Gestion d'effectifs (getSigningCountsAction).
+  const signaturesLibres = changeLog.filter(e => e.change_type === 'signature_agent_libre').length
+  const signaturesLtir   = changeLog.filter(e => e.change_type === 'signature_ltir').length
 
   return (
     <div>
