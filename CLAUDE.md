@@ -1742,6 +1742,17 @@ Lots antérieurs : `python_script/backfill_journal_gestion.py` (dry-run, `--appl
   double. Suivi fermé (`resolved_at`) dès que le joueur n'est plus sur LTIR chez ce pooler.
   Inactif tant que `season_started=false`.
 
+**Limites de signatures en saison (`pool_seasons.max_signatures_al` / `max_signatures_ltir`,
+défauts 10 / 2) — David, 2026-11-03 :** une signature d'agent libre est journalisée
+`change_type='signature_agent_libre'`, une signature de remplaçant LTIR (`ltir_sign`)
+`'signature_ltir'` (`gestion-effectifs/actions.ts`). **Un seul calcul** :
+`getSigningCountsAction()` compte ces deux types dans `roster_change_log` (pooler + saison) — la
+limite de Gestion d'effectifs et les compteurs de l'onglet Historique de `/poolers/[id]`
+(`PoolerPageTabs.tsx`) doivent rester alignés dessus. Piège corrigé le 2026-11-03 : l'onglet
+cherchait encore une `signature_agent_libre` avec `old_type='ltir'` (ancienne forme) et affichait
+0 / 2. Tout nouveau `change_type` a besoin d'une étiquette dans `CHANGE_LABEL`/`CHANGE_COLOR`, sinon
+le type brut s'affiche.
+
 **Demandes de mise sur LTIR (`ltir_requests`) — David, 2026-09-23 (suite) :**
 - **Actif ou réserviste (David, 2026-10-01)** — remplace « un actif » dans les points ci-dessous :
   les deux peuvent être mis sur LTIR (demande, boutons pré-saison, Gestion d'effectifs). Avec
