@@ -19,6 +19,15 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-11-04
+
+**[Feat] — Badge « AHL » : joueurs renvoyés dans la Ligue américaine** (`python_script/scrape_ahl_assignments.py`, `.github/workflows/ahl_assignments.yml`, `supabase_migrations/player_ahl_assignments.sql`, `app/lib/ahlAssignments.ts`, `app/components/AhlBadge.tsx` + pages) :
+- Demande de David : savoir quels joueurs sont en AHL. Badge seulement (pas de notification), partout où c'est faisable, sans multiplier les requêtes ; une mise à jour par jour suffit.
+- Vérifié avant de coder : l'absence d'un alignement LNH (`/v1/roster/<équipe>/current`) ne suffit pas — ~20 blessés en sont retirés (Larkin, Barzal, Domi). Les alignements AHL de HockeyTech (`view=roster`, même clé que `/statistiques/ahl`) reflètent bien la position actuelle : 8 joueurs seulement dans les deux. Règle : dans un alignement AHL ET dans aucun alignement LNH.
+- Script Python quotidien (64 appels, aucun par visite) : club LNH affilié déduit des données (32/32 corrects), jumelage `match_player()` par nom + club affilié, repli nom seul avec contrôle d'âge (homonymes Hofer, Murray écartés). Dry-run staging : 622 joueurs de notre base en AHL. N'écrit que les changements (`db_diff`), garde-fous si une source répond mal.
+- App : table lue une fois, en cache selon `data_versions` (clé `ahl`) ; fiche joueur = lecture par clé primaire. Badge violet dans `/poolers/[id]` (tous les onglets), Gestion d'effectifs (menus, recherche, alignement), Mes listes, Meilleurs disponibles, `/statistiques`, `/joueurs`, recherche globale et fiche. Pas dans le hub pré-saison (`/repechage-agents-libres`). Ajouté au panneau « Mises à jour automatiques » et à `/aide`.
+- Migration `player_ahl_assignments.sql` roulée en staging et en prod ; premier import fait dans les deux (622 joueurs).
+
 ### 2026-11-03
 
 **[Fix] — Compteur « Signatures LTIR » de l'onglet Historique** (`app/app/poolers/[id]/PoolerPageTabs.tsx`) :

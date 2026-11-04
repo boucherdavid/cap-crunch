@@ -1,0 +1,38 @@
+name: Joueurs en AHL (alignements AHL + LNH)
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  # Déclenchement manuel (onglet Actions, ou panneau « Mises à jour automatiques » de /admin/donnees)
+  workflow_dispatch:
+
+  # Une fois par jour (David, 2026-11-04 — pas besoin d'être instantané). L'horloge de GitHub
+  # part souvent en retard de quelques heures : sans conséquence ici.
+  schedule:
+    - cron: '0 14 * * *'
+
+jobs:
+  scrape:
+    name: Lit les alignements AHL et LNH et importe dans player_ahl_assignments
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: python_script/requirements.txt
+
+      - name: Installer les dépendances
+        run: pip install -r python_script/requirements.txt
+
+      - name: Lire et importer
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python python_script/scrape_ahl_assignments.py --apply

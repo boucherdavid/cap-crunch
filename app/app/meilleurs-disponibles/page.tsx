@@ -3,6 +3,7 @@ import { fetchActiveNhlSeasonId } from '@/lib/nhl-active-season'
 import { fetchNhlGoaliesByNhlId, fetchNhlSkatersByNhlId, nhlSeasonLabel } from '@/lib/nhl-stats'
 import { fetchTakenPlayers, isTakenPlayer } from '@/lib/takenPlayers'
 import { fetchInjuriesByNhlId, type InjuryInfo } from '@/lib/injuries'
+import { fetchAhlByNhlId, type AhlInfo } from '@/lib/ahlAssignments'
 import MeilleursDisponibles from './MeilleursDisponibles'
 
 export const metadata = { title: 'Meilleurs joueurs disponibles' }
@@ -23,6 +24,7 @@ export type AvailableRow = {
   poolPoints: number
   capNumber: number
   injury: InjuryInfo | null
+  ahl: AhlInfo | null
 }
 
 export type AvailableGroups = { forwards: AvailableRow[]; defense: AvailableRow[]; goalies: AvailableRow[] }
@@ -81,12 +83,13 @@ export default async function MeilleursDisponiblesPage({
     goalie_shutout: sc.goalie_shutout ?? 2,
   }
 
-  const [skaters, goalies, taken, capByNhlId, injuries] = await Promise.all([
+  const [skaters, goalies, taken, capByNhlId, injuries, ahlByNhlId] = await Promise.all([
     fetchNhlSkatersByNhlId(2, nhlSeason),
     fetchNhlGoaliesByNhlId(2, nhlSeason),
     fetchTakenPlayers(),
     poolSeason ? fetchCapByNhlId(supabase, poolSeason.season) : Promise.resolve(new Map<number, number>()),
     fetchInjuriesByNhlId(supabase),
+    fetchAhlByNhlId(),
   ])
 
   const takenIds = new Set(taken.nhlIds)
@@ -111,6 +114,7 @@ export default async function MeilleursDisponiblesPage({
       poolPoints: s.goals * pts.goal + s.assists * pts.assist,
       capNumber: capByNhlId.get(s.playerId) ?? 0,
       injury: injuries.get(s.playerId) ?? null,
+      ahl: ahlByNhlId.get(s.playerId) ?? null,
     }
     if (s.position === 'D') groups.defense.push(row)
     else groups.forwards.push(row)
@@ -132,6 +136,7 @@ export default async function MeilleursDisponiblesPage({
         + g.wins * pts.goalie_win + g.otLosses * pts.goalie_otl + g.shutouts * pts.goalie_shutout,
       capNumber: capByNhlId.get(g.playerId) ?? 0,
       injury: injuries.get(g.playerId) ?? null,
+      ahl: ahlByNhlId.get(g.playerId) ?? null,
     })
   }
 

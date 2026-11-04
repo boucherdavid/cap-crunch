@@ -9,6 +9,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { fetchAhlByPlayerId } from '@/lib/ahlAssignments'
 
 export type WatchlistKind = 'joueurs' | 'recrues'
 
@@ -27,6 +28,7 @@ export type WatchlistItem = {
   note: string | null
   // Pooler qui possède le joueur dans la saison active — null = encore disponible.
   takenBy: string | null
+  ahlTeamName: string | null  // club de la Ligue américaine (lib/ahlAssignments.ts)
 }
 
 export type PlayerSearchResult = {
@@ -39,6 +41,7 @@ export type PlayerSearchResult = {
   capNumber: number | null
   contractYears: number | null  // saisons sous contrat à partir de la saison active, null si aucune
   isElc: boolean
+  ahlTeamName: string | null
 }
 
 /** Durée restante d'un contrat (David, 2026-10-02) : nombre de saisons avec un salaire à partir
@@ -178,7 +181,7 @@ export async function getWatchlistItemsAction(listId: number): Promise<{ error?:
     .order('id')
   const rows = data ?? []
 
-  const season = await activeSeason(admin)
+  const [season, ahl] = await Promise.all([activeSeason(admin), fetchAhlByPlayerId()])
   const taken = season && rows.length > 0
     ? await takenMap(admin, season.id, rows.map(r => r.player_id as number))
     : new Map<number, string>()
@@ -203,6 +206,7 @@ export async function getWatchlistItemsAction(listId: number): Promise<{ error?:
         contractYears: countContractYears(p?.player_contracts, season?.season),
         note: (r.note as string | null) ?? null,
         takenBy: taken.get(r.player_id as number) ?? null,
+        ahlTeamName: ahl.get(r.player_id as number)?.teamName ?? null,
       }
     }),
   }
@@ -348,6 +352,7 @@ export async function searchWatchlistPlayersAction(
     id: number; first_name: string; last_name: string; position: string | null; draft_overall: number | null
     teams: { code: string } | null; player_contracts: { season: string; cap_number: number | null; is_elc: boolean }[] | null
   }
+  const ahl = await fetchAhlByPlayerId()
   const rows = data as Row[]
   let players: PlayerSearchResult[] = rows
     .filter(r => !taken.has(r.id))
@@ -364,6 +369,7 @@ export async function searchWatchlistPlayersAction(
         capNumber: c?.cap_number ?? null,
         contractYears: countContractYears(r.player_contracts, season?.season),
         isElc: c?.is_elc ?? false,
+        ahlTeamName: ahl.get(r.id)?.teamName ?? null,
       }
     })
 

@@ -121,6 +121,11 @@ function PoolSummary({ summary, onNavigate }: { summary: PlayerPoolSummary; onNa
           </span>
         )}
         {summary.injury && <InjuryBadge injury={summary.injury} />}
+        {summary.ahlTeamName && (
+          <span className="rounded-lg bg-violet-50 px-2.5 py-1 text-violet-700 font-medium">
+            Dans la Ligue américaine : {summary.ahlTeamName}
+          </span>
+        )}
       </div>
       {summary.injury && (
         <p className="text-xs text-gray-500">{[summary.injury.injuryType, summary.injury.status].filter(Boolean).join(' — ')}</p>

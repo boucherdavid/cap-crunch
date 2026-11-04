@@ -5,6 +5,7 @@ import Link from 'next/link'
 import TeamBadge from '@/components/TeamBadge'
 import PlayerLink from '@/components/PlayerLink'
 import InjuryBadge from '@/components/InjuryBadge'
+import AhlBadge from '@/components/AhlBadge'
 import { fmtPts } from '@/lib/nhl-stats'
 import type { AvailableGroups, AvailableRow } from './page'
 
@@ -88,6 +89,7 @@ function GroupTable({ title, rows, isGoalie }: { title: string; rows: AvailableR
                       <span className="font-medium text-gray-800">{r.firstName} {r.lastName}</span>
                     </PlayerLink>
                     {r.injury && <span className="ml-1.5"><InjuryBadge injury={r.injury} /></span>}
+                    {r.ahl && <AhlBadge teamName={r.ahl.teamName} />}
                     <p className="sm:hidden text-[11px] text-gray-400">{r.teamAbbrev} · {fmtCap(r.capNumber)}</p>
                   </td>
                   <td className="px-2 sm:px-4 py-2 hidden sm:table-cell"><TeamBadge code={r.teamAbbrev} /></td>

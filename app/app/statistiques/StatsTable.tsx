@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import type { SkaterStat, GoalieStat } from './page'
 import TeamBadge from '@/components/TeamBadge'
 import PlayerLink from '@/components/PlayerLink'
+import AhlBadge from '@/components/AhlBadge'
 import type { StreakInfo, GoalieBadgeType } from '@/lib/streaks'
 import StreakLegend from '@/components/StreakLegend'
 import { normalizeSearch } from '@/lib/normalizeSearch'
@@ -91,6 +92,7 @@ export default function StatsTable({
   goalies,
   takenNhlIds,
   takenNames,
+  ahlTeamByNhlId = {},
   rookieNames,
   gameMode,
   playoffPicksMap = {},
@@ -104,6 +106,7 @@ export default function StatsTable({
   // Disponibilité : nhl_id d'abord, nom seulement pour un joueur pris sans nhl_id (lib/takenPlayers.ts)
   takenNhlIds: number[]
   takenNames: string[]
+  ahlTeamByNhlId?: Record<number, string>
   rookieNames: string[]
   gameMode: 'regular' | 'series'
   playoffPicksMap?: Record<string, string[]>
@@ -365,6 +368,7 @@ export default function StatsTable({
                           </PlayerLink>
                           {showTimeSensitiveOverlay && gameMode === 'regular' && isRookie(s.firstName, s.lastName) && <RookieBadge />}
                           <StreakBadge info={streaksMap[s.id]} />
+                          {ahlTeamByNhlId[s.id] && <AhlBadge teamName={ahlTeamByNhlId[s.id]} />}
                         </span>
                         <span className="sm:hidden block text-[11px] font-normal text-gray-400">{s.teamAbbrev} · {s.position}</span>
                       </td>
@@ -440,6 +444,7 @@ export default function StatsTable({
                           {showTimeSensitiveOverlay && gameMode === 'regular' && isRookie(g.firstName, g.lastName) && <RookieBadge />}
                           <StreakBadge info={streaksMap[g.id]} />
                           <GoalieBadge info={streaksMap[g.id]} />
+                          {ahlTeamByNhlId[g.id] && <AhlBadge teamName={ahlTeamByNhlId[g.id]} />}
                         </span>
                         <span className="sm:hidden block text-[11px] font-normal text-gray-400">{g.teamAbbrev}</span>
                       </td>

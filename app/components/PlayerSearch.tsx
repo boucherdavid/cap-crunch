@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { searchPlayersGlobalAction, type PlayerSearchResult } from './player-search-actions'
+import AhlBadge from '@/components/AhlBadge'
 
 /**
  * Recherche globale d'un joueur (David, 2026-10-01) — barre du haut, disponible sur toutes les
@@ -111,6 +112,7 @@ export default function PlayerSearch() {
                     <span className="min-w-0">
                       <span className="font-medium text-gray-800">{r.name}</span>
                       <span className="ml-1.5 text-xs text-gray-400">{[r.teamCode, r.position].filter(Boolean).join(' · ')}</span>
+                      {r.ahlTeamName && <AhlBadge teamName={r.ahlTeamName} />}
                     </span>
                     {r.ownerName
                       ? <span className="shrink-0 text-xs text-gray-500">{r.ownerName}</span>
