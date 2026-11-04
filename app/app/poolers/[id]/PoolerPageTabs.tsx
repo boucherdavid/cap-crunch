@@ -10,6 +10,10 @@ import UpcomingGamesAnalysis from '@/components/UpcomingGamesAnalysis'
 import type { DaySchedule, OrgPlayer } from '@/lib/nhlWeeklySchedule'
 import type { InjuryInfo } from '@/lib/injuries'
 import InjuryBadge from '@/components/InjuryBadge'
+import AhlBadge from '@/components/AhlBadge'
+import type { AhlInfo } from '@/lib/ahlAssignments'
+import BenchBadge from '@/components/BenchBadge'
+import type { ScratchInfo } from '@/lib/lineupStatus'
 import TeamBadge from '@/components/TeamBadge'
 
 export type Tab = 'masse-salariale' | 'alignement' | 'historique' | 'recrues' | 'prochains-matchs'
@@ -238,12 +242,14 @@ function TotalsRow({ label, gamesPlayed, points, grand }: { label: string; games
   )
 }
 
-function PlayerStatsRow({ p, streaks, onPeriodClick, injuriesByNhlId, todayGame }: {
+function PlayerStatsRow({ p, streaks, onPeriodClick, injuriesByNhlId, ahlByNhlId, scratchByNhlId, todayGame }: {
   p: PlayerContrib
   todayGame?: TodayGame
   streaks: Record<number, StreakInfo>
   onPeriodClick?: (p: PlayerContrib) => void
   injuriesByNhlId?: Map<number, InjuryInfo>
+  ahlByNhlId?: Map<number, AhlInfo>
+  scratchByNhlId?: Map<number, ScratchInfo>
 }) {
   const isGoalie = p.position === 'G'
   const isActif = p.playerType === 'actif' && p.stillRostered
@@ -252,6 +258,8 @@ function PlayerStatsRow({ p, streaks, onPeriodClick, injuriesByNhlId, todayGame 
   // vrai actif malgré ses points déjà gagnés et son départ (repéré par David le 2026-08-13).
   const badge = !p.stillRostered ? 'PARTI' : TYPE_BADGE[p.playerType]
   const injury = p.nhlId ? injuriesByNhlId?.get(p.nhlId) : undefined
+  const ahl = p.nhlId ? ahlByNhlId?.get(p.nhlId) : undefined
+  const scratch = p.nhlId ? scratchByNhlId?.get(p.nhlId) : undefined
   const style = ROW_STYLE[!p.stillRostered ? 'autre' : (ROW_STYLE[p.playerType] ? p.playerType : 'autre')]
   return (
     <tr className={style.row}>
@@ -269,6 +277,8 @@ function PlayerStatsRow({ p, streaks, onPeriodClick, injuriesByNhlId, todayGame 
         <GoalieBadge info={p.nhlId ? streaks[p.nhlId] : undefined} />
         {badge && <span className={`ml-2 text-xs font-medium rounded px-1 ${style.badge}`}>{badge}</span>}
         {injury && <InjuryBadge injury={injury} onLtir={p.playerType === 'ltir' && p.stillRostered} />}
+        {ahl && <AhlBadge teamName={ahl.teamName} />}
+        {scratch && p.stillRostered && <BenchBadge games={scratch.games} lastPlayed={scratch.lastPlayed} />}
         <button
           type="button"
           onClick={() => onPeriodClick?.(p)}
@@ -316,6 +326,8 @@ export default function PoolerPageTabs({
   schedule7,
   today,
   injuriesByNhlId,
+  ahlByNhlId,
+  scratchByNhlId,
   initialTab,
 }: {
   masseSalarialeContent: React.ReactNode
@@ -327,6 +339,8 @@ export default function PoolerPageTabs({
   schedule7: DaySchedule[]
   today: string
   injuriesByNhlId?: Map<number, InjuryInfo>
+  ahlByNhlId?: Map<number, AhlInfo>
+  scratchByNhlId?: Map<number, ScratchInfo>
   initialTab?: Tab
 }) {
   const [tab, setTabState] = useState<Tab>(initialTab ?? 'alignement')
@@ -445,6 +459,8 @@ export default function PoolerPageTabs({
                           streaks={streaks}
                           onPeriodClick={setPeriodPopup}
                           injuriesByNhlId={injuriesByNhlId}
+                          ahlByNhlId={ahlByNhlId}
+                          scratchByNhlId={scratchByNhlId}
                           todayGame={p.stillRostered ? todayGames.get(p.teamAbbrev) : undefined}
                         />
                         {isLastOfGroup && (

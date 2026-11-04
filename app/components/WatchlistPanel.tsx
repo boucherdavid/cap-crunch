@@ -13,6 +13,8 @@ import {
   reorderWatchlistAction, setWatchlistNoteAction, searchWatchlistPlayersAction, listWatchlistTeamsAction,
   type Watchlist, type WatchlistItem, type WatchlistKind, type PlayerSearchResult, type SearchOptions,
 } from '@/app/listes/actions'
+import AhlBadge from '@/components/AhlBadge'
+import BenchBadge from '@/components/BenchBadge'
 
 const KIND_LABEL: Record<WatchlistKind, string> = { joueurs: 'Agents libres', recrues: 'Recrues' }
 const STORAGE_KEY = 'watchlist-selected'
@@ -376,6 +378,8 @@ export default function WatchlistPanel({
                       </span>
                       <span className="text-sm font-medium text-gray-800 min-w-0">
                         {item.lastName}, {item.firstName}
+                        {item.ahlTeamName && <AhlBadge teamName={item.ahlTeamName} />}
+                        {item.benchGames != null && <BenchBadge games={item.benchGames} />}
                         <span className="ml-2 text-xs font-normal text-gray-500">
                           {[item.position, item.team, item.draftOverall ? `#${item.draftOverall}` : null, fmtCap(item.capNumber), fmtYears(item.contractYears)].filter(Boolean).join(' · ')}
                         </span>
@@ -479,6 +483,8 @@ export default function WatchlistPanel({
                           {[p.position, p.team, p.draftOverall ? `#${p.draftOverall}` : null, fmtCap(p.capNumber), fmtYears(p.contractYears)].filter(Boolean).join(' · ')}
                         </span>
                         {p.isElc && <span className="text-[10px] px-1 rounded bg-emerald-50 text-emerald-700">ELC</span>}
+                        {p.ahlTeamName && <AhlBadge teamName={p.ahlTeamName} />}
+                        {p.benchGames != null && <BenchBadge games={p.benchGames} />}
                         <button type="button" onClick={() => handleAdd(p)} className="ml-auto shrink-0 text-xs px-2 py-1 rounded bg-indigo-50 text-indigo-700 hover:bg-indigo-100">+ Ajouter</button>
                       </li>
                     ))}

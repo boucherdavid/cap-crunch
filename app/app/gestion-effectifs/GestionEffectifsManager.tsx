@@ -25,6 +25,7 @@ import {
 import { isReactivationLocked, formatUnlockDay } from '@/lib/reactivationDelay'
 import type { LtirRequestView } from '@/lib/ltirRequests'
 import type { LtirReturnWatchView } from '@/lib/ltirReturns'
+import BenchBadge from '@/components/BenchBadge'
 import type {
   ActionType,
   RosterEntry,
@@ -70,7 +71,9 @@ function todayLocal() {
 function entryLabel(e: RosterEntry) {
   const meta = [e.position, e.teamCode].filter(Boolean).join(', ')
   const injuryTag = e.injury ? (e.injury.backInAction ? ' — de retour au jeu' : e.injury.eligible ? ' 🩹 admissible LTIR' : ' 🩹 blessé') : ''
-  return `${e.lastName}, ${e.firstName}${meta ? ` (${meta})` : ''}${injuryTag}`
+  const ahlTag = e.ahlTeamName ? ' — AHL' : ''
+  const benchTag = e.benchGames ? ` — laissé de côté (${e.benchGames} m.)` : ''
+  return `${e.lastName}, ${e.firstName}${meta ? ` (${meta})` : ''}${injuryTag}${ahlTag}${benchTag}`
 }
 
 function capFmt(n: number | null) {
@@ -303,7 +306,10 @@ function PlayerSearch({
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
         <div className="flex items-center gap-2 border border-green-300 bg-green-50 rounded px-3 py-2 text-sm">
-          <span className="flex-1 font-medium text-gray-800">{selected.lastName}, {selected.firstName}</span>
+          <span className="flex-1 font-medium text-gray-800">
+            {selected.lastName}, {selected.firstName}
+            {selected.ahlTeamName && <span className="ml-2 text-[10px] font-bold bg-violet-100 text-violet-700 rounded px-1 py-0.5">AHL</span>}
+          </span>
           {selected.capNumber != null && <span className="text-xs text-gray-500">{capFmt(selected.capNumber)}</span>}
           <button onClick={() => { setSelected(null); setQuery('') }} className="text-gray-400 hover:text-gray-600 text-xs">✕</button>
         </div>
@@ -329,6 +335,8 @@ function PlayerSearch({
             >
               <span className="font-medium">{p.lastName}, {p.firstName}</span>
               {p.position && <span className="text-xs text-gray-400">{p.position}</span>}
+              {p.ahlTeamName && <span className="text-[10px] font-bold bg-violet-100 text-violet-700 rounded px-1 py-0.5" title={`Dans la Ligue américaine : ${p.ahlTeamName}`}>AHL</span>}
+              {p.benchGames != null && <BenchBadge games={p.benchGames} />}
               <span className="ml-auto flex items-center gap-2 shrink-0">
                 {p.capNumber != null && <span className="text-xs text-gray-500">{capFmt(p.capNumber)}</span>}
                 {p.teamCode && <span className="text-xs text-gray-500">{p.teamCode}</span>}

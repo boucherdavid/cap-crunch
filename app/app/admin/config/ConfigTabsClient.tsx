@@ -5,6 +5,7 @@ import SeasonsManager from './SeasonsManager'
 import SeasonConfigForm from './SeasonConfigForm'
 import DraftTimerSettingsForm from './DraftTimerSettingsForm'
 import WaiverSettingsForm from './WaiverSettingsForm'
+import ScratchSettingsForm from './ScratchSettingsForm'
 import PlayoffConfigForm from './PlayoffConfigForm'
 import ScoringConfigSaison from './ScoringConfigSaison'
 import ScoringConfigSeries from './ScoringConfigSeries'
@@ -96,6 +97,7 @@ export default function ConfigTabsClient({ saisons, activeRegSaison, activePlayo
             : <div className="text-gray-400 text-sm bg-white rounded-lg shadow p-6">Aucune saison régulière active.</div>}
           <DraftTimerSettingsForm />
           <WaiverSettingsForm />
+          <ScratchSettingsForm />
         </>
       )}
 

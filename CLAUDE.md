@@ -228,6 +228,7 @@ Hockey_Pool_App/
 │       ├── injuries.yml           ← Scrape blessures CBS + ESPN + MoneyPuck (quotidien 16h UTC (midi ET) + manuel)
 │       ├── advanced_stats.yml     ← Stats avancées MoneyPuck (quotidien 11h UTC + manuel)
 │       ├── line_combos.yml        ← Trios et paires Daily Faceoff (quotidien 15h UTC + manuel)
+│       ├── ahl_assignments.yml    ← Joueurs en AHL, alignements HockeyTech + LNH (quotidien 14h UTC + manuel)
 │       └── sync_prod_to_staging.yml ← Copie prod → staging (manuel seulement, bouton sur /admin/donnees en staging)
 ├── app/                       ← Application Next.js
 │   ├── CLAUDE.md              ← Règles spécifiques Next.js/TypeScript
@@ -274,6 +275,10 @@ Hockey_Pool_App/
   `playoff_pool_standings_cache` (pool des séries — PAS `series_round_rosters`, qui
   n'existe pas malgré une ancienne mention ici)
 - `cap_signing_watch` (conformité cap continue, voir section 6)
+- `player_ahl_assignments` (joueurs de notre base dans un alignement de l'AHL et dans aucun de la LNH —
+  badge « AHL », voir section 6, une ligne par joueur, `python_script/scrape_ahl_assignments.py`)
+- `player_lineup_status` (joueurs dans un alignement de la LNH : matchs consécutifs de leur équipe
+  qu'ils n'ont pas joués — badge banc « laissé de côté », voir section 6)
 - `player_injuries` (suivi des blessures LNH, CBS Sports + ESPN en recoupement — voir section 6,
   une ligne par joueur blessé, upsert quotidien par `python_script/scrape_injuries.py`)
 - `player_advanced_stats` (stats avancées MoneyPuck par saison/situation/joueur, clé `nhl_id` —
@@ -1351,6 +1356,24 @@ David, 2026-10-08 :**
 - Carte « Signatures et échanges dans la LNH » sur l'accueil (7 jours, 10 lignes, lue dans la
   table), surlignée quand un joueur nommé appartient à un pooler. Descriptions d'ESPN en anglais,
   telles quelles (choix de David).
+
+**Joueurs dans la Ligue américaine (`player_ahl_assignments`, badge « AHL ») — David, 2026-11-04 :**
+- Règle : dans l'alignement actuel d'un club de l'AHL (HockeyTech `view=roster`) **et** dans aucun
+  alignement actuel de la LNH. L'absence d'un alignement de la LNH seule ne suffit jamais : des
+  blessés de longue durée en sont retirés (Larkin, Barzal, Domi, vérifié le 2026-11-04).
+- `python_script/scrape_ahl_assignments.py` une fois par jour (`ahl_assignments.yml`, panneau
+  « Mises à jour automatiques ») : club affilié déduit des données, jumelage `match_player()` par nom
+  + club affilié, nom seul seulement si l'âge concorde. N'écrit que les changements.
+- App : `fetchAhlByPlayerId()`/`fetchAhlByNhlId()` (`app/lib/ahlAssignments.ts`, en cache selon
+  `data_versions` clé `ahl`) et `AhlBadge` (`components/AhlBadge.tsx`). Jamais d'appel à HockeyTech
+  ou à la LNH depuis une page pour ça. `since` = premier passage où le joueur a été vu (vaut la date
+  du premier import pour les joueurs déjà en AHL ce jour-là : ne pas l'afficher comme date de renvoi).
+- **Laissés de côté** (« healthy scratch », même script, `player_lineup_status`) : matchs consécutifs
+  de son équipe (calendrier LNH, déjà importés dans `player_game_logs`) non joués depuis son dernier
+  match **et** depuis `on_roster_since` (arrivée dans l'alignement — un rappel ou un échange repart à
+  zéro). L'app (`app/lib/lineupStatus.ts`, `BenchBadge`) applique les seuils
+  `app_settings.scratch_skater_games`/`scratch_goalie_games` (2/5, Configuration → Général) et
+  retire les blessés. Cache selon les versions `lineup` et `injuries`.
 
 **Next.js 16 :**
 - Utiliser `proxy.ts`, PAS `middleware.ts`

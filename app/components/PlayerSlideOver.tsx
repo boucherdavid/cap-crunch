@@ -49,6 +49,7 @@ function AdvancedHistory({ advanced, onNavigate }: { advanced: NonNullable<Playe
   )
 }
 import { getPlayerPoolSummaryAction, type PlayerPoolSummary } from './player-search-actions'
+import BenchBadge from './BenchBadge'
 
 const TYPE_LABEL: Record<string, string> = { actif: 'Actif', reserviste: 'Réserviste', recrue: 'Recrue', ltir: 'LTIR' }
 
@@ -121,6 +122,17 @@ function PoolSummary({ summary, onNavigate }: { summary: PlayerPoolSummary; onNa
           </span>
         )}
         {summary.injury && <InjuryBadge injury={summary.injury} />}
+        {summary.ahlTeamName && (
+          <span className="rounded-lg bg-violet-50 px-2.5 py-1 text-violet-700 font-medium">
+            Dans la Ligue américaine : {summary.ahlTeamName}
+          </span>
+        )}
+        {summary.scratch && (
+          <span className="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1 text-slate-700 font-medium">
+            Laissé de côté
+            <BenchBadge games={summary.scratch.games} lastPlayed={summary.scratch.lastPlayed} />
+          </span>
+        )}
       </div>
       {summary.injury && (
         <p className="text-xs text-gray-500">{[summary.injury.injuryType, summary.injury.status].filter(Boolean).join(' — ')}</p>

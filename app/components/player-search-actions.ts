@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { fetchInjuriesByPlayerId, type InjuryInfo } from '@/lib/injuries'
+import { fetchAhlByPlayerId } from '@/lib/ahlAssignments'
+import { fetchScratchesByPlayerId, type ScratchInfo } from '@/lib/lineupStatus'
 import { normalizeSearch } from '@/lib/normalizeSearch'
 import { computeMetrics, type AdvancedKind } from '@/lib/advancedMetrics'
 import { summarizePlayerUsage, type LineComboRow } from '@/lib/lineCombos'
@@ -19,6 +21,8 @@ export type PlayerSearchResult = {
   teamCode: string | null
   position: string | null
   ownerName: string | null  // null = disponible
+  ahlTeamName: string | null
+  benchGames: number | null  // laissé de côté depuis N matchs (lib/lineupStatus.ts)
 }
 
 export type PlayerPoolSummary = {
@@ -36,6 +40,10 @@ export type PlayerPoolSummary = {
   // Pooler connecté (null = personne) — rangée d'actions de la fiche : simuler, proposer un échange.
   viewerId: string | null
   injury: InjuryInfo | null
+  /** Club de la Ligue américaine, si le joueur y est (voir lib/ahlAssignments.ts). */
+  ahlTeamName: string | null
+  /** Laissé de côté par son équipe (voir lib/lineupStatus.ts). */
+  scratch: ScratchInfo | null
   // Trio ou paire actuels et unité d'avantage numérique (Daily Faceoff) — null si inconnu.
   usage: string | null
   // Stats avancées MoneyPuck par saison (la plus récente d'abord) — vide pour un prospect.
@@ -99,6 +107,7 @@ export async function searchPlayersGlobalAction(query: string): Promise<PlayerSe
   if (matches.length === 0) return []
 
   const ids = matches.map(p => p.id)
+  const [ahl, scratches] = await Promise.all([fetchAhlByPlayerId(), fetchScratchesByPlayerId()])
   const { data: rosters } = season
     ? await supabase
         .from('pooler_rosters')
@@ -120,6 +129,8 @@ export async function searchPlayersGlobalAction(query: string): Promise<PlayerSe
     teamCode: p.team_id ? teamCode.get(p.team_id) ?? null : null,
     position: p.position,
     ownerName: ownerName.get(p.id) ?? null,
+    ahlTeamName: ahl.get(p.id)?.teamName ?? null,
+    benchGames: scratches.get(p.id)?.games ?? null,
   }))
 }
 
@@ -135,7 +146,7 @@ export async function getPlayerPoolSummaryAction(ref: { nhlId?: number | null; p
   if (!player) return null
 
   const season = await fetchActiveSeason(supabase)
-  const [{ data: contracts }, { data: roster }, injuries, { data: advancedRows }, { data: { user } }] = await Promise.all([
+  const [{ data: contracts }, { data: roster }, injuries, { data: advancedRows }, { data: { user } }, { data: ahlRow }, scratches] = await Promise.all([
     supabase
       .from('player_contracts')
       .select('season, cap_number, contract_status')
@@ -160,6 +171,9 @@ export async function getPlayerPoolSummaryAction(ref: { nhlId?: number | null; p
           .order('season', { ascending: false })
       : Promise.resolve({ data: [] }),
     supabase.auth.getUser(),
+    // Une ligne par clé primaire : moins cher que la liste complète en cache.
+    supabase.from('player_ahl_assignments').select('ahl_team_name').eq('player_id', player.id).maybeSingle(),
+    fetchScratchesByPlayerId(),
   ])
 
   // Où joue-t-il en ce moment : ses lignes, puis celles de son équipe pour nommer ses partenaires.
@@ -194,6 +208,8 @@ export async function getPlayerPoolSummaryAction(ref: { nhlId?: number | null; p
     owner: own?.poolers ? { poolerId: own.pooler_id, poolerName: own.poolers.name, playerType: own.player_type } : null,
     viewerId: user?.id ?? null,
     injury: injuries.get(player.id) ?? null,
+    ahlTeamName: (ahlRow?.ahl_team_name as string | undefined) ?? null,
+    scratch: scratches.get(player.id) ?? null,
     usage: summarizePlayerUsage((teamCombos ?? []) as LineComboRow[], player.id),
     advanced: advRows.length
       ? { kind: advRows[0].kind, seasons: advRows.map(r => ({ season: r.season, m: computeMetrics(r.kind, r, null, null) })) }

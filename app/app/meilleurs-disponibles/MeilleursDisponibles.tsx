@@ -5,6 +5,8 @@ import Link from 'next/link'
 import TeamBadge from '@/components/TeamBadge'
 import PlayerLink from '@/components/PlayerLink'
 import InjuryBadge from '@/components/InjuryBadge'
+import AhlBadge from '@/components/AhlBadge'
+import BenchBadge from '@/components/BenchBadge'
 import { fmtPts } from '@/lib/nhl-stats'
 import type { AvailableGroups, AvailableRow } from './page'
 
@@ -88,6 +90,8 @@ function GroupTable({ title, rows, isGoalie }: { title: string; rows: AvailableR
                       <span className="font-medium text-gray-800">{r.firstName} {r.lastName}</span>
                     </PlayerLink>
                     {r.injury && <span className="ml-1.5"><InjuryBadge injury={r.injury} /></span>}
+                    {r.ahl && <AhlBadge teamName={r.ahl.teamName} />}
+                    {r.scratch && <BenchBadge games={r.scratch.games} lastPlayed={r.scratch.lastPlayed} />}
                     <p className="sm:hidden text-[11px] text-gray-400">{r.teamAbbrev} · {fmtCap(r.capNumber)}</p>
                   </td>
                   <td className="px-2 sm:px-4 py-2 hidden sm:table-cell"><TeamBadge code={r.teamAbbrev} /></td>
@@ -128,6 +132,15 @@ function GroupTable({ title, rows, isGoalie }: { title: string; rows: AvailableR
   )
 }
 
+/** Filtre sur les badges « AHL » et « laissé de côté » (David, 2026-11-04). */
+type LeagueFilter = '' | 'nhl' | 'ahl' | 'bench'
+function keepLeague(r: AvailableRow, league: LeagueFilter): boolean {
+  if (league === 'ahl') return !!r.ahl
+  if (league === 'nhl') return !r.ahl
+  if (league === 'bench') return !!r.scratch
+  return true
+}
+
 export default function MeilleursDisponibles({
   groups,
   seasonLabel,
@@ -150,6 +163,7 @@ export default function MeilleursDisponibles({
   const [sortMode, setSortMode] = useState<SortMode>('total')
   const [team, setTeam] = useState('')
   const [maxCapText, setMaxCapText] = useState('')
+  const [league, setLeague] = useState<LeagueFilter>('')
   const maxCap = parseMaxCap(maxCapText)
 
   const teams = useMemo(() => Array.from(new Set(
@@ -159,14 +173,14 @@ export default function MeilleursDisponibles({
   // Filtres appliqués à l'écran : toutes les données sont déjà chargées, aucune lecture de plus.
   const sorted = useMemo(() => {
     const keep = (rows: AvailableRow[]) =>
-      rows.filter(r => (!team || r.teamAbbrev === team) && (!maxCap || r.capNumber <= maxCap))
+      rows.filter(r => (!team || r.teamAbbrev === team) && (!maxCap || r.capNumber <= maxCap) && keepLeague(r, league))
     return {
       forwards: sortRows(keep(groups.forwards), sortMode, minGamesPerGame),
       defense: sortRows(keep(groups.defense), sortMode, minGamesPerGame),
       // Gardiens : seuil réduit de moitié, ils jouent moins souvent que les patineurs.
       goalies: sortRows(keep(groups.goalies), sortMode, Math.max(1, Math.round(minGamesPerGame / 2))),
     }
-  }, [groups, sortMode, minGamesPerGame, team, maxCap])
+  }, [groups, sortMode, minGamesPerGame, team, maxCap, league])
 
   const select = 'px-3 py-1.5 text-sm rounded-lg border border-gray-200 bg-white text-gray-700'
 
@@ -200,6 +214,12 @@ export default function MeilleursDisponibles({
           <option value="">Toutes les équipes</option>
           {teams.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
+        <select value={league} onChange={e => setLeague(e.target.value as LeagueFilter)} className={select} aria-label="Statut">
+          <option value="">LNH et AHL</option>
+          <option value="nhl">Sans les joueurs en AHL</option>
+          <option value="ahl">En AHL seulement</option>
+          <option value="bench">Laissés de côté seulement</option>
+        </select>
         <label className="flex items-center gap-1.5 text-sm text-gray-600">
           Salaire max
           <input
@@ -227,7 +247,7 @@ export default function MeilleursDisponibles({
 
       {GROUPS.map(g => (
         <GroupTable
-          key={`${g.key}-${sortMode}-${seasonLabel}-${team}-${maxCap}`}
+          key={`${g.key}-${sortMode}-${seasonLabel}-${team}-${maxCap}-${league}`}
           title={g.title}
           rows={sorted[g.key]}
           isGoalie={g.key === 'goalies'}

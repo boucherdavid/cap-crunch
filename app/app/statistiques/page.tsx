@@ -8,6 +8,8 @@ export const dynamic = 'force-dynamic'
 import { NHL_SEASON, recentNhlSeasons } from '@/lib/nhl-stats'
 import { fetchActiveNhlSeasonId } from '@/lib/nhl-active-season'
 import { fetchTakenPlayers } from '@/lib/takenPlayers'
+import { fetchAhlByNhlId } from '@/lib/ahlAssignments'
+import { fetchScratchesByNhlId } from '@/lib/lineupStatus'
 const REST = 'https://api.nhle.com/stats/rest/en'
 
 export type SkaterStat = {
@@ -351,7 +353,7 @@ export default async function StatistiquesPage({
     : activeNhlSeason
   const isCurrentSeason = nhlSeason === activeNhlSeason
 
-  const [skaters, goalies, taken, rookieNames, currentTeamMap, playoffPicksMap, streaksMap] = await Promise.all([
+  const [skaters, goalies, taken, rookieNames, currentTeamMap, playoffPicksMap, streaksMap, ahlByNhlId, scratchByNhlId] = await Promise.all([
     fetchSkaters(gameType, nhlSeason),
     fetchGoalies(gameType, nhlSeason),
     // Disponibilité = état du jour dans le pool, indépendant de la saison de stats consultée
@@ -366,6 +368,9 @@ export default async function StatistiquesPage({
           new Promise<Record<number, StreakInfo>>(resolve => setTimeout(() => resolve({}), 5000)),
         ])
       : Promise.resolve({} as Record<number, StreakInfo>),
+    // Comme la disponibilité : état du jour, affiché peu importe la saison consultée.
+    fetchAhlByNhlId(),
+    fetchScratchesByNhlId(),
   ])
 
   // Replace multi-team abbrevs ("2 TM", "ANA,CGY", etc.) with the player's current team from DB
@@ -390,6 +395,8 @@ export default async function StatistiquesPage({
         goalies={goalies}
         takenNhlIds={taken.nhlIds}
         takenNames={taken.namesWithoutNhlId}
+        ahlTeamByNhlId={Object.fromEntries([...ahlByNhlId].map(([id, a]) => [id, a.teamName]))}
+        benchGamesByNhlId={Object.fromEntries([...scratchByNhlId].map(([id, s]) => [id, s.games]))}
         rookieNames={rookieNames}
         gameMode={saison === 'series' ? 'series' : 'regular'}
         playoffPicksMap={playoffPicksMap}
