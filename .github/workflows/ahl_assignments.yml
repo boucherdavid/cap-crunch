@@ -1,4 +1,4 @@
-name: Joueurs en AHL (alignements AHL + LNH)
+name: Joueurs en AHL et laissés de côté (alignements AHL + LNH)
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -14,7 +14,7 @@ on:
 
 jobs:
   scrape:
-    name: Lit les alignements AHL et LNH et importe dans player_ahl_assignments
+    name: Lit les alignements AHL et LNH et importe dans player_ahl_assignments et player_lineup_status
     runs-on: ubuntu-latest
 
     steps:

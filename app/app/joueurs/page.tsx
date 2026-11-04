@@ -2,6 +2,7 @@ import JoueursTable from './JoueursTable'
 import { fetchAllPages } from '@/lib/supabase/fetch-all'
 import { createClient } from '@/lib/supabase/server'
 import { fetchAhlByPlayerId } from '@/lib/ahlAssignments'
+import { fetchScratchesByPlayerId } from '@/lib/lineupStatus'
 
 export type Team = {
   code: string
@@ -30,6 +31,7 @@ export type PlayerRow = {
   teams: Team
   player_contracts: PlayerContract[] | null
   ahl_team_name: string | null  // club de la Ligue américaine (lib/ahlAssignments.ts)
+  bench_games: number | null    // laissé de côté depuis N matchs (lib/lineupStatus.ts)
 }
 
 export default async function JoueursPage() {
@@ -56,7 +58,7 @@ export default async function JoueursPage() {
     }
   }
 
-  const rawPlayers = await fetchAllPages<Omit<PlayerRow, 'is_available' | 'ahl_team_name'> & { id: number }>(async (from, to) =>
+  const rawPlayers = await fetchAllPages<Omit<PlayerRow, 'is_available' | 'ahl_team_name' | 'bench_games'> & { id: number }>(async (from, to) =>
     supabase
       .from('players')
       .select(`
@@ -68,12 +70,13 @@ export default async function JoueursPage() {
       .range(from, to),
   )
 
-  const ahl = await fetchAhlByPlayerId()
+  const [ahl, scratches] = await Promise.all([fetchAhlByPlayerId(), fetchScratchesByPlayerId()])
   const players: PlayerRow[] = rawPlayers.map(p => ({
     ...p,
     id: String(p.id),
     is_available: !takenSet.has(p.id),
     ahl_team_name: ahl.get(p.id)?.teamName ?? null,
+    bench_games: scratches.get(p.id)?.games ?? null,
   }))
 
   // Ancre les colonnes de contrats sur la saison active du pool (David, 2026-09-08) —

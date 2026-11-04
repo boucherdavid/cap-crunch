@@ -6,6 +6,7 @@ import TeamBadge from '@/components/TeamBadge'
 import PlayerLink from '@/components/PlayerLink'
 import InjuryBadge from '@/components/InjuryBadge'
 import AhlBadge from '@/components/AhlBadge'
+import BenchBadge from '@/components/BenchBadge'
 import { fmtPts } from '@/lib/nhl-stats'
 import type { AvailableGroups, AvailableRow } from './page'
 
@@ -90,6 +91,7 @@ function GroupTable({ title, rows, isGoalie }: { title: string; rows: AvailableR
                     </PlayerLink>
                     {r.injury && <span className="ml-1.5"><InjuryBadge injury={r.injury} /></span>}
                     {r.ahl && <AhlBadge teamName={r.ahl.teamName} />}
+                    {r.scratch && <BenchBadge games={r.scratch.games} lastPlayed={r.scratch.lastPlayed} />}
                     <p className="sm:hidden text-[11px] text-gray-400">{r.teamAbbrev} · {fmtCap(r.capNumber)}</p>
                   </td>
                   <td className="px-2 sm:px-4 py-2 hidden sm:table-cell"><TeamBadge code={r.teamAbbrev} /></td>
@@ -130,10 +132,13 @@ function GroupTable({ title, rows, isGoalie }: { title: string; rows: AvailableR
   )
 }
 
-/** Filtre sur le badge « AHL » (David, 2026-11-04). */
-type LeagueFilter = '' | 'nhl' | 'ahl'
-function keepLeague(inAhl: boolean, league: LeagueFilter): boolean {
-  return league === '' || (league === 'ahl' ? inAhl : !inAhl)
+/** Filtre sur les badges « AHL » et « laissé de côté » (David, 2026-11-04). */
+type LeagueFilter = '' | 'nhl' | 'ahl' | 'bench'
+function keepLeague(r: AvailableRow, league: LeagueFilter): boolean {
+  if (league === 'ahl') return !!r.ahl
+  if (league === 'nhl') return !r.ahl
+  if (league === 'bench') return !!r.scratch
+  return true
 }
 
 export default function MeilleursDisponibles({
@@ -168,7 +173,7 @@ export default function MeilleursDisponibles({
   // Filtres appliqués à l'écran : toutes les données sont déjà chargées, aucune lecture de plus.
   const sorted = useMemo(() => {
     const keep = (rows: AvailableRow[]) =>
-      rows.filter(r => (!team || r.teamAbbrev === team) && (!maxCap || r.capNumber <= maxCap) && keepLeague(!!r.ahl, league))
+      rows.filter(r => (!team || r.teamAbbrev === team) && (!maxCap || r.capNumber <= maxCap) && keepLeague(r, league))
     return {
       forwards: sortRows(keep(groups.forwards), sortMode, minGamesPerGame),
       defense: sortRows(keep(groups.defense), sortMode, minGamesPerGame),
@@ -209,10 +214,11 @@ export default function MeilleursDisponibles({
           <option value="">Toutes les équipes</option>
           {teams.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
-        <select value={league} onChange={e => setLeague(e.target.value as LeagueFilter)} className={select} aria-label="Ligue">
+        <select value={league} onChange={e => setLeague(e.target.value as LeagueFilter)} className={select} aria-label="Statut">
           <option value="">LNH et AHL</option>
           <option value="nhl">Sans les joueurs en AHL</option>
           <option value="ahl">En AHL seulement</option>
+          <option value="bench">Laissés de côté seulement</option>
         </select>
         <label className="flex items-center gap-1.5 text-sm text-gray-600">
           Salaire max

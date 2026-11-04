@@ -15,6 +15,7 @@ import { validateRosterLimits, getPlayerBucket, ACTIVE_LIMITS, type Bucket } fro
 import { createWaiverClaimForRelease, isPlayerUnderActiveWaiverClaim } from '@/lib/waiverClaims'
 import { fetchInjuriesByPlayerId, type InjuryInfo } from '@/lib/injuries'
 import { fetchAhlByPlayerId } from '@/lib/ahlAssignments'
+import { fetchScratchesByPlayerId } from '@/lib/lineupStatus'
 import { journalActionType, JOURNAL_NOTES_GESTION, JOURNAL_NOTES_BALLOTAGE } from '@/lib/transactionJournal'
 import { notifyAdminsOfRosterMoves } from '@/lib/adminRosterNotice'
 
@@ -50,6 +51,8 @@ export type RosterEntry = {
   injury: InjuryInfo | null  // source CBS Sports/ESPN, voir player_injuries et app/lib/injuries.ts
   /** Club de la Ligue américaine, si le joueur y est (voir lib/ahlAssignments.ts). */
   ahlTeamName?: string | null
+  /** Laissé de côté depuis N matchs (voir lib/lineupStatus.ts). */
+  benchGames?: number | null
 }
 
 export type RosterForPooler = {
@@ -68,6 +71,7 @@ export type PlayerSearchResult = {
   nhlId: number | null
   capNumber: number | null
   ahlTeamName: string | null
+  benchGames: number | null
 }
 
 export type SaisonInfo = {
@@ -141,7 +145,7 @@ export async function getPoolerRosterAction(
 ): Promise<RosterForPooler> {
   const supabase = await createClient()
 
-  const [{ data: rosterData }, { data: deactRows }, { data: settings }, injuriesByPlayerId, ahlByPlayerId] = await Promise.all([
+  const [{ data: rosterData }, { data: deactRows }, { data: settings }, injuriesByPlayerId, ahlByPlayerId, scratchByPlayerId] = await Promise.all([
     supabase
       .from('pooler_rosters')
       .select(`
@@ -166,6 +170,7 @@ export async function getPoolerRosterAction(
     supabase.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle(),
     fetchInjuriesByPlayerId(supabase),
     fetchAhlByPlayerId(),
+    fetchScratchesByPlayerId(),
   ])
   const unsignedMultiplier = settings?.unsigned_player_cap_multiplier ?? 1.20
 
@@ -205,6 +210,7 @@ export async function getPoolerRosterAction(
       recrueEligible: isRookieProtected(r.rookie_type, r.pool_draft_year, r.players?.player_contracts, season),
       injury: injuriesByPlayerId.get(r.player_id) ?? null,
       ahlTeamName: ahlByPlayerId.get(r.player_id)?.teamName ?? null,
+      benchGames: scratchByPlayerId.get(r.player_id)?.games ?? null,
     }
   })
 
@@ -230,7 +236,7 @@ export async function searchPlayersAction(
   // addNewPlayer revalide de toute façon au moment de la soumission.
   // Les deux requêtes partent ensemble (David, 2026-10-02) ; les joueurs au ballotage sont
   // retirés ensuite, d'où quelques résultats de plus demandés que les 20 affichés.
-  const [{ data: lockedClaims }, { data }, ahlByPlayerId] = await Promise.all([
+  const [{ data: lockedClaims }, { data }, ahlByPlayerId, scratchByPlayerId] = await Promise.all([
     db.from('waiver_claims').select('player_id').eq('pool_season_id', saisonId).in('status', ['open', 'awarded']),
     supabase
       .from('players')
@@ -241,6 +247,7 @@ export async function searchPlayersAction(
       .order('id')
       .limit(40),
     fetchAhlByPlayerId(),
+    fetchScratchesByPlayerId(),
   ])
   const lockedIds = new Set((lockedClaims ?? []).map(c => c.player_id))
   return (data ?? []).filter(p => !lockedIds.has(p.id)).slice(0, 20).map((p: any) => ({
@@ -252,6 +259,7 @@ export async function searchPlayersAction(
     nhlId: p.nhl_id ?? null,
     capNumber: p.player_contracts?.find((c: any) => c.season === season)?.cap_number ?? null,
     ahlTeamName: ahlByPlayerId.get(p.id)?.teamName ?? null,
+    benchGames: scratchByPlayerId.get(p.id)?.games ?? null,
   }))
 }
 

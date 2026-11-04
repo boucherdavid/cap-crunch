@@ -1,6 +1,7 @@
 'use client'
 
 import type { RosterEntry, RosterForPooler } from './actions'
+import BenchBadge from '@/components/BenchBadge'
 
 /**
  * Colonne « Alignement » de Gestion d'effectifs (David, 2026-10-02) — occupe l'espace libre à
@@ -35,6 +36,7 @@ function Row({ e, previousType, isNew, removed }: { e: RosterEntry; previousType
         {removed && <span className="ml-2 text-[10px] font-bold text-red-600">RETIRÉ</span>}
         {e.injury && !removed && <span className="ml-2 text-[10px] font-semibold text-red-500">{e.injury.backInAction ? 'de retour au jeu' : e.injury.eligible ? 'admissible LTIR' : 'blessé'}</span>}
         {e.ahlTeamName && !removed && <span className="ml-2 text-[10px] font-semibold text-violet-700" title={`Dans la Ligue américaine : ${e.ahlTeamName}`}>AHL</span>}
+        {e.benchGames != null && e.benchGames > 0 && !removed && <BenchBadge games={e.benchGames} />}
       </span>
       <span className={`shrink-0 tabular-nums text-xs ${removed ? 'line-through text-gray-400' : 'text-gray-600'}`}>
         {capFmt(e.capNumber)}{e.isEstimatedCap && <span className="ml-1 text-amber-700">estimé</span>}

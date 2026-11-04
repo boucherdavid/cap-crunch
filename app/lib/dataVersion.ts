@@ -12,7 +12,7 @@
 import { cache } from 'react'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-export type DataVersionKey = 'standings' | 'injuries' | 'ahl'
+export type DataVersionKey = 'standings' | 'injuries' | 'ahl' | 'lineup'
 
 const readVersions = cache(async (): Promise<Map<string, number> | null> => {
   const { data, error } = await createAdminClient().from('data_versions').select('key, version')

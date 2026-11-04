@@ -6,6 +6,7 @@ import type { SkaterStat, GoalieStat } from './page'
 import TeamBadge from '@/components/TeamBadge'
 import PlayerLink from '@/components/PlayerLink'
 import AhlBadge from '@/components/AhlBadge'
+import BenchBadge from '@/components/BenchBadge'
 import type { StreakInfo, GoalieBadgeType } from '@/lib/streaks'
 import StreakLegend from '@/components/StreakLegend'
 import { normalizeSearch } from '@/lib/normalizeSearch'
@@ -93,6 +94,7 @@ export default function StatsTable({
   takenNhlIds,
   takenNames,
   ahlTeamByNhlId = {},
+  benchGamesByNhlId = {},
   rookieNames,
   gameMode,
   playoffPicksMap = {},
@@ -107,6 +109,7 @@ export default function StatsTable({
   takenNhlIds: number[]
   takenNames: string[]
   ahlTeamByNhlId?: Record<number, string>
+  benchGamesByNhlId?: Record<number, number>
   rookieNames: string[]
   gameMode: 'regular' | 'series'
   playoffPicksMap?: Record<string, string[]>
@@ -124,6 +127,7 @@ export default function StatsTable({
   const [selectedTeam, setSelectedTeam] = useState('')
   const [availOnly, setAvailOnly] = useState(false)
   const [ahlOnly, setAhlOnly] = useState(false)
+  const [benchOnly, setBenchOnly] = useState(false)
   const [positionFilter, setPositionFilter] = useState<'all' | 'forward' | 'defense'>('all')
 
   const takenIdSet = useMemo(() => new Set(takenNhlIds), [takenNhlIds])
@@ -159,6 +163,7 @@ export default function StatsTable({
       .filter(s => {
         if (availOnly && !isAvailable(s.id, s.firstName, s.lastName)) return false
         if (ahlOnly && !ahlTeamByNhlId[s.id]) return false
+        if (benchOnly && !benchGamesByNhlId[s.id]) return false
         if (selectedTeam && s.teamAbbrev !== selectedTeam) return false
         if (positionFilter === 'defense' && s.position !== 'D') return false
         if (positionFilter === 'forward' && s.position === 'D') return false
@@ -171,7 +176,7 @@ export default function StatsTable({
       })
       .sort((a, b) => b.points - a.points || b.goals - a.goals || a.lastName.localeCompare(b.lastName))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [skaters, search, selectedTeam, availOnly, ahlOnly, positionFilter, takenSet])
+  }, [skaters, search, selectedTeam, availOnly, ahlOnly, benchOnly, positionFilter, takenSet])
 
   const filteredGoalies = useMemo(() => {
     const q = normalizeSearch(search.trim())
@@ -179,6 +184,7 @@ export default function StatsTable({
       .filter(g => {
         if (availOnly && !isAvailable(g.id, g.firstName, g.lastName)) return false
         if (ahlOnly && !ahlTeamByNhlId[g.id]) return false
+        if (benchOnly && !benchGamesByNhlId[g.id]) return false
         if (selectedTeam && g.teamAbbrev !== selectedTeam) return false
         if (q) {
           const name = normalizeSearch(`${g.firstName} ${g.lastName}`)
@@ -189,14 +195,14 @@ export default function StatsTable({
       })
       .sort((a, b) => b.wins - a.wins || b.shutouts - a.shutouts || a.lastName.localeCompare(b.lastName))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [goalies, search, selectedTeam, availOnly, ahlOnly, takenSet])
+  }, [goalies, search, selectedTeam, availOnly, ahlOnly, benchOnly, takenSet])
 
   const tabClass = (t: Tab) =>
     `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
       tab === t ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
     }`
 
-  const hasFilters = search || selectedTeam || availOnly || ahlOnly || positionFilter !== 'all'
+  const hasFilters = search || selectedTeam || availOnly || ahlOnly || benchOnly || positionFilter !== 'all'
 
   return (
     <div>
@@ -300,6 +306,17 @@ export default function StatsTable({
         >
           En AHL
         </button>
+        <button
+          type="button"
+          onClick={() => setBenchOnly(v => !v)}
+          className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+            benchOnly
+              ? 'border-slate-500 bg-slate-100 text-slate-800 font-medium'
+              : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          Laissés de côté
+        </button>
         {tab === 'skaters' && (
           <div className="flex gap-1">
             {(['all', 'forward', 'defense'] as const).map(pos => (
@@ -321,7 +338,7 @@ export default function StatsTable({
         {hasFilters && (
           <button
             type="button"
-            onClick={() => { setSearch(''); setSelectedTeam(''); setAvailOnly(false); setAhlOnly(false); setPositionFilter('all') }}
+            onClick={() => { setSearch(''); setSelectedTeam(''); setAvailOnly(false); setAhlOnly(false); setBenchOnly(false); setPositionFilter('all') }}
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
           >
             Effacer
@@ -383,6 +400,7 @@ export default function StatsTable({
                           {showTimeSensitiveOverlay && gameMode === 'regular' && isRookie(s.firstName, s.lastName) && <RookieBadge />}
                           <StreakBadge info={streaksMap[s.id]} />
                           {ahlTeamByNhlId[s.id] && <AhlBadge teamName={ahlTeamByNhlId[s.id]} />}
+                          {benchGamesByNhlId[s.id] && <BenchBadge games={benchGamesByNhlId[s.id]} />}
                         </span>
                         <span className="sm:hidden block text-[11px] font-normal text-gray-400">{s.teamAbbrev} · {s.position}</span>
                       </td>
@@ -459,6 +477,7 @@ export default function StatsTable({
                           <StreakBadge info={streaksMap[g.id]} />
                           <GoalieBadge info={streaksMap[g.id]} />
                           {ahlTeamByNhlId[g.id] && <AhlBadge teamName={ahlTeamByNhlId[g.id]} />}
+                          {benchGamesByNhlId[g.id] && <BenchBadge games={benchGamesByNhlId[g.id]} />}
                         </span>
                         <span className="sm:hidden block text-[11px] font-normal text-gray-400">{g.teamAbbrev}</span>
                       </td>

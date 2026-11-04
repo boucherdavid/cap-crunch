@@ -1,5 +1,7 @@
 """
-Joueurs actuellement dans la Ligue américaine (David, 2026-11-04) — badge « AHL » dans l'app.
+Joueurs actuellement dans la Ligue américaine (David, 2026-11-04) — badge « AHL » dans l'app —
+et joueurs laissés de côté par leur équipe de la LNH (badge banc, player_lineup_status, même jour ;
+voir compute_lineup : 32 calendriers de plus, et les matchs joués déjà importés).
 
 Deux lectures par jour, 64 appels au total, aucune par visite de l'app :
 - les alignements actuels des 32 clubs de l'AHL (HockeyTech, même fournisseur et même clé
@@ -32,7 +34,7 @@ import os
 import sys
 import time
 from collections import Counter
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -52,6 +54,9 @@ AHL_BASE = 'https://lscluster.hockeytech.com/feed/index.php'
 AHL_PARAMS = {'key': 'ccb91f29d6744675', 'client_code': 'ahl', 'fmt': 'json', 'lang': 'en',
               'site_id': '3', 'league_id': '4'}
 NHL_ROSTER = 'https://api-web.nhle.com/v1/roster/{code}/current'
+NHL_SCHEDULE = 'https://api-web.nhle.com/v1/club-schedule-season/{code}/now'
+# Fenêtre des matchs ratés : au-delà, le compte plafonne (badge affiché depuis longtemps déjà).
+LINEUP_WINDOW_DAYS = 45
 HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126 Safari/537.36'}
 PAUSE_SECONDS = 0.3
 TIMEOUT = 20
@@ -111,8 +116,9 @@ def fetch_ahl_rosters(season_id: str) -> tuple[list[dict], int]:
     return players, read
 
 
-def fetch_nhl_roster_ids(codes: list[str]) -> tuple[set[int], int]:
-    ids: set[int] = set()
+def fetch_nhl_rosters(codes: list[str]) -> tuple[dict[int, str], int]:
+    """nhl_id → équipe de la LNH dont il est dans l'alignement actuel."""
+    ids: dict[int, str] = {}
     read = 0
     for code in codes:
         try:
@@ -125,9 +131,76 @@ def fetch_nhl_roster_ids(codes: list[str]) -> tuple[set[int], int]:
         read += 1
         for group in ('forwards', 'defensemen', 'goalies'):
             for p in data.get(group) or []:
-                ids.add(int(p['id']))
+                ids[int(p['id'])] = code
         time.sleep(PAUSE_SECONDS)
     return ids, read
+
+
+def fetch_team_games(codes: list[str], min_date: date, today: date) -> dict[str, list[str]]:
+    """Dates des matchs terminés (saison régulière ou séries) de chaque équipe depuis `min_date`."""
+    out: dict[str, list[str]] = {}
+    for code in codes:
+        try:
+            res = requests.get(NHL_SCHEDULE.format(code=code), headers=HEADERS, timeout=TIMEOUT)
+            res.raise_for_status()
+            games = res.json().get('games') or []
+        except Exception as e:  # noqa: BLE001
+            print(f'[ATTENTION] Calendrier {code} : {e}')
+            continue
+        out[code] = sorted({
+            g['gameDate'] for g in games
+            if g.get('gameType') in (2, 3) and g.get('gameState') in ('OFF', 'FINAL')
+            and min_date.isoformat() <= g['gameDate'] < today.isoformat()
+        })
+        time.sleep(PAUSE_SECONDS)
+    return out
+
+
+def compute_lineup(db, nhl_team_by_id: dict[int, str], pid_by_nhl: dict[int, int], ahl_ids: set[int],
+                   today: date) -> tuple[list[dict], dict[str, list[str]]]:
+    """Matchs consécutifs ratés par chaque joueur de notre base présent dans un alignement de la LNH.
+
+    Ne comptent que les matchs de son équipe déjà importés dans player_game_logs (une date sans
+    aucune ligne : l'import de nuit n'est pas encore passé), joués depuis son arrivée dans cet
+    alignement (`on_roster_since`, pour ne pas compter les matchs d'avant un rappel ou un échange)
+    et après son dernier match joué."""
+    window_start = today - timedelta(days=LINEUP_WINDOW_DAYS)
+    codes = sorted(set(nhl_team_by_id.values()))
+    team_games = fetch_team_games(codes, window_start, today)
+    logs = fetch_all(lambda: db.table('player_game_logs').select('id, nhl_id, game_date')
+                     .gte('game_date', window_start.isoformat()).in_('game_type', [2, 3]).order('id'))
+    imported_dates = {r['game_date'] for r in logs}
+    played: dict[int, set[str]] = {}
+    for r in logs:
+        played.setdefault(int(r['nhl_id']), set()).add(r['game_date'])
+
+    try:
+        existing = fetch_all(lambda: db.table('player_lineup_status').select('player_id, team_code, on_roster_since')
+                             .order('player_id'))
+    except Exception as e:  # noqa: BLE001 — table absente (migration pas encore roulée) : dry-run quand même
+        print(f'[ATTENTION] player_lineup_status illisible ({e}) — premier passage supposé.')
+        existing = []
+    existing_by_id = {r['player_id']: r for r in existing}
+    # Premier passage (table vide) : tout le monde est réputé là depuis le début de la fenêtre.
+    first_run = not existing
+
+    rows = []
+    for nhl_id, code in nhl_team_by_id.items():
+        pid = pid_by_nhl.get(nhl_id)
+        if not pid or pid in ahl_ids or code not in team_games:
+            continue
+        old = existing_by_id.get(pid)
+        if old and old['team_code'] == code:
+            since = old['on_roster_since']
+        else:
+            since = window_start.isoformat() if first_run else today.isoformat()
+        dates = played.get(nhl_id, set())
+        last_played = max(dates) if dates else None
+        missed = sum(1 for d in team_games[code]
+                     if d in imported_dates and d >= since and (last_played is None or d > last_played))
+        rows.append({'player_id': pid, 'team_code': code, 'on_roster_since': since,
+                     'games_missed': missed, 'last_played': last_played})
+    return rows, team_games
 
 
 def age_on(birthdate: str | None, today: date) -> float | None:
@@ -156,14 +229,16 @@ def main():
         sys.exit(1)
 
     nhl_codes = sorted({t['code'] for t in db.table('teams').select('code').execute().data if t.get('code')})
-    nhl_ids, nhl_teams_read = fetch_nhl_roster_ids(nhl_codes)
+    nhl_team_by_id, nhl_teams_read = fetch_nhl_rosters(nhl_codes)
+    nhl_ids = set(nhl_team_by_id)
     print(f'[INFO] LNH : {len(nhl_ids)} joueur(s), {nhl_teams_read} équipe(s) lue(s).')
     if nhl_teams_read < MIN_NHL_TEAMS or len(nhl_ids) < MIN_NHL_PLAYERS:
         print('[ERREUR] Lecture de la LNH incomplète — aucune écriture.')
         sys.exit(1)
 
     by_name_team, by_name, by_lastname_team = build_player_lookup(db)
-    info = {p['id']: p for p in fetch_all(lambda: db.table('players').select('id, nhl_id, age, teams(code)').order('id'))}
+    info = {p['id']: p for p in fetch_all(lambda: db.table('players').select('id, nhl_id, age, position, teams(code)').order('id'))}
+    pid_by_nhl = {int(p['nhl_id']): pid for pid, p in info.items() if p.get('nhl_id')}
 
     # 1. Club affilié de chaque club de l'AHL, déduit des joueurs jumelés par nom seul.
     votes: dict[str, Counter] = {}
@@ -206,7 +281,17 @@ def main():
     if rejected_age:
         print('[INFO] Rejetés (âge différent, homonyme probable) : ' + '; '.join(rejected_age))
 
+    lineup_rows, team_games = compute_lineup(db, nhl_team_by_id, pid_by_nhl, set(rows), today)
+    missed = sorted((r for r in lineup_rows if r['games_missed'] >= 2), key=lambda r: -r['games_missed'])
+    print(f'[INFO] Alignements LNH : {len(lineup_rows)} joueur(s) suivi(s), calendrier de {len(team_games)} '
+          f'équipe(s), {len(missed)} sans match depuis 2 matchs de son équipe ou plus.')
+
     if not args.apply:
+        print('[INFO] Matchs consécutifs ratés (2 et plus) :')
+        for r in missed:
+            p = info.get(r['player_id'], {})
+            print(f"  {r['games_missed']:>2}  {r['team_code']}  {p.get('position') or '?':3} "
+                  f"{r['player_id']:>5}  dernier match : {r['last_played']}")
         print(f'[INFO] {len(loose)} jumelage(s) sans le club affilié (à vérifier) :')
         for line in loose:
             print('  ' + line)
@@ -229,8 +314,24 @@ def main():
     ids = [r['player_id'] for r in to_delete]
     for i in range(0, len(ids), 200):
         db.table('player_ahl_assignments').delete().in_('player_id', ids[i:i + 200]).execute()
-    print(f'[OK] {len(to_insert)} ajout(s), {len(to_update)} changement(s) de club, {len(to_delete)} retour(s) '
+    print(f'[OK] AHL : {len(to_insert)} ajout(s), {len(to_update)} changement(s) de club, {len(to_delete)} retour(s) '
           f'ou retrait(s). Lignes inchangées non réécrites.')
+
+    if len(team_games) < MIN_NHL_TEAMS:
+        print('[ERREUR] Calendriers de la LNH incomplets — matchs ratés non mis à jour.')
+        sys.exit(1)
+    existing = fetch_all(lambda: db.table('player_lineup_status')
+                         .select('player_id, team_code, on_roster_since, games_missed, last_played').order('player_id'))
+    to_insert, to_update, to_delete = diff_rows(lineup_rows, existing, ['player_id'],
+                                                ['team_code', 'on_roster_since', 'games_missed', 'last_played'])
+    changed = to_insert + to_update
+    for i in range(0, len(changed), 500):
+        db.table('player_lineup_status').upsert(changed[i:i + 500], on_conflict='player_id').execute()
+    ids = [r['player_id'] for r in to_delete]
+    for i in range(0, len(ids), 200):
+        db.table('player_lineup_status').delete().in_('player_id', ids[i:i + 200]).execute()
+    print(f'[OK] Alignements LNH : {len(to_insert)} ajout(s), {len(to_update)} mise(s) à jour, '
+          f'{len(to_delete)} retrait(s).')
 
 
 if __name__ == '__main__':

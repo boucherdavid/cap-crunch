@@ -277,6 +277,8 @@ Hockey_Pool_App/
 - `cap_signing_watch` (conformité cap continue, voir section 6)
 - `player_ahl_assignments` (joueurs de notre base dans un alignement de l'AHL et dans aucun de la LNH —
   badge « AHL », voir section 6, une ligne par joueur, `python_script/scrape_ahl_assignments.py`)
+- `player_lineup_status` (joueurs dans un alignement de la LNH : matchs consécutifs de leur équipe
+  qu'ils n'ont pas joués — badge banc « laissé de côté », voir section 6)
 - `player_injuries` (suivi des blessures LNH, CBS Sports + ESPN en recoupement — voir section 6,
   une ligne par joueur blessé, upsert quotidien par `python_script/scrape_injuries.py`)
 - `player_advanced_stats` (stats avancées MoneyPuck par saison/situation/joueur, clé `nhl_id` —
@@ -1366,6 +1368,12 @@ David, 2026-10-08 :**
   `data_versions` clé `ahl`) et `AhlBadge` (`components/AhlBadge.tsx`). Jamais d'appel à HockeyTech
   ou à la LNH depuis une page pour ça. `since` = premier passage où le joueur a été vu (vaut la date
   du premier import pour les joueurs déjà en AHL ce jour-là : ne pas l'afficher comme date de renvoi).
+- **Laissés de côté** (« healthy scratch », même script, `player_lineup_status`) : matchs consécutifs
+  de son équipe (calendrier LNH, déjà importés dans `player_game_logs`) non joués depuis son dernier
+  match **et** depuis `on_roster_since` (arrivée dans l'alignement — un rappel ou un échange repart à
+  zéro). L'app (`app/lib/lineupStatus.ts`, `BenchBadge`) applique les seuils
+  `app_settings.scratch_skater_games`/`scratch_goalie_games` (2/5, Configuration → Général) et
+  retire les blessés. Cache selon les versions `lineup` et `injuries`.
 
 **Next.js 16 :**
 - Utiliser `proxy.ts`, PAS `middleware.ts`

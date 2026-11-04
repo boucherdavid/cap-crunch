@@ -6,6 +6,7 @@ import { teamColor } from '@/lib/nhl-colors'
 import TeamBadge from '@/components/TeamBadge'
 import PlayerLink from '@/components/PlayerLink'
 import AhlBadge from '@/components/AhlBadge'
+import BenchBadge from '@/components/BenchBadge'
 import { normalizeSearch } from '@/lib/normalizeSearch'
 
 const DASH = '\u2014'
@@ -339,6 +340,7 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
                           {player.last_name}, {player.first_name}
                         </PlayerLink>
                         {player.ahl_team_name && <AhlBadge teamName={player.ahl_team_name} />}
+                        {player.bench_games != null && <BenchBadge games={player.bench_games} />}
                       </span>
                     </td>
                     <td className="px-4 py-3 hidden sm:table-cell">
@@ -448,6 +450,7 @@ export default function JoueursTable({ players, currentSeason }: { players: Play
                           {player.last_name}, {player.first_name}
                         </PlayerLink>
                         {player.ahl_team_name && <AhlBadge teamName={player.ahl_team_name} />}
+                        {player.bench_games != null && <BenchBadge games={player.bench_games} />}
                       </td>
                       <td className="px-4 py-3"><TeamBadge code={player.teams?.code} /></td>
                       <td className="px-4 py-3 text-gray-600">{player.position ?? DASH}</td>
