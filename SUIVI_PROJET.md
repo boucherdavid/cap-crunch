@@ -30,6 +30,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - **Badge banc « laissé de côté »** (demande de David, même jour) : même script, table `player_lineup_status` (migration `player_lineup_status.sql`, avec `app_settings.scratch_skater_games`/`scratch_goalie_games`, 2/5 par défaut, réglés dans Configuration → Général, `ScratchSettingsForm.tsx`). Compte les matchs de son équipe déjà importés qu'il n'a pas joués, depuis son dernier match et son arrivée dans l'alignement (`on_roster_since` : un rappel ou un échange repart à zéro ; premier passage = début de la fenêtre de 45 jours). L'app retire les blessés et applique les seuils (`lib/lineupStatus.ts`, `BenchBadge.tsx`), mêmes pages que le badge AHL, filtres « Laissés de côté » (Statistiques, Meilleurs disponibles). Essai à blanc en prod : 41 joueurs non blessés (McWard, Middleton, Bernard-Docker, Poirier ; 9 du pool, dont Jiricek, Bussi, Yakemchuk, Danielson).
 - Correctif (même jour, aucun badge visible) : la lecture joignait `players (nhl_id)` sans clé étrangère → PGRST200, liste vide en silence. Remplacée par deux lectures (table, puis `nhl_id` par lots), clé de cache `v2`. Filtres ajoutés : « LNH et AHL / Sans les joueurs en AHL / En AHL seulement » (Meilleurs disponibles), bouton « En AHL » (`/statistiques`).
 - Validé par David en staging, promu en prod le 2026-11-04 (commits `42e387c`, `a3da14d`, `70972ec`).
+- Badge banc remplacé par le texte « H.Scratch N » (même jour) : un pooler prenait l'icône pour une clôture. Libellé choisi par David.
 
 ### 2026-11-03
 
