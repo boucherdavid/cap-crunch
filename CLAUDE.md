@@ -203,6 +203,17 @@ python import_advanced_stats.py --seasons 2023 2024  # saisons précises
 python import_advanced_stats.py --dry-run            # aucune écriture
 ```
 
+```bash
+# Joueurs en AHL et joueurs laissés de côté (« Scratch ») — David, 2026-11-04. Lit les alignements
+# actuels des 32 clubs de l'AHL (HockeyTech) et des 32 équipes de la LNH, et les calendriers des
+# équipes ; écrit player_ahl_assignments et player_lineup_status (seulement ce qui change). Cible
+# prod comme les autres scripts (`.env.staging` pour staging). Quotidien : ahl_assignments.yml
+# (14h UTC), aussi dans le panneau « Mises à jour automatiques » de /admin/donnees.
+cd python_script
+python scrape_ahl_assignments.py            # dry-run — affiche les jumelages douteux et les scratches
+python scrape_ahl_assignments.py --apply    # exécution réelle, sans confirmation
+```
+
 ---
 
 ## 3. Structure du projet
@@ -248,6 +259,7 @@ Hockey_Pool_App/
 │   ├── scrape_injuries.py      ← Scrape les blessures LNH, CBS + ESPN + MoneyPuck (voir section 2)
 │   ├── import_advanced_stats.py ← Stats avancées MoneyPuck (voir section 2)
 │   ├── scrape_line_combos.py   ← Trios et paires actuels, Daily Faceoff (dry-run par défaut, --apply)
+│   ├── scrape_ahl_assignments.py ← Joueurs en AHL + laissés de côté (dry-run par défaut, --apply)
 │   ├── compare_salaires.py     ← Rapport des salaires modifiés avant de pousser les CSV (lecture seule)
 │   ├── source/cap_overrides.csv ← Corrections manuelles du cap hit, appliquées à l'import
 │   ├── source/                ← CSV générés par le scraping
@@ -712,7 +724,7 @@ composant, pas de `?subtab=`), donc pas d'accès par URL directe comme pour `/ad
 
 | Hub | Onglets (`?tab=id` → label) |
 |---|---|
-| `/admin/pool` | `poolers` Poolers · `config` Configuration (sous-onglets `Saisons` / `Général` / `Pointage Saison` — `Général` = ex-"Pool Saison", renommé le 2026-09-01) |
+| `/admin/pool` | `poolers` Poolers · `config` Configuration (sous-onglets `Saisons` / `Général` / `Pointage Saison` — `Général` = ex-"Pool Saison", renommé le 2026-09-01 ; y sont aussi les chronos de repêchage, le délai du ballotage et les seuils du badge « Scratch », `ScratchSettingsForm.tsx`) |
 | `/admin/communaute` | `communication` Communication (feedback + notifs, filtrables par type — `NotificationsList.tsx`, type déduit du titre : tout nouveau titre de `sendPushToAdmins` s'ajoute à `KINDS` ; « Mouvements » = lots soumis par un pooler, `lib/adminRosterNotice.ts`, jamais pour un admin qui agit ; « Ballotage » = résumé à l'attribution et ballotage bloqué) · `babillard` Babillard (publier/supprimer des communications, ajouté le 2026-09-02) · `suivi` Suivi (activité) · `planification` Planification (sondage type Doodle, admin) |
 | `/admin/init` | `rosters` Rosters initiaux · `recrues` Banque de recrues · `choix` Choix de repêchage (← réassigner le propriétaire d'un pick échangé hors-app) — réglages one-shot déjà en place pour la saison courante |
 | `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `approbation` Approbation (transactions entre poolers en attente, `TradeApprovalManager.tsx` — onglet ajouté le 2026-09-21) · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) · `marqueur` Marqueur (écarts avec notre pool sur Marqueur.com, 2026-10-05) |
