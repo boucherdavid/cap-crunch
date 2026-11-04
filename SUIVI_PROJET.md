@@ -27,6 +27,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - Script Python quotidien (64 appels, aucun par visite) : club LNH affilié déduit des données (32/32 corrects), jumelage `match_player()` par nom + club affilié, repli nom seul avec contrôle d'âge (homonymes Hofer, Murray écartés). Dry-run staging : 622 joueurs de notre base en AHL. N'écrit que les changements (`db_diff`), garde-fous si une source répond mal.
 - App : table lue une fois, en cache selon `data_versions` (clé `ahl`) ; fiche joueur = lecture par clé primaire. Badge violet dans `/poolers/[id]` (tous les onglets), Gestion d'effectifs (menus, recherche, alignement), Mes listes, Meilleurs disponibles, `/statistiques`, `/joueurs`, recherche globale et fiche. Pas dans le hub pré-saison (`/repechage-agents-libres`). Ajouté au panneau « Mises à jour automatiques » et à `/aide`.
 - Migration `player_ahl_assignments.sql` roulée en staging et en prod ; premier import fait dans les deux (622 joueurs).
+- Correctif (même jour, aucun badge visible) : la lecture joignait `players (nhl_id)` sans clé étrangère → PGRST200, liste vide en silence. Remplacée par deux lectures (table, puis `nhl_id` par lots), clé de cache `v2`. Filtres ajoutés : « LNH et AHL / Sans les joueurs en AHL / En AHL seulement » (Meilleurs disponibles), bouton « En AHL » (`/statistiques`).
 
 ### 2026-11-03
 

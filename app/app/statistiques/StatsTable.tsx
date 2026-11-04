@@ -123,6 +123,7 @@ export default function StatsTable({
   const [search, setSearch] = useState('')
   const [selectedTeam, setSelectedTeam] = useState('')
   const [availOnly, setAvailOnly] = useState(false)
+  const [ahlOnly, setAhlOnly] = useState(false)
   const [positionFilter, setPositionFilter] = useState<'all' | 'forward' | 'defense'>('all')
 
   const takenIdSet = useMemo(() => new Set(takenNhlIds), [takenNhlIds])
@@ -157,6 +158,7 @@ export default function StatsTable({
     return skaters
       .filter(s => {
         if (availOnly && !isAvailable(s.id, s.firstName, s.lastName)) return false
+        if (ahlOnly && !ahlTeamByNhlId[s.id]) return false
         if (selectedTeam && s.teamAbbrev !== selectedTeam) return false
         if (positionFilter === 'defense' && s.position !== 'D') return false
         if (positionFilter === 'forward' && s.position === 'D') return false
@@ -169,13 +171,14 @@ export default function StatsTable({
       })
       .sort((a, b) => b.points - a.points || b.goals - a.goals || a.lastName.localeCompare(b.lastName))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [skaters, search, selectedTeam, availOnly, positionFilter, takenSet])
+  }, [skaters, search, selectedTeam, availOnly, ahlOnly, positionFilter, takenSet])
 
   const filteredGoalies = useMemo(() => {
     const q = normalizeSearch(search.trim())
     return goalies
       .filter(g => {
         if (availOnly && !isAvailable(g.id, g.firstName, g.lastName)) return false
+        if (ahlOnly && !ahlTeamByNhlId[g.id]) return false
         if (selectedTeam && g.teamAbbrev !== selectedTeam) return false
         if (q) {
           const name = normalizeSearch(`${g.firstName} ${g.lastName}`)
@@ -186,14 +189,14 @@ export default function StatsTable({
       })
       .sort((a, b) => b.wins - a.wins || b.shutouts - a.shutouts || a.lastName.localeCompare(b.lastName))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [goalies, search, selectedTeam, availOnly, takenSet])
+  }, [goalies, search, selectedTeam, availOnly, ahlOnly, takenSet])
 
   const tabClass = (t: Tab) =>
     `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
       tab === t ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
     }`
 
-  const hasFilters = search || selectedTeam || availOnly || positionFilter !== 'all'
+  const hasFilters = search || selectedTeam || availOnly || ahlOnly || positionFilter !== 'all'
 
   return (
     <div>
@@ -286,6 +289,17 @@ export default function StatsTable({
           <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
           {gameMode === 'series' ? 'Libres' : 'Disponibles'}
         </button>
+        <button
+          type="button"
+          onClick={() => setAhlOnly(v => !v)}
+          className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+            ahlOnly
+              ? 'border-violet-500 bg-violet-50 text-violet-700 font-medium'
+              : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          En AHL
+        </button>
         {tab === 'skaters' && (
           <div className="flex gap-1">
             {(['all', 'forward', 'defense'] as const).map(pos => (
@@ -307,7 +321,7 @@ export default function StatsTable({
         {hasFilters && (
           <button
             type="button"
-            onClick={() => { setSearch(''); setSelectedTeam(''); setAvailOnly(false); setPositionFilter('all') }}
+            onClick={() => { setSearch(''); setSelectedTeam(''); setAvailOnly(false); setAhlOnly(false); setPositionFilter('all') }}
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
           >
             Effacer

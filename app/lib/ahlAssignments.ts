@@ -18,15 +18,30 @@ export type AhlInfo = { teamCode: string; teamName: string; since: string }
 
 type AhlRow = AhlInfo & { playerId: number; nhlId: number | null }
 
+const ID_CHUNK = 300
+
 async function loadAhlRows(): Promise<AhlRow[]> {
-  const { data, error } = await createAdminClient()
+  const admin = createAdminClient()
+  // Pas de jointure `players (nhl_id)` : la table n'a pas de clé étrangère (règle du projet),
+  // PostgREST refuserait alors toute la requête (PGRST200) — d'où deux lectures.
+  const { data, error } = await admin
     .from('player_ahl_assignments')
-    .select('player_id, ahl_team_code, ahl_team_name, since, players (nhl_id)')
-  if (error || !data) return []
+    .select('player_id, ahl_team_code, ahl_team_name, since')
+    .order('player_id')
+    .range(0, 4999)
+  if (error || !data) {
+    if (error) console.error('player_ahl_assignments', error.message)
+    return []
+  }
+  const ids = data.map(r => r.player_id as number)
+  const nhlById = new Map<number, number | null>()
+  for (let i = 0; i < ids.length; i += ID_CHUNK) {
+    const { data: players } = await admin.from('players').select('id, nhl_id').in('id', ids.slice(i, i + ID_CHUNK))
+    for (const p of players ?? []) nhlById.set(p.id as number, (p.nhl_id as number | null) ?? null)
+  }
   return data.map(r => ({
     playerId: r.player_id as number,
-    // Relation many-to-one : objet simple, pas un tableau (même piège que player_injuries).
-    nhlId: (r.players as unknown as { nhl_id: number | null } | null)?.nhl_id ?? null,
+    nhlId: nhlById.get(r.player_id as number) ?? null,
     teamCode: r.ahl_team_code as string,
     teamName: r.ahl_team_name as string,
     since: r.since as string,
@@ -35,7 +50,7 @@ async function loadAhlRows(): Promise<AhlRow[]> {
 
 const cachedAhlRows = unstable_cache(
   async (_version: number) => loadAhlRows(),
-  ['ahl-assignments-v1'],
+  ['ahl-assignments-v2'],
   { revalidate: 86_400 },
 )
 
