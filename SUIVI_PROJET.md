@@ -24,6 +24,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 **[Fix] — Retour de LTIR : l'actif désactivé en échange peut retourner en banque de recrues** (`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `gestion-effectifs/actions.ts`, `aide/LtirRulesContent.tsx`) :
 - Signalé par Vincent (via David) : impossible de réintégrer Suzuki (LTIR) en renvoyant Viggo Björck (actif, repêché par le pool en 2026) en banque. Dans « Retour LTIR », le joueur désactivé en échange n'avait que Réserviste ou LTIR. Masse, composition et délai étaient corrects (vérifié en prod : 12/6/2, 450 375 $ sous le plafond).
 - Ajout de « Banque de recrues », proposé seulement si le joueur est encore protégé (`recrueEligible`) ; `deactivateNewType` accepte `'recrue'`, et `deactivate()` revérifiait déjà la protection côté serveur. Contournement en attendant : changement de statut vers la banque + Retour LTIR sans échange, dans le même lot.
+- Commit `e0e32a5`, validé par David, promu en prod le 2026-11-05 avec le badge « Scratch » (`80a0c5d`).
 
 ### 2026-11-04
 
