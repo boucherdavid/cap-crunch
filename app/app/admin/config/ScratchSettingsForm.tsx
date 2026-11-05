@@ -41,7 +41,7 @@ export default function ScratchSettingsForm() {
       <div>
         <h2 className="text-sm font-semibold text-gray-800">Joueurs laissés de côté</h2>
         <p className="text-xs text-gray-500 mt-1">
-          Un badge (icône de banc) apparaît sur un joueur de l&apos;alignement d&apos;une équipe de la LNH qui n&apos;a joué aucun
+          Un badge « Scratch » (healthy scratch) apparaît sur un joueur de l&apos;alignement d&apos;une équipe de la LNH qui n&apos;a joué aucun
           des derniers matchs de son équipe sans être blessé. Nombre de matchs consécutifs avant le badge
           ({DEFAULT_SCRATCH_SKATER_GAMES}{' '}pour les patineurs et {DEFAULT_SCRATCH_GOALIE_GAMES}{' '}pour les gardiens par défaut).
         </p>

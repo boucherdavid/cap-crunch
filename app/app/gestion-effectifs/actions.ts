@@ -100,7 +100,9 @@ export type BatchActionInput = {
   ltirEntryId?: number
   returnLtirEntryId?: number
   deactivateActifId?: number
-  deactivateNewType?: 'reserviste' | 'ltir'
+  // 'recrue' (David, 2026-11-05 — cas Suzuki/Björck) : renvoyer en banque un actif encore protégé
+  // pendant qu'un joueur revient de LTIR ; deactivate() revérifie la protection.
+  deactivateNewType?: 'reserviste' | 'ltir' | 'recrue'
   // Retour de LTIR : statut choisi au retour (David, 2026-10-01) — 'actif' par défaut. Le joueur
   // à désactiver en échange (deactivateActifId) est facultatif : le reste de l'ajustement peut
   // se faire par d'autres actions du même lot.
