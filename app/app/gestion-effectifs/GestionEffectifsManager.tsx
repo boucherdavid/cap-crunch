@@ -1436,7 +1436,7 @@ export default function GestionEffectifsManager({
         {mainContent}
         {rosterPreview}
         <div className="lg:col-span-2 2xl:col-span-1">
-          <MovementHistoryPanel poolerId={poolerId || null} poolerName={poolerName} refreshKey={historyRefresh} saisonId={saisonId} excludePreseason />
+          <MovementHistoryPanel poolerId={poolerId || null} poolerName={poolerName} refreshKey={historyRefresh} saisonId={saisonId} excludePreseason fullWidth />
         </div>
       </div>
     </div>
