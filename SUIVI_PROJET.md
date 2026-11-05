@@ -19,6 +19,12 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-11-05
+
+**[Fix] — Retour de LTIR : l'actif désactivé en échange peut retourner en banque de recrues** (`app/app/gestion-effectifs/GestionEffectifsManager.tsx`, `gestion-effectifs/actions.ts`, `aide/LtirRulesContent.tsx`) :
+- Signalé par Vincent (via David) : impossible de réintégrer Suzuki (LTIR) en renvoyant Viggo Björck (actif, repêché par le pool en 2026) en banque. Dans « Retour LTIR », le joueur désactivé en échange n'avait que Réserviste ou LTIR. Masse, composition et délai étaient corrects (vérifié en prod : 12/6/2, 450 375 $ sous le plafond).
+- Ajout de « Banque de recrues », proposé seulement si le joueur est encore protégé (`recrueEligible`) ; `deactivateNewType` accepte `'recrue'`, et `deactivate()` revérifiait déjà la protection côté serveur. Contournement en attendant : changement de statut vers la banque + Retour LTIR sans échange, dans le même lot.
+
 ### 2026-11-04
 
 **[Feat] — Badge « AHL » : joueurs renvoyés dans la Ligue américaine** (`python_script/scrape_ahl_assignments.py`, `.github/workflows/ahl_assignments.yml`, `supabase_migrations/player_ahl_assignments.sql`, `app/lib/ahlAssignments.ts`, `app/components/AhlBadge.tsx` + pages) :

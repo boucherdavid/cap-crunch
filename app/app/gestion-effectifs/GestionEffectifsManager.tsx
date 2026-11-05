@@ -53,7 +53,7 @@ type CartItem = {
   ltirEntry?: RosterEntry
   returnLtirEntry?: RosterEntry
   deactivateActifEntry?: RosterEntry
-  deactivateNewType?: 'reserviste' | 'ltir'
+  deactivateNewType?: 'reserviste' | 'ltir' | 'recrue'
   returnNewType?: 'actif' | 'reserviste'
   releaseEntry?: RosterEntry
   newPlayerEntry?: RosterEntry
@@ -428,7 +428,7 @@ export default function GestionEffectifsManager({
   const [addEntry2Id, setAddEntry2Id]       = useState(0)
   const [addNewType2, setAddNewType2]       = useState<RosterStatus | ''>('')
   const [addDeactifId, setAddDeactifId]     = useState(0)
-  const [addDeactifNewType, setAddDeactifNewType] = useState<'reserviste' | 'ltir'>('reserviste')
+  const [addDeactifNewType, setAddDeactifNewType] = useState<'reserviste' | 'ltir' | 'recrue'>('reserviste')
   const [addReturnNewType, setAddReturnNewType] = useState<'actif' | 'reserviste'>('actif')
   const [addLtirId, setAddLtirId]           = useState(0)
   const [addReturnLtirId, setAddReturnLtirId] = useState(0)
@@ -688,7 +688,7 @@ export default function GestionEffectifsManager({
         if (!ret) return null
         return {
           localId, type: 'return_ltir',
-          label: `Retour LTIR : ${ret.lastName} → ${addReturnNewType === 'actif' ? 'ACT' : 'RÉS'}${act ? ` / ${act.lastName} → ${addDeactifNewType === 'ltir' ? 'LTIR' : 'RÉS'}` : ''}`,
+          label: `Retour LTIR : ${ret.lastName} → ${addReturnNewType === 'actif' ? 'ACT' : 'RÉS'}${act ? ` / ${act.lastName} → ${addDeactifNewType === 'ltir' ? 'LTIR' : addDeactifNewType === 'recrue' ? 'REC' : 'RÉS'}` : ''}`,
           returnLtirEntry: ret, returnNewType: addReturnNewType,
           deactivateActifEntry: act, deactivateNewType: act ? addDeactifNewType : undefined,
         }
@@ -939,17 +939,27 @@ export default function GestionEffectifsManager({
             </div>
             {addReturnNewType === 'actif' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <EntrySelect label="Actif à désactiver en échange (facultatif)" entries={projected.actifs} value={addDeactifId} onChange={setAddDeactifId} />
+                <EntrySelect
+                  label="Actif à désactiver en échange (facultatif)"
+                  entries={projected.actifs}
+                  value={addDeactifId}
+                  onChange={id => {
+                    setAddDeactifId(id)
+                    // « Banque de recrues » seulement pour un joueur encore protégé.
+                    if (addDeactifNewType === 'recrue' && !findEntry(id)?.recrueEligible) setAddDeactifNewType('reserviste')
+                  }}
+                />
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ce joueur devient</label>
                   <select
                     value={addDeactifNewType}
-                    onChange={e => setAddDeactifNewType(e.target.value as 'reserviste' | 'ltir')}
+                    onChange={e => setAddDeactifNewType(e.target.value as 'reserviste' | 'ltir' | 'recrue')}
                     disabled={!addDeactifId}
                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-400"
                   >
                     <option value="reserviste">Réserviste</option>
                     <option value="ltir">LTIR (coïncide avec une nouvelle blessure)</option>
+                    {findEntry(addDeactifId)?.recrueEligible && <option value="recrue">Banque de recrues</option>}
                   </select>
                 </div>
               </div>
