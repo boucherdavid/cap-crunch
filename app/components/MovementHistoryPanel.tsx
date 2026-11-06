@@ -21,12 +21,15 @@ export default function MovementHistoryPanel({
   refreshKey,
   saisonId,
   excludePreseason,
+  fullWidth = false,
 }: {
   poolerId: string | null
   poolerName?: string
   refreshKey: number
   saisonId?: number
   excludePreseason?: boolean
+  /** Prend la largeur de sa cellule de grille (Gestion d'effectifs admin) au lieu de 320 px fixes. */
+  fullWidth?: boolean
 }) {
   const [mode, setMode] = useState<'pooler' | 'all'>('pooler')
   const [events, setEvents] = useState<MovementEvent[]>([])
@@ -47,7 +50,7 @@ export default function MovementHistoryPanel({
   }, [poolerId, mode, refreshKey, saisonId, excludePreseason])
 
   return (
-    <div className="w-full lg:w-80 shrink-0 lg:sticky lg:top-4 self-start bg-white rounded-lg shadow flex flex-col max-h-[60vh] lg:max-h-[calc(100vh-2rem)]">
+    <div className={`w-full ${fullWidth ? '' : 'lg:w-80'} shrink-0 lg:sticky lg:top-16 self-start bg-white rounded-lg shadow flex flex-col max-h-[60vh] lg:max-h-[calc(100vh-5rem)]`}>
       <div className="p-4 border-b space-y-2">
         <h2 className="font-semibold text-gray-700 text-sm">Historique des mouvements</h2>
         <div className="flex border-b -mb-2">

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { CHANGE_LABEL, CHANGE_COLOR } from '@/lib/rosterChangeLabels'
+import { JOURNAL_NOTES_BALLOTAGE, JOURNAL_NOTES_GESTION } from '@/lib/transactionJournal'
 
 export type MovementEvent = {
   id: string
@@ -83,9 +84,11 @@ export async function getMovementHistoryAction(
     .limit(limit)
   if (txIds) txQuery = txQuery.in('id', txIds)
   if (saisonId) txQuery = txQuery.eq('pool_season_id', saisonId)
-  if (excludeNotes && excludeNotes.length > 0) {
-    txQuery = txQuery.not('notes', 'in', `(${excludeNotes.map(n => `"${n}"`).join(',')})`)
-  }
+  // En-têtes des lots de Gestion d'effectifs et du ballotage (David, 2026-11-05) : leurs mouvements
+  // sont déjà listés un par un depuis roster_change_log — l'en-tête seul (« Transaction / Gestion
+  // d'effectifs ») faisait double emploi sans rien apprendre de plus.
+  const hiddenNotes = [JOURNAL_NOTES_GESTION, JOURNAL_NOTES_BALLOTAGE, ...(excludeNotes ?? [])]
+  txQuery = txQuery.not('notes', 'in', `(${hiddenNotes.map(n => `"${n}"`).join(',')})`)
   const { data: txr } = await txQuery
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

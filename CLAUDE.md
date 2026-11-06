@@ -727,7 +727,7 @@ composant, pas de `?subtab=`), donc pas d'accès par URL directe comme pour `/ad
 | `/admin/pool` | `poolers` Poolers · `config` Configuration (sous-onglets `Saisons` / `Général` / `Pointage Saison` — `Général` = ex-"Pool Saison", renommé le 2026-09-01 ; y sont aussi les chronos de repêchage, le délai du ballotage et les seuils du badge « Scratch », `ScratchSettingsForm.tsx`) |
 | `/admin/communaute` | `communication` Communication (feedback + notifs, filtrables par type — `NotificationsList.tsx`, type déduit du titre : tout nouveau titre de `sendPushToAdmins` s'ajoute à `KINDS` ; « Mouvements » = lots soumis par un pooler, `lib/adminRosterNotice.ts`, jamais pour un admin qui agit ; « Ballotage » = résumé à l'attribution et ballotage bloqué) · `babillard` Babillard (publier/supprimer des communications, ajouté le 2026-09-02) · `suivi` Suivi (activité) · `planification` Planification (sondage type Doodle, admin) |
 | `/admin/init` | `rosters` Rosters initiaux · `recrues` Banque de recrues · `choix` Choix de repêchage (← réassigner le propriétaire d'un pick échangé hors-app) — réglages one-shot déjà en place pour la saison courante |
-| `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `approbation` Approbation (transactions entre poolers en attente, `TradeApprovalManager.tsx` — onglet ajouté le 2026-09-21) · `historique` Historique (saisie historique manuelle) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) · `marqueur` Marqueur (écarts avec notre pool sur Marqueur.com, 2026-10-05) |
+| `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `approbation` Approbation (transactions entre poolers en attente, `TradeApprovalManager.tsx` — onglet ajouté le 2026-09-21) · `historique` Historique (saisie historique manuelle) · `corrections` Corrections (lots de Gestion d'effectifs/ballotage déjà faits par un pooler : changer la date, le statut d'un joueur, ou annuler le lot — voir section 6) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) · `marqueur` Marqueur (écarts avec notre pool sur Marqueur.com, 2026-10-05) |
 | `/admin/donnees` | `pipeline` Pipeline salaires/contrats/repêchages (« Salaires modifiés » — alertes `contract_change_alerts` avec bouton Vu, 2026-10-26 ; mises à jour automatiques ; doc ; `PlayerMerge`) · `prospects` Classement des prospects |
 | `/admin/series` | pas d'onglets — vue unique (avancement des séries), message si aucune saison séries active. Retiré du dropdown Admin le 2026-08-28 (ne servait qu'aux tests, pas d'usage normal du pool des séries) — route et code conservés, toujours atteignable directement par URL. Depuis le 2026-08-30, également retiré du sous-menu "Pool Séries" côté pooler (voir ci-dessous) — plus aucun point d'entrée dans la nav, seulement l'URL directe |
 
@@ -1742,6 +1742,16 @@ Pas pour une mise sur LTIR. Côté écran : `RosterEntry.undoableToday`.
 **Remise en banque de recrues** (David, 2026-10-16) : déclenche aussi le délai (`changement_type`
 vers `recrue`, filtre partagé `REACTIVATION_DELAY_FILTER`, `lib/gameDayLock.ts`), avec la même
 annulation le jour même — avant, banque puis réactivation contournait le délai (Fowler, Vincent).
+
+**Corrections de mouvements des poolers** (`/admin/effectifs?tab=corrections`, `admin/effectifs/correction-actions.ts`
+— David, 2026-11-05) : un lot = une transaction « Gestion d'effectifs »/« Ballotage » du journal, jumelée à
+ses lignes `roster_change_log` par la date effective (115/115 lots de 2026-27 vérifiés). Trois corrections,
+toujours répercutées sur `pooler_rosters` : date effective (8 h ET, refusée si elle croise un autre mouvement
+du même joueur), statut de destination d'un mouvement, annulation du lot (arrivée → ligne supprimée et
+ballotage remis « à compléter » ; libération → joueur rétabli et ballotage vide supprimé ; statut → ancien
+statut ; lignes du journal retirées). Refusé si un joueur du lot a bougé depuis, ou est passé chez un autre
+pooler. Alignement non conforme après coup = avertissement, jamais un blocage (admin). Avis push au pooler.
+Pas pour les échanges entre poolers.
 
 **Journal des lots de Gestion d'effectifs** (David, 2026-10-16) : `submitBatchAction` écrit une
 `transactions` par lot (note « Gestion d'effectifs », ou « Ballotage » — la contrainte de

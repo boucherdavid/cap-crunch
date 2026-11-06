@@ -13,6 +13,7 @@ import LtirApprovalManager from './LtirApprovalManager'
 import LtirSettingsForm from './LtirSettingsForm'
 import { fetchLtirSettings } from '@/lib/injuries'
 import MarqueurReportView from './MarqueurReportView'
+import CorrectionsManager from './CorrectionsManager'
 import { buildMarqueurReport, type MarqueurReport } from '@/lib/marqueur'
 import type { LtirSettings } from '@/lib/ltirEligibility'
 import { loadCapWatchDataAction, getPendingTradeOffersForAdminAction, getPendingLtirRequestsForAdminAction, getSharedTradeChatsForAdminAction, type SharedTradeChatView } from './cap-watch-actions'
@@ -24,6 +25,7 @@ const TABS = [
   { id: 'transactions', label: 'Transactions' },
   { id: 'approbation',  label: 'Approbation' },
   { id: 'historique',   label: 'Historique' },
+  { id: 'corrections',  label: 'Corrections' },
   { id: 'conformite',   label: 'Conformité cap' },
   { id: 'marqueur',     label: 'Marqueur' },
 ]
@@ -129,6 +131,18 @@ export default async function AdminEffectifsPage({
     }
   }
 
+  // ── Corrections de mouvements des poolers (David, 2026-11-05) ─────────────
+  let poolersCorr: { id: string; name: string }[] = []
+  let saisonCorrId: number | null = null
+  if (activeTab === 'corrections') {
+    const [pr, sr] = await Promise.all([
+      supabase.from('poolers').select('id, name').order('name'),
+      supabase.from('pool_seasons').select('id').eq('is_active', true).eq('is_playoff', false).single(),
+    ])
+    poolersCorr = (pr.data ?? []) as { id: string; name: string }[]
+    saisonCorrId = (sr.data?.id as number | undefined) ?? null
+  }
+
   // ── Comparaison avec Marqueur.com (David, 2026-10-05) ──────────────────────
   let marqueurReport: MarqueurReport | null = null
   if (activeTab === 'marqueur') marqueurReport = await buildMarqueurReport()
@@ -136,6 +150,15 @@ export default async function AdminEffectifsPage({
   return (
     <div>
       <AdminTabBar tabs={TABS} activeTab={activeTab} basePath="/admin/effectifs" />
+
+      {/* ── Corrections ── */}
+      {activeTab === 'corrections' && (
+        <div className="max-w-5xl">
+          {saisonCorrId
+            ? <CorrectionsManager poolers={poolersCorr} saisonId={saisonCorrId} />
+            : <p className="text-sm text-gray-500">Aucune saison régulière active.</p>}
+        </div>
+      )}
 
       {/* ── Marqueur ── */}
       {activeTab === 'marqueur' && marqueurReport && <MarqueurReportView report={marqueurReport} />}
