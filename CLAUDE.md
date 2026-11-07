@@ -1719,7 +1719,10 @@ un rafraîchissement déclenché par l'action (`refreshPoolerTodo()`) ou une not
 **Gestion d'effectifs — colonne « Alignement » (David, 2026-10-02)** : `RosterPreview.tsx` affiche
 l'alignement du pooler à côté du formulaire, et l'alignement projeté (changements surlignés) dès
 que le panier a du contenu — remplace l'ancien bloc « État projeté ». Pooler : 2 colonnes à partir
-de `lg` ; admin : 3 colonnes (formulaire, alignement, historique) à partir de `2xl`. Les onglets
+de `lg` ; admin : 3 colonnes (formulaire, alignement, historique) à partir de `2xl`, l'historique en
+pleine largeur dessous entre `lg` et `2xl` (`MovementHistoryPanel` `fullWidth`, 2026-11-05 — il gardait
+320 px collés à gauche). Le panneau n'affiche plus les en-têtes de journal « Gestion d'effectifs » et
+« Ballotage » (doublons des mouvements déjà listés, `movement-history-actions.ts`). Les onglets
 Ballotage et Échanges affichent aussi l'alignement à droite ; dans Échanges, il reflète en direct
 la proposition en préparation (`TradeDraft`), et un scénario de `/simulation` peut y être chargé.
 
@@ -1804,7 +1807,10 @@ le type brut s'affiche.
   les deux peuvent être mis sur LTIR (demande, boutons pré-saison, Gestion d'effectifs). Avec
   LTIR + signature, le remplaçant prend le statut du joueur remplacé. **Retour de LTIR** : statut
   au choix (`returnNewType` : `actif` ou `reserviste`), actif à désactiver en échange facultatif ;
-  ouvert aux poolers depuis le 2026-10-05 (voir ci-dessus).
+  ouvert aux poolers depuis le 2026-10-05 (voir ci-dessus). L'actif désactivé en échange va en
+  réserve, sur LTIR, ou en **banque de recrues** s'il est encore protégé (`deactivateNewType`
+  `'recrue'`, option affichée seulement si `recrueEligible` ; `deactivate()` revérifie — David,
+  2026-11-05, cas Suzuki/Björck de Vincent).
 - Jusqu'ici, `ltir`/`ltir_sign` (mettre un actif sur LTIR, avec ou sans signer un remplaçant)
   étaient marqués `adminOnly` dans `ACTION_DEFS` (`GestionEffectifsManager.tsx`) — un pooler ne
   voyait même pas le bouton, seul l'admin pouvait le faire (en pratique, sur demande hors-app
@@ -1909,7 +1915,8 @@ téléphone : tout ce qui est masqué en portrait revient automatiquement en pay
 - Barres d'onglets : `overflow-x-auto` + `whitespace-nowrap shrink-0` sur les boutons.
 - Colonne latérale fixe (ex : `MovementHistoryPanel`, `w-80`) : dessous sous `lg`
   (`flex flex-col lg:flex-row`, `w-full lg:w-80`) — sinon elle écrase le contenu principal
-  même en paysage.
+  même en paysage. Placée dans une cellule de grille plutôt qu'un flex : `fullWidth`, pour
+  qu'elle prenne la largeur de la cellule.
 - **Carte secondaire repliée sur téléphone seulement** : `app/components/MobileFold.tsx`
   (David, 2026-10-09 — accueil : activité, marché, blessures, signatures, actualité). Premier
   enfant = en-tête, le reste se déplie d'un toucher ; toujours ouvert à partir de `sm`.
