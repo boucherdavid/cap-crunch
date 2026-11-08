@@ -128,7 +128,7 @@ export default function AdminApprovalsPanel() {
                             A joué le {fmtDay(w.firstGameDate)}.{' '}
                             {w.overdue
                               ? <>Délai dépassé ({fmtDay(w.deadlineDay)}) : à toi de décider de la suite.</>
-                              : <>À remettre dans l&apos;alignement d&apos;ici le {fmtDay(w.deadlineDay)}, 23 h 59.</>}
+                              : <>{w.unlockDay && <>Réintégrable à partir du {fmtDay(w.unlockDay)} (durée minimale).{' '}</>}À remettre dans l&apos;alignement d&apos;ici le {fmtDay(w.deadlineDay)}, 23 h 59.</>}
                           </p>
                         ) : (
                           <p className="text-sm text-gray-600 mt-0.5">N&apos;est plus listé blessé par aucune source, mais n&apos;a pas encore joué. À surveiller.</p>

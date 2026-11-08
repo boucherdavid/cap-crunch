@@ -21,6 +21,10 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-11-08
 
+**[Fix] — Retour de LTIR : « réintégrable à partir du … » affiché** (`app/lib/ltirReturns.ts`, `gestion-effectifs/GestionEffectifsManager.tsx`, `components/AdminApprovalsPanel.tsx`, `components/pooler-todo-actions.ts`) :
+- Capture de David (Levi) : le bandeau « De retour au jeu » donnait la date limite (27 nov.) mais pas la date à partir de laquelle la réintégration est permise (13 nov., fin de la durée minimale).
+- `fetchLtirUnlockDays()` (une lecture bornée par saison et joueurs) fournit `unlockDay` à `listOpenLtirReturnWatches` et au panneau « À faire » ; affiché dans le bandeau, « À faire » et le panneau Approbations, seulement tant que la date n'est pas arrivée.
+
 **[Feat] — Règle contournée par l'admin, indiquée publiquement** (`app/app/gestion-effectifs/actions.ts`, `GestionEffectifsManager.tsx`, `poolers/[id]/page.tsx`, `PoolerPageTabs.tsx`, `components/movement-history-actions.ts`, `journal-transactions/page.tsx`, `TransactionsClient.tsx`, `aide/AideTabs.tsx`, `supabase_migrations/override_note.sql`) :
 - En testant la durée minimale LTIR sur son propre alignement, David n'a pas été bloqué (admin). Choix de David : l'admin doit pouvoir le faire, mais de façon transparente (il en discute d'abord avec les poolers).
 - `submitBatchAction` vérifie maintenant aussi les règles pour l'admin (sauf approbation d'une demande de LTIR) et, au lieu de bloquer, note chaque contournement (`violate()`) : durée minimale LTIR, délai de réactivation, composition/plafond, budget de signatures, ballotage. Note écrite sur les mouvements du lot et sur la transaction (`override_note`, écriture à part — le lot n'échoue jamais si la colonne manque). Affichée : badge « Règle contournée (admin) » (historique de `/poolers/[id]`), panneau des mouvements, Journal des activités ; avertissement à l'admin avant (formulaire) et après (message de soumission) ; `/aide`.

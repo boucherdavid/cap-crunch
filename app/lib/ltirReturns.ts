@@ -52,6 +52,8 @@ export type LtirReturnWatchView = {
   firstGameDate: string | null
   /** Dernier jour permis (YYYY-MM-DD, heure de l'Est) — null pour 'not_injured'. */
   deadlineDay: string | null
+  /** Premier jour où il peut être réintégré (fin de la durée minimale), si pas encore arrivé. */
+  unlockDay: string | null
   overdue: boolean
 }
 
@@ -413,6 +415,36 @@ async function runSync(): Promise<void> {
   }
 }
 
+/**
+ * Premier jour (AAAA-MM-JJ, heure de l'Est) où chaque joueur sur LTIR peut être réintégré — fin de
+ * la durée minimale (`pool_seasons.duree_min_ltir_jours`, David 2026-11-08). Seulement les dates
+ * pas encore arrivées ; clé `pooler::joueur`. Une lecture bornée par saison, pooler et joueurs.
+ */
+export async function fetchLtirUnlockDays(
+  db: AdminDb, poolSeasonId: number, entries: { poolerId: string; playerId: number }[],
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  if (entries.length === 0) return out
+  const [{ data: season }, { data: rows }] = await Promise.all([
+    db.from('pool_seasons').select('duree_min_ltir_jours').eq('id', poolSeasonId).maybeSingle(),
+    db.from('roster_change_log').select('pooler_id, player_id, changed_at')
+      .eq('pool_season_id', poolSeasonId).eq('new_type', 'ltir')
+      .in('player_id', [...new Set(entries.map(e => e.playerId))])
+      .order('changed_at', { ascending: false }),
+  ])
+  const days = (season?.duree_min_ltir_jours as number | null) ?? 0
+  if (days <= 0) return out
+  const today = getTodayET()
+  const wanted = new Set(entries.map(e => `${e.poolerId}::${e.playerId}`))
+  for (const r of (rows ?? []) as { pooler_id: string; player_id: number; changed_at: string }[]) {
+    const k = `${r.pooler_id}::${r.player_id}`
+    if (!wanted.has(k) || out.has(k)) continue  // rangées triées : la plus récente d'abord
+    const unlock = reactivationUnlockDay(r.changed_at, days)
+    if (unlock > today) out.set(k, unlock)
+  }
+  return out
+}
+
 /** Suivis ouverts de la saison — d'un pooler (`poolerId`) ou de tout le pool (admin). */
 export async function listOpenLtirReturnWatches(poolSeasonId: number, poolerId?: string): Promise<LtirReturnWatchView[]> {
   const admin = createAdminClient()
@@ -436,7 +468,9 @@ export async function listOpenLtirReturnWatches(poolSeasonId: number, poolerId?:
     poolers: { name: string } | null
     players: { first_name: string; last_name: string } | null
   }
-  return ((data ?? []) as unknown as Row[]).map(r => ({
+  const rows = (data ?? []) as unknown as Row[]
+  const unlocks = await fetchLtirUnlockDays(admin, poolSeasonId, rows.map(r => ({ poolerId: r.pooler_id, playerId: r.player_id })))
+  return rows.map(r => ({
     id: r.id,
     poolerId: r.pooler_id,
     poolerName: r.poolers?.name ?? '',
@@ -445,6 +479,7 @@ export async function listOpenLtirReturnWatches(poolSeasonId: number, poolerId?:
     reason: r.reason,
     firstGameDate: r.first_game_date,
     deadlineDay: deadlineDayOf(r.deadline_at),
+    unlockDay: unlocks.get(`${r.pooler_id}::${r.player_id}`) ?? null,
     overdue: !!r.deadline_at && Date.now() >= new Date(r.deadline_at).getTime(),
   }))
 }

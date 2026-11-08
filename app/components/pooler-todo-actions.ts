@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { fetchLtirUnlockDays } from '@/lib/ltirReturns'
 
 /**
  * Ce qui attend une action du pooler connecté (David, 2026-10-03) — alimente le bouton « À faire »
@@ -71,7 +72,7 @@ export async function getPoolerTodoAction(seenSince: string | null): Promise<Poo
     db.from('waiver_claim_requests').select('waiver_claim_id').eq('pooler_id', me),
     // Une erreur (migration absente) donne simplement `data: null` → aucun élément.
     db.from('ltir_return_watch')
-      .select('id, deadline_at, first_game_date, players (first_name, last_name)')
+      .select('id, player_id, deadline_at, first_game_date, players (first_name, last_name)')
       .eq('pool_season_id', season.id).eq('pooler_id', me).eq('reason', 'played').is('resolved_at', null),
     db.from('ltir_requests')
       .select('id, submitted_at, ltir_player:players!ltir_player_id (first_name, last_name)')
@@ -95,14 +96,20 @@ export async function getPoolerTodoAction(seenSince: string | null): Promise<Poo
   const now = Date.now()
 
   // Retours de LTIR en premier : c'est ce qui a une date limite ferme.
-  for (const r of (returns ?? []) as unknown as { id: number; deadline_at: string | null; players: Named }[]) {
+  const returnRows = (returns ?? []) as unknown as { id: number; player_id: number; deadline_at: string | null; players: Named }[]
+  const unlocks = await fetchLtirUnlockDays(db, season.id, returnRows.map(r => ({ poolerId: me, playerId: r.player_id })))
+  for (const r of returnRows) {
     const overdue = !!r.deadline_at && now >= new Date(r.deadline_at).getTime()
+    const unlock = unlocks.get(`${me}::${r.player_id}`)
+    const unlockText = unlock
+      ? `Réintégrable à partir du ${new Date(`${unlock}T12:00:00Z`).toLocaleDateString('fr-CA', { day: 'numeric', month: 'long', timeZone: 'America/Toronto' })} (durée minimale). `
+      : ''
     items.push({
       key: `ltir-return-${r.id}`,
       title: `De retour au jeu : ${fullName(r.players)}`,
       detail: overdue
         ? `Délai dépassé (${fmtDay(r.deadline_at, true)}) : remets-le dans ton alignement dès que possible.`
-        : `À remettre dans ton alignement d'ici le ${fmtDay(r.deadline_at, true)}, 23 h 59.`,
+        : `${unlockText}À remettre dans ton alignement d'ici le ${fmtDay(r.deadline_at, true)}, 23 h 59.`,
       href: EFFECTIFS,
       urgent: overdue,
     })
