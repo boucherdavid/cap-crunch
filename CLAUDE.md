@@ -1769,6 +1769,15 @@ Lots antérieurs : `python_script/backfill_journal_gestion.py` (dry-run, `--appl
   réintégré par son pooler dans `app_settings.ltir_return_deadline_days` jours (défaut 14, réglé
   avec les autres seuils LTIR). Jusqu'à 23 h 59 ET du dernier jour, délai compté à partir de la
   détection. Pendant le délai, rien ne change : aucun point, salaire hors masse.
+- **Durée minimale sur LTIR** (`pool_seasons.duree_min_ltir_jours`, 14 en 2026-27 — David,
+  2026-11-08, cas Levi) : un joueur mis sur LTIR y reste au moins N jours civils (heure de l'Est,
+  `reactivationUnlockDay`), même s'il rejoue. `submitBatchAction` refuse un Retour LTIR d'un pooler
+  avant la fin, **sauf** si le même lot met sur LTIR (`ltir`/`ltir_sign`) un joueur de la même
+  position admissible au LTIR (badge vert, pas « de retour au jeu ») — un pour un ; pour un pooler,
+  ce lot passe par l'approbation (demande de LTIR + `extra_actions`). Même règle à l'écran
+  (`RosterEntry.ltirSince`, `ltirMinBlocked`). Admin jamais bloqué. Rejoue avant la fin : la date
+  limite de réintégration part de la fin de la durée minimale (`deadlineFor`, `lib/ltirReturns.ts`),
+  avis qui le dit ; un suivi déjà ouvert avec une date trop tôt est corrigé sans nouvel avis.
 - **Le pooler fait le retour lui-même** : action « Retour LTIR » de Gestion d'effectifs ouverte à
   tous (effet immédiat, `validateRosterLimits`), bandeau ambre/rouge avec « Préparer le retour ».
 - Notifications push + courriel au pooler **et à tous les admins** : détection, rappel 2 jours

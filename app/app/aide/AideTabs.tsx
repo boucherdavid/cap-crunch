@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import type { LtirSettings } from '@/lib/ltirEligibility'
-import LtirRulesContent, { LtirSettingsContext } from './LtirRulesContent'
+import LtirRulesContent, { LtirMinDaysContext, LtirSettingsContext } from './LtirRulesContent'
 import CapFactorContent, { CapFactorContext, type CapFactorInfo } from './CapFactorContent'
 import SigningLimitsContent, { SigningLimitsContext, type SigningLimits } from './SigningLimitsContent'
 import WaiverDeadlineText, { WaiverDaysContext } from './WaiverDeadlineText'
@@ -986,7 +986,7 @@ function normalize(s: string) {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
 
-export default function AideTabs({ ltirSettings, signingLimits, capFactor, waiverClaimDays }: { ltirSettings: LtirSettings; signingLimits: SigningLimits | null; capFactor: CapFactorInfo | null; waiverClaimDays: number }) {
+export default function AideTabs({ ltirSettings, signingLimits, capFactor, waiverClaimDays, ltirMinDays = 0 }: { ltirSettings: LtirSettings; signingLimits: SigningLimits | null; capFactor: CapFactorInfo | null; waiverClaimDays: number; ltirMinDays?: number }) {
   const [activeTab, setActiveTab] = useState<TabId>('installation')
   const [query, setQuery] = useState('')
 
@@ -1007,6 +1007,7 @@ export default function AideTabs({ ltirSettings, signingLimits, capFactor, waive
 
   return (
     <LtirSettingsContext.Provider value={ltirSettings}>
+    <LtirMinDaysContext.Provider value={ltirMinDays}>
     <SigningLimitsContext.Provider value={signingLimits}>
     <CapFactorContext.Provider value={capFactor}>
     <WaiverDaysContext.Provider value={waiverClaimDays}>
@@ -1115,6 +1116,7 @@ export default function AideTabs({ ltirSettings, signingLimits, capFactor, waive
     </WaiverDaysContext.Provider>
     </CapFactorContext.Provider>
     </SigningLimitsContext.Provider>
+    </LtirMinDaysContext.Provider>
     </LtirSettingsContext.Provider>
   )
 }

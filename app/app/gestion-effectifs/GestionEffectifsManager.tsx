@@ -386,6 +386,7 @@ export default function GestionEffectifsManager({
   season,
   poolCap,
   delaiReactivationJours,
+  dureeMinLtirJours = 0,
   maxSignaturesAl,
   maxSignaturesLtir,
 }: {
@@ -402,6 +403,8 @@ export default function GestionEffectifsManager({
   season: string
   poolCap: number
   delaiReactivationJours: number
+  /** Durée minimale sur LTIR (jours civils) — voir submitBatchAction. */
+  dureeMinLtirJours?: number
   maxSignaturesAl: number
   maxSignaturesLtir: number
 }) {
@@ -541,6 +544,17 @@ export default function GestionEffectifsManager({
   }
   const blockedIds = blockedReactivations(roster, [...cartMoves(cart), ...formMoves], delaiReactivationJours)
   const returnLtirLocked  = !isAdmin && blockedIds.has(addReturnLtirId)
+  // Durée minimale sur LTIR (David, 2026-11-08) : levée seulement si le panier met sur LTIR un
+  // joueur de même position admissible au LTIR. Même règle que submitBatchAction (source de vérité).
+  const returnLtirEntry = addType === 'return_ltir' ? findEntry(addReturnLtirId) : undefined
+  const ltirMinUntil = !isAdmin && returnLtirEntry?.ltirSince && dureeMinLtirJours > 0
+    && isReactivationLocked(returnLtirEntry.ltirSince, dureeMinLtirJours)
+    ? formatUnlockDay(returnLtirEntry.ltirSince, dureeMinLtirJours) : null
+  const ltirSwapInCart = !!returnLtirEntry && cart.some(item =>
+    (item.type === 'ltir' || item.type === 'ltir_sign') && !!item.ltirEntry
+    && posCategory(item.ltirEntry.position) === posCategory(returnLtirEntry.position)
+    && !!item.ltirEntry.injury?.eligible && !item.ltirEntry.injury.backInAction)
+  const ltirMinBlocked = !!ltirMinUntil && !ltirSwapInCart
   const entry1Locked = !isAdmin && addNewType1 === 'actif' && blockedIds.has(addEntry1Id)
   const entry2Locked = !isAdmin && addNewType2 === 'actif' && blockedIds.has(addEntry2Id)
 
@@ -623,7 +637,7 @@ export default function GestionEffectifsManager({
       case 'ltir':
         return !!addLtirId
       case 'return_ltir':
-        return !!(addReturnLtirId && !(addReturnNewType === 'actif' && returnLtirLocked))
+        return !!(addReturnLtirId && !(addReturnNewType === 'actif' && returnLtirLocked) && !ltirMinBlocked)
       case 'ltir_sign':
         return !!(addLtirId && addNewPlayer && canAddLtirSign)
       case 'sign':
@@ -966,6 +980,16 @@ export default function GestionEffectifsManager({
             )}
             <p className="text-xs text-gray-500">Au besoin, ajoute d&apos;autres mouvements au même lot pour garder un alignement conforme.</p>
             {renderLockWarning(addReturnNewType === 'actif' ? findEntry(addReturnLtirId) : undefined, 'Ce joueur')}
+            {ltirMinUntil && (ltirSwapInCart ? (
+              <p className="text-xs text-green-700">
+                Durée minimale sur la LTIR levée : ton panier met sur la LTIR un joueur de la même position admissible au LTIR.
+              </p>
+            ) : (
+              <p className="text-xs text-orange-600">
+                Ce joueur doit rester sur la LTIR jusqu&apos;au {ltirMinUntil}{' '}(durée minimale de {dureeMinLtirJours}{' '}jours), même s&apos;il a rejoué.
+                Exception : ajoute d&apos;abord au panier la mise sur la LTIR d&apos;un joueur de la même position admissible au LTIR.
+              </p>
+            ))}
           </div>
         )
       case 'ltir_sign':

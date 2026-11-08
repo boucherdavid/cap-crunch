@@ -19,6 +19,13 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-11-08
+
+**[Fix] — Durée minimale sur LTIR appliquée (retour et suivi des retours au jeu)** (`app/app/gestion-effectifs/actions.ts`, `GestionEffectifsManager.tsx`, `page.tsx`, `admin/effectifs/page.tsx`, `lib/ltirReturns.ts`, `aide/LtirRulesContent.tsx`, `AideTabs.tsx`, `aide/page.tsx`) :
+- Signalé par David : Devon Levi, mis sur sa LTIR le 30 oct., a rejoué le 7 nov. ; avis « tu dois le réintégrer » (date limite 23 nov.) alors que la durée minimale de 14 jours (`pool_seasons.duree_min_ltir_jours`) n'était pas écoulée. Cette durée n'était utilisée qu'en avertissement dans l'onglet Historique.
+- Règle de David : dès qu'un joueur est mis sur LTIR, la durée minimale s'applique, sauf si le même panier met sur LTIR un joueur de la même position admissible au LTIR. Rejoue avant la fin : le délai de réintégration part de la fin de la durée minimale.
+- Serveur (`submitBatchAction`, avant la simulation, donc aussi pour le contrôle d'une demande de LTIR) : Retour LTIR refusé avant la fin, avec la date, sauf crédit d'échange par position (un pour un). Écran : avertissement et bouton bloqué, levé dès qu'une mise sur LTIR admissible de même position est au panier. Suivi : date limite = fin de la durée minimale + délai, avis reformulé ; suivis ouverts corrigés en silence (Levi : 23 → 27 nov.). `/aide` affiche la durée en vigueur.
+
 ### 2026-11-05
 
 **[Feat] — Corrections des mouvements des poolers (onglet admin) + mise en forme de Gestion d'effectifs admin** (`app/app/admin/effectifs/correction-actions.ts`, `CorrectionsManager.tsx`, `page.tsx`, `components/MovementHistoryPanel.tsx`, `movement-history-actions.ts`, `gestion-effectifs/GestionEffectifsManager.tsx`) :

@@ -21,7 +21,7 @@ export default async function GestionEffectifsPage({
   const [{ data: pooler }, { data: saison }] = await Promise.all([
     supabase.from('poolers').select('id, name, is_admin').eq('id', user.id).single(),
     supabase.from('pool_seasons')
-      .select('id, season, pool_cap, delai_reactivation_jours, max_signatures_al, max_signatures_ltir, gestion_effectifs_ouvert, season_started, is_playoff')
+      .select('id, season, pool_cap, delai_reactivation_jours, duree_min_ltir_jours, max_signatures_al, max_signatures_ltir, gestion_effectifs_ouvert, season_started, is_playoff')
       .eq('is_active', true).eq('is_playoff', false).single(),
   ])
 
@@ -67,6 +67,7 @@ export default async function GestionEffectifsPage({
           season={saison.season}
           poolCap={Number(saison.pool_cap)}
           delaiReactivationJours={saison.delai_reactivation_jours ?? 3}
+          dureeMinLtirJours={saison.duree_min_ltir_jours ?? 0}
           maxSignaturesAl={saison.max_signatures_al ?? 10}
           maxSignaturesLtir={saison.max_signatures_ltir ?? 2}
         />
@@ -101,6 +102,7 @@ export default async function GestionEffectifsPage({
         season={saison.season}
         poolCap={Number(saison.pool_cap)}
         delaiReactivationJours={saison.delai_reactivation_jours ?? 3}
+          dureeMinLtirJours={saison.duree_min_ltir_jours ?? 0}
         maxSignaturesAl={saison.max_signatures_al ?? 10}
         maxSignaturesLtir={saison.max_signatures_ltir ?? 2}
       />

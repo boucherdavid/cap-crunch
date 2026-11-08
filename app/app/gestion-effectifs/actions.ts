@@ -44,6 +44,8 @@ export type RosterEntry = {
   capNumber: number | null
   isEstimatedCap: boolean
   lastDeactivatedAt: string | null  // ISO timestamp de la dernière désactivation (actif→res ou ltir)
+  /** Mise sur LTIR (date effective) — durée minimale, voir submitBatchAction. */
+  ltirSince?: string | null
   // Mis en réserve aujourd'hui sans qu'aucun match de son équipe n'ait commencé depuis : peut
   // être réactivé malgré le délai (annulation le jour même, David 2026-10-12, voir gameDayLock.ts).
   undoableToday?: boolean
@@ -79,6 +81,7 @@ export type SaisonInfo = {
   season: string
   poolCap: number
   delaiReactivationJours: number
+  dureeMinLtirJours: number
   maxSignaturesAl: number
   maxSignaturesLtir: number
   gestionEffectifsOuvert: boolean
@@ -122,7 +125,7 @@ export async function getActiveSaisonAction(): Promise<SaisonInfo | null> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('pool_seasons')
-    .select('id, season, pool_cap, delai_reactivation_jours, max_signatures_al, max_signatures_ltir, gestion_effectifs_ouvert, season_started, is_playoff')
+    .select('id, season, pool_cap, delai_reactivation_jours, duree_min_ltir_jours, max_signatures_al, max_signatures_ltir, gestion_effectifs_ouvert, season_started, is_playoff')
     .eq('is_active', true)
     .eq('is_playoff', false)
     .single()
@@ -132,6 +135,7 @@ export async function getActiveSaisonAction(): Promise<SaisonInfo | null> {
     season: data.season,
     poolCap: Number(data.pool_cap),
     delaiReactivationJours: data.delai_reactivation_jours ?? 3,
+    dureeMinLtirJours: data.duree_min_ltir_jours ?? 0,
     maxSignaturesAl: data.max_signatures_al ?? 10,
     maxSignaturesLtir: data.max_signatures_ltir ?? 2,
     gestionEffectifsOuvert: data.gestion_effectifs_ouvert ?? true,
@@ -208,6 +212,7 @@ export async function getPoolerRosterAction(
       capNumber: cap || null,
       isEstimatedCap: isEstimated,
       lastDeactivatedAt: deactMap.get(r.player_id) ?? null,
+      ltirSince: r.player_type === 'ltir' && deactTypeMap.get(r.player_id) === 'ltir' ? deactMap.get(r.player_id) ?? null : null,
       undoableToday: undoable.has(r.player_id),
       recrueEligible: isRookieProtected(r.rookie_type, r.pool_draft_year, r.players?.player_contracts, season),
       injury: injuriesByPlayerId.get(r.player_id) ?? null,
@@ -366,7 +371,7 @@ export async function submitBatchAction(input: {
   // Fetch config
   const { data: saisonConfig } = await db
     .from('pool_seasons')
-    .select('delai_reactivation_jours, max_signatures_al, max_signatures_ltir, saison_start_date, season, season_started, season_started_at, pool_cap, gestion_effectifs_ouvert')
+    .select('delai_reactivation_jours, duree_min_ltir_jours, max_signatures_al, max_signatures_ltir, saison_start_date, season, season_started, season_started_at, pool_cap, gestion_effectifs_ouvert')
     .eq('id', input.saisonId)
     .single()
 
@@ -533,6 +538,40 @@ export async function submitBatchAction(input: {
       if (!deactivatedIds.has(r.id) || r.player_type !== 'actif') continue
       const injury = injuries.get(r.player_id)
       if (injury && !injury.backInAction) injuredOutCredits++
+    }
+
+    // Durée minimale sur LTIR (David, 2026-11-08 — cas Levi) : un joueur mis sur LTIR y reste au
+    // moins `duree_min_ltir_jours` jours civils (heure de l'Est), même s'il rejoue. Seule exception :
+    // le même lot met sur LTIR un joueur de la même position, admissible au LTIR (badge vert) —
+    // un pour un. Pour un pooler, ce lot passe de toute façon par l'approbation de l'admin.
+    const returns = input.actions.filter(a => a.type === 'return_ltir' && a.returnLtirEntryId)
+    if (returns.length > 0) {
+      const dureeMin = saisonConfig?.duree_min_ltir_jours ?? 0
+      const byId = new Map(rows.map(r => [r.id, r]))
+      const swapCredits: Record<Bucket, number> = { forward: 0, defense: 0, goalie: 0 }
+      for (const a of input.actions) {
+        if ((a.type !== 'ltir' && a.type !== 'ltir_sign') || !a.ltirEntryId) continue
+        const r = byId.get(a.ltirEntryId)
+        const injury = r ? injuries.get(r.player_id) : undefined
+        if (r && injury?.eligible && !injury.backInAction) swapCredits[getPlayerBucket(r.players?.position ?? null)]++
+      }
+      const returnRows = returns.map(a => byId.get(a.returnLtirEntryId!)).filter((r): r is typeof rows[number] => !!r)
+      const { data: ltirEvents } = returnRows.length > 0 && dureeMin > 0
+        ? await db.from('roster_change_log').select('player_id, changed_at')
+            .eq('pooler_id', input.poolerId).eq('pool_season_id', input.saisonId).eq('new_type', 'ltir')
+            .in('player_id', returnRows.map(r => r.player_id)).order('changed_at', { ascending: false })
+        : { data: [] as { player_id: number; changed_at: string }[] }
+      for (const r of returnRows) {
+        const since = (ltirEvents ?? []).find(e => e.player_id === r.player_id)?.changed_at
+        if (!since || !isReactivationLocked(since, dureeMin)) continue
+        const bucket = getPlayerBucket(r.players?.position ?? null)
+        if (swapCredits[bucket] > 0) { swapCredits[bucket]--; continue }
+        const { data: p } = await db.from('players').select('first_name, last_name').eq('id', r.player_id).maybeSingle()
+        const name = p ? `${p.first_name} ${p.last_name}` : 'Ce joueur'
+        return {
+          error: `${name} doit rester sur la LTIR jusqu'au ${formatUnlockDay(since, dureeMin)} (durée minimale de ${dureeMin} jours), sauf si tu mets sur la LTIR, dans le même lot, un joueur de la même position admissible au LTIR.`,
+        }
+      }
     }
   }
 

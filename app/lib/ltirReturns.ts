@@ -31,6 +31,7 @@ import { sendEmailToIds } from '@/lib/email'
 import { emailLinkHtml } from '@/lib/siteUrl'
 import { getTodayET, addDaysToDate } from '@/lib/daily-recap'
 import { localMidnightUTC } from '@/lib/dateRanges'
+import { reactivationUnlockDay } from '@/lib/reactivationDelay'
 import { toNhlSeasonId } from '@/lib/nhl-stats'
 import { DEFAULT_LTIR_SETTINGS, MIN_INJURY_SOURCES, countInjurySources } from '@/lib/ltirEligibility'
 
@@ -162,7 +163,7 @@ async function runSync(): Promise<void> {
   const admin = createAdminClient()
   const { data: season } = await admin
     .from('pool_seasons')
-    .select('id, season, season_started')
+    .select('id, season, season_started, duree_min_ltir_jours')
     .eq('is_active', true)
     .eq('is_playoff', false)
     .maybeSingle()
@@ -272,6 +273,9 @@ async function runSync(): Promise<void> {
   const confirmedInjurySince = new Map(
     injuries.filter(r => countInjurySources(r) >= MIN_INJURY_SOURCES).map(r => [r.player_id, r.first_seen_at]),
   )
+  // Mise sur LTIR seulement (avant d'y mêler la fermeture des anciens suivis) : départ de la
+  // durée minimale.
+  const placedByKey = new Map(sinceByKey)
   for (const r of (pastRows ?? []) as { pooler_id: string; player_id: number; resolved_at: string }[]) {
     keepLatest(key(r.pooler_id, r.player_id), r.resolved_at)
   }
@@ -279,8 +283,17 @@ async function runSync(): Promise<void> {
   // Dernier jour permis = aujourd'hui (ET) + N jours, jusqu'à 23 h 59 — même convention que le
   // ballotage. Le délai part de la détection, pas du premier match : un retour repéré en retard
   // ne doit pas arriver déjà échu.
-  const deadlineDay = addDaysToDate(getTodayET(), deadlineDays)
-  const deadlineAt = localMidnightUTC(addDaysToDate(deadlineDay, 1)).toISOString()
+  // Durée minimale sur LTIR (David, 2026-11-08 — cas Levi) : un joueur qui rejoue avant la fin
+  // reste sur la LTIR jusque-là, et le délai de réintégration part de la fin de la durée minimale.
+  const dureeMin = (season.duree_min_ltir_jours as number | null) ?? 0
+  const today = getTodayET()
+  const unlockDayOf = (since: string | null) => (since && dureeMin > 0 ? reactivationUnlockDay(since, dureeMin) : null)
+  const deadlineFor = (since: string | null) => {
+    const unlock = unlockDayOf(since)
+    const start = unlock && unlock > today ? unlock : today
+    const day = addDaysToDate(start, deadlineDays)
+    return { day, at: localMidnightUTC(addDaysToDate(day, 1)).toISOString(), unlock: unlock && unlock > today ? unlock : null }
+  }
 
   for (const r of ltir) {
     const k = key(r.pooler_id, r.player_id)
@@ -319,7 +332,21 @@ async function runSync(): Promise<void> {
     }
 
     if (firstGame) {
-      if (existing?.reason === 'played') continue
+      const placed = placedByKey.get(k) ?? r.added_at
+      const { day: deadlineDay, at: deadlineAt, unlock } = deadlineFor(placed)
+      if (existing?.reason === 'played') {
+        // Suivi ouvert avant la règle de durée minimale : sa date limite ne peut tomber avant
+        // fin de durée minimale + délai. Corrigée sans nouvel avis.
+        const unlockDay = unlockDayOf(placed)
+        if (unlockDay && existing.deadline_at) {
+          const wanted = localMidnightUTC(addDaysToDate(addDaysToDate(unlockDay, deadlineDays), 1)).toISOString()
+          if (Date.parse(wanted) > Date.parse(existing.deadline_at)) {
+            await admin.from('ltir_return_watch')
+              .update({ deadline_at: wanted, reminder_sent_at: null }).eq('id', existing.id).is('resolved_at', null)
+          }
+        }
+        continue
+      }
       const values = { reason: 'played', first_game_date: firstGame.game_date, deadline_at: deadlineAt }
       const { data: written } = existing
         ? await admin.from('ltir_return_watch').update(values).eq('id', existing.id).eq('reason', 'not_injured').select('id')
@@ -331,8 +358,12 @@ async function runSync(): Promise<void> {
       notifyPoolerAndAdmins(
         admin, r.pooler_id,
         "Cap Crunch — Retour au jeu d'un joueur sur LTIR",
-        `${playerName} a recommencé à jouer (match du ${fmtDay(firstGame.game_date)}). Tu as ${jours}, soit jusqu'au ${fmtDay(deadlineDay)} à 23 h 59, pour le remettre dans ton alignement (Gestion d'effectifs → Retour LTIR).`,
-        `${playerName} (LTIR de ${poolerName}) a recommencé à jouer (match du ${fmtDay(firstGame.game_date)}). ${poolerName} a jusqu'au ${fmtDay(deadlineDay)} à 23 h 59 pour le remettre dans son alignement.`,
+        unlock
+          ? `${playerName} a recommencé à jouer (match du ${fmtDay(firstGame.game_date)}). Il reste sur ta LTIR jusqu'à la fin de la durée minimale (${dureeMin} jours) : tu pourras le réintégrer à partir du ${fmtDay(unlock)}, et tu as jusqu'au ${fmtDay(deadlineDay)} à 23 h 59 pour le faire (Gestion d'effectifs → Retour LTIR).`
+          : `${playerName} a recommencé à jouer (match du ${fmtDay(firstGame.game_date)}). Tu as ${jours}, soit jusqu'au ${fmtDay(deadlineDay)} à 23 h 59, pour le remettre dans ton alignement (Gestion d'effectifs → Retour LTIR).`,
+        unlock
+          ? `${playerName} (LTIR de ${poolerName}) a recommencé à jouer (match du ${fmtDay(firstGame.game_date)}), avant la fin de sa durée minimale sur LTIR. ${poolerName} pourra le réintégrer à partir du ${fmtDay(unlock)} et a jusqu'au ${fmtDay(deadlineDay)} à 23 h 59.`
+          : `${playerName} (LTIR de ${poolerName}) a recommencé à jouer (match du ${fmtDay(firstGame.game_date)}). ${poolerName} a jusqu'au ${fmtDay(deadlineDay)} à 23 h 59 pour le remettre dans son alignement.`,
       )
     } else if (!existing && !listedInjured.has(r.player_id)) {
       const { data: written } = await admin.from('ltir_return_watch')
