@@ -21,6 +21,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-11-08
 
+**[Feat] — Règle contournée par l'admin, indiquée publiquement** (`app/app/gestion-effectifs/actions.ts`, `GestionEffectifsManager.tsx`, `poolers/[id]/page.tsx`, `PoolerPageTabs.tsx`, `components/movement-history-actions.ts`, `journal-transactions/page.tsx`, `TransactionsClient.tsx`, `aide/AideTabs.tsx`, `supabase_migrations/override_note.sql`) :
+- En testant la durée minimale LTIR sur son propre alignement, David n'a pas été bloqué (admin). Choix de David : l'admin doit pouvoir le faire, mais de façon transparente (il en discute d'abord avec les poolers).
+- `submitBatchAction` vérifie maintenant aussi les règles pour l'admin (sauf approbation d'une demande de LTIR) et, au lieu de bloquer, note chaque contournement (`violate()`) : durée minimale LTIR, délai de réactivation, composition/plafond, budget de signatures, ballotage. Note écrite sur les mouvements du lot et sur la transaction (`override_note`, écriture à part — le lot n'échoue jamais si la colonne manque). Affichée : badge « Règle contournée (admin) » (historique de `/poolers/[id]`), panneau des mouvements, Journal des activités ; avertissement à l'admin avant (formulaire) et après (message de soumission) ; `/aide`.
+- Migration `override_note.sql` roulée en staging et en prod avant le déploiement (les pages lisent la colonne).
+
 **[Fix] — Durée minimale sur LTIR appliquée (retour et suivi des retours au jeu)** (`app/app/gestion-effectifs/actions.ts`, `GestionEffectifsManager.tsx`, `page.tsx`, `admin/effectifs/page.tsx`, `lib/ltirReturns.ts`, `aide/LtirRulesContent.tsx`, `AideTabs.tsx`, `aide/page.tsx`) :
 - Signalé par David : Devon Levi, mis sur sa LTIR le 30 oct., a rejoué le 7 nov. ; avis « tu dois le réintégrer » (date limite 23 nov.) alors que la durée minimale de 14 jours (`pool_seasons.duree_min_ltir_jours`) n'était pas écoulée. Cette durée n'était utilisée qu'en avertissement dans l'onglet Historique.
 - Règle de David : dès qu'un joueur est mis sur LTIR, la durée minimale s'applique, sauf si le même panier met sur LTIR un joueur de la même position admissible au LTIR. Rejoue avant la fin : le délai de réintégration part de la fin de la durée minimale.

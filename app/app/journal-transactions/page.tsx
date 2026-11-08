@@ -39,7 +39,7 @@ export default async function TransactionsPage({
   const { data: transactions } = await supabase
     .from('transactions')
     .select(`
-      id, notes, created_at,
+      id, notes, created_at, override_note,
       transaction_items (
         id, action_type, old_player_type, new_player_type,
         from_pooler:poolers!from_pooler_id (name),

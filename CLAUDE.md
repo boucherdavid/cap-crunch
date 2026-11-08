@@ -1769,6 +1769,14 @@ Lots antérieurs : `python_script/backfill_journal_gestion.py` (dry-run, `--appl
   réintégré par son pooler dans `app_settings.ltir_return_deadline_days` jours (défaut 14, réglé
   avec les autres seuils LTIR). Jusqu'à 23 h 59 ET du dernier jour, délai compté à partir de la
   détection. Pendant le délai, rien ne change : aucun point, salaire hors masse.
+- **Règle contournée par l'admin, indiquée publiquement** (`override_note` sur `roster_change_log` et
+  `transactions` — David, 2026-11-08) : l'admin n'est jamais bloqué dans `submitBatchAction`, même
+  pour son propre alignement, mais chaque règle qu'un pooler n'aurait pas pu passer (durée minimale
+  LTIR, délai de réactivation, composition/plafond, budget de signatures, ballotage) est notée
+  (`violate()`, `overrideNotes`) et affichée : badge « Règle contournée (admin) » dans l'historique
+  de `/poolers/[id]`, panneau des mouvements, Journal des activités ; avertissement à l'admin avant
+  et après la soumission. Pas pour l'approbation d'une demande de LTIR (`enforceLimits`). Toute
+  nouvelle règle de Gestion d'effectifs passe par `violate()`, jamais un `if (!isAdmin)` muet.
 - **Durée minimale sur LTIR** (`pool_seasons.duree_min_ltir_jours`, 14 en 2026-27 — David,
   2026-11-08, cas Levi) : un joueur mis sur LTIR y reste au moins N jours civils (heure de l'Est,
   `reactivationUnlockDay`), même s'il rejoue. `submitBatchAction` refuse un Retour LTIR d'un pooler

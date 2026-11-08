@@ -547,14 +547,15 @@ export default function GestionEffectifsManager({
   // Durée minimale sur LTIR (David, 2026-11-08) : levée seulement si le panier met sur LTIR un
   // joueur de même position admissible au LTIR. Même règle que submitBatchAction (source de vérité).
   const returnLtirEntry = addType === 'return_ltir' ? findEntry(addReturnLtirId) : undefined
-  const ltirMinUntil = !isAdmin && returnLtirEntry?.ltirSince && dureeMinLtirJours > 0
+  const ltirMinUntil = returnLtirEntry?.ltirSince && dureeMinLtirJours > 0
     && isReactivationLocked(returnLtirEntry.ltirSince, dureeMinLtirJours)
     ? formatUnlockDay(returnLtirEntry.ltirSince, dureeMinLtirJours) : null
   const ltirSwapInCart = !!returnLtirEntry && cart.some(item =>
     (item.type === 'ltir' || item.type === 'ltir_sign') && !!item.ltirEntry
     && posCategory(item.ltirEntry.position) === posCategory(returnLtirEntry.position)
     && !!item.ltirEntry.injury?.eligible && !item.ltirEntry.injury.backInAction)
-  const ltirMinBlocked = !!ltirMinUntil && !ltirSwapInCart
+  // L'admin n'est jamais bloqué, mais le contournement est noté publiquement (override_note).
+  const ltirMinBlocked = !isAdmin && !!ltirMinUntil && !ltirSwapInCart
   const entry1Locked = !isAdmin && addNewType1 === 'actif' && blockedIds.has(addEntry1Id)
   const entry2Locked = !isAdmin && addNewType2 === 'actif' && blockedIds.has(addEntry2Id)
 
@@ -863,6 +864,7 @@ export default function GestionEffectifsManager({
     return (
       <p className="text-xs text-orange-600 mt-1">
         {label} ne peut pas être réactivé avant le {unlockDate(entry, delaiReactivationJours)} (délai {delaiReactivationJours} j), sauf pour remplacer un joueur actif blessé dans le même lot.
+        {isAdmin && <> Tu es admin : rien ne te bloque, mais si tu passes outre, ce sera indiqué publiquement (historique du pooler et Journal des activités).</>}
       </p>
     )
   }
@@ -983,6 +985,11 @@ export default function GestionEffectifsManager({
             {ltirMinUntil && (ltirSwapInCart ? (
               <p className="text-xs text-green-700">
                 Durée minimale sur la LTIR levée : ton panier met sur la LTIR un joueur de la même position admissible au LTIR.
+              </p>
+            ) : isAdmin ? (
+              <p className="text-xs text-red-700">
+                Durée minimale sur la LTIR : ce joueur devrait y rester jusqu&apos;au {ltirMinUntil}. Tu es admin, donc rien ne te bloque,
+                mais le contournement sera indiqué publiquement (historique du pooler et Journal des activités).
               </p>
             ) : (
               <p className="text-xs text-orange-600">

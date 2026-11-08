@@ -386,6 +386,11 @@ export default function TransactionsClient({
               <div className="flex items-start justify-between mb-3">
                 <div>
                   {tx.notes && <p className="font-medium text-gray-800">{tx.notes}</p>}
+                  {tx.override_note && (
+                    <p className="mt-1 text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">
+                      Règle contournée par l&apos;admin : {tx.override_note}
+                    </p>
+                  )}
                   <p className="text-xs text-gray-400 mt-0.5">{formatDate(tx.created_at)}</p>
                 </div>
                 <span className="text-xs text-gray-300">#{tx.id}</span>
