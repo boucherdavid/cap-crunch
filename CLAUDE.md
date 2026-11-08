@@ -1785,7 +1785,9 @@ Lots antérieurs : `python_script/backfill_journal_gestion.py` (dry-run, `--appl
   ce lot passe par l'approbation (demande de LTIR + `extra_actions`). Même règle à l'écran
   (`RosterEntry.ltirSince`, `ltirMinBlocked`). Admin jamais bloqué. Rejoue avant la fin : la date
   limite de réintégration part de la fin de la durée minimale (`deadlineFor`, `lib/ltirReturns.ts`),
-  avis qui le dit ; un suivi déjà ouvert avec une date trop tôt est corrigé sans nouvel avis.
+  avis qui le dit ; un suivi déjà ouvert avec une date trop tôt est corrigé sans nouvel avis. « Réintégrable
+  à partir du … » affiché partout où paraît la date limite (bandeau de Gestion d'effectifs, « À faire »,
+  Approbations) via `fetchLtirUnlockDays()` (`lib/ltirReturns.ts`).
 - **Le pooler fait le retour lui-même** : action « Retour LTIR » de Gestion d'effectifs ouverte à
   tous (effet immédiat, `validateRosterLimits`), bandeau ambre/rouge avec « Préparer le retour ».
 - Notifications push + courriel au pooler **et à tous les admins** : détection, rappel 2 jours

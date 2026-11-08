@@ -1155,7 +1155,10 @@ export default function GestionEffectifsManager({
               {w.firstGameDate && <>Il a joué le {fmtReturnDay(w.firstGameDate)}.{' '}</>}
               {w.overdue
                 ? <>Le délai pour le remettre dans ton alignement est dépassé ({fmtReturnDay(w.deadlineDay)}) : fais-le dès que possible, sinon l&apos;admin devra intervenir.</>
-                : <>Tu as jusqu&apos;au {fmtReturnDay(w.deadlineDay)} à 23 h 59 pour le remettre dans ton alignement, comme actif ou réserviste. Ajoute au besoin d&apos;autres mouvements au même lot pour rester conforme.</>}
+                : <>
+                    {w.unlockDay && <>Il reste sur ta LTIR jusqu&apos;à la fin de sa durée minimale : tu pourras le réintégrer à partir du {fmtReturnDay(w.unlockDay)}.{' '}</>}
+                    Tu as jusqu&apos;au {fmtReturnDay(w.deadlineDay)}{' '}à 23 h 59 pour le remettre dans ton alignement, comme actif ou réserviste. Ajoute au besoin d&apos;autres mouvements au même lot pour rester conforme.
+                  </>}
             </p>
           </div>
           <button onClick={() => handlePrepareLtirReturn(w.playerId)}
