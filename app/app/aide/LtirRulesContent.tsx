@@ -6,6 +6,8 @@ import { DEFAULT_LTIR_SETTINGS, type LtirSettings } from '@/lib/ltirEligibility'
 // Seuils LTIR configurés par l'admin (app_settings, David 2026-09-25) — fournis par page.tsx via
 // AideTabs, pour que Règlements → Blessures et LTIR affiche toujours les valeurs appliquées.
 export const LtirSettingsContext = createContext<LtirSettings>(DEFAULT_LTIR_SETTINGS)
+// Durée minimale sur LTIR de la saison active (pool_seasons.duree_min_ltir_jours, David 2026-11-08).
+export const LtirMinDaysContext = createContext<number>(0)
 
 function jours(n: number): string {
   return `${n} jour${n > 1 ? 's' : ''}`
@@ -13,6 +15,7 @@ function jours(n: number): string {
 
 export default function LtirRulesContent() {
   const t = useContext(LtirSettingsContext)
+  const minDays = useContext(LtirMinDaysContext)
   return (
     <div className="text-sm text-gray-700 space-y-4">
       <div>
@@ -26,7 +29,10 @@ export default function LtirRulesContent() {
           <li>• Si elle est approuvée, la <strong>date effective est celle de ta demande</strong>, pas celle de l&apos;approbation — une approbation tardive ne te pénalise pas.</li>
           <li>• Un joueur sur le LTIR ne compte pas dans ta masse salariale et ne rapporte aucun point.</li>
           <li>• Le <strong>retour du LTIR</strong> se fait par toi, depuis <strong>Gestion d&apos;effectifs</strong> → <strong>Retour LTIR</strong>, comme actif ou comme réserviste. L&apos;effet est immédiat et ton alignement doit rester conforme (12/6/2, 2 réservistes, plafond) : ajoute au besoin d&apos;autres mouvements au même lot. Le joueur actif que tu désactives en échange peut aller en réserve, sur le LTIR, ou retourner dans ta banque de recrues s&apos;il est encore protégé.</li>
-          <li>• Dès qu&apos;un joueur sur le LTIR <strong>rejoue un match de la LNH</strong>, tu reçois une notification (l&apos;administrateur aussi) et tu as <strong>{jours(t.returnDeadlineDays)}</strong> pour le remettre dans ton alignement. Un bandeau dans Gestion d&apos;effectifs te rappelle la date limite. Passé ce délai, c&apos;est l&apos;administrateur qui décide de la suite.</li>
+          {minDays > 0 && (
+            <li>• <strong>Durée minimale</strong> : un joueur mis sur le LTIR y reste au moins <strong>{jours(minDays)}</strong> (jours complets, heure de l&apos;Est), même s&apos;il rejoue avant. Seule exception : réintégrer plus tôt est permis si tu mets sur le LTIR, <strong>dans le même panier</strong>, un joueur de la <strong>même position</strong> admissible au LTIR (badge vert) — le panier attend alors l&apos;approbation de l&apos;administrateur, comme toute mise sur LTIR.</li>
+          )}
+          <li>• Dès qu&apos;un joueur sur le LTIR <strong>rejoue un match de la LNH</strong>, tu reçois une notification (l&apos;administrateur aussi) et tu as <strong>{jours(t.returnDeadlineDays)}</strong> pour le remettre dans ton alignement{minDays > 0 && <> (s&apos;il rejoue avant la fin de sa durée minimale, ce délai commence seulement à la fin de celle-ci)</>}. Un bandeau dans Gestion d&apos;effectifs te rappelle la date limite. Passé ce délai, c&apos;est l&apos;administrateur qui décide de la suite.</li>
           <li>• Pendant ce délai, le joueur reste sur le LTIR : il ne rapporte toujours aucun point et son salaire ne compte toujours pas.</li>
           <li>• S&apos;il <strong>se blesse de nouveau</strong> avant que tu l&apos;aies remis dans ton alignement et qu&apos;il manque <strong>{t.relapseGames} match{t.relapseGames > 1 ? 's' : ''} de suite</strong> de son équipe, le retour obligatoire est annulé et il reste sur le LTIR. Avant ce seuil, la date limite continue de courir. Un nouveau délai de <strong>{jours(t.returnDeadlineDays)}</strong> repart à son prochain match.</li>
         </ul>

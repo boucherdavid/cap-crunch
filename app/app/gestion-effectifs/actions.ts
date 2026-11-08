@@ -44,6 +44,8 @@ export type RosterEntry = {
   capNumber: number | null
   isEstimatedCap: boolean
   lastDeactivatedAt: string | null  // ISO timestamp de la dernière désactivation (actif→res ou ltir)
+  /** Mise sur LTIR (date effective) — durée minimale, voir submitBatchAction. */
+  ltirSince?: string | null
   // Mis en réserve aujourd'hui sans qu'aucun match de son équipe n'ait commencé depuis : peut
   // être réactivé malgré le délai (annulation le jour même, David 2026-10-12, voir gameDayLock.ts).
   undoableToday?: boolean
@@ -79,6 +81,7 @@ export type SaisonInfo = {
   season: string
   poolCap: number
   delaiReactivationJours: number
+  dureeMinLtirJours: number
   maxSignaturesAl: number
   maxSignaturesLtir: number
   gestionEffectifsOuvert: boolean
@@ -122,7 +125,7 @@ export async function getActiveSaisonAction(): Promise<SaisonInfo | null> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('pool_seasons')
-    .select('id, season, pool_cap, delai_reactivation_jours, max_signatures_al, max_signatures_ltir, gestion_effectifs_ouvert, season_started, is_playoff')
+    .select('id, season, pool_cap, delai_reactivation_jours, duree_min_ltir_jours, max_signatures_al, max_signatures_ltir, gestion_effectifs_ouvert, season_started, is_playoff')
     .eq('is_active', true)
     .eq('is_playoff', false)
     .single()
@@ -132,6 +135,7 @@ export async function getActiveSaisonAction(): Promise<SaisonInfo | null> {
     season: data.season,
     poolCap: Number(data.pool_cap),
     delaiReactivationJours: data.delai_reactivation_jours ?? 3,
+    dureeMinLtirJours: data.duree_min_ltir_jours ?? 0,
     maxSignaturesAl: data.max_signatures_al ?? 10,
     maxSignaturesLtir: data.max_signatures_ltir ?? 2,
     gestionEffectifsOuvert: data.gestion_effectifs_ouvert ?? true,
@@ -208,6 +212,7 @@ export async function getPoolerRosterAction(
       capNumber: cap || null,
       isEstimatedCap: isEstimated,
       lastDeactivatedAt: deactMap.get(r.player_id) ?? null,
+      ltirSince: r.player_type === 'ltir' && deactTypeMap.get(r.player_id) === 'ltir' ? deactMap.get(r.player_id) ?? null : null,
       undoableToday: undoable.has(r.player_id),
       recrueEligible: isRookieProtected(r.rookie_type, r.pool_draft_year, r.players?.player_contracts, season),
       injury: injuriesByPlayerId.get(r.player_id) ?? null,
@@ -366,7 +371,7 @@ export async function submitBatchAction(input: {
   // Fetch config
   const { data: saisonConfig } = await db
     .from('pool_seasons')
-    .select('delai_reactivation_jours, max_signatures_al, max_signatures_ltir, saison_start_date, season, season_started, season_started_at, pool_cap, gestion_effectifs_ouvert')
+    .select('delai_reactivation_jours, duree_min_ltir_jours, max_signatures_al, max_signatures_ltir, saison_start_date, season, season_started, season_started_at, pool_cap, gestion_effectifs_ouvert')
     .eq('id', input.saisonId)
     .single()
 
@@ -417,6 +422,24 @@ export async function submitBatchAction(input: {
   // pas avoir deux définitions de "on est encore en préparation" qui pourraient diverger.
   const isPreseason = !saisonConfig?.season_started
   const isAdminOverride = !isPreseason && !!input.forcedDate && isAdmin
+
+  // Règles contournées par l'admin, notées publiquement (David, 2026-11-08) : l'admin n'est
+  // jamais bloqué, même pour son propre alignement, mais chaque règle qu'un pooler n'aurait pas pu
+  // passer est inscrite sur les mouvements du lot (override_note) et affichée dans l'historique et
+  // le Journal des activités. Pas pour l'approbation d'une demande de LTIR (enforceLimits) : les
+  // règles y ont été vérifiées au moment de la demande.
+  const trackOverrides = isAdmin && !input.enforceLimits && !isPreseason
+  const overrideNotes: string[] = []
+  const loggedIds: number[] = []
+  // Pooler : la règle bloque. Admin : elle est notée et le geste continue.
+  function violate(message: string, note: string) {
+    if (isAdmin) { overrideNotes.push(note); return }
+    throw new Error(message)
+  }
+  async function nameOf(playerId: number): Promise<string> {
+    const { data: p } = await db.from('players').select('first_name, last_name').eq('id', playerId).maybeSingle()
+    return p ? `${p.first_name} ${p.last_name}` : 'Un joueur'
+  }
 
   // Joueurs touchés par le lot (des deux côtés — celui qui sort, celui qui entre) pour la
   // règle d'atomicité : si l'un d'eux a déjà un match commencé aujourd'hui, tout le lot est
@@ -500,7 +523,7 @@ export async function submitBatchAction(input: {
   //   de cette position — sinon le pooler resterait coincé avec un alignement incomplet.
   let injuredOutCredits = 0
   const holeCredits: Record<Bucket, number> = { forward: 0, defense: 0, goalie: 0 }
-  if (!isAdmin && !isPreseason) {
+  if ((!isAdmin || trackOverrides) && !isPreseason) {
     const [{ data: rosterRows }, injuries] = await Promise.all([
       db.from('pooler_rosters')
         .select('id, player_id, player_type, players (position)')
@@ -534,6 +557,44 @@ export async function submitBatchAction(input: {
       const injury = injuries.get(r.player_id)
       if (injury && !injury.backInAction) injuredOutCredits++
     }
+
+    // Durée minimale sur LTIR (David, 2026-11-08 — cas Levi) : un joueur mis sur LTIR y reste au
+    // moins `duree_min_ltir_jours` jours civils (heure de l'Est), même s'il rejoue. Seule exception :
+    // le même lot met sur LTIR un joueur de la même position, admissible au LTIR (badge vert) —
+    // un pour un. Pour un pooler, ce lot passe de toute façon par l'approbation de l'admin.
+    const returns = input.actions.filter(a => a.type === 'return_ltir' && a.returnLtirEntryId)
+    if (returns.length > 0) {
+      const dureeMin = saisonConfig?.duree_min_ltir_jours ?? 0
+      const byId = new Map(rows.map(r => [r.id, r]))
+      const swapCredits: Record<Bucket, number> = { forward: 0, defense: 0, goalie: 0 }
+      for (const a of input.actions) {
+        if ((a.type !== 'ltir' && a.type !== 'ltir_sign') || !a.ltirEntryId) continue
+        const r = byId.get(a.ltirEntryId)
+        const injury = r ? injuries.get(r.player_id) : undefined
+        if (r && injury?.eligible && !injury.backInAction) swapCredits[getPlayerBucket(r.players?.position ?? null)]++
+      }
+      const returnRows = returns.map(a => byId.get(a.returnLtirEntryId!)).filter((r): r is typeof rows[number] => !!r)
+      const { data: ltirEvents } = returnRows.length > 0 && dureeMin > 0
+        ? await db.from('roster_change_log').select('player_id, changed_at')
+            .eq('pooler_id', input.poolerId).eq('pool_season_id', input.saisonId).eq('new_type', 'ltir')
+            .in('player_id', returnRows.map(r => r.player_id)).order('changed_at', { ascending: false })
+        : { data: [] as { player_id: number; changed_at: string }[] }
+      for (const r of returnRows) {
+        const since = (ltirEvents ?? []).find(e => e.player_id === r.player_id)?.changed_at
+        if (!since || !isReactivationLocked(since, dureeMin)) continue
+        const bucket = getPlayerBucket(r.players?.position ?? null)
+        if (swapCredits[bucket] > 0) { swapCredits[bucket]--; continue }
+        const name = await nameOf(r.player_id)
+        const until = formatUnlockDay(since, dureeMin)
+        if (isAdmin) {
+          overrideNotes.push(`Durée minimale sur LTIR : ${name} réintégré avant le ${until}`)
+          continue
+        }
+        return {
+          error: `${name} doit rester sur la LTIR jusqu'au ${until} (durée minimale de ${dureeMin} jours), sauf si tu mets sur la LTIR, dans le même lot, un joueur de la même position admissible au LTIR.`,
+        }
+      }
+    }
   }
 
   // Lignes du journal des transactions (David, 2026-10-16) — avant, un lot de Gestion d'effectifs
@@ -546,12 +607,13 @@ export async function submitBatchAction(input: {
 
   async function log(playerId: number, changeType: string, oldType: string | null, newType: string | null) {
     if (isPreseason) return
-    await db.from('roster_change_log').insert({
+    const { data: inserted } = await db.from('roster_change_log').insert({
       player_id: playerId, pooler_id: input.poolerId, pool_season_id: input.saisonId,
       change_type: changeType, old_type: oldType, new_type: newType,
       changed_by: changedBy, changed_at: changedAt,
       is_admin_override: isAdminOverride,
-    })
+    }).select('id').single()
+    if (inserted) loggedIds.push(inserted.id as number)
     const actionType = journalActionType(changeType, oldType, newType)
     const incoming = actionType === 'sign' || actionType === 'promote' || actionType === 'reactivate'
     journalItems.push({
@@ -563,6 +625,10 @@ export async function submitBatchAction(input: {
   }
 
   // Même en cas d'erreur à mi-lot : ce qui a déjà été écrit doit paraître au journal.
+  function overrideNoteText(): string {
+    return [...new Set(overrideNotes)].join(' · ')
+  }
+
   async function writeJournal() {
     if (journalItems.length === 0) return
     try {
@@ -574,8 +640,15 @@ export async function submitBatchAction(input: {
       }).select('id').single()
       if (error || !tx) throw error
       await db.from('transaction_items').insert(journalItems.map(i => ({ ...i, transaction_id: tx.id })))
+      if (overrideNotes.length > 0) await db.from('transactions').update({ override_note: overrideNoteText() }).eq('id', tx.id)
     } catch (e) {
       console.error('Journal des transactions (Gestion d\'effectifs) :', e)
+    }
+    // Règles contournées par l'admin : notées sur chaque mouvement du lot (écriture à part, pour ne
+    // jamais faire échouer le lot si la colonne manque).
+    if (overrideNotes.length > 0 && loggedIds.length > 0) {
+      const { error: noteError } = await db.from('roster_change_log').update({ override_note: overrideNoteText() }).in('id', loggedIds)
+      if (noteError) console.error('override_note :', noteError.message)
     }
     // Avis aux admins quand c'est un pooler qui agit (David, 2026-10-25, lib/adminRosterNotice.ts).
     const moves = journalItems.map(i => ({ playerId: i.player_id, oldType: i.old_player_type, newType: i.new_player_type }))
@@ -583,7 +656,7 @@ export async function submitBatchAction(input: {
   }
 
   async function checkReactivationDelay(playerId: number, position: string | null) {
-    if (isAdmin) return  // les admins ne sont pas soumis au délai
+    if (isAdmin && !trackOverrides) return  // approbation d'une demande : déjà vérifié
     const { data: lastDeact } = await db
       .from('roster_change_log')
       .select('changed_at, change_type')
@@ -608,8 +681,10 @@ export async function submitBatchAction(input: {
       const bucket = getPlayerBucket(position)
       if (holeCredits[bucket] > 0) { holeCredits[bucket]--; return }
       if (injuredOutCredits > 0) { injuredOutCredits--; return }
-      throw new Error(
-        `Ce joueur ne peut pas être réactivé avant le ${formatUnlockDay(lastDeact.changed_at, delaiJours)} (délai de ${delaiJours} j), sauf pour remplacer un joueur actif blessé`,
+      const unlock = formatUnlockDay(lastDeact.changed_at, delaiJours)
+      violate(
+        `Ce joueur ne peut pas être réactivé avant le ${unlock} (délai de ${delaiJours} j), sauf pour remplacer un joueur actif blessé`,
+        `Délai de réactivation : ${await nameOf(playerId)} réactivé avant le ${unlock}`,
       )
     }
   }
@@ -677,35 +752,46 @@ export async function submitBatchAction(input: {
       // un joueur au hasard : seulement un claim réellement 'awarded' à CE pooler pour CE
       // joueur, jamais déjà complété par ailleurs. Voir getAwardedWaiverClaimsAction, dont le
       // bouton pré-rempli est la seule source normale de waiverClaimId.
-      if (!isAdmin) {
-        if (!waiverClaimId) throw new Error('Réclamation de ballotage manquante.')
-        const { data: claim } = await db.from('waiver_claims')
-          .select('id, status, player_id, awarded_to_pooler_id, pool_season_id').eq('id', waiverClaimId).maybeSingle()
+      if (!isAdmin || trackOverrides) {
+        const { data: claim } = waiverClaimId
+          ? await db.from('waiver_claims')
+              .select('id, status, player_id, awarded_to_pooler_id, pool_season_id').eq('id', waiverClaimId).maybeSingle()
+          : { data: null }
         if (!claim || claim.pool_season_id !== input.saisonId || claim.status !== 'awarded'
           || claim.awarded_to_pooler_id !== input.poolerId || claim.player_id !== playerId) {
-          throw new Error('Cette réclamation de ballotage est introuvable ou déjà résolue.')
+          violate(
+            waiverClaimId ? 'Cette réclamation de ballotage est introuvable ou déjà résolue.' : 'Réclamation de ballotage manquante.',
+            `Ballotage : ${await nameOf(playerId)} ajouté sans réclamation remportée`,
+          )
         }
       }
-    } else if (!isAdmin) {
+    } else if (!isAdmin || trackOverrides) {
       // Un joueur présentement au ballotage (réclamation ouverte ou gagnée en attente) ne se
       // signe jamais par la voie normale — seulement via le bouton "Ballotage" du gagnant
       // (David, 2026-09-21).
       if (await isPlayerUnderActiveWaiverClaim(db, input.saisonId, playerId)) {
-        throw new Error('Ce joueur est présentement au ballotage — pas signable directement.')
+        violate(
+          'Ce joueur est présentement au ballotage — pas signable directement.',
+          `Ballotage : ${await nameOf(playerId)} signé pendant qu'il était au ballotage`,
+        )
       }
     }
 
     // Validate budget (non-admins seulement, ballotage exempt)
-    if (!isAdmin && signingType !== 'ballotage') {
+    if ((!isAdmin || trackOverrides) && signingType !== 'ballotage') {
       if (signingType === 'ltir') {
         // Budget LTIR dispo ou débord sur AL ?
         const ltirRoom = maxLtir - ltirUsed
         const alRoom   = maxAl - alUsed
-        if (ltirRoom <= 0 && alRoom <= 0)
-          throw new Error(`Budgets d'agents libres épuisés (AL : ${alUsed}/${maxAl}, LTIR : ${ltirUsed}/${maxLtir})`)
+        if (ltirRoom <= 0 && alRoom <= 0) {
+          violate(`Budgets d'agents libres épuisés (AL : ${alUsed}/${maxAl}, LTIR : ${ltirUsed}/${maxLtir})`,
+            `Budget de signatures épuisé (AL ${alUsed}/${maxAl}, LTIR ${ltirUsed}/${maxLtir}) : ${await nameOf(playerId)} signé quand même`)
+        }
       } else {
-        if (alUsed >= maxAl)
-          throw new Error(`Budget d'agents libres standard épuisé (${alUsed}/${maxAl})`)
+        if (alUsed >= maxAl) {
+          violate(`Budget d'agents libres standard épuisé (${alUsed}/${maxAl})`,
+            `Budget de signatures épuisé (AL ${alUsed}/${maxAl}) : ${await nameOf(playerId)} signé quand même`)
+        }
       }
     }
 
@@ -802,7 +888,7 @@ export async function submitBatchAction(input: {
   // Ne devient de toute façon atteignable qu'après "Démarrer la saison" (verrou plus haut).
   // Sautée aussi pendant le délai d'ajustement de 48h (graceAdjustmentEligible, voir plus haut)
   // — mais seulement pour un lot qui ne fait QUE basculer actif↔réserviste.
-  if ((!isAdmin || input.enforceLimits) && !graceAdjustmentEligible) {
+  if ((!isAdmin || input.enforceLimits || trackOverrides) && !graceAdjustmentEligible) {
     const [{ data: currentRows }, { data: settingsRow }] = await Promise.all([
       db
         .from('pooler_rosters')
@@ -900,7 +986,10 @@ export async function submitBatchAction(input: {
     }
 
     const limitError = validateRosterLimits(Array.from(virtual.values()), saisonConfig?.pool_cap ?? 0)
-    if (limitError) return { error: limitError }
+    if (limitError) {
+      if (!trackOverrides) return { error: limitError }
+      overrideNotes.push(`Alignement non conforme après le lot : ${limitError}`)
+    }
   }
 
   if (input.dryRun) return {}
@@ -995,6 +1084,9 @@ export async function submitBatchAction(input: {
     }
 
     await writeJournal()
+    if (overrideNotes.length > 0) {
+      warnings.push(`Règle contournée (admin), indiquée dans l'historique et le Journal des activités : ${overrideNoteText()}.`)
+    }
     return { warning: warnings.length > 0 ? warnings.join(' ') : undefined }
   } catch (e: any) {
     await writeJournal()

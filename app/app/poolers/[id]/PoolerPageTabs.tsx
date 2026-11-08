@@ -25,6 +25,7 @@ type ChangeLogEntry = {
   new_type: string | null
   changed_at: string
   is_admin_override: boolean | null
+  override_note?: string | null
   players: { first_name: string; last_name: string; position: string | null } | null
 }
 
@@ -540,6 +541,14 @@ export default function PoolerPageTabs({
                             {entry.is_admin_override && (
                               <span className="ml-1.5 inline-block text-xs font-medium bg-amber-100 text-amber-700 rounded px-1.5 py-0.5">
                                 override
+                              </span>
+                            )}
+                            {entry.override_note && (
+                              <span
+                                className="ml-1.5 inline-block text-xs font-medium bg-red-100 text-red-700 rounded px-1.5 py-0.5 cursor-help"
+                                title={entry.override_note}
+                              >
+                                Règle contournée (admin)
                               </span>
                             )}
                           </td>

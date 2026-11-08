@@ -91,7 +91,7 @@ export default async function AdminEffectifsPage({
   if (activeTab === 'mouvements') {
     const [pr, sr] = await Promise.all([
       supabase.from('poolers').select('id, name').order('name'),
-      supabase.from('pool_seasons').select('id, season, pool_cap, delai_reactivation_jours, max_signatures_al, max_signatures_ltir, gestion_effectifs_ouvert, is_playoff').eq('is_active', true).eq('is_playoff', false).single(),
+      supabase.from('pool_seasons').select('id, season, pool_cap, delai_reactivation_jours, duree_min_ltir_jours, max_signatures_al, max_signatures_ltir, gestion_effectifs_ouvert, is_playoff').eq('is_active', true).eq('is_playoff', false).single(),
     ])
     poolersMouvements = pr.data ?? []
     saisonMouvements = sr.data
@@ -180,6 +180,7 @@ export default async function AdminEffectifsPage({
                 season={saisonMouvements.season}
                 poolCap={Number(saisonMouvements.pool_cap)}
                 delaiReactivationJours={saisonMouvements.delai_reactivation_jours ?? 3}
+                dureeMinLtirJours={saisonMouvements.duree_min_ltir_jours ?? 0}
                 maxSignaturesAl={saisonMouvements.max_signatures_al ?? 10}
                 maxSignaturesLtir={saisonMouvements.max_signatures_ltir ?? 2}
               />

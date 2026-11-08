@@ -37,7 +37,7 @@ export async function getMovementHistoryAction(
 
   let rosterQuery = supabase
     .from('roster_change_log')
-    .select('id, change_type, old_type, new_type, changed_at, is_admin_override, players(first_name, last_name), poolers!roster_change_log_pooler_id_fkey(name)')
+    .select('id, change_type, old_type, new_type, changed_at, is_admin_override, override_note, players(first_name, last_name), poolers!roster_change_log_pooler_id_fkey(name)')
     .order('changed_at', { ascending: false })
     .limit(limit)
   if (poolerId) rosterQuery = rosterQuery.eq('pooler_id', poolerId)
@@ -57,7 +57,7 @@ export async function getMovementHistoryAction(
       category: 'roster',
       poolerName: po?.name ?? '?',
       label,
-      detail: (r.old_type && r.new_type ? `${pName} (${r.old_type} → ${r.new_type})` : pName) + (r.is_admin_override ? ' · override date' : ''),
+      detail: (r.old_type && r.new_type ? `${pName} (${r.old_type} → ${r.new_type})` : pName) + (r.is_admin_override ? ' · override date' : '') + (r.override_note ? ` · règle contournée (admin) : ${r.override_note}` : ''),
       color,
     })
   }

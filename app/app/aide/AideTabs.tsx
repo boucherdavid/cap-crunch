@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import type { LtirSettings } from '@/lib/ltirEligibility'
-import LtirRulesContent, { LtirSettingsContext } from './LtirRulesContent'
+import LtirRulesContent, { LtirMinDaysContext, LtirSettingsContext } from './LtirRulesContent'
 import CapFactorContent, { CapFactorContext, type CapFactorInfo } from './CapFactorContent'
 import SigningLimitsContent, { SigningLimitsContext, type SigningLimits } from './SigningLimitsContent'
 import WaiverDeadlineText, { WaiverDaysContext } from './WaiverDeadlineText'
@@ -849,6 +849,7 @@ const SECTIONS: Section[] = [
         <li>• Minimum <strong>2 réservistes</strong> (toutes positions confondues).</li>
         <li>• Une fois la saison officiellement démarrée par l&apos;administrateur, tout mouvement soumis dans Gestion d&apos;effectifs doit laisser ton alignement à exactement ces nombres — un sous-effectif est tout aussi bloquant qu&apos;un dépassement (c&apos;est pour ça que les mouvements groupés existent : libérer et activer en un seul geste, sans jamais passer par un état invalide).</li>
         <li>• <strong>Délai de réactivation</strong> : un joueur désactivé (envoyé en réserve, remis en banque de recrues ou mis sur le LTIR) doit attendre quelques jours avant de redevenir actif ; le délai en vigueur est affiché dans Gestion d&apos;effectifs. Il se compte en <strong>jours complets</strong> (heure de l&apos;Est), peu importe l&apos;heure du changement : avec un délai de 3 jours, un joueur désactivé le 17 peut redevenir actif le 20 dès minuit. Le délai est levé quand il <strong>remplace un joueur actif blessé</strong> (badge Blessé ou Admissible LTIR, pas « De retour au jeu ») désactivé dans le même lot, un pour un, ou quand il comble un poste actif vacant après une mise sur le LTIR. Le joueur blessé qui sort est soumis au délai à son tour.</li>
+        <li>• <strong>Transparence de l&apos;admin</strong> : l&apos;administrateur n&apos;est jamais bloqué par ces règles (délai de réactivation, durée minimale sur le LTIR, composition, plafond, budget de signatures, ballotage), même pour son propre alignement. Chaque fois qu&apos;il passe outre une règle, le mouvement porte la mention <strong>Règle contournée (admin)</strong> dans l&apos;historique du pooler et dans le Journal des activités, avec la règle en cause.</li>
       </ul>
     ),
   },
@@ -986,7 +987,7 @@ function normalize(s: string) {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
 
-export default function AideTabs({ ltirSettings, signingLimits, capFactor, waiverClaimDays }: { ltirSettings: LtirSettings; signingLimits: SigningLimits | null; capFactor: CapFactorInfo | null; waiverClaimDays: number }) {
+export default function AideTabs({ ltirSettings, signingLimits, capFactor, waiverClaimDays, ltirMinDays = 0 }: { ltirSettings: LtirSettings; signingLimits: SigningLimits | null; capFactor: CapFactorInfo | null; waiverClaimDays: number; ltirMinDays?: number }) {
   const [activeTab, setActiveTab] = useState<TabId>('installation')
   const [query, setQuery] = useState('')
 
@@ -1007,6 +1008,7 @@ export default function AideTabs({ ltirSettings, signingLimits, capFactor, waive
 
   return (
     <LtirSettingsContext.Provider value={ltirSettings}>
+    <LtirMinDaysContext.Provider value={ltirMinDays}>
     <SigningLimitsContext.Provider value={signingLimits}>
     <CapFactorContext.Provider value={capFactor}>
     <WaiverDaysContext.Provider value={waiverClaimDays}>
@@ -1115,6 +1117,7 @@ export default function AideTabs({ ltirSettings, signingLimits, capFactor, waive
     </WaiverDaysContext.Provider>
     </CapFactorContext.Provider>
     </SigningLimitsContext.Provider>
+    </LtirMinDaysContext.Provider>
     </LtirSettingsContext.Provider>
   )
 }
