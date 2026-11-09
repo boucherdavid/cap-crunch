@@ -1738,6 +1738,10 @@ sur 3, pas `backInAction`) désactivé dans le même lot débloque une réactiva
 importe la position ; un **poste actif déjà vacant** (mise sur LTIR approuvée) peut être comblé par
 un joueur verrouillé de cette position. Même calcul côté écran (`blockedReactivations`,
 `GestionEffectifsManager.tsx`) — garder les deux alignés.
+Quatrième exception (David, 2026-11-09) : **lot qui complète un ballotage** — chaque joueur réclamé
+ajouté (`type='ballotage'`) permet de réactiver un joueur verrouillé, un pour un, dans ce même lot
+seulement (`ballotageCredits` serveur, `ballotageCount` écran). Après un échange, les ajustements faits à
+la confirmation (`TradeExtraAction`) ne sont déjà pas soumis au délai.
 Troisième exception (David, 2026-10-12) : **annulation le jour même** — un joueur mis en réserve
 aujourd'hui (heure de l'Est) se réactive sans délai tant qu'aucun match de son équipe n'a commencé
 depuis (`undoableDeactivations()`, `lib/gameDayLock.ts`, horaire LNH ; indisponible → refusé).

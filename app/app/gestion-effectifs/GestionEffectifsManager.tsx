@@ -105,7 +105,7 @@ type StatusMove = { entry: RosterEntry; to: string }
 // 2026-10-08) — même règle que submitBatchAction, qui reste la source de vérité : un poste actif
 // déjà vacant (ex : après une mise sur LTIR approuvée) ou un actif blessé désactivé dans le même
 // lot permet chacun de réactiver un joueur verrouillé. `moves` = panier puis formulaire en cours.
-function blockedReactivations(roster: RosterForPooler | null, moves: StatusMove[], delaiJours: number): Set<number> {
+function blockedReactivations(roster: RosterForPooler | null, moves: StatusMove[], delaiJours: number, ballotageCount = 0): Set<number> {
   const blocked = new Set<number>()
   if (!roster) return blocked
   const base = new Map<number, RosterEntry>()
@@ -118,11 +118,14 @@ function blockedReactivations(roster: RosterForPooler | null, moves: StatusMove[
     if (m.to !== 'actif' && b?.playerType === 'actif' && b.injury && !b.injury.backInAction) injuredOutIds.add(b.id)
   }
   let injuredOut = injuredOutIds.size
+  // Lot qui complète un ballotage : un joueur verrouillé réactivable par joueur réclamé ajouté.
+  let ballotageLeft = ballotageCount
   for (const m of moves) {
     if (m.to !== 'actif' || !isLocked(m.entry, delaiJours)) continue
     const cat = posCategory(m.entry.position)
     if (holes[cat] > 0) holes[cat]--
     else if (injuredOut > 0) injuredOut--
+    else if (ballotageLeft > 0) ballotageLeft--
     else blocked.add(m.entry.id)
   }
   return blocked
@@ -542,7 +545,7 @@ export default function GestionEffectifsManager({
     if (ret) formMoves.push({ entry: ret, to: addReturnNewType })
     if (act) formMoves.push({ entry: act, to: addDeactifNewType })
   }
-  const blockedIds = blockedReactivations(roster, [...cartMoves(cart), ...formMoves], delaiReactivationJours)
+  const blockedIds = blockedReactivations(roster, [...cartMoves(cart), ...formMoves], delaiReactivationJours, cart.filter(i => i.type === 'ballotage').length)
   const returnLtirLocked  = !isAdmin && blockedIds.has(addReturnLtirId)
   // Durée minimale sur LTIR (David, 2026-11-08) : levée seulement si le panier met sur LTIR un
   // joueur de même position admissible au LTIR. Même règle que submitBatchAction (source de vérité).
@@ -857,13 +860,13 @@ export default function GestionEffectifsManager({
     if (!isAdmin && !blockedIds.has(entry.id)) {
       return (
         <p className="text-xs text-green-700 mt-1">
-          Délai de réactivation levé pour ce mouvement : {label.toLowerCase()} remplace un joueur actif blessé ou comble un poste vacant.
+          Délai de réactivation levé pour ce mouvement : {label.toLowerCase()}{' '}remplace un joueur actif blessé, comble un poste vacant ou accompagne l&apos;ajout d&apos;un joueur réclamé au ballotage.
         </p>
       )
     }
     return (
       <p className="text-xs text-orange-600 mt-1">
-        {label} ne peut pas être réactivé avant le {unlockDate(entry, delaiReactivationJours)} (délai {delaiReactivationJours} j), sauf pour remplacer un joueur actif blessé dans le même lot.
+        {label} ne peut pas être réactivé avant le {unlockDate(entry, delaiReactivationJours)} (délai {delaiReactivationJours}{' '}j), sauf pour remplacer un joueur actif blessé, ou avec l&apos;ajout d&apos;un joueur réclamé au ballotage, dans le même lot.
         {isAdmin && <> Tu es admin : rien ne te bloque, mais si tu passes outre, ce sera indiqué publiquement (historique du pooler et Journal des activités).</>}
       </p>
     )
