@@ -24,6 +24,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 **[Feat] — Délai de réactivation : exception pour le lot qui complète un ballotage** (`app/app/gestion-effectifs/actions.ts`, `GestionEffectifsManager.tsx`, `aide/AideTabs.tsx`) :
 - Demande de David (capture : Yakemchuk verrouillé jusqu'au 11 nov. après l'arrivée de Crevier au ballotage) : pouvoir réactiver un joueur avant le délai pour ajuster l'alignement après un échange ou un ballotage. Choix de David : dans le même lot seulement.
 - Ballotage : chaque joueur réclamé ajouté dans le lot donne un crédit de réactivation (un pour un, toute position), serveur et écran. Échange : rien à changer, les ajustements faits à la confirmation ne sont déjà pas soumis au délai. Messages et `/aide` mis à jour.
+- Commit `b944358`, validé par David, promu en prod le 2026-11-09.
 
 ### 2026-11-08
 
