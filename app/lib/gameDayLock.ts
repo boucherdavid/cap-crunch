@@ -7,7 +7,30 @@ import { createClient } from './supabase/server'
 // Horaire NHL interrogé en direct (pas via player_game_logs, qui n'est peuplé qu'après
 // coup par le pipeline nocturne).
 
-type ScheduledGame = { awayAbbrev: string; homeAbbrev: string; startTimeUTC: string }
+type ScheduledGame = { awayAbbrev: string; homeAbbrev: string; startTimeUTC: string; gameState: string }
+
+// Heure réelle de la mise au jeu (David, 2026-11-09) : un match prévu à 19 h commence parfois à
+// 19 h 15. Un match est « commencé » quand l'horaire LNH le dit en cours ou terminé (`gameState`),
+// pas dès que l'heure prévue est passée. `FUT` (à venir) et `PRE` (échauffement) = pas commencé.
+// État inconnu (champ absent) → on retombe sur l'heure prévue, par prudence.
+const NOT_STARTED_STATES = new Set(['FUT', 'PRE'])
+const STARTED_STATES = new Set(['LIVE', 'CRIT', 'FINAL', 'OFF'])
+
+function isGameStarted(g: ScheduledGame, nowMs: number): boolean {
+  if (STARTED_STATES.has(g.gameState)) return true
+  if (NOT_STARTED_STATES.has(g.gameState)) return false
+  return !!g.startTimeUTC && new Date(g.startTimeUTC).getTime() <= nowMs
+}
+
+// Le calcul des points compare le statut du joueur à l'heure PRÉVUE du match
+// (`player_game_logs.game_start_time`). Un changement accepté après l'heure prévue, mais avant
+// la vraie mise au jeu, est donc daté juste avant l'heure prévue — sinon il serait accepté sans
+// compter pour ce match. Le décalage (1 ms par 2 s de retard, au plus 998 ms) garde l'ordre de
+// plusieurs changements faits pendant le retard.
+function backdateBeforeScheduledStart(scheduledMs: number, nowMs: number): string {
+  const offset = Math.min(998, Math.floor((nowMs - scheduledMs) / 2000))
+  return new Date(scheduledMs - 1000 + offset).toISOString()
+}
 
 function todayET(): string {
   return new Intl.DateTimeFormat('fr-CA', {
@@ -37,6 +60,7 @@ async function fetchTodayGames(date: string): Promise<ScheduledGame[]> {
       awayAbbrev: g.awayTeam?.abbrev ?? '',
       homeAbbrev: g.homeTeam?.abbrev ?? '',
       startTimeUTC: g.startTimeUTC ?? '',
+      gameState: g.gameState ?? '',
     }))
   } catch {
     return []
@@ -53,7 +77,7 @@ export async function startedTeamsOnDate(date: string, teamCodes: string[]): Pro
   const nowMs = Date.now()
   const started = new Set<string>()
   for (const g of games) {
-    if (!g.startTimeUTC || new Date(g.startTimeUTC).getTime() > nowMs) continue
+    if (!isGameStarted(g, nowMs)) continue
     if (wanted.has(g.awayAbbrev)) started.add(g.awayAbbrev)
     if (wanted.has(g.homeAbbrev)) started.add(g.homeAbbrev)
   }
@@ -89,12 +113,18 @@ export async function computeBatchEffectiveDate(playerIds: number[]): Promise<Ba
     const games = await fetchTodayGames(today)
     const nowMs = now.getTime()
 
-    const someGameStarted = games.some(g =>
-      (teamCodes.has(g.awayAbbrev) || teamCodes.has(g.homeAbbrev)) &&
-      !!g.startTimeUTC && new Date(g.startTimeUTC).getTime() <= nowMs,
-    )
+    const teamGames = games.filter(g => teamCodes.has(g.awayAbbrev) || teamCodes.has(g.homeAbbrev))
+    const someGameStarted = teamGames.some(g => isGameStarted(g, nowMs))
 
-    if (!someGameStarted) return fallback
+    if (!someGameStarted) {
+      // Heure prévue passée, mise au jeu pas encore faite : effet juste avant l'heure prévue
+      // du premier de ces matchs, pour qu'il compte (voir backdateBeforeScheduledStart).
+      const lateStarts = teamGames
+        .map(g => (g.startTimeUTC ? new Date(g.startTimeUTC).getTime() : NaN))
+        .filter(t => Number.isFinite(t) && t <= nowMs)
+      if (lateStarts.length === 0) return fallback
+      return { effectiveAt: backdateBeforeScheduledStart(Math.min(...lateStarts), nowMs), deferred: false }
+    }
 
     // Même convention que les dates historiques sans heure précise (T12:00:00Z, soit 7h
     // heure de l'Est) — garantit d'être avant tout match du lendemain.
@@ -144,6 +174,7 @@ export async function undoableDeactivations(
       awayAbbrev: g.awayTeam?.abbrev ?? '',
       homeAbbrev: g.homeTeam?.abbrev ?? '',
       startTimeUTC: g.startTimeUTC ?? '',
+      gameState: g.gameState ?? '',
     }))
   } catch {
     return out
@@ -152,8 +183,8 @@ export async function undoableDeactivations(
     const since = new Date(i.changedAt).getTime()
     const startedSince = games.some(g =>
       !!i.teamCode && (g.awayAbbrev === i.teamCode || g.homeAbbrev === i.teamCode) &&
-      !!g.startTimeUTC && new Date(g.startTimeUTC).getTime() <= nowMs &&
-      new Date(g.startTimeUTC).getTime() >= since,
+      isGameStarted(g, nowMs) &&
+      !!g.startTimeUTC && new Date(g.startTimeUTC).getTime() >= since,
     )
     if (!startedSince) out.add(i.playerId)
   }

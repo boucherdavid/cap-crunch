@@ -850,6 +850,10 @@ existants) — pas des pages à part entière.
   journée). Dans Gestion d'effectifs, l'admin est averti si un match d'un joueur du panier est déjà
   commencé à cette date (`startedTeamsOnDate()`, `lib/gameDayLock.ts`) : le changement est alors
   rétroactif pour ce match, sans blocage.
+- **Match « commencé » = vraie mise au jeu** (David, 2026-11-09) : `gameState` de l'horaire LNH
+  (`LIVE`/`CRIT`/`FINAL`/`OFF`), pas l'heure prévue — toujours `isGameStarted()`
+  (`lib/gameDayLock.ts`). Un changement accepté après l'heure prévue mais avant la mise au jeu est
+  daté juste avant l'heure prévue, car `buildStandings()` compare à `game_start_time` (heure prévue).
 - Avant de "corriger" ou d'ajouter une saisie de date historique quelque part : vérifier
   d'abord si un mécanisme de surcharge existe déjà (chercher `forcedDate`, `transactionDate`,
   `changedAt`, `txTs`) avant de supposer qu'il faut le construire.
