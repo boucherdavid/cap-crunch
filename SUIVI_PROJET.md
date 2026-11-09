@@ -26,7 +26,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 - « Commencé » = `gameState` de l'horaire LNH (`LIVE`/`CRIT`/`FINAL`/`OFF`) ; `FUT`/`PRE` = pas commencé ; état absent → heure prévue. S'applique aux lots de Gestion d'effectifs, `/admin/transactions`, échanges, annulation le jour même et avertissement de date forcée (tout passe par `gameDayLock.ts`).
 - Piège : `buildStandings()` compare le statut à l'heure PRÉVUE (`game_start_time`). Un changement accepté pendant le retard est donc daté juste avant l'heure prévue du premier match en retard (`backdateBeforeScheduledStart`, 1 ms par 2 s de retard pour garder l'ordre), sinon il ne compterait pas.
 - Limite assumée : l'API passe à `LIVE` avec quelques secondes de délai.
-- Commit : voir git log (staging, à valider par David).
+- Commit `eb1d888`, promu en prod le 2026-11-09 à la demande de David (pas encore observé pendant un vrai match en retard).
 
 **[Feat] — Délai de réactivation : exception pour le lot qui complète un ballotage** (`app/app/gestion-effectifs/actions.ts`, `GestionEffectifsManager.tsx`, `aide/AideTabs.tsx`) :
 - Demande de David (capture : Yakemchuk verrouillé jusqu'au 11 nov. après l'arrivée de Crevier au ballotage) : pouvoir réactiver un joueur avant le délai pour ajuster l'alignement après un échange ou un ballotage. Choix de David : dans le même lot seulement.
