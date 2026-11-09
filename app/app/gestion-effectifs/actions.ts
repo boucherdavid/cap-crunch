@@ -522,6 +522,10 @@ export async function submitBatchAction(input: {
   //   mise sur LTIR approuvée ou un geste de l'admin) peut être comblé par un joueur verrouillé
   //   de cette position — sinon le pooler resterait coincé avec un alignement incomplet.
   let injuredOutCredits = 0
+  // Lot qui complète un ballotage (David, 2026-11-09) : chaque joueur réclamé ajouté permet de
+  // réactiver un joueur encore dans son délai, dans ce même lot seulement — pour réorganiser
+  // l'alignement autour du joueur reçu. (Un échange : déjà libre à la confirmation.)
+  let ballotageCredits = input.actions.filter(a => a.type === 'ballotage').length
   const holeCredits: Record<Bucket, number> = { forward: 0, defense: 0, goalie: 0 }
   if ((!isAdmin || trackOverrides) && !isPreseason) {
     const [{ data: rosterRows }, injuries] = await Promise.all([
@@ -681,9 +685,10 @@ export async function submitBatchAction(input: {
       const bucket = getPlayerBucket(position)
       if (holeCredits[bucket] > 0) { holeCredits[bucket]--; return }
       if (injuredOutCredits > 0) { injuredOutCredits--; return }
+      if (ballotageCredits > 0) { ballotageCredits--; return }
       const unlock = formatUnlockDay(lastDeact.changed_at, delaiJours)
       violate(
-        `Ce joueur ne peut pas être réactivé avant le ${unlock} (délai de ${delaiJours} j), sauf pour remplacer un joueur actif blessé`,
+        `Ce joueur ne peut pas être réactivé avant le ${unlock} (délai de ${delaiJours} j), sauf pour remplacer un joueur actif blessé ou avec l'ajout d'un joueur réclamé au ballotage dans le même lot`,
         `Délai de réactivation : ${await nameOf(playerId)} réactivé avant le ${unlock}`,
       )
     }
