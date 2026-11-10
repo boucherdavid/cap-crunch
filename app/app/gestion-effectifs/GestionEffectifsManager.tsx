@@ -24,6 +24,7 @@ import {
 } from './ltir-actions'
 import { isReactivationLocked, formatUnlockDay } from '@/lib/reactivationDelay'
 import type { LtirRequestView } from '@/lib/ltirRequests'
+import { fmtLtirEffective } from '@/lib/ltirEffective'
 import type { LtirReturnWatchView } from '@/lib/ltirReturns'
 import BenchBadge from '@/components/BenchBadge'
 import type {
@@ -795,6 +796,9 @@ export default function GestionEffectifsManager({
           otherItems.map(c => ({ label: c.label, action: cartItemToInput(c) })),
         )
         if (result.error) { setError(result.error); return }
+        setSubmitWarning(result.deferred
+          ? "Un match d'un joueur touché par ta demande est déjà commencé : si elle est approuvée, elle prendra effet demain."
+          : null)
       } else if (otherItems.length > 0) {
         const result = await submitBatchAction({
           poolerId, saisonId,
@@ -1185,7 +1189,7 @@ export default function GestionEffectifsManager({
               </ul>
             )}
             <p className="text-xs text-sky-700 mt-0.5">
-              Soumis le {new Date(r.submittedAt).toLocaleDateString('fr-CA')}{' '}— rien ne bouge tant que l&apos;admin n&apos;a pas approuvé. La date effective sera celle de la soumission.
+              Soumis le {new Date(r.submittedAt).toLocaleDateString('fr-CA')}{' '}— rien ne bouge tant que l&apos;admin n&apos;a pas approuvé. {fmtLtirEffective(r.effectiveAt)}.
             </p>
           </div>
           <button onClick={() => handleCancelLtirRequest(r.id)}

@@ -16,9 +16,13 @@
  * final (`enforceLimits`, même pour l'admin qui approuve) ; déjà validés à la soumission
  * (`dryRun`). Le statut de l'agent libre signé est au choix du pooler (`new_player_type`).
  *
- * Date effective = la date de SOUMISSION par le pooler, pas celle de l'approbation (David,
- * 2026-09-23) — passée à `submitBatchAction` via `forcedDate`, même mécanisme que les autres
- * dates historiques de l'app (voir CLAUDE.md section 6).
+ * Heure d'effet = celle de la SOUMISSION par le pooler, pas celle de l'approbation (David,
+ * 2026-09-23). Depuis le 2026-11-10 (David) : calculée à la soumission avec la même règle que
+ * Gestion d'effectifs (computeBatchEffectiveDate) — l'heure exacte, ou le lendemain à 8 h (heure
+ * de l'Est) si un match d'un joueur touché était déjà commencé — et enregistrée dans
+ * `effective_at`, passée à `submitBatchAction` via `forcedAt`. Avant, la demande prenait effet à
+ * 8 h le jour de la soumission : rétroactif pour les matchs déjà joués, et en conflit avec un
+ * mouvement fait plus tôt le même jour (Point mis en réserve à 16 h 38, LTIR demandée à 17 h 13).
  */
 
 import { emailLinkHtml } from '@/lib/siteUrl'
@@ -28,6 +32,7 @@ import { sendPushToUser, sendPushToAdmins } from '@/lib/push'
 import { sendEmailToIds } from '@/lib/email'
 import { submitBatchAction, type BatchActionInput } from '@/app/gestion-effectifs/actions'
 import { fetchInjuriesByPlayerId, type InjuryInfo } from '@/lib/injuries'
+import { computeBatchEffectiveDate, effectiveAtForPastSubmission } from '@/lib/gameDayLock'
 
 const APPROBATION_PATH = '/admin/effectifs?tab=approbation'
 const MOUVEMENTS_PATH = '/gestion-effectifs'
@@ -58,6 +63,7 @@ export type LtirRequestView = {
   newPlayerType: 'actif' | 'reserviste' | null
   extraLabels: string[]  // autres mouvements du panier, appliqués avec le LTIR
   submittedAt: string
+  effectiveAt: string | null  // NULL : demande antérieure au 2026-11-10, heure établie à l'approbation
   injury: InjuryInfo | null  // aide à la décision admin — voir app/lib/ltirEligibility.ts
 }
 
@@ -78,6 +84,26 @@ function buildBatch(
   ]
 }
 
+// Joueurs touchés par une demande (celui mis sur LTIR, le remplaçant, les autres mouvements du
+// panier) — pour la règle du match déjà commencé.
+async function requestPlayerIds(
+  admin: AdminDb, ltirPlayerId: number, newPlayerId: number | null | undefined, extras: LtirExtraAction[],
+): Promise<number[]> {
+  const entryIds = new Set<number>()
+  const ids = [ltirPlayerId, ...(newPlayerId ? [newPlayerId] : [])]
+  for (const { action: a } of extras) {
+    for (const id of [a.entry1Id, a.entry2Id, a.ltirEntryId, a.returnLtirEntryId, a.deactivateActifId, a.releaseEntryId]) {
+      if (id) entryIds.add(id)
+    }
+    if (a.newPlayerId) ids.push(a.newPlayerId)
+  }
+  if (entryIds.size > 0) {
+    const { data } = await admin.from('pooler_rosters').select('player_id').in('id', Array.from(entryIds))
+    ids.push(...(data ?? []).map(r => r.player_id as number))
+  }
+  return ids
+}
+
 export async function createLtirRequest(
   poolSeasonId: number,
   poolerId: string,
@@ -85,7 +111,7 @@ export async function createLtirRequest(
   newPlayerId?: number,
   newPlayerType?: 'actif' | 'reserviste',
   extraActions: LtirExtraAction[] = [],
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; deferred?: boolean }> {
   const admin = createAdminClient()
 
   const { data: entry } = await admin
@@ -129,7 +155,13 @@ export async function createLtirRequest(
   })
   if (check.error) return { error: check.error }
 
+  // Heure d'effet fixée maintenant, pendant que l'état des matchs est connu (voir l'en-tête).
+  const { effectiveAt, deferred } = await computeBatchEffectiveDate(
+    await requestPlayerIds(admin, ltirPlayerId, newPlayerId, extraActions),
+  )
+
   const { error } = await admin.from('ltir_requests').insert({
+    effective_at: effectiveAt,
     pool_season_id: poolSeasonId,
     pooler_id: poolerId,
     ltir_player_id: ltirPlayerId,
@@ -147,7 +179,7 @@ export async function createLtirRequest(
     url: APPROBATION_PATH,
   }).catch(() => {}))
 
-  return {}
+  return { deferred }
 }
 
 export async function cancelLtirRequest(requestId: number, poolerId: string): Promise<{ error?: string }> {
@@ -166,7 +198,7 @@ export async function listPendingLtirRequestsForPooler(poolSeasonId: number, poo
   const { data } = await admin
     .from('ltir_requests')
     .select(`
-      id, ltir_player_id, submitted_at, new_player_type, extra_actions,
+      id, ltir_player_id, submitted_at, effective_at, new_player_type, extra_actions,
       poolers!pooler_id (name),
       ltir_player:players!ltir_player_id (first_name, last_name),
       new_player:players!new_player_id (first_name, last_name)
@@ -187,6 +219,7 @@ export async function listPendingLtirRequestsForPooler(poolSeasonId: number, poo
     newPlayerType: r.new_player_type ?? null,
     extraLabels: ((r.extra_actions ?? []) as LtirExtraAction[]).map(e => e.label),
     submittedAt: r.submitted_at,
+    effectiveAt: r.effective_at ?? null,
     injury: null,
   }))
 }
@@ -197,7 +230,7 @@ export async function listPendingLtirRequestsForAdmin(poolSeasonId: number): Pro
     admin
       .from('ltir_requests')
       .select(`
-        id, pooler_id, ltir_player_id, submitted_at, new_player_type, extra_actions,
+        id, pooler_id, ltir_player_id, submitted_at, effective_at, new_player_type, extra_actions,
         poolers!pooler_id (name),
         ltir_player:players!ltir_player_id (first_name, last_name),
         new_player:players!new_player_id (first_name, last_name)
@@ -220,6 +253,7 @@ export async function listPendingLtirRequestsForAdmin(poolSeasonId: number): Pro
     newPlayerType: r.new_player_type ?? null,
     extraLabels: ((r.extra_actions ?? []) as LtirExtraAction[]).map(e => e.label),
     submittedAt: r.submitted_at,
+    effectiveAt: r.effective_at ?? null,
     injury: injuriesByPlayerId.get(r.ltir_player_id) ?? null,
   }))
 }
@@ -257,20 +291,25 @@ export async function decideLtirRequest(
     .maybeSingle()
   if (!entry) return { error: "Ce joueur n'est plus dans l'alignement de ce pooler (probablement libéré ou échangé entre-temps) — rejette cette demande." }
 
-  // Date effective = la date de soumission, pas celle de l'approbation (David, 2026-09-23).
-  const effectiveDate = (req.submitted_at as string).slice(0, 10)
+  // Heure d'effet calculée à la soumission (voir l'en-tête) ; demande plus ancienne : selon
+  // l'horaire prévu des matchs du jour de la soumission.
+  const extras = (req.extra_actions ?? []) as LtirExtraAction[]
+  const effectiveAt = (req.effective_at as string | null)
+    ?? (await effectiveAtForPastSubmission(
+      await requestPlayerIds(admin, req.ltir_player_id, req.new_player_id, extras), req.submitted_at as string,
+    )).effectiveAt
 
   const result = await submitBatchAction({
     poolerId: req.pooler_id,
     saisonId: req.pool_season_id,
-    forcedDate: effectiveDate,
+    forcedAt: effectiveAt,
     // Tout le panier d'un coup, et l'état final doit être conforme même si c'est l'admin qui
     // approuve. Ancienne demande sans statut choisi : même statut que le joueur mis sur LTIR.
     enforceLimits: true,
     actions: buildBatch(
       entry.id, req.new_player_id,
       req.new_player_type ?? (entry.player_type === 'reserviste' ? 'reserviste' : 'actif'),
-      (req.extra_actions ?? []) as LtirExtraAction[],
+      extras,
     ),
   })
   if (result.error) return { error: result.error }

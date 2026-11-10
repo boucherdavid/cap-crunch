@@ -348,6 +348,9 @@ export async function submitBatchAction(input: {
   saisonId: number
   actions: BatchActionInput[]
   forcedDate?: string
+  // Heure d'effet exacte (ISO), prioritaire sur forcedDate — approbation d'une demande de LTIR
+  // (David, 2026-11-10) : l'heure calculée à la soumission, pas 8 h le jour de la soumission.
+  forcedAt?: string
   // Demande de LTIR avec le reste du panier (David, 2026-10-11, voir lib/ltirRequests.ts) :
   // `dryRun` valide l'état final sans rien écrire ; `enforceLimits` impose cette validation même
   // à l'admin (approbation d'une demande : l'admin approuve, mais le résultat doit être conforme).
@@ -421,7 +424,7 @@ export async function submitBatchAction(input: {
   // date effective forcée à la date de début — même flag que le verrou ci-dessus, pour ne
   // pas avoir deux définitions de "on est encore en préparation" qui pourraient diverger.
   const isPreseason = !saisonConfig?.season_started
-  const isAdminOverride = !isPreseason && !!input.forcedDate && isAdmin
+  const isAdminOverride = !isPreseason && !!(input.forcedDate || input.forcedAt) && isAdmin
 
   // Règles contournées par l'admin, notées publiquement (David, 2026-11-08) : l'admin n'est
   // jamais bloqué, même pour son propre alignement, mais chaque règle qu'un pooler n'aurait pas pu
@@ -448,7 +451,7 @@ export async function submitBatchAction(input: {
   // pré-saison et date forcée ont déjà leur propre date explicite, pas de now() ambigu ici.
   let deferredToTomorrow = false
   let liveEffectiveAt = new Date().toISOString()
-  if (!isPreseason && !input.forcedDate) {
+  if (!isPreseason && !input.forcedDate && !input.forcedAt) {
     const entryIdsToResolve = new Set<number>()
     const directPlayerIds: number[] = []
     for (const action of input.actions) {
@@ -472,7 +475,9 @@ export async function submitBatchAction(input: {
 
   const changedAt = isPreseason
     ? `${saisonConfig!.saison_start_date}T12:00:00Z`
-    : input.forcedDate
+    : input.forcedAt
+      ? new Date(input.forcedAt).toISOString()
+      : input.forcedDate
       ? `${input.forcedDate}T12:00:00Z`
       : liveEffectiveAt
 

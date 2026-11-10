@@ -1869,10 +1869,15 @@ le type brut s'affiche.
   plutôt que de dupliquer la logique LTIR/LTIR+signature — tourne avec les droits de l'admin
   connecté (celui qui clique "Approuver"), donc `validateRosterLimits` est sautée comme pour
   toute action admin (l'admin n'est jamais bloqué, même comportement que partout ailleurs).
-- **Date effective = la date de SOUMISSION par le pooler, pas celle de l'approbation** (David,
-  2026-09-23) — `submitted_at` (tronqué en `YYYY-MM-DD`) passé à `submitBatchAction` via
-  `forcedDate`, même mécanisme que les autres dates historiques de l'app (voir plus haut,
-  "Convention — date historique d'un mouvement de roster").
+- **Heure d'effet = celle de la SOUMISSION par le pooler, pas celle de l'approbation** (David,
+  2026-09-23, revu le 2026-11-10) — calculée à la soumission par `computeBatchEffectiveDate`
+  (heure exacte, ou lendemain 8 h ET si un match d'un joueur touché est déjà commencé — même
+  règle que Gestion d'effectifs), enregistrée dans `ltir_requests.effective_at` et passée à
+  `submitBatchAction` via `forcedAt` (heure exacte, prioritaire sur `forcedDate`). Avant : jour de
+  la soumission à 8 h — rétroactif, et refusé par `checkFutureRosterConflict` quand le joueur
+  avait bougé plus tôt le même jour (Point, Jérôme, 2026-11-10). Demande sans `effective_at`
+  (antérieure) : `effectiveAtForPastSubmission()` (`lib/gameDayLock.ts`), selon l'heure prévue
+  des matchs. Affichage : `fmtLtirEffective()` (`lib/ltirEffective.ts`).
 - Si le joueur n'est plus dans l'alignement du pooler au moment d'approuver (libéré/échangé
   entretemps), l'approbation échoue avec un message clair plutôt que d'écrire n'importe quoi —
   l'admin n'a qu'à rejeter cette demande-là.

@@ -197,3 +197,33 @@ function todayETOf(d: Date): string {
     year: 'numeric', month: '2-digit', day: '2-digit',
   }).format(d)
 }
+
+// Heure d'effet d'une soumission passée dont on n'a pas calculé l'heure sur le moment (demandes
+// de LTIR antérieures au 2026-11-10, David) : l'état en direct des matchs n'est plus connu, on se
+// fie à l'heure PRÉVUE. Un match d'un joueur touché prévu avant la soumission, le même jour (heure
+// de l'Est) → lendemain 8 h (T12:00:00Z), comme computeBatchEffectiveDate ; sinon l'heure de la
+// soumission. Horaire indisponible → l'heure de la soumission.
+export async function effectiveAtForPastSubmission(playerIds: number[], submittedAt: string): Promise<BatchEffectiveDate> {
+  const submittedMs = new Date(submittedAt).getTime()
+  const fallback = { effectiveAt: new Date(submittedMs).toISOString(), deferred: false }
+  try {
+    const uniqueIds = Array.from(new Set(playerIds)).filter(id => id > 0)
+    if (uniqueIds.length === 0) return fallback
+    const supabase = await createClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: players } = await supabase.from('players').select('id, teams(code)').in('id', uniqueIds) as { data: any[] | null }
+    const teamCodes = new Set(
+      (players ?? []).map(p => p.teams?.code as string | undefined).filter((c): c is string => !!c),
+    )
+    if (teamCodes.size === 0) return fallback
+    const day = todayETOf(new Date(submittedMs))
+    const games = await fetchTodayGames(day)
+    const startedBefore = games.some(g =>
+      (teamCodes.has(g.awayAbbrev) || teamCodes.has(g.homeAbbrev))
+      && !!g.startTimeUTC && new Date(g.startTimeUTC).getTime() <= submittedMs,
+    )
+    return startedBefore ? { effectiveAt: `${addDaysET(day, 1)}T12:00:00Z`, deferred: true } : fallback
+  } catch {
+    return fallback
+  }
+}

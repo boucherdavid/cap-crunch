@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { adminDecideLtirRequestAction } from './cap-watch-actions'
 import type { LtirRequestView } from '@/lib/ltirRequests'
+import { fmtLtirEffective } from '@/lib/ltirEffective'
 import InjuryBadge from '@/components/InjuryBadge'
 
 function fmtReturn(iso: string | null): string {
@@ -66,7 +67,7 @@ export default function LtirApprovalManager({ initialRequests, onDecided }: { in
             </span>
           </div>
           <p className="text-xs text-gray-500 mb-3">
-            La date effective sera celle de la soumission ci-dessus, pas celle de ton approbation.
+            {fmtLtirEffective(r.effectiveAt)} — peu importe quand tu approuves.
           </p>
           <div className="flex gap-2">
             <button onClick={() => decide(r.id, true)} disabled={pending}
