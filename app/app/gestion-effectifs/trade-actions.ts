@@ -10,12 +10,16 @@ import {
   type TradeItemInput, type TradeExtraAction, type TradeMessageView, type ReceivedPlayerType,
 } from '@/lib/tradeOffers'
 import { poolDraftYear, pickLabel } from '@/lib/poolDraftYear'
+import { fetchLtirUnlockDays } from '@/lib/ltirReturns'
 
 // ─── Parcourir les actifs échangeables d'un pooler (soi-même ou un autre — déjà public via
 // /poolers/[id], voir app/app/simulation/actions.ts pour le même principe) ────────────────────
 
 export type TradeableItem =
-  | { kind: 'player'; playerId: number; name: string; position: string | null; teamCode: string | null; playerType: 'actif' | 'reserviste' | 'ltir' | 'recrue'; capNumber: number; recrueEligible: boolean }
+  | { kind: 'player'; playerId: number; name: string; position: string | null; teamCode: string | null; playerType: 'actif' | 'reserviste' | 'ltir' | 'recrue'; capNumber: number; recrueEligible: boolean
+      // Joueur sur LTIR encore sous la durée minimale : premier jour (AAAA-MM-JJ, heure de l'Est)
+      // où il peut revenir (David, 2026-11-10 — retour de LTIR parmi les ajustements d'un échange).
+      ltirUnlockDay?: string | null }
   | { kind: 'pick'; pickId: number; round: number; season: string; originalOwnerName: string | null }
 
 // Joueurs sur LTIR inclus (David, 2026-10-05) : échangeables et affichables au marché. Chez le
@@ -55,6 +59,15 @@ export async function listTradeableAssetsAction(poolerId: string, saisonId: numb
     recrueEligible: r.player_type !== 'recrue' && r.player_type !== 'ltir'
       && isRookieProtected(r.rookie_type, r.pool_draft_year, r.players?.player_contracts, season),
   }))
+  const ltirIds = ((rosterRows ?? []) as { player_id: number; player_type: string }[])
+    .filter(r => r.player_type === 'ltir').map(r => ({ poolerId, playerId: r.player_id }))
+  if (ltirIds.length > 0) {
+    const unlockDays = await fetchLtirUnlockDays(createAdminClient(), saisonId, ltirIds)
+    for (const p of players) {
+      if (p.kind === 'player' && p.playerType === 'ltir') p.ltirUnlockDay = unlockDays.get(`${poolerId}::${p.playerId}`) ?? null
+    }
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const picks: TradeableItem[] = ((pickRows ?? []) as any[]).map(p => ({
     kind: 'pick' as const,

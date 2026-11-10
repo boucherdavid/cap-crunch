@@ -10,6 +10,7 @@ import { validateRosterLimits, type RosterLimitEntry } from '@/lib/rosterLimits'
 import { announceToPool } from '@/lib/poolAnnouncements'
 import { isRookieProtectionExpired, isElcActiveForSeason, isRookieProtected, hasSignedContract, NO_CONTRACT_ERROR } from '@/lib/rookieProtection'
 import { poolDraftYear } from '@/lib/poolDraftYear'
+import { isReactivationLocked, formatUnlockDay } from '@/lib/reactivationDelay'
 
 // Même vocabulaire roster_change_log que pickChangeType (admin/transactions/actions.ts,
 // privée) — dupliquée ici plutôt qu'importée pour éviter un cycle (voir le commentaire en tête
@@ -476,6 +477,8 @@ export type TradeExtraAction =
   | { playerId: number; action: 'change_status'; newType: 'actif' | 'reserviste' }
   | { playerId: number; action: 'demote_to_recrue' }
   | { playerId: number; action: 'promote_recrue'; newType: 'actif' | 'reserviste' }
+  // Retour de LTIR (David, 2026-11-10) — soumis à la durée minimale sur LTIR, comme dans Mouvements.
+  | { playerId: number; action: 'return_ltir'; newType: 'actif' | 'reserviste' }
 
 // Construit l'état viruel du roster ACTIF/RÉSERVISTE d'un pooler après application des items
 // de cet échange qui le concernent (retire ce qu'il donne, ajoute ce qu'il reçoit avec le type
@@ -497,11 +500,16 @@ async function simulatePostTradeRoster(
 
   const entries = new Map<number, RosterLimitEntry>()
   const recrueRows = new Map<number, { position: string | null; capNumber: number }>()
+  const ltirRows = new Map<number, { position: string | null; capNumber: number }>()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const row of (currentRows ?? []) as any[]) {
     const capNumber = getEffectiveCap(row.players?.player_contracts, season, unsignedMultiplier).cap
     if (row.player_type === 'recrue') {
       recrueRows.set(row.player_id, { position: row.players?.position ?? null, capNumber })
+      continue
+    }
+    if (row.player_type === 'ltir') {
+      ltirRows.set(row.player_id, { position: row.players?.position ?? null, capNumber })
       continue
     }
     if (row.player_type !== 'actif' && row.player_type !== 'reserviste') continue
@@ -517,6 +525,9 @@ async function simulatePostTradeRoster(
     } else if (extra.action === 'promote_recrue') {
       const recrue = recrueRows.get(extra.playerId)
       if (recrue) entries.set(extra.playerId, { player_type: extra.newType, position: recrue.position, capNumber: recrue.capNumber })
+    } else if (extra.action === 'return_ltir') {
+      const ltir = ltirRows.get(extra.playerId)
+      if (ltir) entries.set(extra.playerId, { player_type: extra.newType, position: ltir.position, capNumber: ltir.capNumber })
     }
   }
 
@@ -575,7 +586,44 @@ export async function confirmTradeReady(
     if (givenByThisPooler.has(extra.playerId)) return { error: 'Un ajustement supplémentaire ne peut pas viser un joueur déjà inclus dans l\'échange.' }
   }
 
-  const { data: saison } = await admin.from('pool_seasons').select('season, pool_cap, season_started').eq('id', offer.pool_season_id).single()
+  const { data: saison } = await admin.from('pool_seasons').select('season, pool_cap, season_started, duree_min_ltir_jours').eq('id', offer.pool_season_id).single()
+
+  // Statut actuel des joueurs visés (David, 2026-11-10) : un changement actif↔réserviste ne vise
+  // qu'un actif ou un réserviste, un retour de LTIR qu'un joueur sur LTIR — avant, un
+  // `change_status` sur un joueur LTIR échappait à la validation et s'appliquait quand même.
+  const statusIds = extraActions.filter(e => e.action === 'change_status' || e.action === 'return_ltir').map(e => e.playerId)
+  if (statusIds.length > 0) {
+    const { data: rows } = await admin
+      .from('pooler_rosters')
+      .select('player_id, player_type, players (first_name, last_name)')
+      .eq('pooler_id', poolerId).eq('pool_season_id', offer.pool_season_id).eq('is_active', true)
+      .in('player_id', statusIds)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const byId = new Map(((rows ?? []) as any[]).map(r => [r.player_id, r]))
+    const dureeMin = saison?.duree_min_ltir_jours ?? 0
+    const returnIds = extraActions.filter(e => e.action === 'return_ltir').map(e => e.playerId)
+    const { data: ltirEvents } = returnIds.length > 0 && dureeMin > 0
+      ? await admin.from('roster_change_log').select('player_id, changed_at')
+          .eq('pooler_id', poolerId).eq('pool_season_id', offer.pool_season_id).eq('new_type', 'ltir')
+          .in('player_id', returnIds).order('changed_at', { ascending: false })
+      : { data: [] as { player_id: number; changed_at: string }[] }
+    for (const extra of extraActions) {
+      if (extra.action !== 'change_status' && extra.action !== 'return_ltir') continue
+      const row = byId.get(extra.playerId)
+      if (extra.action === 'change_status') {
+        if (!row || (row.player_type !== 'actif' && row.player_type !== 'reserviste')) {
+          return { error: 'Un changement de statut ne peut viser qu’un actif ou un réserviste de ton alignement.' }
+        }
+        continue
+      }
+      if (!row || row.player_type !== 'ltir') return { error: 'Un joueur à ramener de la LTIR est introuvable sur ta LTIR.' }
+      const since = (ltirEvents ?? []).find(e => e.player_id === extra.playerId)?.changed_at
+      if (since && isReactivationLocked(since, dureeMin)) {
+        const name = `${row.players?.first_name ?? ''} ${row.players?.last_name ?? ''}`.trim()
+        return { error: `${name} doit rester sur la LTIR jusqu'au ${formatUnlockDay(since, dureeMin)} (durée minimale de ${dureeMin} jours).` }
+      }
+    }
+  }
   const { data: settingsRow } = await admin.from('app_settings').select('unsigned_player_cap_multiplier').eq('id', 1).maybeSingle()
   const unsignedMultiplier = settingsRow?.unsigned_player_cap_multiplier ?? 1.20
 
@@ -736,11 +784,11 @@ async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tr
     : await computeBatchEffectiveDate(involvedIds)
   const addedAt = preseason ? null : effectiveAt
 
-  async function log(playerId: number, poolerId: string, oldType: string | null, newType: string | null) {
+  async function log(playerId: number, poolerId: string, oldType: string | null, newType: string | null, changeType?: string) {
     if (preseason) return
     await admin.from('roster_change_log').insert({
       player_id: playerId, pooler_id: poolerId, pool_season_id: saisonId,
-      change_type: pickChangeType(oldType, newType),
+      change_type: changeType ?? pickChangeType(oldType, newType),
       old_type: oldType, new_type: newType, changed_by: null, changed_at: effectiveAt, is_admin_override: true,
     })
   }
@@ -835,7 +883,16 @@ async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tr
       const conflict = await checkFutureRosterConflict(admin, extraPoolerId, extra.playerId, saisonId, effectiveAt, finalType)
       if (conflict.error) return conflict
 
-      if (extra.action === 'change_status' && extra.newType !== row.player_type) {
+      if (extra.action === 'return_ltir') {
+        if (row.player_type !== 'ltir') continue // déjà sorti de la LTIR entre-temps
+        await admin.from('pooler_rosters').update({ player_type: extra.newType }).eq('id', row.id)
+        // Même vocabulaire que Gestion d'effectifs : 'retour_ltir', en actif comme en réserve.
+        await log(extra.playerId, extraPoolerId, 'ltir', extra.newType, 'retour_ltir')
+        await admin.from('transaction_items').insert({
+          transaction_id: tx.id, action_type: 'reactivate', to_pooler_id: extraPoolerId, player_id: extra.playerId,
+          old_player_type: 'ltir', new_player_type: extra.newType,
+        })
+      } else if (extra.action === 'change_status' && (row.player_type === 'actif' || row.player_type === 'reserviste') && extra.newType !== row.player_type) {
         await admin.from('pooler_rosters').update({ player_type: extra.newType }).eq('id', row.id)
         await log(extra.playerId, extraPoolerId, row.player_type, extra.newType)
         await admin.from('transaction_items').insert({

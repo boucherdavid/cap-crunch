@@ -19,6 +19,22 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-11-10
+
+**[Feat] — Retour de LTIR parmi les ajustements d'un échange** (`app/lib/tradeOffers.ts`,
+`app/app/gestion-effectifs/TradeOffersTab.tsx`, `app/app/gestion-effectifs/trade-actions.ts`,
+`app/app/aide/AideTabs.tsx`) :
+- Question de David : un pooler peut-il ramener un joueur de sa LTIR comme ajustement à la
+  confirmation d'un échange ? Non jusqu'ici (LTIR exclus de la liste). Nouveau `TradeExtraAction`
+  `return_ltir` (actif ou réserviste) : compté dans l'état final simulé (12/6/2 + plafond, aperçu
+  en direct aussi), journal `retour_ltir`, item `reactivate`.
+- Durée minimale sur LTIR appliquée (choix de David) : refus à la confirmation avec la date ; la
+  date de déblocage s'affiche dans la liste et les choix de retour sont masqués d'ici là. Pas
+  d'exception un pour un (les ajustements d'échange ne mettent personne sur LTIR).
+- Trou bouché : un `change_status` forgé sur un joueur LTIR échappait à la validation mais
+  s'appliquait à l'exécution — maintenant refusé s'il ne vise pas un actif/réserviste.
+- Commit : à venir
+
 ### 2026-11-09
 
 **[Feat] — Changements acceptés jusqu'à la vraie mise au jeu** (`app/lib/gameDayLock.ts`, `aide/AideTabs.tsx`) :
