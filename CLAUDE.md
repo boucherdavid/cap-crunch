@@ -1569,7 +1569,12 @@ un rafraîchissement déclenché par l'action (`refreshPoolerTodo()`) ou une not
   proposer_extra_actions`/`target_extra_actions` (JSONB), validé dans le même état final
   simulé que les items de l'échange, et appliqué avec eux à `executeTradeOffer()` seulement une
   fois les deux poolers prêts. UI : section "Si ça ne rentre pas encore, ajuste au besoin" dans
-  l'onglet Échanges, pas besoin d'aller dans Mouvements séparément. Couvre aussi
+  l'onglet Échanges, pas besoin d'aller dans Mouvements séparément. **`return_ltir`** (David,
+  2026-11-10) : ramener un joueur de sa LTIR (actif ou réserviste), compté dans l'état final ;
+  refusé sous la durée minimale sur LTIR (`duree_min_ltir_jours`, sans l'exception un pour un de
+  Mouvements), date de déblocage affichée (`TradeableItem.ltirUnlockDay`) ; journal `retour_ltir`.
+  `change_status` refusé à la confirmation s'il ne vise pas un actif/réserviste (trou : un joueur
+  LTIR passait sans validation). Couvre aussi
   `demote_to_recrue`/`promote_recrue` (David, 2026-09-22, éligibilité corrigée le même jour) —
   retourner une recrue encore protégée en banque ou en activer une aide souvent à rester
   conforme sans avoir à libérer quelqu'un pour de bon. **Éligibilité au retour en banque =

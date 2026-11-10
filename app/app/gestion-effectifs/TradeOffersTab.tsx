@@ -28,11 +28,11 @@ function groupKey(i: TradeableItem): string {
 }
 
 // Tri de la liste "Ajustements supplémentaires" (David, 2026-09-22) — actifs groupés par
-// position (Attaquants/Défenseurs/Gardiens), puis réservistes, puis recrues à la fin ;
+// position (Attaquants/Défenseurs/Gardiens), puis réservistes, LTIR, puis recrues à la fin ;
 // alphabétique par nom à l'intérieur de chaque groupe.
-const ADJUST_GROUP_ORDER = ['forward', 'defense', 'goalie', 'reserviste', 'recrue']
+const ADJUST_GROUP_ORDER = ['forward', 'defense', 'goalie', 'reserviste', 'ltir', 'recrue']
 function adjustGroupKey(i: Extract<TradeableItem, { kind: 'player' }>): string {
-  if (i.playerType === 'reserviste' || i.playerType === 'recrue') return i.playerType
+  if (i.playerType === 'reserviste' || i.playerType === 'recrue' || i.playerType === 'ltir') return i.playerType
   return getPlayerBucket(i.position)
 }
 function sortForAdjust(items: Extract<TradeableItem, { kind: 'player' }>[]): Extract<TradeableItem, { kind: 'player' }>[] {
@@ -51,6 +51,11 @@ const STATUS_LABEL: Record<string, string> = {
   completed: 'Complétée',
   cancelled_expired: 'Annulée (délai dépassé)',
   withdrawn: 'Retirée',
+}
+
+// Jour AAAA-MM-JJ (heure de l'Est) lisible : « 20 nov. ».
+function fmtUnlockDay(day: string) {
+  return new Date(day + 'T12:00:00Z').toLocaleDateString('fr-CA', { timeZone: 'America/Toronto', day: 'numeric', month: 'short' })
 }
 
 function fmtDeadline(iso: string | null) {
@@ -338,7 +343,8 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
   // 'demote'/'promote_*' couvrent le retour en banque / l'activation d'une recrue — pratique
   // quand libérer un joueur ferait perdre un actif utile, alors que le mettre en banque (s'il
   // est encore protégé) ou activer une recrue existante règle la composition sans rien perdre.
-  type ExtraChoice = 'none' | 'release' | 'actif' | 'reserviste' | 'demote' | 'promote_actif' | 'promote_reserviste'
+  // 'return_*' (David, 2026-11-10) : retour d'un joueur sur LTIR, soumis à la durée minimale.
+  type ExtraChoice = 'none' | 'release' | 'actif' | 'reserviste' | 'demote' | 'promote_actif' | 'promote_reserviste' | 'return_actif' | 'return_reserviste'
   const [extraChoices, setExtraChoices] = useState<Record<number, Record<number, ExtraChoice>>>({})
 
   function setExtraChoice(offerId: number, playerId: number, choice: ExtraChoice) {
@@ -354,6 +360,8 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
         if (choice === 'demote') return { playerId, action: 'demote_to_recrue' as const }
         if (choice === 'promote_actif') return { playerId, action: 'promote_recrue' as const, newType: 'actif' as const }
         if (choice === 'promote_reserviste') return { playerId, action: 'promote_recrue' as const, newType: 'reserviste' as const }
+        if (choice === 'return_actif') return { playerId, action: 'return_ltir' as const, newType: 'actif' as const }
+        if (choice === 'return_reserviste') return { playerId, action: 'return_ltir' as const, newType: 'reserviste' as const }
         return { playerId, action: 'change_status' as const, newType: choice as 'actif' | 'reserviste' }
       })
   }
@@ -381,10 +389,12 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
     type Entry = { type: 'actif' | 'reserviste'; position: string | null; capNumber: number }
     const entries = new Map<number, Entry>()
     const recrueMap = new Map<number, { position: string | null; capNumber: number }>()
+    const ltirMap = new Map<number, { position: string | null; capNumber: number }>()
     for (const i of myFullRoster) {
       if (i.kind !== 'player') continue
       if (i.playerType === 'recrue') { recrueMap.set(i.playerId, { position: i.position, capNumber: i.capNumber }); continue }
-      if (i.playerType === 'ltir') continue  // hors masse et hors composition tant qu'il est chez moi
+      // Hors masse et hors composition tant qu'il est sur la LTIR (sauf retour choisi plus bas).
+      if (i.playerType === 'ltir') { ltirMap.set(i.playerId, { position: i.position, capNumber: i.capNumber }); continue }
       entries.set(i.playerId, { type: i.playerType, position: i.position, capNumber: i.capNumber })
     }
 
@@ -407,6 +417,9 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
       } else if (extra.action === 'promote_recrue') {
         const recrue = recrueMap.get(extra.playerId)
         if (recrue) entries.set(extra.playerId, { type: extra.newType, position: recrue.position, capNumber: recrue.capNumber })
+      } else if (extra.action === 'return_ltir') {
+        const ltir = ltirMap.get(extra.playerId)
+        if (ltir) entries.set(extra.playerId, { type: extra.newType, position: ltir.position, capNumber: ltir.capNumber })
       }
     }
 
@@ -593,21 +606,27 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
                         {(() => {
                           const givenIds = new Set(o.give.filter(i => i.kind === 'player').map(i => i.id))
                           const adjustable = sortForAdjust(myFullRoster.filter(
-                            (i): i is Extract<TradeableItem, { kind: 'player' }> => i.kind === 'player' && i.playerType !== 'ltir' && !givenIds.has(i.playerId),
+                            (i): i is Extract<TradeableItem, { kind: 'player' }> => i.kind === 'player' && !givenIds.has(i.playerId),
                           ))
                           if (adjustable.length === 0) return null
                           return (
                             <div className="mb-2">
                               <p className="text-xs text-amber-700 mb-1">
                                 Si ça ne rentre pas encore, ajuste au besoin (sans avoir à aller dans Mouvements) — retourner
-                                une recrue encore protégée en banque ou en activer une peut aider sans rien libérer pour de bon :
+                                une recrue encore protégée en banque, en activer une ou ramener un joueur de la LTIR peut aider
+                                sans rien libérer pour de bon :
                               </p>
                               <div className="space-y-1 max-h-52 overflow-y-auto border border-amber-200 rounded bg-white p-1.5">
                                 {adjustable.map(i => (
                                   <div key={i.playerId} className="flex items-center justify-between text-sm gap-2">
                                     <span className="truncate flex-1 min-w-0">
-                                      {i.name} <span className="text-gray-400">({i.playerType})</span>{' '}
+                                      {i.name} <span className="text-gray-400">({i.playerType === 'ltir' ? 'LTIR' : i.playerType})</span>{' '}
                                       <span className="text-xs text-gray-500">{fmtCap(i.capNumber)}</span>
+                                      {i.playerType === 'ltir' && i.ltirUnlockDay && (
+                                        <span className="block text-xs text-amber-700">
+                                          Réintégrable à partir du {fmtUnlockDay(i.ltirUnlockDay)} (durée minimale)
+                                        </span>
+                                      )}
                                     </span>
                                     <select
                                       defaultValue="none"
@@ -615,7 +634,14 @@ export default function TradeOffersTab({ saisonId, selfPoolerId, poolCap, onDraf
                                       className="border rounded px-2 py-1 text-xs shrink-0"
                                     >
                                       <option value="none">— Aucun changement —</option>
-                                      {i.playerType === 'recrue' ? (
+                                      {i.playerType === 'ltir' ? (
+                                        i.ltirUnlockDay ? null : (
+                                          <>
+                                            <option value="return_actif">Retour LTIR → Actif</option>
+                                            <option value="return_reserviste">Retour LTIR → Réserviste</option>
+                                          </>
+                                        )
+                                      ) : i.playerType === 'recrue' ? (
                                         <>
                                           <option value="promote_actif">Activer → Actif</option>
                                           <option value="promote_reserviste">Activer → Réserviste</option>
