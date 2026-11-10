@@ -33,7 +33,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   d'exception un pour un (les ajustements d'échange ne mettent personne sur LTIR).
 - Trou bouché : un `change_status` forgé sur un joueur LTIR échappait à la validation mais
   s'appliquait à l'exécution — maintenant refusé s'il ne vise pas un actif/réserviste.
-- Commit : à venir
+- Commit : `4e0a365` — promu en prod le 2026-11-10 (David)
 
 ### 2026-11-09
 
