@@ -21,6 +21,19 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-11-10
 
+**[Fix] — Heure d'effet d'une demande de LTIR** (`app/lib/ltirRequests.ts`, `app/lib/gameDayLock.ts`,
+`app/lib/ltirEffective.ts`, `app/app/gestion-effectifs/actions.ts`, `GestionEffectifsManager.tsx`,
+`LtirApprovalManager.tsx`, `aide/LtirRulesContent.tsx`, migration `ltir_requests_effective_at.sql`) :
+- Bogue en prod : la demande de Jérôme (Point sur LTIR + Broberg, Morrow en réserve) refusée à
+  l'approbation par `checkFutureRosterConflict`. Point avait été mis en réserve à 16 h 38 ; la
+  demande, soumise à 17 h 13, prenait effet à 8 h le même jour (`forcedDate`), donc avant.
+- Règle de David : heure de la soumission, mais report au lendemain 8 h ET si un match d'un joueur
+  touché est déjà commencé (comme Gestion d'effectifs). Calculée à la soumission (seul moment où
+  l'état en direct des matchs est connu), stockée dans `ltir_requests.effective_at`, appliquée à
+  l'approbation via `submitBatchAction({ forcedAt })`. Demandes plus anciennes : horaire prévu.
+- Bandeau du pooler et carte d'approbation : « Prend effet le … » ; avis au pooler si reporté.
+- Commit : `77bd9eb` — migration roulée en staging et en prod, promu en prod le 2026-11-10 (David)
+
 **[Feat] — Retour de LTIR parmi les ajustements d'un échange** (`app/lib/tradeOffers.ts`,
 `app/app/gestion-effectifs/TradeOffersTab.tsx`, `app/app/gestion-effectifs/trade-actions.ts`,
 `app/app/aide/AideTabs.tsx`) :

@@ -1208,6 +1208,10 @@ CREATE POLICY "Admin gère player_projections" ON player_projections FOR ALL
 -- CREATE POLICY "Lecture publique ltir_requests" ON ltir_requests FOR SELECT USING (true);
 -- CREATE POLICY "Admin gère ltir_requests" ON ltir_requests FOR ALL
 --   USING (EXISTS (SELECT 1 FROM poolers WHERE id = auth.uid() AND is_admin = true));
+--
+-- Migration 2026-11-10 (supabase_migrations/ltir_requests_effective_at.sql) : heure d'effet
+-- calculée à la soumission (lendemain 8 h ET si un match d'un joueur touché était commencé).
+-- ALTER TABLE ltir_requests ADD COLUMN IF NOT EXISTS effective_at TIMESTAMPTZ;
 
 -- Migration 2026-09-24 : date de retour ESPN stockée séparément (David, option 3) — jusqu'ici
 -- `est_return_date` prenait la date CBS et ne tombait sur ESPN qu'en repli, donc un désaccord

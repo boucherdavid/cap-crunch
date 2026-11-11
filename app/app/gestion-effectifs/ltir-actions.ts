@@ -31,7 +31,7 @@ export async function submitLtirRequestAction(
   newPlayerId?: number,
   newPlayerType?: 'actif' | 'reserviste',
   extraActions: LtirExtraAction[] = [],
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; deferred?: boolean }> {
   const check = await requireSelfOrAdmin(poolerId)
   if ('error' in check) return check
   return createLtirRequest(poolSeasonId, poolerId, ltirPlayerId, newPlayerId, newPlayerType, extraActions)
