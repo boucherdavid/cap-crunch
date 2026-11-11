@@ -32,7 +32,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   l'état en direct des matchs est connu), stockée dans `ltir_requests.effective_at`, appliquée à
   l'approbation via `submitBatchAction({ forcedAt })`. Demandes plus anciennes : horaire prévu.
 - Bandeau du pooler et carte d'approbation : « Prend effet le … » ; avis au pooler si reporté.
-- Commit : voir git log
+- Commit : `77bd9eb` — migration roulée en staging et en prod, promu en prod le 2026-11-10 (David)
 
 **[Feat] — Retour de LTIR parmi les ajustements d'un échange** (`app/lib/tradeOffers.ts`,
 `app/app/gestion-effectifs/TradeOffersTab.tsx`, `app/app/gestion-effectifs/trade-actions.ts`,
