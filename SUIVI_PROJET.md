@@ -33,6 +33,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   l'approbation via `submitBatchAction({ forcedAt })`. Demandes plus anciennes : horaire prévu.
 - Bandeau du pooler et carte d'approbation : « Prend effet le … » ; avis au pooler si reporté.
 - Commit : `77bd9eb` — migration roulée en staging et en prod, promu en prod le 2026-11-10 (David)
+- Vérifié en prod après déploiement : demande n° 23 de Jérôme approuvée par David (01 h 27 UTC le
+  11). `roster_change_log` dans le bon ordre : Point actif → réserviste à 21 h 38 UTC (16 h 38 ET),
+  puis à 22 h 13 UTC (17 h 13 ET) Point → LTIR, Broberg signé actif (`signature_ltir`), Morrow →
+  réserviste. Aucun report : seul STL (Broberg) jouait ce soir-là, à 20 h ET, après la demande —
+  Broberg compte pour ce match.
 
 **[Feat] — Retour de LTIR parmi les ajustements d'un échange** (`app/lib/tradeOffers.ts`,
 `app/app/gestion-effectifs/TradeOffersTab.tsx`, `app/app/gestion-effectifs/trade-actions.ts`,
