@@ -4,7 +4,7 @@
 > L'historique détaillé est dans `SUIVI_PROJET.md` ; la référence stable dans `CLAUDE.md`.
 > Si un point ci-dessous est réglé, le retirer ou le déplacer — ne jamais l'empiler.
 
-**Dernière mise à jour :** 2026-11-10
+**Dernière mise à jour :** 2026-11-12
 
 ---
 
@@ -125,6 +125,15 @@
 - Panneau d'aide contextuel pour les poolers : en attente d'un retour sur `/aide` et `/a-propos`.
 - Échange n° 11 (Yurov, David → Jérôme) : confirmé pendant un match commencé, laissé tel quel
   (recrue des deux côtés, aucun point) — à corriger seulement si David le souhaite.
+
+### À revisiter pendant l'entre-saison (été 2027)
+
+- **Position du remplaçant LTIR** (2026-11-12) : « LTIR + signature » n'exige pas la même
+  position (A/D/G). Seul l'état final est validé (12/6/2, réservistes, plafond). Exemple :
+  Jérôme, le 2026-11-10, a mis Point (C) sur la LTIR, signé Broberg (D) et envoyé Morrow (D) en
+  réserve. Décision de David : on laisse ainsi pour l'instant. Sujet à soumettre aux poolers.
+  Corriger aussi le commentaire faux « même statut » dans `gestion-effectifs/actions.ts`
+  (`case 'ltir_sign'`) : le statut du remplaçant est au choix du pooler.
 
 ## 6. Prochains chantiers possibles (backlog)
 
