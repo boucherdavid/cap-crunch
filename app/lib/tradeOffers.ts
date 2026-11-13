@@ -11,6 +11,7 @@ import { announceToPool } from '@/lib/poolAnnouncements'
 import { isRookieProtectionExpired, isElcActiveForSeason, isRookieProtected, hasSignedContract, NO_CONTRACT_ERROR } from '@/lib/rookieProtection'
 import { poolDraftYear } from '@/lib/poolDraftYear'
 import { isReactivationLocked, formatUnlockDay } from '@/lib/reactivationDelay'
+import { createWaiverClaimForRelease } from '@/lib/waiverClaims'
 
 // Même vocabulaire roster_change_log que pickChangeType (admin/transactions/actions.ts,
 // privée) — dupliquée ici plutôt qu'importée pour éviter un cycle (voir le commentaire en tête
@@ -876,6 +877,12 @@ async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tr
         await admin.from('transaction_items').insert({
           transaction_id: tx.id, action_type: 'release', from_pooler_id: extraPoolerId, player_id: extra.playerId, old_player_type: row.player_type,
         })
+        // Ballotage, comme toute libération en saison (David, 2026-11-12 — Andersson, libéré par
+        // Sébastien F. dans l'échange de Seider, n'y était pas passé). No-op en pré-saison.
+        if (!preseason) {
+          const releasedId = extra.playerId
+          after(() => createWaiverClaimForRelease(saisonId, releasedId, extraPoolerId).catch(() => {}))
+        }
         continue
       }
 

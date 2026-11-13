@@ -19,6 +19,22 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-11-12
+
+**[Fix] — Libération faite dans un échange : ballotage manquant** (`app/lib/tradeOffers.ts`) :
+- Signalé par un pooler : Sébastien F. a libéré Rasmus Andersson comme ajustement de l'échange de
+  Seider (2026-11-10), sans ballotage. `executeTradeOffer()` libérait le joueur sans appeler
+  `createWaiverClaimForRelease()`, contrairement à Gestion d'effectifs et `/admin/transactions`.
+- Correctif : appel dans `after()` pour chaque libération d'ajustement, saison démarrée seulement.
+- Vérifié en prod : Andersson est le seul cas (toutes saisons), toujours libre, personne ne l'a signé.
+- 2026-11-13, sur décision de David : ballotage n° 23 ouvert en prod pour Andersson (script tsx
+  ponctuel, même calcul que `createWaiverClaimForRelease` : classement réel, pire en premier ;
+  `released_by` = Sébastien F.), réclamable jusqu'au 16 novembre 23 h 59. Aucun avis envoyé
+  (clés push/Gmail absentes en local) : à annoncer par David.
+- 2026-11-13 : correctif validé par David, promu sur `main`. `CLAUDE.md` (section 6, ballotage) :
+  toute nouvelle voie de libération doit appeler `createWaiverClaimForRelease`.
+- Aussi noté pour l'entre-saison : la position du remplaçant LTIR n'est pas imposée (cas Jérôme).
+
 ### 2026-11-10
 
 **[Fix] — Heure d'effet d'une demande de LTIR** (`app/lib/ltirRequests.ts`, `app/lib/gameDayLock.ts`,

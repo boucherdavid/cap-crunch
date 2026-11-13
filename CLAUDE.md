@@ -1088,9 +1088,12 @@ Réponses au ballotage visibles par l'admin seulement, et **jamais avant la fin 
 push à l'attribution (« attribué à W, réclamé par A, B »). Aucun avis par réclamation.
 
 **Ballotage en cours de saison (`app/lib/waiverClaims.ts`) — David, 2026-09-15 :**
-- Déclencheur : un pooler libère un joueur (`/gestion-effectifs`, action "Libération") ou
-  l'admin libère un joueur en son nom (`/admin/transactions`, `action_type='release'`) — dans
-  les deux cas **seulement si `pool_seasons.season_started=true`** (`createWaiverClaimForRelease`
+- Déclencheur : un pooler libère un joueur (`/gestion-effectifs`, action "Libération"), l'admin
+  libère un joueur en son nom (`/admin/transactions`, `action_type='release'`), ou un pooler
+  libère un joueur comme ajustement à la confirmation d'un échange (`executeTradeOffer()`,
+  `lib/tradeOffers.ts` — oublié jusqu'au 2026-11-12, cas Andersson) — **toute nouvelle voie de
+  libération doit appeler `createWaiverClaimForRelease`** ; dans tous les cas **seulement si
+  `pool_seasons.season_started=true`** (`createWaiverClaimForRelease`
   revérifie lui-même ce flag, sans dépendre de l'appelant). Les libérations en rafale de la
   pré-saison (`/repechage-agents-libres`) ne déclenchent jamais de ballotage — hors scope
   (elles tournent de toute façon toujours avant que `season_started` bascule à `true`).
