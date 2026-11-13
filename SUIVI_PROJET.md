@@ -27,6 +27,10 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   `createWaiverClaimForRelease()`, contrairement à Gestion d'effectifs et `/admin/transactions`.
 - Correctif : appel dans `after()` pour chaque libération d'ajustement, saison démarrée seulement.
 - Vérifié en prod : Andersson est le seul cas (toutes saisons), toujours libre, personne ne l'a signé.
+- 2026-11-13, sur décision de David : ballotage n° 23 ouvert en prod pour Andersson (script tsx
+  ponctuel, même calcul que `createWaiverClaimForRelease` : classement réel, pire en premier ;
+  `released_by` = Sébastien F.), réclamable jusqu'au 16 novembre 23 h 59. Aucun avis envoyé
+  (clés push/Gmail absentes en local) : à annoncer par David.
 - Aussi noté pour l'entre-saison : la position du remplaçant LTIR n'est pas imposée (cas Jérôme).
 
 ### 2026-11-10
