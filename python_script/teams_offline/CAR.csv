@@ -8,11 +8,12 @@ Slavin, Jaccob;CAR;;LD;32;;;6396062;6396062;6396062;6396062;6396062
 Stankoven, Logan;CAR;;C,RW;23;;;6000000;6000000;6000000;6000000;6000000
 Blake, Jackson;CAR;;RW;23;;;5117002;5117002;5117002;5117002;5117002
 Kotkaniemi, Jesperi;CAR;;C,LW;26;;;4820000;4820000;4820000;4820000;UFA
-Walker, Sean;CAR;;RD,LD;31;;;3625000;3625000;3625000;UFA;0
+Walker, Sean;CAR;;RD,LD;32;;;3625000;3625000;3625000;UFA;0
 Gostisbehere, Shayne;CAR;;LD;33;;;3200000;UFA;0;0;0
 Hall, Taylor;CAR;;LW;34;;;3166667;3166667;UFA;0;0
 Martinook, Jordan;CAR;;LW,RW;34;;;3125000;UFA;0;0;0
 Chatfield, Jalen;CAR;;RD;30;;;3075000;UFA;0;0;0
+Nikishin, Alexander;CAR;;LD,RD;25;;;3000000;RFA;0;0;0
 Staal, Jordan;CAR;;C;38;;;2975000;4900000;UFA;0;0
 Carrier, William;CAR;;LW,RW;31;;;2150000;2150000;2150000;2150000;UFA
 Kochetkov, Pyotr;CAR;;G;27;;;2000000;3950000;3950000;UFA;0
@@ -33,15 +34,14 @@ Primeau, Cayden;CAR;;G;27;;;912500;912500;UFA;0;0
 Unger Sörum, Felix;CAR;ELC;RW,C;21;2026-27|2027-28;;903334;903334;RFA;0;0
 Valimaki, Juuso;CAR;;LD;28;;;900000;UFA;0;0;0
 Deslauriers, Nicolas;CAR;;LW,RW;35;;;875000;875000;UFA;0;0
-Montgomery, Bryce;CAR;ELC;D;23;2026-27;;854910;RFA;0;0;0
-Seeley, Ronan;CAR;;D;24;;;850000;RFA;0;0;0
+Montgomery, Bryce;CAR;ELC;D;24;2026-27;;854910;RFA;0;0;0
 Brind'Amour, Skyler;CAR;;C;27;;;850000;UFA;0;0;0
 Reilly, Mike;CAR;;LD,RD;33;;;850000;UFA;0;0;0
-Heimosalmi, Aleksi;CAR;;D;23;;;850000;RFA;0;0;0
+Seeley, Ronan;CAR;;D;24;;;850000;RFA;0;0;0
 Robidas, Justin;CAR;;C;23;;;850000;RFA;0;0;0
 Jaaska, Juha;CAR;;LW,RW;28;;;850000;UFA;0;0;0
 Neuchev, Viktor;CAR;;LW,RW;23;;;850000;RFA;0;0;0
-Sawchenko, Zachary;CAR;;G;28;;;850000;UFA;0;0;0
+Heimosalmi, Aleksi;CAR;;D;23;;;850000;RFA;0;0;0
 Joseph, Pierre-Olivier;CAR;;LD,RD;27;;;850000;UFA;0;0;0
-Nikishin, Alexander;CAR;;LD,RD;25;;;0;0;0;0;0
+Sawchenko, Zachary;CAR;;G;28;;;850000;UFA;0;0;0
 Gunler, Noel;CAR;;RW;25;;;RFA;0;0;0;0
