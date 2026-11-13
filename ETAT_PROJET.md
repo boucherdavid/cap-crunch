@@ -15,7 +15,7 @@
 - **Staging** : copie de la prod datant du 2026-10-06. À rafraîchir avant chaque séance de test
   (Admin → Mise à jour de données, sur staging). Ses blessures et ses mouvements sont donc en
   retard sur la prod.
-- **Salaires et contrats** : rafraîchis le 2026-10-13 (pipeline local, CSV poussés sur `main`).
+- **Salaires et contrats** : rafraîchis le 2026-11-13 (pipeline local, CSV poussés sur `main`, import prod confirmé).
   Le scraping de PuckPedia reste **manuel** (`./run_pipeline_staging.ps1`) ; le bouton de l'admin
   et la tâche du lundi ne font que réimporter les CSV du dépôt.
 - Classement validé contre Marqueur.com ; seul écart de points connu, Ryan Leonard (Vincent) —
