@@ -31,6 +31,8 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
   ponctuel, même calcul que `createWaiverClaimForRelease` : classement réel, pire en premier ;
   `released_by` = Sébastien F.), réclamable jusqu'au 16 novembre 23 h 59. Aucun avis envoyé
   (clés push/Gmail absentes en local) : à annoncer par David.
+- 2026-11-13 : correctif validé par David, promu sur `main`. `CLAUDE.md` (section 6, ballotage) :
+  toute nouvelle voie de libération doit appeler `createWaiverClaimForRelease`.
 - Aussi noté pour l'entre-saison : la position du remplaçant LTIR n'est pas imposée (cas Jérôme).
 
 ### 2026-11-10
