@@ -79,9 +79,13 @@ async function optedInEmails(ids?: string[], excludeUserId?: string): Promise<st
   const optedIds = new Set(poolers.map(p => p.id).filter(id => id !== excludeUserId))
   if (optedIds.size === 0) return []
 
-  const { data } = await supabase.auth.admin.listUsers()
+  return emailsOf(optedIds)
+}
+
+async function emailsOf(ids: Set<string>): Promise<string[]> {
+  const { data } = await createAdminClient().auth.admin.listUsers()
   return (data?.users ?? [])
-    .filter(u => optedIds.has(u.id) && !!u.email)
+    .filter(u => ids.has(u.id) && !!u.email)
     .map(u => u.email as string)
 }
 
@@ -97,6 +101,29 @@ export async function sendEmailToIds(ids: string[], payload: EmailPayload) {
   if (REDIRECT_TO) return sendRedirected(ids, payload)
   const emails = await optedInEmails(ids)
   await sendToEmails(emails, payload)
+}
+
+// Avis d'échange (David, 2026-11-14) : un pooler sans aucun abonnement push reçoit le courriel
+// même s'il a désactivé les courriels dans /compte — sinon il ne serait averti d'aucune façon.
+// `onlyWithoutPush` : courriel seulement à ceux qui n'ont pas de push (messages de la discussion,
+// pour ne pas inonder la boîte de ceux qui reçoivent déjà le push).
+export async function sendEmailToIdsReachable(
+  ids: string[],
+  payload: EmailPayload,
+  opts: { onlyWithoutPush?: boolean } = {},
+) {
+  if (ids.length === 0) return
+  const supabase = createAdminClient()
+  const [{ data: subs }, { data: opted }] = await Promise.all([
+    supabase.from('push_subscriptions').select('user_id').in('user_id', ids),
+    supabase.from('poolers').select('id').in('id', ids).eq('notif_email', true),
+  ])
+  const withPush = new Set((subs ?? []).map(s => s.user_id as string))
+  const recipients = new Set(ids.filter(id => !withPush.has(id)))
+  if (!opts.onlyWithoutPush) for (const p of opted ?? []) recipients.add(p.id as string)
+  if (recipients.size === 0) return
+  if (REDIRECT_TO) return sendRedirected([...recipients], payload)
+  await sendToEmails(await emailsOf(recipients), payload)
 }
 
 // Envoi direct pour le bouton "Tester" de /compte (David, 2026-09-10) — contrairement à
