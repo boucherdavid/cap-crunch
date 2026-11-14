@@ -19,6 +19,17 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-11-14
+
+**[Feat] — Courriels pour tous les avis d'échange** (`app/lib/email.ts`, `app/lib/tradeOffers.ts`) :
+- Demande de David : un pooler qui n'a pas activé les push doit être averti de tout ce qui touche
+  ses échanges. Nouveau `sendEmailToIdsReachable()` : courriel aux poolers qui ont activé les
+  courriels, plus tous ceux sans abonnement push (`push_subscriptions`), même s'ils ont
+  désactivé les courriels dans `/compte` (choix de David).
+- Courriels ajoutés : message de la discussion (seulement aux poolers sans push, pour ne pas
+  inonder les autres), « a confirmé sa part — à ton tour », demande de montrer la discussion à
+  l'admin. Tous les autres avis d'échange passent par la nouvelle fonction.
+
 ### 2026-11-12
 
 **[Fix] — Libération faite dans un échange : ballotage manquant** (`app/lib/tradeOffers.ts`) :
