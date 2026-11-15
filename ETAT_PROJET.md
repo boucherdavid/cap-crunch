@@ -12,9 +12,8 @@
 
 - **Saison 2026-27 démarrée en prod** le 4 octobre au soir (`season_started=true`). Gestion
   d'effectifs, ballotage, échanges et LTIR sont ouverts aux poolers.
-- **Staging** : copie de la prod datant du 2026-10-06. À rafraîchir avant chaque séance de test
-  (Admin → Mise à jour de données, sur staging). Ses blessures et ses mouvements sont donc en
-  retard sur la prod.
+- **Staging** : copie de la prod datant du 2026-11-15. À rafraîchir avant chaque séance de test
+  (Admin → Mise à jour de données, sur staging).
 - **Salaires et contrats** : rafraîchis le 2026-11-13 (pipeline local, CSV poussés sur `main`, import prod confirmé).
   Le scraping de PuckPedia reste **manuel** (`./run_pipeline_staging.ps1`) ; le bouton de l'admin
   et la tâche du lundi ne font que réimporter les CSV du dépôt.
