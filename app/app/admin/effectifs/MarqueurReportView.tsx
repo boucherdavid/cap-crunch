@@ -37,7 +37,9 @@ function MoveItemLine({ item }: { item: MarqueurMoveItem }) {
     <div className={`text-sm ${item.action ? '' : 'opacity-60'}`}>
       <span className="font-medium text-gray-800">{item.player}</span>{' '}
       <span className="text-xs text-gray-500">({item.position}) {item.move}</span>
-      <p className={`text-xs ${item.action ? 'text-amber-700' : 'text-gray-500'}`}>{item.action ?? 'Déjà concordant sur Marqueur'}</p>
+      <p className={`text-xs ${item.action ? 'text-amber-700' : 'text-gray-500'}`}>
+        {item.action ?? (item.laterMove ? `Modifié plus tard (${item.laterMove})` : 'Déjà concordant sur Marqueur')}
+      </p>
     </div>
   )
 }
@@ -122,7 +124,7 @@ export default function MarqueurReportView({ report, audience = 'admin' }: { rep
             </h2>
             {isAdmin ? (
               <p className="text-xs text-gray-500 mb-3">
-                Écarts d&apos;alignement, regroupés par panier soumis (même moment), du plus ancien au plus récent : à gauche le joueur sorti des actifs, à droite celui qui l&apos;a remplacé à la même position ; les joueurs déjà concordants du panier sont en gris. L&apos;action proposée aligne Marqueur sur Cap Crunch, avec la date à saisir là-bas (celle du mouvement dans Cap Crunch) ; si c&apos;est plutôt Cap Crunch qui se trompe, corrige-le ici. Un élément disparaît de la liste dès que les deux concordent. Marqueur n&apos;a pas de LTIR : un joueur sur LTIR ici doit y être réserviste. Un joueur retiré des actifs sur Marqueur (en rouge là-bas) concorde avec tout statut non actif ici. Les recrues en banque ne sont pas comparées.
+                Écarts d&apos;alignement, regroupés par panier soumis (même moment), du plus ancien au plus récent : à gauche le joueur sorti des actifs, à droite celui qui l&apos;a remplacé à la même position ; les joueurs déjà concordants du panier, ou qui ont rebougé depuis (« modifié plus tard »), sont en gris : chaque panier s&apos;affiche au complet, tel que soumis. L&apos;action proposée aligne Marqueur sur Cap Crunch, avec la date à saisir là-bas (celle du mouvement dans Cap Crunch) ; si c&apos;est plutôt Cap Crunch qui se trompe, corrige-le ici. Un élément disparaît de la liste dès que les deux concordent. Marqueur n&apos;a pas de LTIR : un joueur sur LTIR ici doit y être réserviste. Un joueur retiré des actifs sur Marqueur (en rouge là-bas) concorde avec tout statut non actif ici. Les recrues en banque ne sont pas comparées.
               </p>
             ) : (
               <p className="text-xs text-gray-500 mb-3">

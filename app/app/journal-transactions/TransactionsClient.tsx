@@ -23,15 +23,6 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'gestion', label: 'Gestion' },
 ]
 
-const TAB_COLORS: Record<TabKey, string> = {
-  tous: 'bg-slate-50',
-  echanges: 'bg-blue-50',
-  ballotage: 'bg-orange-50',
-  signatures: 'bg-green-50',
-  ltir: 'bg-amber-50',
-  gestion: 'bg-slate-50',
-}
-
 function classifyTx(items: any[], notes: string | null): TabKey {
   const types = items.map((i: any) => i.action_type)
   if (types.includes('ballotage') || notes === JOURNAL_NOTES_BALLOTAGE) return 'ballotage'
@@ -132,6 +123,128 @@ function TradeCard({ items }: { items: any[] }) {
             <p key={item.id} className="text-xs text-gray-500">{itemDescription(item)}</p>
           ))}
         </div>
+      )}
+    </div>
+  )
+}
+
+const TAB_LABEL: Record<TabKey, string> = {
+  tous: '', echanges: 'Échange', ballotage: 'Ballotage', signatures: 'Signature', ltir: 'LTIR', gestion: "Gestion d'effectifs",
+}
+const TAB_BORDER: Record<TabKey, string> = {
+  tous: 'border-slate-300', echanges: 'border-blue-400', ballotage: 'border-orange-400',
+  signatures: 'border-green-400', ltir: 'border-amber-400', gestion: 'border-slate-400',
+}
+
+type Pos = 'A' | 'D' | 'G'
+function posOf(position: string | null | undefined): Pos {
+  const first = (position ?? '').split(',')[0].trim().toUpperCase()
+  if (first === 'G') return 'G'
+  if (first === 'D' || first === 'LD' || first === 'RD') return 'D'
+  return 'A'
+}
+const POS_LABEL: Record<Pos, string> = { A: 'attaquant', D: 'défenseur', G: 'gardien' }
+
+// Moment d'effet du panier (David, 2026-11-15) : midi UTC pile = date sans heure (date forcée ou
+// mouvement reporté au lendemain), effectif avant les matchs du jour — même convention que
+// l'onglet Marqueur. Sinon l'heure exacte, heure de l'Est.
+function formatMoment(iso: string): string {
+  const d = new Date(iso)
+  const day = d.toLocaleDateString('fr-CA', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Toronto' })
+  if (d.getUTCHours() === 12 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) return `${day}, avant les matchs du jour`
+  const [h, m] = d.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Toronto' }).split(/[: h]+/)
+  return `${day} à ${Number(h)} h ${m} (heure de l'Est)`
+}
+
+// Un mouvement d'un panier, vu par le pooler concerné : d'où il part et où il arrive.
+type BasketLine = { id: number; player: string; pos: Pos; from: string | null; to: string | null; label: string; playerId: string | null }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toBasketLine(item: any): BasketLine {
+  const p = item.players
+  const player = p ? `${p.last_name}, ${p.first_name} (${p.teams?.code ?? DASH}) ${p.position ?? ''}` : '?'
+  const from: string | null = item.action_type === 'sign' || item.action_type === 'ballotage' ? null : item.old_player_type ?? null
+  const to: string | null = item.action_type === 'release' ? null : item.new_player_type ?? null
+  const t = (x: string | null) => (x ? typeLabel[x] ?? x : null)
+  let label: string
+  switch (item.action_type) {
+    case 'sign': label = `Signature (${t(to) ?? '?'})`; break
+    case 'ballotage': label = `Ballotage (${t(to) ?? '?'})`; break
+    case 'release': label = from ? `Libération (était ${t(from)?.toLowerCase()})` : 'Libération'; break
+    case 'promote': label = `Banque de recrues → ${t(to)}`; break
+    case 'reactivate': label = `LTIR → ${t(to)}`; break
+    default: label = `${t(from) ?? '?'} → ${t(to) ?? '?'}`
+  }
+  return { id: item.id, player, pos: posOf(p?.position), from, to, label, playerId: p ? String(p.id) : null }
+}
+
+function BasketLineView({ l, highlight }: { l: BasketLine; highlight: boolean }) {
+  return (
+    <div className={`text-sm rounded px-1 -mx-1 ${highlight ? 'bg-yellow-100' : ''}`}>
+      <span className="font-medium text-gray-800">{l.player}</span>
+      <p className="text-xs text-gray-500">{l.label}</p>
+    </div>
+  )
+}
+
+/**
+ * Un panier soumis, pour un pooler (David, 2026-11-15) : qui sort des actifs, qui y entre,
+ * jumelés par position, et si le compte des actifs balance — pour recouper avec Marqueur.
+ */
+function BasketCard({ lines, highlightPlayer }: { lines: BasketLine[]; highlightPlayer: string }) {
+  const outs = lines.filter(l => l.from === 'actif' && l.to !== 'actif')
+  const ins = lines.filter(l => l.to === 'actif' && l.from !== 'actif')
+  const others = lines.filter(l => !outs.includes(l) && !ins.includes(l))
+  const pairs: { out: BasketLine | null; in: BasketLine | null }[] = []
+  const insLeft = [...ins]
+  for (const out of outs) {
+    const i = insLeft.findIndex(x => x.pos === out.pos)
+    pairs.push({ out, in: i >= 0 ? insLeft.splice(i, 1)[0] : null })
+  }
+  for (const left of insLeft) pairs.push({ out: null, in: left })
+
+  const net = (['A', 'D', 'G'] as Pos[]).map(pos => ({
+    pos, diff: ins.filter(l => l.pos === pos).length - outs.filter(l => l.pos === pos).length,
+  })).filter(x => x.diff !== 0)
+  const hl = (l: BasketLine) => !!highlightPlayer && l.playerId === highlightPlayer
+
+  return (
+    <div className="space-y-2">
+      {pairs.length > 0 && (
+        <div>
+          <div className="hidden sm:grid grid-cols-[1fr_auto_1fr] gap-x-3 text-[11px] font-semibold text-gray-400 uppercase mb-1">
+            <span>Sort des actifs</span><span /><span>Entre dans les actifs</span>
+          </div>
+          <ul className="space-y-1.5">
+            {pairs.map((pair, i) => (
+              <li key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-x-3 gap-y-0.5 items-start">
+                <div>{pair.out ? <BasketLineView l={pair.out} highlight={hl(pair.out)} /> : <span className="text-xs text-gray-400">Aucune sortie</span>}</div>
+                <span className="hidden sm:inline text-gray-400 pt-0.5">⇄</span>
+                <div className="pl-3 sm:pl-0 border-l-2 sm:border-l-0 border-gray-100">
+                  {pair.in ? <BasketLineView l={pair.in} highlight={hl(pair.in)} /> : <span className="text-xs text-gray-400">Aucune entrée</span>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {others.length > 0 && (
+        <div className={pairs.length > 0 ? 'pt-2 border-t border-gray-100' : ''}>
+          {pairs.length > 0 && <p className="text-[11px] font-semibold text-gray-400 uppercase mb-1">Autres mouvements</p>}
+          <ul className="space-y-1.5">
+            {others.map(l => <li key={l.id}><BasketLineView l={l} highlight={hl(l)} /></li>)}
+          </ul>
+        </div>
+      )}
+      {pairs.length > 0 && (
+        net.length === 0 ? (
+          <p className="text-xs font-medium text-emerald-700">✓ Le compte des actifs balance</p>
+        ) : (
+          <p className="text-xs font-medium text-amber-700">
+            ⚠ Actifs :{' '}
+            {net.map(x => `${x.diff > 0 ? '+' : '−'}${Math.abs(x.diff)} ${POS_LABEL[x.pos]}${Math.abs(x.diff) > 1 ? 's' : ''}`).join(', ')}
+          </p>
+        )
       )}
     </div>
   )
@@ -249,10 +362,22 @@ export default function TransactionsClient({
   // compact — une ligne par mouvement, même en éclatant les items sur plusieurs transactions
   // (David, 2026-09-22).
   const tradeTxs = visible.filter(tx => tx._tab === 'echanges')
-  const tableTxs = visible.filter(tx => tx._tab !== 'echanges')
-  const tableRows = tableTxs.flatMap(tx =>
-    (tx.transaction_items ?? []).filter((item: PlayerRef & PoolerRef) => matchesPooler(item) && matchesPlayer(item)).map((item: { id: number }) => ({ tx, item, ...rowInfo(item) })),
-  )
+  // Un panier par transaction et par pooler (David, 2026-11-15) : une transaction peut toucher
+  // plusieurs poolers (activation automatique des recrues). Le filtre joueur garde le panier au
+  // complet et surligne le joueur, pour voir avec qui il a changé de place.
+  const basketTxs = visible.filter(tx => tx._tab !== 'echanges')
+  const baskets = basketTxs.flatMap(tx => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const byOwner = new Map<string, any[]>()
+    for (const item of tx.transaction_items ?? []) {
+      const owner = rowInfo(item).pooler
+      if (poolerFilter && !owner.split(' → ').includes(poolerFilter)) continue
+      if (!byOwner.has(owner)) byOwner.set(owner, [])
+      byOwner.get(owner)!.push(item)
+    }
+    return [...byOwner].filter(([, items]) => !activePlayer || items.some(matchesPlayer))
+      .map(([owner, items]) => ({ tx, owner, lines: items.map(toBasketLine) }))
+  })
 
   return (
     <div>
@@ -339,44 +464,27 @@ export default function TransactionsClient({
         <p className="text-gray-400 text-sm">Aucune activité dans cette catégorie.</p>
       )}
 
-      {tableRows.length > 0 && (
-        <>
-        {/* Portrait : une fiche par mouvement (date courte · pooler, joueur, détail) plutôt qu'un
-            tableau de 4 colonnes à date longue (David, 2026-09-28). */}
-        <ul className="sm:hidden bg-white rounded-lg shadow divide-y divide-gray-100 mb-4">
-          {tableRows.map(({ tx, item, pooler, player, detail }) => (
-            <li key={item.id} className={`px-3 py-2 text-sm ${TAB_COLORS[tx._tab as TabKey]}`}>
-              <p className="text-[11px] text-gray-500">
-                {new Date(tx.created_at).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric' })} · <span className="font-medium text-gray-700">{pooler}</span>
-              </p>
-              <p className="text-gray-800 font-medium">{player}</p>
-              <p className="text-xs text-gray-600">{detail}</p>
-            </li>
+      {baskets.length > 0 && (
+        <div className="space-y-3 mb-4">
+          {baskets.map(({ tx, owner, lines }) => (
+            <div key={`${tx.id}-${owner}`} className={`bg-white rounded-lg shadow p-3 sm:p-4 border-l-4 ${TAB_BORDER[tx._tab as TabKey]}`}>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 mb-2">
+                <p className="text-sm">
+                  <span className="font-semibold text-gray-800">{owner}</span>{' '}
+                  <span className="text-gray-400">·</span>{' '}
+                  <span className="text-gray-600">{TAB_LABEL[tx._tab as TabKey]}</span>
+                </p>
+                <p className="text-xs text-gray-500">{formatMoment(tx.created_at)}</p>
+              </div>
+              {tx.override_note && (
+                <p className="mb-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">
+                  Règle contournée par l&apos;admin : {tx.override_note}
+                </p>
+              )}
+              <BasketCard lines={lines} highlightPlayer={activePlayer} />
+            </div>
           ))}
-        </ul>
-        <div className="hidden sm:block bg-white rounded-lg shadow overflow-x-auto mb-4">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-gray-400 uppercase border-b border-gray-100">
-                <th className="px-3 py-2 font-medium">Date</th>
-                <th className="px-3 py-2 font-medium">Pooler</th>
-                <th className="px-3 py-2 font-medium">Joueur</th>
-                <th className="px-3 py-2 font-medium">Mouvement</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tableRows.map(({ tx, item, pooler, player, detail }) => (
-                <tr key={item.id} className={`border-b border-gray-50 last:border-0 ${TAB_COLORS[tx._tab as TabKey]}`}>
-                  <td className="px-3 py-1.5 whitespace-nowrap text-gray-500">{formatDate(tx.created_at)}</td>
-                  <td className="px-3 py-1.5 whitespace-nowrap text-gray-700">{pooler}</td>
-                  <td className="px-3 py-1.5 text-gray-700">{player}</td>
-                  <td className="px-3 py-1.5 text-gray-700">{detail}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
-        </>
       )}
 
       {tradeTxs.length > 0 && (
