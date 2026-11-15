@@ -19,6 +19,20 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-11-15
+
+**[Feat] — Paniers complets : Journal des activités et onglet Marqueur** (`app/app/journal-transactions/TransactionsClient.tsx`, `app/lib/marqueur.ts`, `app/app/admin/effectifs/MarqueurReportView.tsx`) :
+- Demande de David : recouper plus facilement avec Marqueur, voir que le compte balance.
+- Journal : une carte par panier (transaction × pooler) au lieu d'une ligne par joueur — moment
+  d'effet (« avant les matchs du jour » pour midi UTC), sorties ⇄ entrées des actifs jumelées par
+  position, autres mouvements à part, indicateur « Le compte des actifs balance » ou écart par
+  position. Échanges inchangés (carte deux colonnes). Filtre joueur : panier entier, joueur surligné.
+- Marqueur : un panier montrait seulement les joueurs dont c'était le dernier mouvement ; ceux qui
+  avaient rebougé disparaissaient (panier de Vincent du 10 nov. : Kasper seul, alors que le lot
+  était Kasper + Svechkov ⇄ Poitras + Eklund). Toutes les lignes du panier sont maintenant affichées,
+  celles modifiées plus tard en gris avec le moment du mouvement suivant.
+- Vérifié sur la prod : 69 paniers depuis le 1er novembre, tous balancés selon le journal.
+
 ### 2026-11-14
 
 **[Feat] — Courriels pour tous les avis d'échange** (`app/lib/email.ts`, `app/lib/tradeOffers.ts`) :

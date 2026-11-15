@@ -350,7 +350,11 @@ son type de roster, ou "Disponible" si personne) `/repechage` `/repechage-recrue
 saisie pooler ; distinct de `/admin/transactions`, l'outil admin ; filtres pooler et joueur ;
 pooler + joueur choisis → encadré « Périodes actives » (`ActivePeriodsPanel.tsx`, David
 2026-10-18) : matchs comptés par `getStandings()` vs relevé officiel de la LNH
-(`lib/nhlPlayerGames.ts`, cache 1 h, aucune lecture Supabase), écart en ambre) `/classement`
+(`lib/nhlPlayerGames.ts`, cache 1 h, aucune lecture Supabase), écart en ambre ; depuis le
+2026-11-15, une carte par panier soumis (transaction × pooler) : « Sort des actifs » ⇄ « Entre dans
+les actifs » jumelés par position, autres mouvements, et « ✓ Le compte des actifs balance » ou
+« ⚠ Actifs : −1 attaquant » — pour recouper avec Marqueur ; le filtre joueur garde le panier entier
+et surligne le joueur) `/classement`
 `/classement/hebdomadaire` `/classement/mensuel` (David, 2026-09-17 — mêmes données que
 `/classement`, `buildStandings()` juste borné à une semaine lundi-dimanche ou un mois civil,
 heure de l'Est ; navigation précédent/suivant, voir section 6) `/resultats`
@@ -1325,6 +1329,9 @@ corrigée le 2026-09-20 :**
   Gestion d'effectifs partage la même date), du plus ancien au plus récent ; sorties des actifs
   jumelées aux entrées par position (A/D/G), joueurs déjà concordants du panier en gris. Écarts
   sans mouvement → « Autres écarts » (`moveGroups`/`otherGaps`, `MarqueurReportView.tsx`).
+  Depuis le 2026-11-15, un panier s'affiche **au complet** : un joueur qui a rebougé après y reste
+  en gris, « Modifié plus tard (moment) » (`MarqueurMoveItem.laterMove`) — sinon le panier paraissait
+  déséquilibré (cas Kasper de Vincent, 10 nov.).
 - **Moment d'effet affiché** (David, 2026-10-28) : date sans heure (`T12:00:00Z`) → « avant les
   matchs du jour » ; heure précise → l'heure, plus « avant les matchs du jour » si aucun match des
   équipes des joueurs du panier n'était commencé (`fetchGameStartsByDay()`, horaire LNH par
