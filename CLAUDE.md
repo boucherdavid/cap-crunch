@@ -1330,8 +1330,10 @@ corrigée le 2026-09-20 :**
   jumelées aux entrées par position (A/D/G), joueurs déjà concordants du panier en gris. Écarts
   sans mouvement → « Autres écarts » (`moveGroups`/`otherGaps`, `MarqueurReportView.tsx`).
   Depuis le 2026-11-15, un panier s'affiche **au complet** : un joueur qui a rebougé après y reste
-  en gris, « Modifié plus tard (moment) » (`MarqueurMoveItem.laterMove`) — sinon le panier paraissait
-  déséquilibré (cas Kasper de Vincent, 10 nov.).
+  en gris avec « Ensuite : <son mouvement suivant> » (`MarqueurMoveItem.nextMove`) — sinon le panier
+  paraissait déséquilibré (cas Kasper de Vincent, 10 nov.). Un panier sans écart est aussi affiché
+  (gris, `linkOnly`) quand un joueur y passe entre deux paniers affichés, sans cascade au-delà
+  (réactivation de Svechkov le 10 nov., entre ses paniers du 7 et du 11).
 - **Moment d'effet affiché** (David, 2026-10-28) : date sans heure (`T12:00:00Z`) → « avant les
   matchs du jour » ; heure précise → l'heure, plus « avant les matchs du jour » si aucun match des
   équipes des joueurs du panier n'était commencé (`fetchGameStartsByDay()`, horaire LNH par

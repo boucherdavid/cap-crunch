@@ -21,6 +21,14 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-11-15
 
+**[Fix] — Onglet Marqueur : mouvement suivant et paniers de liaison** (`app/lib/marqueur.ts`, `app/app/admin/effectifs/MarqueurReportView.tsx`) :
+- Cas Svechkov (Vincent) : actif → réserviste le 7 nov., réactivé le 10, de nouveau en réserve le
+  11. Le panier du 7 disait « Modifié plus tard (11 nov.) » (dernier mouvement) et le panier du 10
+  n'apparaissait pas (plus aucun écart) : on aurait dit deux sorties de suite.
+- Une ligne qui a rebougé affiche maintenant son mouvement **suivant** (« Ensuite : réserviste →
+  actif le 10 nov. à 14 h 38 »). Un panier sans écart s'affiche en gris quand un joueur y passe
+  entre deux paniers affichés (une seule étape, pas de cascade).
+
 **[Change] — Courriels seulement pour les poolers sans push** (`app/lib/email.ts`, `app/lib/tradeOffers.ts`, `app/app/compte/*`, `app/app/aide/AideTabs.tsx`) :
 - David revient sur la décision du 2026-11-14 : un pooler reçoit un courriel seulement s'il n'a la
   push sur aucun appareil ; avec la push, la push seule (plus de doublons). Toute l'app, pas

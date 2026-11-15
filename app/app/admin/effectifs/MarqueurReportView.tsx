@@ -38,7 +38,7 @@ function MoveItemLine({ item }: { item: MarqueurMoveItem }) {
       <span className="font-medium text-gray-800">{item.player}</span>{' '}
       <span className="text-xs text-gray-500">({item.position}) {item.move}</span>
       <p className={`text-xs ${item.action ? 'text-amber-700' : 'text-gray-500'}`}>
-        {item.action ?? (item.laterMove ? `Modifié plus tard (${item.laterMove})` : 'Déjà concordant sur Marqueur')}
+        {item.action ?? (item.nextMove ? `Ensuite : ${item.nextMove}` : 'Déjà concordant sur Marqueur')}
       </p>
     </div>
   )
@@ -124,7 +124,7 @@ export default function MarqueurReportView({ report, audience = 'admin' }: { rep
             </h2>
             {isAdmin ? (
               <p className="text-xs text-gray-500 mb-3">
-                Écarts d&apos;alignement, regroupés par panier soumis (même moment), du plus ancien au plus récent : à gauche le joueur sorti des actifs, à droite celui qui l&apos;a remplacé à la même position ; les joueurs déjà concordants du panier, ou qui ont rebougé depuis (« modifié plus tard »), sont en gris : chaque panier s&apos;affiche au complet, tel que soumis. L&apos;action proposée aligne Marqueur sur Cap Crunch, avec la date à saisir là-bas (celle du mouvement dans Cap Crunch) ; si c&apos;est plutôt Cap Crunch qui se trompe, corrige-le ici. Un élément disparaît de la liste dès que les deux concordent. Marqueur n&apos;a pas de LTIR : un joueur sur LTIR ici doit y être réserviste. Un joueur retiré des actifs sur Marqueur (en rouge là-bas) concorde avec tout statut non actif ici. Les recrues en banque ne sont pas comparées.
+                Écarts d&apos;alignement, regroupés par panier soumis (même moment), du plus ancien au plus récent : à gauche le joueur sorti des actifs, à droite celui qui l&apos;a remplacé à la même position ; les joueurs déjà concordants du panier, ou qui ont rebougé depuis (avec leur mouvement suivant), sont en gris ; un panier sans rien à reporter est affiché en gris quand un joueur y passe entre deux paniers affichés : chaque panier s&apos;affiche au complet, tel que soumis. L&apos;action proposée aligne Marqueur sur Cap Crunch, avec la date à saisir là-bas (celle du mouvement dans Cap Crunch) ; si c&apos;est plutôt Cap Crunch qui se trompe, corrige-le ici. Un élément disparaît de la liste dès que les deux concordent. Marqueur n&apos;a pas de LTIR : un joueur sur LTIR ici doit y être réserviste. Un joueur retiré des actifs sur Marqueur (en rouge là-bas) concorde avec tout statut non actif ici. Les recrues en banque ne sont pas comparées.
               </p>
             ) : (
               <p className="text-xs text-gray-500 mb-3">
@@ -139,8 +139,11 @@ export default function MarqueurReportView({ report, audience = 'admin' }: { rep
                   <div key={p.poolerName} className="bg-white rounded-lg shadow p-4 space-y-4">
                     <p className="font-semibold text-gray-800">{p.poolerName}</p>
                     {p.moveGroups.map(g => (
-                      <div key={g.when} className="border-l-2 border-amber-300 pl-3">
-                        <p className="text-xs font-semibold text-gray-600 mb-1.5">Effectif {g.when}</p>
+                      <div key={g.when} className={`border-l-2 pl-3 ${g.linkOnly ? 'border-gray-200' : 'border-amber-300'}`}>
+                        <p className="text-xs font-semibold text-gray-600 mb-1.5">
+                          Effectif {g.when}
+                          {g.linkOnly && <span className="ml-2 font-normal text-gray-400">rien à reporter, affiché pour suivre les mouvements</span>}
+                        </p>
                         <ul className="space-y-1.5">
                           {g.pairs.map((pair, i) => (
                             <li key={i} className="flex flex-wrap items-start gap-x-3 gap-y-1">
