@@ -4,7 +4,7 @@ import { sendEmailToIds, escapeHtml } from '@/lib/email'
 import { emailLinkHtml } from '@/lib/siteUrl'
 
 // Annonce à tout le pool d'une signature d'agent libre ou d'un échange entre poolers (David,
-// 2026-10-12) — push + courriel (selon notif_email) à tous les poolers, sauf ceux qui ont fait
+// 2026-10-12) — push + courriel (aux poolers sans push, voir lib/email.ts) à tous les poolers, sauf ceux qui ont fait
 // le mouvement (ils le savent déjà). Saison démarrée seulement : le repêchage des agents libres
 // se suit en direct sur /repechage-agents-libres. Toujours appeler dans after().
 export async function announceToPool(input: {

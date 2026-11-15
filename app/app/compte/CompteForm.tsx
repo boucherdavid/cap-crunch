@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { updatePasswordAction, updateProfileAction, updateNameAction, updateEmailAction, testEmailAction } from './actions'
+import { updatePasswordAction, updateNameAction, updateEmailAction, testEmailAction } from './actions'
 import PushToggle from './PushToggle'
 
 type Profile = {
   name: string
   email: string
-  notif_email: boolean
 }
 
 export default function CompteForm({ profile }: { profile: Profile }) {
@@ -26,9 +25,6 @@ export default function CompteForm({ profile }: { profile: Profile }) {
   const [pwdMsg, setPwdMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [pwdBusy, setPwdBusy] = useState(false)
 
-  const [notifEmail, setNotifEmail] = useState(profile.notif_email)
-  const [profileMsg, setProfileMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
-  const [profileBusy, setProfileBusy] = useState(false)
   const [emailTestBusy, setEmailTestBusy] = useState(false)
   const [emailTestMsg, setEmailTestMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
@@ -64,15 +60,6 @@ export default function CompteForm({ profile }: { profile: Profile }) {
     } else {
       setEmailMsg({ type: 'ok', text: 'Un lien de confirmation a été envoyé à la nouvelle adresse. Le changement sera effectif après confirmation.' })
     }
-  }
-
-  async function handleProfile(e: { preventDefault(): void }) {
-    e.preventDefault()
-    setProfileBusy(true)
-    setProfileMsg(null)
-    const res = await updateProfileAction(notifEmail)
-    setProfileBusy(false)
-    setProfileMsg(res.error ? { type: 'err', text: res.error } : { type: 'ok', text: 'Profil mis à jour.' })
   }
 
   async function handlePassword(e: { preventDefault(): void }) {
@@ -200,20 +187,11 @@ export default function CompteForm({ profile }: { profile: Profile }) {
           <PushToggle />
         </div>
 
-        <form onSubmit={handleProfile} className="space-y-4">
-          <div className="space-y-2">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={notifEmail}
-                onChange={e => setNotifEmail(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <div>
-                <span className="text-sm font-medium text-gray-700">Notifications par courriel</span>
-                <p className="text-xs text-gray-400">Recevoir les alertes du pool par courriel.</p>
-              </div>
-            </label>
+        <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-700">Notifications par courriel</p>
+            <p className="text-xs text-gray-500">
+              Si les notifications de l&apos;application ne sont activées sur aucun de tes appareils, tu reçois les alertes du pool par courriel. Sinon, tu les reçois seulement dans l&apos;application.
+            </p>
             <button
               type="button"
               onClick={async () => {
@@ -235,16 +213,7 @@ export default function CompteForm({ profile }: { profile: Profile }) {
             {emailTestMsg && (
               <p className={`text-sm ${emailTestMsg.type === 'ok' ? 'text-green-600' : 'text-red-600'}`}>{emailTestMsg.text}</p>
             )}
-          </div>
-
-          <button type="submit" disabled={profileBusy}
-            className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
-            {profileBusy ? 'Enregistrement...' : 'Sauvegarder'}
-          </button>
-          {profileMsg && (
-            <p className={`text-sm ${profileMsg.type === 'ok' ? 'text-green-600' : 'text-red-600'}`}>{profileMsg.text}</p>
-          )}
-        </form>
+        </div>
       </div>
 
       {/* Mot de passe */}

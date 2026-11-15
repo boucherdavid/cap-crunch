@@ -22,20 +22,15 @@ function getTransporter() {
 
 // Redirection de test (David, 2026-10-05) — définie seulement dans le projet Vercel de staging :
 // tous les courriels partent vers cette adresse au lieu des vrais destinataires (les comptes
-// `@staging.test` n'existent pas), avec les destinataires prévus en tête de l'objet. Les
-// préférences `notif_email` sont alors ignorées, pour que tout soit visible pendant un test.
+// `@staging.test` n'existent pas), avec les destinataires prévus en tête de l'objet.
 // Jamais définie en prod.
 const REDIRECT_TO = process.env.EMAIL_REDIRECT_TO?.trim() || null
 
-async function sendRedirected(ids: string[] | undefined, payload: EmailPayload, excludeUserId?: string) {
-  const supabase = createAdminClient()
-  let query = supabase.from('poolers').select('id, name')
-  if (ids) query = query.in('id', ids)
-  const { data } = await query
-  const names = (data ?? []).filter(p => p.id !== excludeUserId).map(p => p.name as string)
+async function sendRedirected(ids: string[], payload: EmailPayload) {
+  const { data } = await createAdminClient().from('poolers').select('name').in('id', ids)
+  const names = (data ?? []).map(p => p.name as string)
   if (names.length === 0) return
-  const label = !ids ? 'tous les poolers' : names.join(', ')
-  await sendToEmails([REDIRECT_TO!], { ...payload, subject: `[Test → ${label}] ${payload.subject}` })
+  await sendToEmails([REDIRECT_TO!], { ...payload, subject: `[Test → ${names.join(', ')}] ${payload.subject}` })
 }
 
 export type EmailPayload = {
@@ -50,7 +45,7 @@ async function sendToEmails(emails: string[], payload: EmailPayload) {
     return
   }
   if (emails.length === 0) {
-    console.warn('[email] Aucun destinataire opt-in trouvé — envoi ignoré.')
+    console.warn('[email] Aucune adresse trouvée pour les destinataires — envoi ignoré.')
     return
   }
 
@@ -67,68 +62,50 @@ async function sendToEmails(emails: string[], payload: EmailPayload) {
   })
 }
 
-// Poolers ayant activé notif_email — email récupéré via auth.admin (pas stocké sur poolers).
-// `ids` restreint aux poolers donnés (ex: participants à un fil de commentaires) ; omis = tous.
-async function optedInEmails(ids?: string[], excludeUserId?: string): Promise<string[]> {
+// Règle unique des courriels (David, 2026-11-15) : un pooler reçoit un courriel seulement s'il
+// n'a la notification push sur aucun appareil (aucune ligne push_subscriptions). Avec la push, il
+// reçoit la push seule. La case « courriels » de /compte (poolers.notif_email) n'est plus lue.
+// Chaque envoi de courriel de l'app accompagne une push aux mêmes destinataires : personne ne
+// reste sans avis. `ids` omis = tous les poolers.
+async function recipientsWithoutPush(ids?: string[], excludeUserId?: string): Promise<string[]> {
   const supabase = createAdminClient()
-
-  let query = supabase.from('poolers').select('id').eq('notif_email', true)
-  if (ids) query = query.in('id', ids)
-  const { data: poolers } = await query
-  if (!poolers || poolers.length === 0) return []
-  const optedIds = new Set(poolers.map(p => p.id).filter(id => id !== excludeUserId))
-  if (optedIds.size === 0) return []
-
-  return emailsOf(optedIds)
+  let poolersQuery = supabase.from('poolers').select('id')
+  let subsQuery = supabase.from('push_subscriptions').select('user_id')
+  if (ids) {
+    poolersQuery = poolersQuery.in('id', ids)
+    subsQuery = subsQuery.in('user_id', ids)
+  }
+  const [{ data: poolers }, { data: subs }] = await Promise.all([poolersQuery, subsQuery])
+  const withPush = new Set((subs ?? []).map(s => s.user_id as string))
+  return (poolers ?? []).map(p => p.id as string).filter(id => id !== excludeUserId && !withPush.has(id))
 }
 
-async function emailsOf(ids: Set<string>): Promise<string[]> {
+async function emailsOf(ids: string[]): Promise<string[]> {
+  const wanted = new Set(ids)
   const { data } = await createAdminClient().auth.admin.listUsers()
   return (data?.users ?? [])
-    .filter(u => ids.has(u.id) && !!u.email)
+    .filter(u => wanted.has(u.id) && !!u.email)
     .map(u => u.email as string)
 }
 
+async function sendToPoolers(ids: string[], payload: EmailPayload) {
+  if (ids.length === 0) return
+  if (REDIRECT_TO) return sendRedirected(ids, payload)
+  await sendToEmails(await emailsOf(ids), payload)
+}
+
 export async function sendEmailToAll(payload: EmailPayload, excludeUserId?: string) {
-  if (REDIRECT_TO) return sendRedirected(undefined, payload, excludeUserId)
-  const emails = await optedInEmails(undefined, excludeUserId)
-  await sendToEmails(emails, payload)
+  await sendToPoolers(await recipientsWithoutPush(undefined, excludeUserId), payload)
 }
 
 // Sous-ensemble explicite de poolers (ex: participants à un fil de commentaires).
 export async function sendEmailToIds(ids: string[], payload: EmailPayload) {
   if (ids.length === 0) return
-  if (REDIRECT_TO) return sendRedirected(ids, payload)
-  const emails = await optedInEmails(ids)
-  await sendToEmails(emails, payload)
-}
-
-// Avis d'échange (David, 2026-11-14) : un pooler sans aucun abonnement push reçoit le courriel
-// même s'il a désactivé les courriels dans /compte — sinon il ne serait averti d'aucune façon.
-// `onlyWithoutPush` : courriel seulement à ceux qui n'ont pas de push (messages de la discussion,
-// pour ne pas inonder la boîte de ceux qui reçoivent déjà le push).
-export async function sendEmailToIdsReachable(
-  ids: string[],
-  payload: EmailPayload,
-  opts: { onlyWithoutPush?: boolean } = {},
-) {
-  if (ids.length === 0) return
-  const supabase = createAdminClient()
-  const [{ data: subs }, { data: opted }] = await Promise.all([
-    supabase.from('push_subscriptions').select('user_id').in('user_id', ids),
-    supabase.from('poolers').select('id').in('id', ids).eq('notif_email', true),
-  ])
-  const withPush = new Set((subs ?? []).map(s => s.user_id as string))
-  const recipients = new Set(ids.filter(id => !withPush.has(id)))
-  if (!opts.onlyWithoutPush) for (const p of opted ?? []) recipients.add(p.id as string)
-  if (recipients.size === 0) return
-  if (REDIRECT_TO) return sendRedirected([...recipients], payload)
-  await sendToEmails(await emailsOf(recipients), payload)
+  await sendToPoolers(await recipientsWithoutPush(ids), payload)
 }
 
 // Envoi direct pour le bouton "Tester" de /compte (David, 2026-09-10) — contrairement à
-// sendEmailToAll/sendEmailToIds, ne filtre pas sur notif_email (un test manuel doit fonctionner
-// même si les alertes automatiques sont désactivées) et renvoie l'erreur réelle plutôt que de
+// sendEmailToAll/sendEmailToIds, envoie même si le pooler a la push (un test manuel doit fonctionner) et renvoie l'erreur réelle plutôt que de
 // seulement la logger — utile pour diagnostiquer en direct (identifiants Gmail absents/invalides,
 // etc.) sans avoir à aller fouiller les logs Vercel.
 export async function sendTestEmail(toEmail: string): Promise<{ error?: string }> {

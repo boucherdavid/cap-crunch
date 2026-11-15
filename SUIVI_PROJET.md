@@ -21,6 +21,15 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-11-15
 
+**[Change] — Courriels seulement pour les poolers sans push** (`app/lib/email.ts`, `app/lib/tradeOffers.ts`, `app/app/compte/*`, `app/app/aide/AideTabs.tsx`) :
+- David revient sur la décision du 2026-11-14 : un pooler reçoit un courriel seulement s'il n'a la
+  push sur aucun appareil ; avec la push, la push seule (plus de doublons). Toute l'app, pas
+  seulement les échanges. `sendEmailToIdsReachable` retiré : la règle est dans
+  `sendEmailToIds`/`sendEmailToAll` (`recipientsWithoutPush()`).
+- Vérifié avant : chaque envoi de courriel de l'app accompagne une push aux mêmes destinataires.
+- `/compte` : case « Notifications par courriel » retirée, remplacée par une explication ; bouton
+  « Tester le courriel » conservé. `poolers.notif_email` reste en base, plus lue. `/aide` à jour.
+
 **[Feat] — Paniers complets : Journal des activités et onglet Marqueur** (`app/app/journal-transactions/TransactionsClient.tsx`, `app/lib/marqueur.ts`, `app/app/admin/effectifs/MarqueurReportView.tsx`) :
 - Demande de David : recouper plus facilement avec Marqueur, voir que le compte balance.
 - Journal : une carte par panier (transaction × pooler) au lieu d'une ligne par joueur — moment

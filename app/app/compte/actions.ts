@@ -51,21 +51,6 @@ export async function updatePasswordAction(newPassword: string): Promise<{ error
   return {}
 }
 
-export async function updateProfileAction(notifEmail: boolean): Promise<{ error?: string }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Non authentifié.' }
-
-  const { error } = await supabase
-    .from('poolers')
-    .update({ notif_email: notifEmail })
-    .eq('id', user.id)
-
-  if (error) return { error: error.message }
-  revalidatePath('/compte')
-  return {}
-}
-
 export async function resetPasswordForPoolerAction(poolerId: string): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -87,7 +72,7 @@ export async function resetPasswordForPoolerAction(poolerId: string): Promise<{ 
 
 // Bouton "Tester" à côté de la case Notifications par courriel (David, 2026-09-10) — des
 // messages sont apparus sur le babillard en prod sans courriel reçu ; ce test envoie
-// directement (bypass notif_email, voir lib/email.ts) et renvoie la vraie erreur Resend s'il y
+// directement (même si le pooler a la push, voir lib/email.ts) et renvoie la vraie erreur Resend s'il y
 // en a une, pour diagnostiquer sans avoir à aller chercher dans les logs Vercel.
 export async function testEmailAction(): Promise<{ error?: string; sent?: boolean }> {
   const supabase = await createClient()

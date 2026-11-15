@@ -507,7 +507,7 @@ const SECTIONS: Section[] = [
     content: (
       <div>
         <p className="text-sm text-gray-600 mb-3">
-          Depuis <strong>Mon compte</strong>, deux canaux indépendants sont disponibles pour être averti des événements importants.
+          Tu es averti des événements importants dans l&apos;application (notifications push) ou, à défaut, par courriel.
         </p>
         <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Notifications push</h4>
         <ul className="text-sm text-gray-700 space-y-1.5 mb-4">
@@ -517,10 +517,10 @@ const SECTIONS: Section[] = [
         </ul>
         <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Notifications par courriel</h4>
         <ul className="text-sm text-gray-700 space-y-1.5 mb-4">
-          <li>• Case à cocher <strong>Notifications par courriel</strong> — reçoit les mêmes alertes par courriel, peu importe l&apos;appareil.</li>
-          <li>• Bouton <strong>Tester le courriel</strong> pour confirmer la réception.</li>
+          <li>• Si les notifications de l&apos;application ne sont activées sur <strong>aucun</strong> de tes appareils, tu reçois les mêmes alertes par courriel.</li>
+          <li>• Dès qu&apos;un appareil a les notifications activées, tu les reçois seulement dans l&apos;application, sans courriel en double.</li>
+          <li>• Bouton <strong>Tester le courriel</strong> (Mon compte) pour confirmer la réception.</li>
         </ul>
-        <p className="text-xs text-gray-400 italic">Tu peux activer les deux, un seul, ou aucun — désactivable en tout temps depuis Mon compte.</p>
       </div>
     ),
   },
@@ -538,7 +538,7 @@ const SECTIONS: Section[] = [
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• L&apos;administrateur y publie des communications pour l&apos;ensemble du pool.</li>
           <li>• Chaque communication peut être commentée par les poolers.</li>
-          <li>• Si tu as activé les notifications (push ou courriel, Mon compte), tu es avisé lors d&apos;une nouvelle communication.</li>
+          <li>• Tu es avisé de chaque nouvelle communication : par notification si tu l&apos;as activée sur un appareil, sinon par courriel.</li>
         </ul>
         <p className="text-xs text-gray-400 mt-3 italic">Distinct du babillard de la page Planification, propre au sondage de rencontre.</p>
       </div>

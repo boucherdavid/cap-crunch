@@ -1512,6 +1512,11 @@ un rafraîchissement déclenché par l'action (`refreshPoolerTodo()`) ou une not
   efface le repêchage d'une fiche qui porte le choix d'un autre `nhl_id` (2026-10-01).
 
 **Courriels (`app/lib/email.ts`) :**
+- **Courriel = remplacement de la push** (David, 2026-11-15, toute l'app) : `sendEmailToIds`/
+  `sendEmailToAll` n'envoient qu'aux poolers sans aucun abonnement push (`push_subscriptions`) ;
+  avec la push, la push seule. La case « courriels » de `/compte` a été retirée
+  (`poolers.notif_email` n'est plus lue). Tout nouvel avis : push **et** courriel aux mêmes
+  destinataires, jamais un courriel seul (il n'atteindrait personne qui a la push).
 - Envoi via SMTP Gmail (compte personnel de David), pas un service transactionnel — décision du
   2026-09-10 après avoir découvert que Resend en mode sandbox (aucun domaine vérifié) ne livrait
   qu'à l'adresse du propriétaire du compte Resend, et que David ne souhaite ni acheter ni gérer
@@ -1525,7 +1530,7 @@ un rafraîchissement déclenché par l'action (`refreshPoolerTodo()`) ou une not
   client de courriel. Ne jamais construire un lien de courriel à la main.
 - **Tester en staging** (David, 2026-10-05) : `EMAIL_REDIRECT_TO`, définie dans le projet Vercel
   de staging seulement, envoie tous les courriels à cette adresse (objet préfixé
-  « [Test → destinataires prévus] »), sans tenir compte de `notif_email` — les comptes
+  « [Test → destinataires prévus] », mêmes destinataires qu'en prod) — les comptes
   `@staging.test` n'existent pas. Ne jamais la définir en prod.
 - Toujours envoyer une version texte brut en parallèle du HTML (`htmlToText()`) — un courriel
   HTML-only envoyé par script depuis un compte personnel est un signal antispam classique,
