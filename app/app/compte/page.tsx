@@ -12,7 +12,7 @@ export default async function ComptePage() {
 
   const { data: pooler } = await supabase
     .from('poolers')
-    .select('name, notif_email')
+    .select('name')
     .eq('id', user.id)
     .single()
 
@@ -23,7 +23,6 @@ export default async function ComptePage() {
       profile={{
         name: pooler.name,
         email: user.email ?? '',
-        notif_email: pooler.notif_email ?? true,
       }}
     />
   )

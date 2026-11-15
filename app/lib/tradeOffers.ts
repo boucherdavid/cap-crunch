@@ -2,7 +2,7 @@ import { emailLinkHtml } from '@/lib/siteUrl'
 import { after } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPushToUsers, sendPushToAdmins } from '@/lib/push'
-import { sendEmailToIdsReachable, escapeHtml } from '@/lib/email'
+import { sendEmailToIds, escapeHtml } from '@/lib/email'
 import { checkFutureRosterConflict } from '@/lib/rosterTypeChange'
 import { computeBatchEffectiveDate } from '@/lib/gameDayLock'
 import { getEffectiveCap } from '@/lib/capUtils'
@@ -155,7 +155,7 @@ export async function createTradeOffer(
       body: text ? `${proposerLabel} te propose un échange : « ${pushExcerpt(text)} »` : `${proposerLabel} te propose un échange.`,
       url: TRADE_TAB_PATH,
     }).catch(() => {}),
-    sendEmailToIdsReachable([targetPoolerId], {
+    sendEmailToIds([targetPoolerId], {
       subject: 'Cap Crunch — Proposition de transaction',
       html: `<p><strong>${proposerLabel}</strong> te propose un échange — consulte le détail et accepte, refuse ou fais une contre-offre dans l'onglet Échanges de Gestion d'effectifs.</p>${quoteHtml(text)}${linkHtml(TRADE_TAB_PATH)}`,
     }).catch(() => {}),
@@ -234,7 +234,7 @@ async function rewriteTradeOffer(
       body: text ? `${lead} : « ${pushExcerpt(text)} »` : `${lead}.`,
       url: TRADE_TAB_PATH,
     }).catch(() => {}),
-    sendEmailToIdsReachable([otherId], {
+    sendEmailToIds([otherId], {
       subject: title,
       html: `<p><strong>${myLabel}</strong> ${mode === 'counter' ? 'te fait une contre-offre' : 'a modifié son offre'} — consulte le détail et accepte, refuse ou fais une contre-offre dans l'onglet Échanges de Gestion d'effectifs.</p>${quoteHtml(text)}${linkHtml(TRADE_TAB_PATH)}`,
     }).catch(() => {}),
@@ -284,7 +284,7 @@ export async function withdrawTradeOffer(tradeOfferId: number, poolerId: string)
     : `${myLabel} a abandonné votre échange — rien n'a été transféré.`
   after(() => Promise.all([
     sendPushToUsers([otherId], { title: 'Cap Crunch — Transaction retirée', body, url: TRADE_TAB_PATH }).catch(() => {}),
-    sendEmailToIdsReachable([otherId], { subject: 'Cap Crunch — Transaction retirée', html: `<p>${body}</p>${linkHtml(TRADE_TAB_PATH)}` }).catch(() => {}),
+    sendEmailToIds([otherId], { subject: 'Cap Crunch — Transaction retirée', html: `<p>${body}</p>${linkHtml(TRADE_TAB_PATH)}` }).catch(() => {}),
   ]))
   return {}
 }
@@ -318,10 +318,10 @@ export async function postTradeMessage(tradeOfferId: number, poolerId: string, m
       body: pushExcerpt(text),
       url: TRADE_TAB_PATH,
     }).catch(() => {}),
-    sendEmailToIdsReachable([otherId], {
+    sendEmailToIds([otherId], {
       subject: `Cap Crunch — Message de ${myLabel}`,
       html: `<p><strong>${myLabel}</strong> t'a écrit dans la discussion de votre échange.</p>${quoteHtml(text)}${linkHtml(TRADE_TAB_PATH)}`,
-    }, { onlyWithoutPush: true }).catch(() => {}),
+    }).catch(() => {}),
   ]))
   return {}
 }
@@ -347,7 +347,7 @@ export async function setTradeChatShared(tradeOfferId: number, poolerId: string,
       ? sendPushToAdmins({ title: 'Cap Crunch — Discussion partagée', body: 'Deux poolers te montrent la discussion de leur échange.', url: '/admin/effectifs?tab=approbation' })
       : Promise.all([
         sendPushToUsers([otherId], { title: 'Cap Crunch — Discussion', body: `${myLabel} demande de montrer votre discussion à l'admin.`, url: TRADE_TAB_PATH }),
-        sendEmailToIdsReachable([otherId], {
+        sendEmailToIds([otherId], {
           subject: 'Cap Crunch — Discussion',
           html: `<p><strong>${myLabel}</strong> demande de montrer votre discussion d'échange à l'admin. Tu peux accepter dans l'onglet Échanges de Gestion d'effectifs.</p>${linkHtml(TRADE_TAB_PATH)}`,
         }),
@@ -417,7 +417,7 @@ export async function respondToTradeOffer(
     const targetLabel = await poolerName(admin, poolerId)
     after(() => Promise.all([
       sendPushToUsers([offer.proposer_pooler_id], { title: 'Cap Crunch — Transaction refusée', body: `${targetLabel} a refusé ta proposition d'échange.`, url: TRADE_TAB_PATH }).catch(() => {}),
-      sendEmailToIdsReachable([offer.proposer_pooler_id], { subject: 'Cap Crunch — Transaction refusée', html: `<p><strong>${targetLabel}</strong> a refusé ta proposition d'échange.</p>${linkHtml(TRADE_TAB_PATH)}` }).catch(() => {}),
+      sendEmailToIds([offer.proposer_pooler_id], { subject: 'Cap Crunch — Transaction refusée', html: `<p><strong>${targetLabel}</strong> a refusé ta proposition d'échange.</p>${linkHtml(TRADE_TAB_PATH)}` }).catch(() => {}),
     ]))
     return {}
   }
@@ -448,7 +448,7 @@ export async function adminDecideTradeOffer(tradeOfferId: number, approve: boole
     await admin.from('trade_offers').update({ status: 'rejected_admin', admin_decided_at: now, resolved_at: now }).eq('id', tradeOfferId)
     after(() => Promise.all([
       sendPushToUsers([offer.proposer_pooler_id, offer.target_pooler_id], { title: 'Cap Crunch — Transaction rejetée', body: "L'admin a rejeté cet échange.", url: TRADE_TAB_PATH }).catch(() => {}),
-      sendEmailToIdsReachable([offer.proposer_pooler_id, offer.target_pooler_id], { subject: 'Cap Crunch — Transaction rejetée', html: `<p>L'admin a rejeté cet échange.</p>${linkHtml(TRADE_TAB_PATH)}` }).catch(() => {}),
+      sendEmailToIds([offer.proposer_pooler_id, offer.target_pooler_id], { subject: 'Cap Crunch — Transaction rejetée', html: `<p>L'admin a rejeté cet échange.</p>${linkHtml(TRADE_TAB_PATH)}` }).catch(() => {}),
     ]))
     return {}
   }
@@ -466,7 +466,7 @@ export async function adminDecideTradeOffer(tradeOfferId: number, approve: boole
       body: `Approuvée par l'admin — confirme ta part avant le ${deadlineLabel}, sinon l'échange sera annulé pour les deux.`,
       url: TRADE_TAB_PATH,
     }).catch(() => {}),
-    sendEmailToIdsReachable([offer.proposer_pooler_id, offer.target_pooler_id], {
+    sendEmailToIds([offer.proposer_pooler_id, offer.target_pooler_id], {
       subject: 'Cap Crunch — Transaction approuvée',
       html: `<p>L'admin a approuvé cet échange.</p>
              <p>Confirme ta part dans l'onglet Échanges de Gestion d'effectifs avant le <strong>${deadlineLabel}</strong> — si l'un des deux ne confirme pas à temps, l'échange est annulé pour les deux (rien n'aura changé).</p>${linkHtml(TRADE_TAB_PATH)}`,
@@ -726,7 +726,7 @@ export async function confirmTradeReady(
         body: `${readyLabel} a confirmé sa part de l'échange — à ton tour.`,
         url: TRADE_TAB_PATH,
       }).catch(() => {}),
-      sendEmailToIdsReachable([otherPoolerId], {
+      sendEmailToIds([otherPoolerId], {
         subject: 'Cap Crunch — Échange à confirmer',
         html: `<p><strong>${readyLabel}</strong> a confirmé sa part de l'échange — à ton tour. Confirme la tienne dans l'onglet Échanges de Gestion d'effectifs avant la date limite, sinon l'échange est annulé pour les deux.</p>${linkHtml(TRADE_TAB_PATH)}`,
       }).catch(() => {}),
@@ -974,7 +974,7 @@ async function executeTradeOffer(admin: ReturnType<typeof createAdminClient>, tr
       : "L'échange a été exécuté avec succès."
     after(() => Promise.all([
       sendPushToUsers([fullOffer.proposer_pooler_id, fullOffer.target_pooler_id], { title: 'Cap Crunch — Transaction complétée', body, url: '/gestion-effectifs' }).catch(() => {}),
-      sendEmailToIdsReachable([fullOffer.proposer_pooler_id, fullOffer.target_pooler_id], { subject: 'Cap Crunch — Transaction complétée', html: `<p>${body}</p>${linkHtml('/gestion-effectifs')}` }).catch(() => {}),
+      sendEmailToIds([fullOffer.proposer_pooler_id, fullOffer.target_pooler_id], { subject: 'Cap Crunch — Transaction complétée', html: `<p>${body}</p>${linkHtml('/gestion-effectifs')}` }).catch(() => {}),
     ]))
   }
 
@@ -1009,7 +1009,7 @@ export async function resolveExpiredTradeOffers(saisonId: number): Promise<void>
         body: "Le délai de confirmation est passé — l'échange est annulé, refais une proposition au besoin.",
         url: TRADE_TAB_PATH,
       }).catch(() => {}),
-      sendEmailToIdsReachable([offer.proposer_pooler_id, offer.target_pooler_id], {
+      sendEmailToIds([offer.proposer_pooler_id, offer.target_pooler_id], {
         subject: 'Cap Crunch — Transaction annulée',
         html: `<p>Le délai de confirmation est passé sans que les deux poolers aient confirmé — l'échange est annulé, rien n'a changé de part et d'autre. Refais une proposition si l'échange tient toujours.</p>${linkHtml(TRADE_TAB_PATH)}`,
       }).catch(() => {}),
@@ -1050,7 +1050,7 @@ export async function sendTradeReminders(saisonId: number): Promise<void> {
         body: `Confirme ta part de l'échange avant le ${deadlineLabel}, sinon il sera annulé pour les deux.`,
         url: TRADE_TAB_PATH,
       }).catch(() => {}),
-      sendEmailToIdsReachable(ids, {
+      sendEmailToIds(ids, {
         subject: 'Cap Crunch — Échange à confirmer',
         html: `<p>Un échange approuvé attend encore ta confirmation. Confirme ta part dans l'onglet Échanges de Gestion d'effectifs avant le <strong>${deadlineLabel}</strong>, sinon il sera annulé pour les deux.</p>${linkHtml(TRADE_TAB_PATH)}`,
       }).catch(() => {}),
