@@ -79,10 +79,10 @@ export type MarqueurMoveItem = {
   move: string
   /** Action à faire sur Marqueur ; null = déjà concordant (affiché en gris, pour situer le panier). */
   action: string | null
-  /** Le joueur a rebougé après ce panier (David, 2026-11-15) : moment de son dernier mouvement.
-   * La ligne reste affichée en gris pour que le panier balance ; l'écart, s'il y en a un, est
-   * dans le panier de ce dernier mouvement. */
-  laterMove: string | null
+  /** Le joueur a rebougé après ce panier (David, 2026-11-15) : son mouvement suivant, ex.
+   * « réserviste → actif le 10 nov. à 14 h 38 (heure de l'Est) ». La ligne reste en gris pour que
+   * le panier balance ; l'écart, s'il y en a un, est dans le panier de son dernier mouvement. */
+  nextMove: string | null
 }
 
 /** Mouvements faits au même moment pour un pooler — un panier de Gestion d'effectifs écrit tous
@@ -93,6 +93,9 @@ export type MarqueurMoveGroup = {
   pairs: { out: MarqueurMoveItem | null; in: MarqueurMoveItem | null }[]
   /** Ni entrée ni sortie des actifs (réserviste libéré, recrue signée en banque...). */
   others: MarqueurMoveItem[]
+  /** Panier sans rien à reporter, affiché pour relier deux paniers affichés (un joueur qui y
+   * passe entre les deux) — David, 2026-11-15, réactivation de Svechkov le 10 nov. */
+  linkOnly: boolean
 }
 
 /** Preuve tirée de l'API de la LNH (David, 2026-10-06) : les matchs de la saison du joueur, pour
@@ -411,7 +414,7 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
     // Regroupement par panier (David, 2026-10-21) : chaque écart va dans le panier de son dernier
     // mouvement ; le panier montre aussi ses joueurs déjà concordants, pour savoir qui a remplacé qui.
     // Un panier montre toutes ses lignes (David, 2026-11-15) : un joueur qui a rebougé plus tard y
-    // reste en gris (« modifié plus tard »), son écart éventuel va dans son panier le plus récent.
+    // reste en gris avec son mouvement suivant ; son écart éventuel va dans son panier le plus récent.
     const logs = lastLog.get(st.poolerId) ?? new Map<string, LogMove>()
     const groupAts = new Set<number>()
     const otherGaps: MarqueurRosterGap[] = []
@@ -424,20 +427,36 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
       gapByKey.set(key, gap)
     }
     const statusText = (t: string | null) => (t ? STATUS_LABEL[t] ?? t : "hors de l'alignement")
+    const poolerLogs = allLogs.get(st.poolerId) ?? []
+    const movesByPlayer = new Map<string, LogMove[]>()
+    for (const { key, log } of poolerLogs) {
+      if (!movesByPlayer.has(key)) movesByPlayer.set(key, [])
+      movesByPlayer.get(key)!.push(log)
+    }
+    // Paniers de liaison : un joueur présent dans deux paniers affichés a peut-être bougé entre les
+    // deux dans un panier sans écart ; on l'affiche aussi (en gris), sans cascade au-delà.
+    const linkAts = new Set<number>()
+    for (const moves of movesByPlayer.values()) {
+      const shown = moves.filter(m => groupAts.has(m.at)).map(m => m.at)
+      if (shown.length < 2) continue
+      const lo = Math.min(...shown)
+      const hi = Math.max(...shown)
+      for (const m of moves) if (m.at > lo && m.at < hi && !groupAts.has(m.at)) linkAts.add(m.at)
+    }
     const toItem = (key: string, log: LogMove): MarqueurMoveItem => {
       const bucket = getPlayerBucket(log.position)
-      const last = logs.get(key)
-      const superseded = !!last && last.at !== log.at
+      const next = (movesByPlayer.get(key) ?? []).find(m => m.at > log.at)
       return {
         player: log.name,
         position: bucket === 'goalie' ? 'G' : bucket === 'defense' ? 'D' : 'A',
         move: `${statusText(log.oldType)} → ${statusText(log.newType)}`,
-        action: superseded ? null : gapByKey.get(key)?.action ?? null,
-        laterMove: superseded ? fmtMoment(last.iso, last.team ? [last.team] : []) : null,
+        action: next ? null : gapByKey.get(key)?.action ?? null,
+        nextMove: next
+          ? `${statusText(next.oldType)} → ${statusText(next.newType)} ${fmtMoment(next.iso, next.team ? [next.team] : [])}`
+          : null,
       }
     }
-    const poolerLogs = allLogs.get(st.poolerId) ?? []
-    const moveGroups: MarqueurMoveGroup[] = [...groupAts].sort((a, b) => a - b).map(at => {
+    const moveGroups: MarqueurMoveGroup[] = [...groupAts, ...linkAts].sort((a, b) => a - b).map(at => {
       const members = poolerLogs.filter(({ log }) => log.at === at)
         .map(({ key, log }) => [key, log] as const)
         .sort(([, a], [, b]) => a.name.localeCompare(b.name))
@@ -459,7 +478,7 @@ export async function buildMarqueurReport(): Promise<MarqueurReport> {
       }
       for (const left of insLeft) pairs.push({ out: null, in: left })
       const teams = [...new Set(members.map(([, l]) => l.team).filter((t): t is string => !!t))]
-      return { when: fmtMoment(members[0][1].iso, teams), pairs, others }
+      return { when: fmtMoment(members[0][1].iso, teams), pairs, others, linkOnly: linkAts.has(at) }
     })
 
     return {
