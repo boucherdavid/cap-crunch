@@ -6,6 +6,10 @@ const AHL_CLIENT = 'ahl'
 const AHL_SITE_ID = '3'
 const AHL_LEAGUE_ID = '4'
 const BASE = 'https://lscluster.hockeytech.com/feed/index.php'
+// Cache d'une heure (David, 2026-11-16) : 24 h laissait les stats plus d'une journée en retard
+// (le premier visiteur après l'expiration reçoit encore l'ancienne version). Une heure reste
+// loin du rythme qui causait le rate limiting (un appel par visite).
+const STATS_CACHE_SECONDS = 3600
 
 /** Les réponses HockeyTech sont enveloppées dans des parenthèses même avec fmt=json */
 function parseHockeyTechJson<T>(text: string): T {
@@ -136,7 +140,7 @@ export async function fetchAhlRegularSeasons(): Promise<AhlSeasonInfo[]> {
       lang: 'en',
       fmt: 'json',
     })
-    const res = await fetch(`${BASE}?${params}`, { next: { revalidate: 86400 } })
+    const res = await fetch(`${BASE}?${params}`, { next: { revalidate: STATS_CACHE_SECONDS } })
     if (!res.ok) return []
     const data = parseHockeyTechJson<{ seasons: Array<{ id: string; name: string }> }>(await res.text())
     return (data.seasons ?? [])

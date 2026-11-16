@@ -11,6 +11,10 @@ import { fetchTakenPlayers } from '@/lib/takenPlayers'
 import { fetchAhlByNhlId } from '@/lib/ahlAssignments'
 import { fetchScratchesByNhlId } from '@/lib/lineupStatus'
 const REST = 'https://api.nhle.com/stats/rest/en'
+// Cache d'une heure (David, 2026-11-16) : 24 h laissait les stats plus d'une journée en retard
+// (le premier visiteur après l'expiration reçoit encore l'ancienne version). Une heure reste
+// loin du rythme qui causait le rate limiting (un appel par visite).
+const STATS_CACHE_SECONDS = 3600
 
 export type SkaterStat = {
   id: number
@@ -75,7 +79,7 @@ type Row = Record<string, unknown>
 
 async function fetchSkaters(gameType: number, nhlSeason = NHL_SEASON): Promise<SkaterStat[]> {
   try {
-    const res = await fetch(buildUrl('skater', gameType, nhlSeason), { next: { revalidate: 86400 } })
+    const res = await fetch(buildUrl('skater', gameType, nhlSeason), { next: { revalidate: STATS_CACHE_SECONDS } })
     if (!res.ok) return []
     const rows = ((await res.json()).data as Row[]) ?? []
 
@@ -128,7 +132,7 @@ async function fetchSkaters(gameType: number, nhlSeason = NHL_SEASON): Promise<S
 
 async function fetchGoalies(gameType: number, nhlSeason = NHL_SEASON): Promise<GoalieStat[]> {
   try {
-    const res = await fetch(buildUrl('goalie', gameType, nhlSeason), { next: { revalidate: 86400 } })
+    const res = await fetch(buildUrl('goalie', gameType, nhlSeason), { next: { revalidate: STATS_CACHE_SECONDS } })
     if (!res.ok) return []
     const rows = ((await res.json()).data as Row[]) ?? []
 
