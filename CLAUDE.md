@@ -1334,6 +1334,13 @@ corrigée le 2026-09-20 :**
   paraissait déséquilibré (cas Kasper de Vincent, 10 nov.). Un panier sans écart est aussi affiché
   (gris, `linkOnly`) quand un joueur y passe entre deux paniers affichés, sans cascade au-delà
   (réactivation de Svechkov le 10 nov., entre ses paniers du 7 et du 11).
+- **« À saisir depuis ta dernière mise à jour »** (David, 2026-11-16), en haut de l'onglet : paniers
+  du Journal des activités (`journalCards.tsx`, mêmes cartes que `/journal-transactions`) dont
+  l'id de transaction dépasse `app_settings.marqueur_synced_tx_id`, par pooler ; bouton « Marqueur
+  est à jour » (`markMarqueurSyncedAction`) = id de la dernière transaction affichée (jamais
+  l'heure du clic, jamais reculé). Repère par id, pas par date : un mouvement saisi après coup avec
+  une date passée y paraît quand même. Sans repère : 7 derniers jours. Migration
+  `marqueur_synced.sql`.
 - **Moment d'effet affiché** (David, 2026-10-28) : date sans heure (`T12:00:00Z`) → « avant les
   matchs du jour » ; heure précise → l'heure, plus « avant les matchs du jour » si aucun match des
   équipes des joueurs du panier n'était commencé (`fetchGameStartsByDay()`, horaire LNH par

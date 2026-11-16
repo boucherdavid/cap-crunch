@@ -15,6 +15,8 @@ import { fetchLtirSettings } from '@/lib/injuries'
 import MarqueurReportView from './MarqueurReportView'
 import CorrectionsManager from './CorrectionsManager'
 import { buildMarqueurReport, type MarqueurReport } from '@/lib/marqueur'
+import MarqueurJournalSection from './MarqueurJournalSection'
+import { loadMarqueurJournal, type MarqueurJournal } from './marqueur-actions'
 import type { LtirSettings } from '@/lib/ltirEligibility'
 import { loadCapWatchDataAction, getPendingTradeOffersForAdminAction, getPendingLtirRequestsForAdminAction, getSharedTradeChatsForAdminAction, type SharedTradeChatView } from './cap-watch-actions'
 
@@ -145,7 +147,8 @@ export default async function AdminEffectifsPage({
 
   // ── Comparaison avec Marqueur.com (David, 2026-10-05) ──────────────────────
   let marqueurReport: MarqueurReport | null = null
-  if (activeTab === 'marqueur') marqueurReport = await buildMarqueurReport()
+  let marqueurJournal: MarqueurJournal | null = null
+  if (activeTab === 'marqueur') [marqueurReport, marqueurJournal] = await Promise.all([buildMarqueurReport(), loadMarqueurJournal()])
 
   return (
     <div>
@@ -161,7 +164,12 @@ export default async function AdminEffectifsPage({
       )}
 
       {/* ── Marqueur ── */}
-      {activeTab === 'marqueur' && marqueurReport && <MarqueurReportView report={marqueurReport} />}
+      {activeTab === 'marqueur' && marqueurReport && (
+        <div className="max-w-5xl">
+          {marqueurJournal && <MarqueurJournalSection journal={marqueurJournal} />}
+          <MarqueurReportView report={marqueurReport} />
+        </div>
+      )}
 
       {/* ── Mouvements ── */}
       {activeTab === 'mouvements' && (

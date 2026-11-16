@@ -19,6 +19,18 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-11-16
+
+**[Feat] — Onglet Marqueur : « À saisir depuis ta dernière mise à jour »** (`app/app/admin/effectifs/MarqueurJournalSection.tsx`, `marqueur-actions.ts`, `MarqueurSyncedButton.tsx`, `page.tsx`, `app/app/journal-transactions/journalCards.tsx`, `supabase_migrations/marqueur_synced.sql`) :
+- Demande de David : faire le suivi avec Marqueur à partir du Journal des activités. Section en
+  haut de l'onglet Marqueur : soumissions depuis le repère, par pooler (cartes du Journal), échanges
+  à la fin ; les écarts calculés restent dessous comme filet de sécurité.
+- Bouton « Marqueur est à jour » (repère unique pour le pool, choix de David) : id de la dernière
+  transaction affichée — un panier soumis pendant la saisie reste dans la liste ; un mouvement
+  saisi après coup avec une date passée y paraît aussi (id, pas date). Sans repère : 7 jours.
+- Cartes du Journal extraites dans `journalCards.tsx` (partagées, aucun changement visuel).
+- Migration `marqueur_synced.sql` (2 colonnes dans `app_settings`) à rouler en staging puis prod.
+
 ### 2026-11-15
 
 **[Fix] — Onglet Marqueur : mouvement suivant et paniers de liaison** (`app/lib/marqueur.ts`, `app/app/admin/effectifs/MarqueurReportView.tsx`) :
