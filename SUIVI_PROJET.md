@@ -21,6 +21,11 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-11-16
 
+**[Feat] — Admin : type de notification par pooler** (`app/app/admin/pool/page.tsx`) :
+- Colonne « Notifications » dans Gestion du pool → Poolers : « Push · N appareils » (lignes
+  `push_subscriptions`) ou « Courriel » (aucun appareil, avis par courriel). Information seulement.
+
+
 **[Fix] — Statistiques LNH et AHL en retard d'un jour ou plus** (`app/app/statistiques/page.tsx`, `app/lib/ahl-stats.ts`) :
 - Signalé par David : blanchissage de Devon Levi (samedi) absent de `/statistiques` le lundi ;
   tous les gardiens avaient un match de moins que nhl.com. L'API de la LNH était à jour : c'était
