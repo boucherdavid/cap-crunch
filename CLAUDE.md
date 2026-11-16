@@ -429,6 +429,12 @@ seulement) en haut de `/simulation` — charge l'alignement et la banque d'un au
 informatif (pooler sans accès à l'app). Rien n'est écrit ; scénarios masqués (privés, liés au
 compte de l'admin). `searchSimulationPlayersAction({ forPoolerId })`, ignoré si non admin.
 
+**Statut « Rec. » dans la Simulation** (David, 2026-11-16) : `PlayerType` inclut `'recrue'`
+(banque de recrues, hors masse et hors composition, groupe « Banque de recrues »). Offert
+seulement si `SimEntry.bankEligible` : joueur de l'alignement encore protégé (`isRookieProtected`,
+calculé dans `loadRosterForSimulationAction`), recrue de la banque, agent libre sous ELC, joueur
+reçu d'un autre pooler s'il était protégé chez lui. Sauvegardé dans les scénarios.
+
 **Faits saillants de l'accueil** (David, 2026-10-13) : bandeau sous le logo (`HighlightsBanner`,
 `app/page.tsx`) — échanges, signatures (agent libre et remplaçant LTIR) et ballotage des 7 derniers
 jours, 4 au maximum ; mêmes icônes de couleur dans « Activité du pool ». Type de chaque ligne
@@ -728,7 +734,7 @@ composant, pas de `?subtab=`), donc pas d'accès par URL directe comme pour `/ad
 
 | Hub | Onglets (`?tab=id` → label) |
 |---|---|
-| `/admin/pool` | `poolers` Poolers · `config` Configuration (sous-onglets `Saisons` / `Général` / `Pointage Saison` — `Général` = ex-"Pool Saison", renommé le 2026-09-01 ; y sont aussi les chronos de repêchage, le délai du ballotage et les seuils du badge « Scratch », `ScratchSettingsForm.tsx`) |
+| `/admin/pool` | `poolers` Poolers (colonne « Notifications » : push + nombre d'appareils, ou courriel — `push_subscriptions`, 2026-11-16) · `config` Configuration (sous-onglets `Saisons` / `Général` / `Pointage Saison` — `Général` = ex-"Pool Saison", renommé le 2026-09-01 ; y sont aussi les chronos de repêchage, le délai du ballotage et les seuils du badge « Scratch », `ScratchSettingsForm.tsx`) |
 | `/admin/communaute` | `communication` Communication (feedback + notifs, filtrables par type — `NotificationsList.tsx`, type déduit du titre : tout nouveau titre de `sendPushToAdmins` s'ajoute à `KINDS` ; « Mouvements » = lots soumis par un pooler, `lib/adminRosterNotice.ts`, jamais pour un admin qui agit ; « Ballotage » = résumé à l'attribution et ballotage bloqué) · `babillard` Babillard (publier/supprimer des communications, ajouté le 2026-09-02) · `suivi` Suivi (activité) · `planification` Planification (sondage type Doodle, admin) |
 | `/admin/init` | `rosters` Rosters initiaux · `recrues` Banque de recrues · `choix` Choix de repêchage (← réassigner le propriétaire d'un pick échangé hors-app) — réglages one-shot déjà en place pour la saison courante |
 | `/admin/effectifs` | `mouvements` Mouvements · `transactions` Transactions · `approbation` Approbation (transactions entre poolers en attente, `TradeApprovalManager.tsx` — onglet ajouté le 2026-09-21) · `historique` Historique (saisie historique manuelle) · `corrections` Corrections (lots de Gestion d'effectifs/ballotage déjà faits par un pooler : changer la date, le statut d'un joueur, ou annuler le lot — voir section 6) · `conformite` Conformité cap (joueurs sans contrat, cap simulé) · `marqueur` Marqueur (écarts avec notre pool sur Marqueur.com, 2026-10-05) |
@@ -1292,6 +1298,11 @@ corrigée le 2026-09-20 :**
   (2026-10-05 — le nom ratait « Mitch »/« Mitchell » Marner), nom en repli seulement. Matching sur le nom complet uniquement (les joueurs AHL n'ont pas de
   `nhl_id`/`player.id` fiable pour un matching plus robuste) — un homonyme improbable
   afficherait un faux positif, risque jugé acceptable.
+
+**Cache des statistiques LNH et AHL (David, 2026-11-16)** : `STATS_CACHE_SECONDS` = 1 h
+(`app/statistiques/page.tsx`, `lib/ahl-stats.ts`). L'ancien cache de 24 h laissait les stats plus
+d'une journée en retard (blanchissage de Levi absent) — ne pas le rallonger. Réponses de 353 Ko
+(patineurs) et 30 Ko (gardiens), sous la limite de 2 Mo du cache de Vercel.
 
 **Saisons passées sur `/statistiques` (LNH) — David, 2026-09-17, corrigé le même jour :**
 - Sélecteur de saison (`recentNhlSeasons()`, `app/lib/nhl-stats.ts`) — 15 dernières saisons
