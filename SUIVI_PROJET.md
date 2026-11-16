@@ -21,6 +21,16 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-11-16
 
+**[Feat] — Simulation : option « Rec. » ; masse salariale : nombre de réservistes** (`app/app/simulation/*`, `app/app/poolers/[id]/page.tsx`, `app/app/repechage-agents-libres/actions.ts`, `app/app/aide/AideTabs.tsx`) :
+- Simulation : nouveau statut `recrue` (« Rec. » / « Banque de recrues » sur mobile), hors masse et
+  hors composition, offert seulement aux joueurs admissibles (choix de David) : joueur de
+  l'alignement encore protégé (`isRookieProtected`, `SimRosterEntry.bankEligible`), recrue de la
+  banque, agent libre sous ELC, joueur reçu d'un autre pooler s'il était protégé chez lui.
+  Scénarios : le statut est sauvegardé ; le hub des agents libres n'active pas une recrue laissée
+  en « Rec. ».
+- `/poolers/[id]`, onglet Masse salariale : case « Réservistes : N (min. 2) », rouge sous 2.
+
+
 **[Feat] — Onglet Marqueur : « À saisir depuis ta dernière mise à jour »** (`app/app/admin/effectifs/MarqueurJournalSection.tsx`, `marqueur-actions.ts`, `MarqueurSyncedButton.tsx`, `page.tsx`, `app/app/journal-transactions/journalCards.tsx`, `supabase_migrations/marqueur_synced.sql`) :
 - Demande de David : faire le suivi avec Marqueur à partir du Journal des activités. Section en
   haut de l'onglet Marqueur : soumissions depuis le repère, par pooler (cartes du Journal), échanges

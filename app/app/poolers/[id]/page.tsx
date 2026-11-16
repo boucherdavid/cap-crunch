@@ -532,11 +532,15 @@ export default async function PoolerPage({
             </p>
           </div>
         )}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
           <div className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700">Actifs : {actifs.length} / 20</div>
           <div className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700">Attaquants : {activeCounts.forward} / 12</div>
           <div className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700">Défenseurs : {activeCounts.defense} / 6</div>
           <div className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700">Gardiens : {activeCounts.goalie} / 2</div>
+          {/* Réservistes (David, 2026-11-16) : ils comptent dans la masse, minimum 2. */}
+          <div className={`rounded-lg px-3 py-2 ${reservistes.length < 2 ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-700'}`}>
+            Réservistes : {reservistes.length} (min. 2)
+          </div>
         </div>
         <p className="text-xs text-gray-500">La banque de recrues et les joueurs LTIR ne comptent pas dans la masse salariale. Les joueurs actifs et réservistes comptent toujours, même s&apos;ils sont recrues.</p>
       </div>

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { getEffectiveCap } from '@/lib/capUtils'
+import { isRookieProtected } from '@/lib/rookieProtection'
 
 function posBucket(position: string | null): 'forward' | 'defense' | 'goalie' {
   const pos = (position ?? '').toUpperCase()
@@ -161,6 +162,8 @@ export type SimRosterEntry = {
   position: string | null
   cap_number: number
   isEstimatedCap: boolean
+  // Encore protégé (règle du pool) : peut être remis en banque de recrues dans la simulation.
+  bankEligible: boolean
 }
 
 // Version allégée de loadPresaisonDataAction (admin/presaison/actions.ts) — seulement
@@ -189,7 +192,7 @@ export async function loadRosterForSimulationAction(saisonId: number, poolerId: 
 
   const { data: rows } = await supabase
     .from('pooler_rosters')
-    .select('id, player_id, player_type, players (first_name, last_name, position, player_contracts (season, cap_number, contract_status, is_elc))')
+    .select('id, player_id, player_type, rookie_type, pool_draft_year, players (first_name, last_name, position, player_contracts (season, cap_number, contract_status, is_elc))')
     .eq('pooler_id', poolerId)
     .eq('pool_season_id', saisonId)
     .eq('is_active', true)
@@ -209,6 +212,7 @@ export async function loadRosterForSimulationAction(saisonId: number, poolerId: 
       position: r.players?.position ?? null,
       cap_number: cap,
       isEstimatedCap: isEstimated,
+      bankEligible: isRookieProtected(r.rookie_type ?? null, r.pool_draft_year ?? null, contracts, saison.season),
     }
   })
 
@@ -269,13 +273,13 @@ export type ScenarioData = {
   removed: number[]
   added: {
     id: number; first_name: string; last_name: string; position: string | null; cap_number: number
-    playerType: 'actif' | 'reserviste' | 'ltir'; ownerName: string | null
+    playerType: 'actif' | 'reserviste' | 'ltir' | 'recrue'; ownerName: string | null; bankEligible?: boolean
   }[]
-  addedRecrues: { id: number; playerType: 'actif' | 'reserviste' | 'ltir' }[]
+  addedRecrues: { id: number; playerType: 'actif' | 'reserviste' | 'ltir' | 'recrue' }[]
   // Statuts actif/réserviste/ltir choisis pour des joueurs déjà dans l'alignement (David,
   // 2026-09-14 suite) — absent des anciens scénarios sauvegardés avant cet ajout, `?? []`
   // requis chez l'appelant.
-  currentTypeOverrides: { playerId: number; playerType: 'actif' | 'reserviste' | 'ltir' }[]
+  currentTypeOverrides: { playerId: number; playerType: 'actif' | 'reserviste' | 'ltir' | 'recrue' }[]
 }
 
 export async function listScenariosAction(saisonId: number): Promise<{ scenarios: { id: number; name: string; updated_at: string }[] }> {

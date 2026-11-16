@@ -386,6 +386,7 @@ const SECTIONS: Section[] = [
         <ul className="text-sm text-gray-700 space-y-1.5 mb-4">
           <li>• Retire un de tes joueurs, ajoute un agent libre (ou un joueur déjà possédé par un autre pooler, identifié en orange — pratique pour simuler une transaction) ou une recrue de ta banque.</li>
           <li>• Chaque joueur ajouté a un statut à choisir : <strong>Actif / Réserviste / IR</strong>.</li>
+          <li>• Un joueur encore protégé comme recrue (ou un agent libre sous contrat d&apos;entrée) a aussi l&apos;option <strong>Rec.</strong> : il retourne dans ta banque de recrues et sort de ta masse salariale.</li>
           <li>• <strong>Scénarios sauvegardés</strong> : donne un nom à ta simulation pour la retrouver plus tard — plusieurs scénarios peuvent être gardés en parallèle. Tes scénarios sont <strong>privés</strong> : personne d&apos;autre, administrateur compris, ne peut les voir.</li>
         </ul>
         <h4 className="text-sm font-semibold text-gray-700 mb-1.5">Onglet Transaction</h4>

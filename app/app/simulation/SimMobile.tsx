@@ -15,7 +15,7 @@ const fmt = (n: number) =>
   new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 const DASH = '—'
 
-const TYPE_LABEL: Record<PlayerType, string> = { actif: 'Actif', reserviste: 'Réserviste', ltir: 'IR' }
+const TYPE_LABEL: Record<PlayerType, string> = { actif: 'Actif', reserviste: 'Réserviste', ltir: 'IR', recrue: 'Banque de recrues' }
 
 function setType(state: SimState, e: SimEntry, t: PlayerType) {
   if (e.kind === 'current') state.setCurrentType(e.playerId, t)
@@ -119,7 +119,7 @@ export default function SimMobile({
                     aria-label={`Statut de ${e.playerName}`}
                     className="shrink-0 border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white"
                   >
-                    {(Object.keys(TYPE_LABEL) as PlayerType[]).map(t => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
+                    {(Object.keys(TYPE_LABEL) as PlayerType[]).filter(t => t !== 'recrue' || e.bankEligible).map(t => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
                     <option value="retirer">Retirer</option>
                   </select>
                 </li>
@@ -189,7 +189,7 @@ export default function SimMobile({
                   onClick={() => {
                     state.addFA({
                       id: p.id, first_name: p.first_name, last_name: p.last_name,
-                      position: p.position, cap_number: p.cap_number, ownerName: p.owner_name,
+                      position: p.position, cap_number: p.cap_number, ownerName: p.owner_name, bankEligible: p.is_elc,
                     })
                     setQuery(''); setResults([])
                   }}
