@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { AdminTabBar } from '@/components/AdminTabBar'
 import AddPoolerForm from '../poolers/AddPoolerForm'
@@ -38,7 +39,12 @@ export default async function AdminPoolPage({
   let poolersData: any[] = []
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let saisonPoolers: any = null
+  // Appareils abonnés à la push, par pooler (David, 2026-11-16) — sans appareil, le pooler reçoit
+  // les avis par courriel (lib/email.ts). RLS admin seulement sur push_subscriptions.
+  const pushDevices = new Map<string, number>()
   if (activeTab === 'poolers') {
+    const { data: subs } = await createAdminClient().from('push_subscriptions').select('user_id')
+    for (const sub of subs ?? []) pushDevices.set(sub.user_id as string, (pushDevices.get(sub.user_id as string) ?? 0) + 1)
     const [pr, sr] = await Promise.all([
       supabase.from('poolers').select(`
         id, name, is_admin,
@@ -90,6 +96,7 @@ export default async function AdminPoolPage({
                   <th className="text-right px-4 py-3 font-medium text-gray-600">Actifs</th>
                   <th className="text-right px-4 py-3 font-medium text-gray-600">Réservistes</th>
                   <th className="text-right px-4 py-3 font-medium text-gray-600">Cap comptabilisé</th>
+                  <th className="text-center px-4 py-3 font-medium text-gray-600">Notifications</th>
                   <th className="text-center px-4 py-3 font-medium text-gray-600">Actions</th>
                 </tr>
               </thead>
@@ -118,6 +125,14 @@ export default async function AdminPoolPage({
                       <td className="px-4 py-3 text-right text-gray-600">{actifs.length}</td>
                       <td className="px-4 py-3 text-right text-gray-600">{reservistes.length}</td>
                       <td className="px-4 py-3 text-right text-gray-700">{cap > 0 ? fmtCap(cap) : '—'}</td>
+                      <td className="px-4 py-3 text-center">
+                        {(() => {
+                          const n = pushDevices.get(pr.id) ?? 0
+                          return n > 0
+                            ? <span className="bg-emerald-100 text-emerald-700 text-xs px-2 py-0.5 rounded">Push · {n} appareil{n > 1 ? 's' : ''}</span>
+                            : <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded">Courriel</span>
+                        })()}
+                      </td>
                       <td className="px-4 py-3 text-center">
                         <PoolerActions poolerId={pr.id} poolerName={pr.name} />
                       </td>
