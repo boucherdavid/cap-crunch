@@ -19,7 +19,9 @@ export function groupRosterEntries(roster: SimRosterEntry[]): { label: string; e
     .filter(g => g.entries.length > 0)
 }
 
-export type PlayerType = 'actif' | 'reserviste' | 'ltir'
+// 'recrue' : remis en banque de recrues, hors masse et hors composition (David, 2026-11-16) —
+// offert seulement aux joueurs admissibles (SimEntry.bankEligible).
+export type PlayerType = 'actif' | 'reserviste' | 'ltir' | 'recrue'
 
 export type FreeAgent = {
   id: number
@@ -32,6 +34,9 @@ export type FreeAgent = {
   // recherche (voir searchSimulationPlayersAction), soit parce qu'il arrive d'un envoi depuis
   // l'autre panneau de l'onglet Transaction (David, 2026-09-14 suite). null = agent libre.
   ownerName: string | null
+  // Pourrait aller en banque de recrues : agent libre sous ELC, ou joueur encore protégé chez
+  // le pooler qui l'envoie (onglet Transaction).
+  bankEligible?: boolean
 }
 
 export type RecrueOption = { roster_id: number; player_id: number; name: string; position: string | null; cap_number: number }
@@ -52,6 +57,8 @@ export type SimEntry = {
   // à l'autre pooler dans l'onglet Transaction — un agent libre/une recrue tout juste ajoutés
   // en simulation ne sont pas encore "à toi" pour de vrai.
   canSend: boolean
+  // Option « Rec. » offerte (protection recrue du pool, isRookieProtected côté serveur).
+  bankEligible: boolean
 }
 
 export function posBucket(position: string | null): 'forward' | 'defense' | 'goalie' {
@@ -70,6 +77,7 @@ export function groupSimEntries(entries: SimEntry[]): { label: string; entries: 
     { label: 'Gardiens', match: e => e.playerType === 'actif' && posBucket(e.position) === 'goalie' },
     { label: 'Réservistes', match: e => e.playerType === 'reserviste' },
     { label: 'LTIR', match: e => e.playerType === 'ltir' },
+    { label: 'Banque de recrues', match: e => e.playerType === 'recrue' },
   ]
   return groups
     .map(g => ({ label: g.label, entries: entries.filter(g.match).sort((a, b) => b.capNumber - a.capNumber) }))
@@ -129,7 +137,7 @@ export function useSimState(roster: SimRosterEntry[], recruePlayers: RecrueOptio
     position: e.position, capNumber: e.cap_number,
     playerType: currentTypeOverrides.get(e.player_id)
       ?? (e.player_type === 'reserviste' ? 'reserviste' : e.player_type === 'ltir' ? 'ltir' : 'actif'),
-    removedFlag: removed.has(e.player_id), kind: 'current', canSend: true,
+    removedFlag: removed.has(e.player_id), kind: 'current', canSend: true, bankEligible: e.bankEligible,
   }))
   const recrue: SimEntry[] = recruePlayers
     .filter(r => addedRecrues.has(r.player_id))
@@ -139,7 +147,7 @@ export function useSimState(roster: SimRosterEntry[], recruePlayers: RecrueOptio
         key: `rec-${r.player_id}`, playerId: r.player_id, playerName: r.name,
         firstName: firstName ?? '', lastName: lastName ?? r.name,
         position: r.position, capNumber: r.cap_number,
-        playerType: addedRecrues.get(r.player_id)!, removedFlag: false, kind: 'recrue' as const, canSend: false,
+        playerType: addedRecrues.get(r.player_id)!, removedFlag: false, kind: 'recrue' as const, canSend: false, bankEligible: true,
       }
     })
   const fa: SimEntry[] = added.map(a => ({
@@ -147,17 +155,20 @@ export function useSimState(roster: SimRosterEntry[], recruePlayers: RecrueOptio
     firstName: a.first_name, lastName: a.last_name,
     position: a.position, capNumber: a.cap_number ?? 0,
     playerType: a.playerType, removedFlag: false, kind: 'fa' as const, ownerName: a.ownerName, canSend: false,
+    bankEligible: a.bankEligible ?? false,
   }))
 
   const entries = [...current, ...recrue, ...fa]
   const activeEntries = entries.filter(e => !e.removedFlag)
-  const capUsed = activeEntries.filter(e => e.playerType !== 'ltir').reduce((s, e) => s + e.capNumber, 0)
+  // LTIR et banque de recrues : hors masse.
+  const capUsed = activeEntries.filter(e => e.playerType !== 'ltir' && e.playerType !== 'recrue').reduce((s, e) => s + e.capNumber, 0)
   const counts = {
     forward: activeEntries.filter(e => e.playerType === 'actif' && posBucket(e.position) === 'forward').length,
     defense: activeEntries.filter(e => e.playerType === 'actif' && posBucket(e.position) === 'defense').length,
     goalie: activeEntries.filter(e => e.playerType === 'actif' && posBucket(e.position) === 'goalie').length,
     reserviste: activeEntries.filter(e => e.playerType === 'reserviste').length,
     ltir: activeEntries.filter(e => e.playerType === 'ltir').length,
+    recrue: activeEntries.filter(e => e.playerType === 'recrue').length,
   }
   const touched = removed.size > 0 || added.length > 0 || addedRecrues.size > 0 || currentTypeOverrides.size > 0
 

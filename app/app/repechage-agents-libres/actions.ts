@@ -442,7 +442,8 @@ export async function loadScenarioForSandboxAction(
       added: data.added
         .filter(a => !takenIds.has(a.id))
         .map(a => ({ id: a.id, first_name: a.first_name, last_name: a.last_name, position: a.position, cap_number: a.cap_number })),
-      addedRecrueIds: data.addedRecrues.map(r => r.id),
+      // Une recrue laissée en banque dans le scénario (« Rec. ») n'y est pas activée.
+      addedRecrueIds: data.addedRecrues.filter(r => r.playerType !== 'recrue').map(r => r.id),
       unavailable: data.added.filter(a => takenIds.has(a.id)).map(a => `${a.first_name} ${a.last_name}`),
       hadStatusChoices: overrides.length > 0
         || data.added.some(a => a.playerType !== 'actif')

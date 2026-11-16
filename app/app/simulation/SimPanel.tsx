@@ -8,17 +8,19 @@ const fmt = (n: number) =>
   new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 const DASH = '—'
 
-function TypeToggle({ value, onChange }: { value: PlayerType; onChange: (t: PlayerType) => void }) {
-  const opts: { v: PlayerType; label: string }[] = [
+function TypeToggle({ value, onChange, allowRecrue }: { value: PlayerType; onChange: (t: PlayerType) => void; allowRecrue: boolean }) {
+  const opts: { v: PlayerType; label: string; title?: string }[] = [
     { v: 'actif', label: 'Actif' },
     { v: 'reserviste', label: 'Rés.' },
     { v: 'ltir', label: 'IR' },
+    ...(allowRecrue ? [{ v: 'recrue' as const, label: 'Rec.', title: 'Banque de recrues (hors masse)' }] : []),
   ]
   return (
     <span className="inline-flex rounded border overflow-hidden text-[10px] shrink-0">
       {opts.map((o, i) => (
         <button
           key={o.v}
+          title={o.title}
           onClick={() => onChange(o.v)}
           className={`px-1.5 py-0.5 ${i > 0 ? 'border-l' : ''} ${value === o.v ? 'bg-blue-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
         >
@@ -125,11 +127,12 @@ export default function SimPanel({
                 >
                   <span className="truncate">
                     <span className="text-gray-400 mr-1">{e.position ?? DASH}</span>{e.playerName}
-                    {e.kind === 'recrue' && <span className="text-emerald-500"> (recrue activée)</span>}
+                    {e.kind === 'recrue' && e.playerType !== 'recrue' && <span className="text-emerald-500"> (recrue activée)</span>}
                     {e.kind === 'fa' && e.ownerName && <span className="text-amber-600"> ({e.ownerName})</span>}
                   </span>
                   <span className="flex items-center gap-2 shrink-0">
                     <TypeToggle
+                      allowRecrue={e.bankEligible}
                       value={e.playerType}
                       onChange={t => {
                         if (e.kind === 'current') state.setCurrentType(e.playerId, t)
@@ -288,7 +291,7 @@ export default function SimPanel({
               onClick={() => {
                 state.addFA({
                   id: p.id, first_name: p.first_name, last_name: p.last_name,
-                  position: p.position, cap_number: p.cap_number, ownerName: p.owner_name,
+                  position: p.position, cap_number: p.cap_number, ownerName: p.owner_name, bankEligible: p.is_elc,
                 })
                 setQuery(''); setResults([])
               }}

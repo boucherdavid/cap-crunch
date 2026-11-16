@@ -54,7 +54,7 @@ function sendEntry(entry: SimEntry, from: ReturnType<typeof useSimState>, to: Re
   from.toggleRemove(entry.playerId)
   to.addFA({
     id: entry.playerId, first_name: entry.firstName, last_name: entry.lastName,
-    position: entry.position, cap_number: entry.capNumber, ownerName: fromLabel,
+    position: entry.position, cap_number: entry.capNumber, ownerName: fromLabel, bankEligible: entry.bankEligible,
   })
 }
 
@@ -119,7 +119,7 @@ export default function SimulationTool({
     setPreloadDone(true)
     loadPlayerByIdAction(saisonId, preloadPlayerId).then(res => {
       const p = res.player
-      if (p) myState.addFA({ id: p.id, first_name: p.first_name, last_name: p.last_name, position: p.position, cap_number: p.cap_number, ownerName: p.owner_name })
+      if (p) myState.addFA({ id: p.id, first_name: p.first_name, last_name: p.last_name, position: p.position, cap_number: p.cap_number, ownerName: p.owner_name, bankEligible: p.is_elc })
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, preloadDone, preloadPlayerId, saisonId])
@@ -127,7 +127,7 @@ export default function SimulationTool({
   const handleSimulateFromList = (playerId: number) => {
     loadPlayerByIdAction(saisonId, playerId).then(res => {
       const p = res.player
-      if (p) myState.addFA({ id: p.id, first_name: p.first_name, last_name: p.last_name, position: p.position, cap_number: p.cap_number, ownerName: p.owner_name })
+      if (p) myState.addFA({ id: p.id, first_name: p.first_name, last_name: p.last_name, position: p.position, cap_number: p.cap_number, ownerName: p.owner_name, bankEligible: p.is_elc })
     })
   }
 
