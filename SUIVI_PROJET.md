@@ -21,6 +21,14 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-11-16
 
+**[Fix] — Statistiques LNH et AHL en retard d'un jour ou plus** (`app/app/statistiques/page.tsx`, `app/lib/ahl-stats.ts`) :
+- Signalé par David : blanchissage de Devon Levi (samedi) absent de `/statistiques` le lundi ;
+  tous les gardiens avaient un match de moins que nhl.com. L'API de la LNH était à jour : c'était
+  notre cache de 24 h (commit `c6607fc`, contre le rate limiting), aggravé par le
+  stale-while-revalidate (le premier visiteur après l'expiration reçoit encore l'ancienne version).
+- Cache réduit à 1 h (`STATS_CACHE_SECONDS`), au plus 24 appels par jour et par type de stats.
+
+
 **[Feat] — Simulation : option « Rec. » ; masse salariale : nombre de réservistes** (`app/app/simulation/*`, `app/app/poolers/[id]/page.tsx`, `app/app/repechage-agents-libres/actions.ts`, `app/app/aide/AideTabs.tsx`) :
 - Simulation : nouveau statut `recrue` (« Rec. » / « Banque de recrues » sur mobile), hors masse et
   hors composition, offert seulement aux joueurs admissibles (choix de David) : joueur de
