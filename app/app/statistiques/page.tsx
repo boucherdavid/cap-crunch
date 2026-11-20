@@ -5,7 +5,7 @@ import { fetchStreaks, DEFAULT_INDICATOR_CONFIG, type StreakInfo } from '@/lib/s
 export const metadata = { title: 'Statistiques LNH' }
 export const dynamic = 'force-dynamic'
 
-import { NHL_SEASON, recentNhlSeasons } from '@/lib/nhl-stats'
+import { NHL_SEASON, recentNhlSeasons, fetchAllNhlStatRows } from '@/lib/nhl-stats'
 import { fetchActiveNhlSeasonId } from '@/lib/nhl-active-season'
 import { fetchTakenPlayers } from '@/lib/takenPlayers'
 import { fetchAhlByNhlId } from '@/lib/ahlAssignments'
@@ -69,7 +69,6 @@ function buildUrl(type: 'skater' | 'goalie', gameType: number, nhlSeason = NHL_S
   return (
     `${REST}/${type}/summary` +
     `?isAggregate=false&isGame=false` +
-    `&start=0&limit=-1` +
     `&factCayenneExp=${encodeURIComponent('gamesPlayed>=1')}` +
     `&cayenneExp=${encodeURIComponent(cayenne)}`
   )
@@ -79,9 +78,7 @@ type Row = Record<string, unknown>
 
 async function fetchSkaters(gameType: number, nhlSeason = NHL_SEASON): Promise<SkaterStat[]> {
   try {
-    const res = await fetch(buildUrl('skater', gameType, nhlSeason), { next: { revalidate: STATS_CACHE_SECONDS } })
-    if (!res.ok) return []
-    const rows = ((await res.json()).data as Row[]) ?? []
+    const rows = await fetchAllNhlStatRows(buildUrl('skater', gameType, nhlSeason), { next: { revalidate: STATS_CACHE_SECONDS } })
 
     // Grouper par playerId pour agréger les joueurs échangés
     const byPlayer = new Map<number, Row[]>()
@@ -132,9 +129,7 @@ async function fetchSkaters(gameType: number, nhlSeason = NHL_SEASON): Promise<S
 
 async function fetchGoalies(gameType: number, nhlSeason = NHL_SEASON): Promise<GoalieStat[]> {
   try {
-    const res = await fetch(buildUrl('goalie', gameType, nhlSeason), { next: { revalidate: STATS_CACHE_SECONDS } })
-    if (!res.ok) return []
-    const rows = ((await res.json()).data as Row[]) ?? []
+    const rows = await fetchAllNhlStatRows(buildUrl('goalie', gameType, nhlSeason), { next: { revalidate: STATS_CACHE_SECONDS } })
 
     const byPlayer = new Map<number, Row[]>()
     for (const p of rows) {

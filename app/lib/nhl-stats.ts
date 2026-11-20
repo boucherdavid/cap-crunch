@@ -77,12 +77,36 @@ function splitName(full: string): { firstName: string; lastName: string } {
 
 type Row = Record<string, unknown>
 
+/** Taille de page maximale de l'API stats de la LNH : `limit=-1` ou `limit=1000` ne renvoient
+ * plus que 100 lignes (constaté le 2026-11-20 — 784 patineurs, seuls les 100 premiers lus). */
+const NHL_STATS_PAGE = 100
+const NHL_STATS_SORT = encodeURIComponent(JSON.stringify([{ property: 'playerId', direction: 'ASC' }]))
+
+/**
+ * Lit toutes les lignes d'un rapport de l'API stats de la LNH (`/stats/rest/...`), page par page.
+ * `url` sans `start`/`limit`. Tri par playerId pour une pagination stable. Lève une erreur si une
+ * page échoue — jamais une liste partielle présentée comme complète.
+ */
+export async function fetchAllNhlStatRows(url: string, init?: RequestInit): Promise<Row[]> {
+  const sep = url.includes('?') ? '&' : '?'
+  const page = async (start: number) => {
+    const res = await fetch(`${url}${sep}start=${start}&limit=${NHL_STATS_PAGE}&sort=${NHL_STATS_SORT}`, init)
+    if (!res.ok) throw new Error(`API stats de la LNH indisponible (${res.status})`)
+    const json = await res.json()
+    return { rows: (json.data as Row[]) ?? [], total: Number(json.total ?? 0) }
+  }
+  const first = await page(0)
+  const starts: number[] = []
+  for (let s = NHL_STATS_PAGE; s < first.total; s += NHL_STATS_PAGE) starts.push(s)
+  const rest = await Promise.all(starts.map(page))
+  return [first.rows, ...rest.map(p => p.rows)].flat()
+}
+
 function buildUrl(type: 'skater' | 'goalie', gameType: number, nhlSeason = NHL_SEASON): string {
   const cayenne = `gameTypeId=${gameType} and seasonId<=${nhlSeason} and seasonId>=${nhlSeason}`
   return (
     `${NHL_REST}/${type}/summary` +
     `?isAggregate=false&isGame=false` +
-    `&start=0&limit=-1` +
     `&factCayenneExp=${encodeURIComponent('gamesPlayed>=1')}` +
     `&cayenneExp=${encodeURIComponent(cayenne)}`
   )
@@ -90,9 +114,7 @@ function buildUrl(type: 'skater' | 'goalie', gameType: number, nhlSeason = NHL_S
 
 async function fetchRawSkaters(gameType: number, nhlSeason = NHL_SEASON): Promise<Row[]> {
   try {
-    const res = await fetch(buildUrl('skater', gameType, nhlSeason), { cache: 'no-store' })
-    if (!res.ok) return []
-    return ((await res.json()).data as Row[]) ?? []
+    return await fetchAllNhlStatRows(buildUrl('skater', gameType, nhlSeason), { cache: 'no-store' })
   } catch {
     return []
   }
@@ -100,9 +122,7 @@ async function fetchRawSkaters(gameType: number, nhlSeason = NHL_SEASON): Promis
 
 async function fetchRawGoalies(gameType: number, nhlSeason = NHL_SEASON): Promise<Row[]> {
   try {
-    const res = await fetch(buildUrl('goalie', gameType, nhlSeason), { cache: 'no-store' })
-    if (!res.ok) return []
-    return ((await res.json()).data as Row[]) ?? []
+    return await fetchAllNhlStatRows(buildUrl('goalie', gameType, nhlSeason), { cache: 'no-store' })
   } catch {
     return []
   }
