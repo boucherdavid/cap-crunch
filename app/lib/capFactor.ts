@@ -8,6 +8,7 @@
 // Lecture seule : contrats en base + statistiques de l'API de la LNH. Rien n'est enregistré ici.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { fetchAllNhlStatRows } from './nhl-stats'
 
 export const FACTOR_POOLERS = 8          // fixe, pour comparer les époques (choix de David)
 const SLOTS = { F: 12, D: 6, G: 2 } as const
@@ -76,11 +77,9 @@ type Scoring = { goal: number; assist: number; win: number; otl: number; shutout
 
 async function fetchNhl(kind: 'skater' | 'goalie', season: string) {
   const sid = `${season.slice(0, 4)}${Number(season.slice(0, 4)) + 1}`
-  const url = `https://api.nhle.com/stats/rest/en/${kind}/summary?limit=-1&cayenneExp=${encodeURIComponent(`seasonId=${sid} and gameTypeId=2`)}`
-  const res = await fetch(url, { signal: AbortSignal.timeout(30_000), cache: 'no-store' })
-  if (!res.ok) throw new Error(`API de la LNH indisponible (${res.status})`)
-  const json = await res.json()
-  return (json.data ?? []) as Record<string, number>[]
+  const url = `https://api.nhle.com/stats/rest/en/${kind}/summary?cayenneExp=${encodeURIComponent(`seasonId=${sid} and gameTypeId=2`)}`
+  const rows = await fetchAllNhlStatRows(url, { signal: AbortSignal.timeout(30_000), cache: 'no-store' })
+  return rows as Record<string, number>[]
 }
 
 async function poolPointsBySeason(season: string, pts: Scoring): Promise<Map<number, number>> {

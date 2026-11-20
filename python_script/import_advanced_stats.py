@@ -52,6 +52,7 @@ from dotenv import load_dotenv
 from supabase import create_client
 
 from db_diff import diff_rows, fetch_all
+from nhl_stats_api import fetch_all_rows
 
 sys.stdout.reconfigure(encoding='utf-8')
 load_dotenv()
@@ -61,8 +62,8 @@ SUPABASE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
 
 BASE_URL = 'https://moneypuck.com/moneypuck/playerData/seasonSummary/{season}/regular/{kind}.csv'
 HEADERS = {'User-Agent': 'Mozilla/5.0 (Cap Crunch pool prive; credit MoneyPuck.com)'}
-NHL_GOALIES_URL = ('https://api.nhle.com/stats/rest/en/goalie/summary?limit=-1'
-                   '&cayenneExp=seasonId={nhl_season}%20and%20gameTypeId=2')
+NHL_GOALIES_URL = ('https://api.nhle.com/stats/rest/en/goalie/summary?'
+                   'cayenneExp=seasonId={nhl_season}%20and%20gameTypeId=2')
 SITUATIONS = {'all', '5on5', '5on4', '4on5'}
 BATCH_SIZE = 500
 
@@ -221,8 +222,6 @@ def fetch_rows(season: int, kind: str) -> list[dict] | None:
 def fetch_nhl_goalie_results(season: int) -> dict[int, dict]:
     """{nhl_id: {wins, losses, ot_losses, shutouts, starts}} pour la saison régulière."""
     url = NHL_GOALIES_URL.format(nhl_season=f'{season}{season + 1}')
-    res = requests.get(url, headers=HEADERS, timeout=60)
-    res.raise_for_status()
     return {
         g['playerId']: {
             'wins': g.get('wins'),
@@ -231,7 +230,7 @@ def fetch_nhl_goalie_results(season: int) -> dict[int, dict]:
             'shutouts': g.get('shutouts'),
             'starts': g.get('gamesStarted'),
         }
-        for g in res.json().get('data', []) if g.get('playerId')
+        for g in fetch_all_rows(url, headers=HEADERS) if g.get('playerId')
     }
 
 

@@ -20,6 +20,7 @@ import requests
 from unidecode import unidecode
 from dotenv import load_dotenv
 from supabase import create_client
+from nhl_stats_api import fetch_all_rows
 
 sys.stdout.reconfigure(encoding='utf-8')
 load_dotenv()
@@ -77,7 +78,7 @@ def build_url(player_type: str, nhl_season: str) -> str:
     cayenne = f'gameTypeId=2 and seasonId<={nhl_season} and seasonId>={nhl_season}'
     return (
         f'{NHL_REST}/{player_type}/summary'
-        f'?isAggregate=false&isGame=false&start=0&limit=-1'
+        f'?isAggregate=false&isGame=false'
         f'&factCayenneExp=gamesPlayed%3E%3D1'
         f'&cayenneExp={requests.utils.quote(cayenne)}'
     )
@@ -127,9 +128,7 @@ def fetch_nhl_id_map(nhl_season: str) -> tuple[dict[str, int], dict[int, NhlEntr
     ]:
         url = build_url(player_type, nhl_season)
         try:
-            r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=30)
-            r.raise_for_status()
-            rows = r.json().get('data', [])
+            rows = fetch_all_rows(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=30)
         except Exception as e:
             print(f'[ERREUR] Fetch NHL {player_type}: {e}')
             continue

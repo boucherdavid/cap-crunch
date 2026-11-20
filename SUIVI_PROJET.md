@@ -19,6 +19,12 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-11-20
+
+**[Fix] — API stats de la LNH plafonnée à 100 lignes** (`app/lib/nhl-stats.ts`, `app/app/statistiques/page.tsx`, `app/lib/capFactor.ts`, `python_script/nhl_stats_api.py`, `backfill_nhl_ids.py`, `import_advanced_stats.py`) :
+- Signalé par David : Seth Jones et Erik Karlsson absents des Meilleurs joueurs disponibles. Cause : `limit=-1` (et `limit=1000`) ne renvoie plus que 100 lignes sur 784 patineurs — seuls les 100 premiers étaient lus, aussi sur `/statistiques` et dans le calcul du facteur de plafond.
+- Lecture paginée partagée (`fetchAllNhlStatRows()` en TS, `fetch_all_rows()` en Python) : pages de 100 triées par playerId, pages suivantes en parallèle ; une page en échec = erreur, jamais une liste partielle.
+
 ### 2026-11-16
 
 **[Feat] — Admin : type de notification par pooler** (`app/app/admin/pool/page.tsx`) :
