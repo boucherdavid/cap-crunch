@@ -346,7 +346,7 @@ mettre à jour cette section dès qu'une route ou un onglet admin change (voir s
 (David, 2026-09-23 — table des blessures LNH en cours, source `player_injuries`/CBS Sports,
 voir section 6 ; colonne "Dans le pool" indique qui possède chaque joueur blessé, peu importe
 son type de roster, ou "Disponible" si personne) `/repechage` `/repechage-recrues` `/calendrier`
-`/poolers` `/poolers/[id]` `/journal-transactions` (historique en lecture seule — pas de
+`/poolers` (cartes : masse, actifs, choix, et signatures de la saison — agents libres et LTIR utilisés sur la limite, avec les noms, 2026-11-20) `/poolers/[id]` `/journal-transactions` (historique en lecture seule — pas de
 saisie pooler ; distinct de `/admin/transactions`, l'outil admin ; filtres pooler et joueur ;
 pooler + joueur choisis → encadré « Périodes actives » (`ActivePeriodsPanel.tsx`, David
 2026-10-18) : matchs comptés par `getStandings()` vs relevé officiel de la LNH
