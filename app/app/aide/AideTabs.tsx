@@ -181,7 +181,7 @@ const SECTIONS: Section[] = [
     id: 'guide-equipes',
     tab: 'guide',
     title: 'Tous les alignements',
-    keywords: 'equipes poolers liste rang classement masse salariale alignement des autres',
+    keywords: 'equipes poolers liste rang classement masse salariale alignement des autres signatures agents libres ltir limite',
     href: '/poolers',
     content: (
       <div>
@@ -190,6 +190,7 @@ const SECTIONS: Section[] = [
         </p>
         <ul className="text-sm text-gray-700 space-y-1.5">
           <li>• Chaque ligne affiche le <strong>rang</strong> au classement et la <strong>masse salariale</strong> utilisée.</li>
+          <li>• Chaque carte montre aussi les <strong>signatures de la saison</strong> : agents libres et remplaçants LTIR utilisés sur la limite permise, avec le nom des joueurs signés. Le compte passe en ambre à une signature de la limite et en rouge une fois la limite atteinte.</li>
           <li>• Clique sur un pooler pour ouvrir son alignement complet (même vue que <strong>Mon alignement</strong>, mais pour lui).</li>
         </ul>
       </div>

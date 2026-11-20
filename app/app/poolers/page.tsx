@@ -35,6 +35,16 @@ type RosterEntry = {
   players: { last_name: string; status: string | null; position: string | null; player_contracts: { season: string; cap_number: number; is_elc: boolean | null }[] } | null
 }
 
+type SigningEntry = {
+  pooler_id: string
+  change_type: string
+  players: { first_name: string; last_name: string } | null
+}
+
+/** Ambre à une signature de la limite, rouge une fois atteinte. */
+const usageColor = (used: number, max: number) =>
+  used >= max ? 'text-red-600' : used >= max - 1 ? 'text-amber-600' : 'text-gray-700'
+
 type PickEntry = {
   current_owner_id: string
   round: number
@@ -46,7 +56,7 @@ export default async function PoolersPage() {
 
   const { data: season } = await supabase
     .from('pool_seasons')
-    .select('id, season, pool_cap')
+    .select('id, season, pool_cap, max_signatures_al, max_signatures_ltir')
     .eq('is_active', true)
     .eq('is_playoff', false)
     .single()
@@ -60,8 +70,10 @@ export default async function PoolersPage() {
     )
   }
 
-  const [standings, { data: rosterRows }, { data: picksRows }] = await Promise.all([
-    getStandings(season.id),
+  const standings = await getStandings(season.id)
+  const poolerIds = standings.map(s => s.poolerId)
+
+  const [{ data: rosterRows }, { data: picksRows }, { data: signingRows }] = await Promise.all([
     supabase
       .from('pooler_rosters')
       .select(`
@@ -76,7 +88,27 @@ export default async function PoolersPage() {
       .eq('is_used', false)
       .order('pool_season_id')
       .order('round'),
+    // Signatures de la saison — même compte que la limite de Gestion d'effectifs
+    // (getSigningCountsAction). Filtré par pooler + saison : index roster_change_log_pooler_season.
+    supabase
+      .from('roster_change_log')
+      .select('pooler_id, change_type, changed_at, players (first_name, last_name)')
+      .in('pooler_id', poolerIds.length ? poolerIds : ['00000000-0000-0000-0000-000000000000'])
+      .eq('pool_season_id', season.id)
+      .in('change_type', ['signature_agent_libre', 'signature_ltir'])
+      .order('changed_at'),
   ])
+
+  const maxAl = season.max_signatures_al ?? 10
+  const maxLtir = season.max_signatures_ltir ?? 2
+  const signingsByPooler = new Map<string, { al: string[]; ltir: string[] }>()
+  for (const row of (signingRows ?? []) as unknown as SigningEntry[]) {
+    if (!signingsByPooler.has(row.pooler_id)) signingsByPooler.set(row.pooler_id, { al: [], ltir: [] })
+    const name = row.players ? `${row.players.first_name} ${row.players.last_name}` : '?'
+    const bucket = signingsByPooler.get(row.pooler_id)!
+    if (row.change_type === 'signature_ltir') bucket.ltir.push(name)
+    else bucket.al.push(name)
+  }
 
   const rosterByPooler = new Map<string, RosterEntry[]>()
   for (const row of (rosterRows ?? []) as unknown as RosterEntry[]) {
@@ -136,6 +168,7 @@ export default async function PoolersPage() {
       banque: banque.length,
       picks: picks.length,
       picksBySaison,
+      signings: signingsByPooler.get(s.poolerId) ?? { al: [], ltir: [] },
     }
   })
 
@@ -203,6 +236,28 @@ export default async function PoolersPage() {
                 <span><span className="font-medium text-gray-700">{team.reservistes}</span> réservistes</span>
                 {team.banque > 0 && <span><span className="font-medium text-gray-700">{team.banque}</span> recrues</span>}
                 {team.ltir > 0 && <span className="text-orange-500"><span className="font-medium">{team.ltir}</span> LTIR</span>}
+              </div>
+
+              {/* Signatures de la saison (agents libres et remplaçants LTIR) */}
+              <div className="text-xs text-gray-500 space-y-0.5">
+                <div>
+                  <span className="text-gray-400">Signatures agents libres :</span>{' '}
+                  <span className={`font-medium ${usageColor(team.signings.al.length, maxAl)}`}>
+                    {team.signings.al.length} / {maxAl}
+                  </span>
+                  {team.signings.al.length > 0 && (
+                    <span className="text-gray-500"> · {team.signings.al.join(', ')}</span>
+                  )}
+                </div>
+                <div>
+                  <span className="text-gray-400">Signatures LTIR :</span>{' '}
+                  <span className={`font-medium ${usageColor(team.signings.ltir.length, maxLtir)}`}>
+                    {team.signings.ltir.length} / {maxLtir}
+                  </span>
+                  {team.signings.ltir.length > 0 && (
+                    <span className="text-gray-500"> · {team.signings.ltir.join(', ')}</span>
+                  )}
+                </div>
               </div>
 
               {/* Choix de repêchage */}

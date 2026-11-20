@@ -21,6 +21,10 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-11-20
 
+**[Feat] — Signatures de la saison sur les cartes de Tous les alignements** (`app/app/poolers/page.tsx`, `app/app/aide/AideTabs.tsx`) :
+- Demande de David : voir qui a utilisé ses signatures d'agents libres et de remplaçants LTIR. Chaque carte de `/poolers` affiche « utilisées / limite » pour les deux, avec le nom des joueurs signés (ordre chronologique) ; ambre à une signature de la limite, rouge une fois atteinte.
+- Même compte que la limite de Gestion d'effectifs (`roster_change_log`, `signature_agent_libre`/`signature_ltir`) ; limites de `pool_seasons` (10/2 par défaut). Une lecture filtrée par les poolers + la saison (index `roster_change_log_pooler_season`).
+
 **[Fix] — API stats de la LNH plafonnée à 100 lignes** (`app/lib/nhl-stats.ts`, `app/app/statistiques/page.tsx`, `app/lib/capFactor.ts`, `python_script/nhl_stats_api.py`, `backfill_nhl_ids.py`, `import_advanced_stats.py`) :
 - Signalé par David : Seth Jones et Erik Karlsson absents des Meilleurs joueurs disponibles. Cause : `limit=-1` (et `limit=1000`) ne renvoie plus que 100 lignes sur 784 patineurs — seuls les 100 premiers étaient lus, aussi sur `/statistiques` et dans le calcul du facteur de plafond.
 - Lecture paginée partagée (`fetchAllNhlStatRows()` en TS, `fetch_all_rows()` en Python) : pages de 100 triées par playerId, pages suivantes en parallèle ; une page en échec = erreur, jamais une liste partielle.
