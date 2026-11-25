@@ -21,6 +21,10 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 
 ### 2026-11-25
 
+**[Fix] — Indicateurs de forme calculés sur le début de saison** (`app/lib/streaks.ts`) :
+- Signalé par David : Logan Thompson affiché 🔥 et 🏆 alors qu'il venait de perdre. L'API game-log de la LNH donne le match le plus récent en premier ; le `.reverse()` faisait partir toutes les séquences (patineurs et gardiens) du premier match de la saison — Thompson : 3 victoires en octobre, alors que ses 3 derniers départs sont L, L et sans décision.
+- Correctif : `newestFirst()`, tri par `gameDate` décroissant, sans dépendre de l'ordre de l'API. Vérifié avec Thompson (plus de badge, 3 matchs sans point). Les autres lecteurs du game-log (`nhl-snapshot`, `marqueur`, `nhlPlayerGames`, `daily-recap`) ne dépendent pas de l'ordre.
+
 **[Fix] — Classement quotidien vide toute la matinée malgré l'import** (`app/lib/standings.ts`) :
 - Signalé par David : soirée du 24 visible en direct, mais « Aucun point officiel » sur Quotidien (et cartes de l'accueil restées en direct) après l'import de 1 h 27 ET (39 lignes en base, version `standings` incrémentée). Le calcul refait localement contre la prod donnait le bon résultat : la page servait un résultat vide en cache.
 - Cause probable : `buildStandings()` ignorait les erreurs Supabase — une lecture ratée juste après l'import donnait zéro match, mis en cache 24 h sous la nouvelle version. Les requêtes faites dans `unstable_cache` ne sont pas mises en cache par Next.js 16 (vérifié dans `patch-fetch.js`), piste écartée.

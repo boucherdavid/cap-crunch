@@ -62,6 +62,17 @@ async function fetchGameLog(nhlId: number, gameType: 2 | 3, nhlSeason = NHL_SEAS
   }
 }
 
+/**
+ * Matchs du plus récent au plus ancien, triés par date. L'API de la LNH donne déjà le plus récent
+ * en premier : l'ancien `.reverse()` faisait partir les séquences du premier match de la saison
+ * (2026-11-25 — Logan Thompson « en feu » sur ses 3 premières victoires, 2 défaites de suite).
+ */
+function newestFirst(log: unknown[]): Record<string, unknown>[] {
+  return (log as Record<string, unknown>[])
+    .slice()
+    .sort((a, b) => String(b.gameDate ?? '').localeCompare(String(a.gameDate ?? '')))
+}
+
 function gamePts(g: Record<string, unknown>, isGoalie: boolean): number {
   if (isGoalie) {
     const wins     = typeof g.wins === 'number' ? g.wins : (g.decision === 'W' ? 1 : 0)
@@ -90,7 +101,7 @@ function computeGoalieBadge(
   log: unknown[],
   config: IndicatorConfig,
 ): { badge: GoalieBadgeType; value?: number } {
-  const all = (log as Record<string, unknown>[]).slice().reverse() // du plus récent au plus ancien
+  const all = newestFirst(log)
   const started = all.filter(g => g.gamesStarted === 1)
 
   if (started.length === 0) return { badge: null }
@@ -140,7 +151,7 @@ function computeIndicator(
   isGoalie: boolean,
   config: IndicatorConfig,
 ): StreakInfo {
-  const games = (log as Record<string, unknown>[]).slice().reverse() // du plus récent au plus ancien
+  const games = newestFirst(log)
 
   if (games.length === 0) return { badge: null, count: 0, tendance: 0 }
 
