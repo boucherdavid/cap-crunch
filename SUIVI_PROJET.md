@@ -19,6 +19,14 @@ qu'un second inventaire dérive silencieusement de la réalité comme celui qui 
 jusqu'au 2026-07-17 (encore `/admin/joueurs`, `/admin/poolers`, `/admin/rosters` comme pages
 admin courantes, alors que ces routes avaient été consolidées en pages hub à onglets).
 
+### 2026-11-25
+
+**[Fix] — Classement quotidien vide toute la matinée malgré l'import** (`app/lib/standings.ts`) :
+- Signalé par David : soirée du 24 visible en direct, mais « Aucun point officiel » sur Quotidien (et cartes de l'accueil restées en direct) après l'import de 1 h 27 ET (39 lignes en base, version `standings` incrémentée). Le calcul refait localement contre la prod donnait le bon résultat : la page servait un résultat vide en cache.
+- Cause probable : `buildStandings()` ignorait les erreurs Supabase — une lecture ratée juste après l'import donnait zéro match, mis en cache 24 h sous la nouvelle version. Les requêtes faites dans `unstable_cache` ne sont pas mises en cache par Next.js 16 (vérifié dans `patch-fetch.js`), piste écartée.
+- Correctif : chaque lecture lève sur erreur (`must()`), donc rien n'est mis en cache ; `getStandings()` réessaie alors une fois sans cache. `pooler_rosters` et `roster_change_log` paginés (`fetchAllPages()`, tri par id) — 435 et 392 lignes aujourd'hui, le journal dépassera la limite de 1000 en cours de saison.
+- Prod débloquée tout de suite : version `standings` incrémentée à la main (1810 → 1811).
+
 ### 2026-11-20
 
 **[Feat] — Signatures de la saison sur les cartes de Tous les alignements** (`app/app/poolers/page.tsx`, `app/app/aide/AideTabs.tsx`) :
