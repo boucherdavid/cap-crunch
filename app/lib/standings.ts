@@ -129,23 +129,48 @@ const cachedStandings = unstable_cache(
 export async function getStandings(seasonId: string | number, range?: DateRange): Promise<PoolerStanding[]> {
   const version = await getDataVersion('standings')
   if (version === null) return buildStandings(createAdminClient(), seasonId, range)
-  return cachedStandings(String(seasonId), range ?? null, version)
+  try {
+    return await cachedStandings(String(seasonId), range ?? null, version)
+  } catch (err) {
+    // Lecture en échec : buildStandings() lève, donc rien n'a été mis en cache. On réessaie une
+    // fois sans cache plutôt que d'afficher un classement vide (2026-11-25).
+    console.error('[standings] calcul en cache en échec, nouvel essai sans cache', err)
+    return buildStandings(createAdminClient(), seasonId, range)
+  }
+}
+
+/** Lève sur une erreur Supabase : un résultat vide dû à une lecture ratée ne doit jamais être
+ * mis en cache (2026-11-25 — classement quotidien vide toute une matinée après l'import). */
+function must<T>(res: { data: T | null; error: { message: string } | null }, what: string): T | null {
+  if (res.error) throw new Error(`buildStandings — lecture de ${what} en échec : ${res.error.message}`)
+  return res.data
+}
+
+/** Toutes les pages d'une requête triée par id (limite de 1000 lignes de Supabase). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchAllPages<T>(build: () => any, what: string): Promise<T[]> {
+  const PAGE = 1000
+  const rows: T[] = []
+  for (let offset = 0; ; offset += PAGE) {
+    const page = must<T[]>(await build().order('id').range(offset, offset + PAGE - 1), what) ?? []
+    rows.push(...page)
+    if (page.length < PAGE) return rows
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function buildStandings(supabase: any, seasonId: string | number, range?: DateRange): Promise<PoolerStanding[]> {
-  const [
-    { data: rosterRows },
-    { data: scoringRows },
-    { data: seasonRow },
-  ] = await Promise.all([
-    supabase
+  const [rosterRows, scoringRes, seasonRes] = await Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    fetchAllPages<any>(() => supabase
       .from('pooler_rosters')
       .select('player_type, added_at, removed_at, poolers(id, name), players(id, first_name, last_name, position, nhl_id, teams(code))')
-      .eq('pool_season_id', seasonId),
+      .eq('pool_season_id', seasonId), 'pooler_rosters'),
     supabase.from('scoring_config').select('stat_key, points').in('scope', ['regular', 'both']),
     supabase.from('pool_seasons').select('season').eq('id', seasonId).single(),
   ])
+  const scoringRows = must<{ stat_key: string; points: number }[]>(scoringRes, 'scoring_config')
+  const seasonRow = must<{ season: string }>(seasonRes, 'pool_seasons')
 
   const scoring: Record<string, number> = {}
   for (const r of scoringRows ?? []) scoring[r.stat_key] = Number(r.points)
@@ -179,7 +204,7 @@ export async function buildStandings(supabase: any, seasonId: string | number, r
       .eq('season', nhlSeason)
       .eq('game_type', 2)
     if (range) query = query.gte('game_start_time', range.from).lt('game_start_time', range.to)
-    const { data: page } = await query.order('id').range(offset, offset + PAGE - 1)
+    const page = must<GameLogRow[]>(await query.order('id').range(offset, offset + PAGE - 1), 'player_game_logs')
     if (!page || page.length === 0) break
     gameLogRows.push(...(page as GameLogRow[]))
     if (page.length < PAGE) break
@@ -198,11 +223,12 @@ export async function buildStandings(supabase: any, seasonId: string | number, r
   // réellement actif — un simple changement de player_type (deactivate/activate/type_change)
   // ne crée pas de nouvelle ligne pooler_rosters, donc une période peut couvrir plusieurs
   // statuts successifs.
-  const { data: changeLogRows } = await admin
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const changeLogRows = await fetchAllPages<any>(() => admin
     .from('roster_change_log')
     .select('pooler_id, player_id, changed_at, new_type, old_type')
     .eq('pool_season_id', seasonId)
-    .not('new_type', 'is', null)
+    .not('new_type', 'is', null), 'roster_change_log')
 
   const eventsByKey = new Map<string, { changedAt: number; newType: string; oldType: string | null }[]>()
   for (const r of (changeLogRows ?? []) as { pooler_id: string; player_id: number; changed_at: string; new_type: string; old_type: string | null }[]) {
