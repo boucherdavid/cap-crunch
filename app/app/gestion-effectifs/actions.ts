@@ -571,6 +571,9 @@ export async function submitBatchAction(input: {
     // moins `duree_min_ltir_jours` jours civils (heure de l'Est), même s'il rejoue. Seule exception :
     // le même lot met sur LTIR un joueur de la même position, admissible au LTIR (badge vert) —
     // un pour un. Pour un pooler, ce lot passe de toute façon par l'approbation de l'admin.
+    // Exception élargie (David, 2026-11-25) : le même lot envoie en réserve ou en banque de recrues
+    // un actif de la même position, blessé en ce moment (2 sources sur 3, pas « de retour au jeu »)
+    // et pas en AHL — un pour un, effet immédiat (pas de mise sur LTIR, donc pas d'approbation).
     const returns = input.actions.filter(a => a.type === 'return_ltir' && a.returnLtirEntryId)
     if (returns.length > 0) {
       const dureeMin = saisonConfig?.duree_min_ltir_jours ?? 0
@@ -581,6 +584,24 @@ export async function submitBatchAction(input: {
         const r = byId.get(a.ltirEntryId)
         const injury = r ? injuries.get(r.player_id) : undefined
         if (r && injury?.eligible && !injury.backInAction) swapCredits[getPlayerBucket(r.players?.position ?? null)]++
+      }
+      const benchedInjuredIds = new Set<number>()
+      for (const a of input.actions) {
+        if (a.type === 'change_status') {
+          if (a.entry1Id && (a.newType1 === 'reserviste' || a.newType1 === 'recrue')) benchedInjuredIds.add(a.entry1Id)
+          if (a.entry2Id && (a.newType2 === 'reserviste' || a.newType2 === 'recrue')) benchedInjuredIds.add(a.entry2Id)
+        } else if (a.type === 'return_ltir' && a.deactivateActifId && (a.deactivateNewType ?? 'reserviste') !== 'ltir') {
+          benchedInjuredIds.add(a.deactivateActifId)
+        }
+      }
+      if (benchedInjuredIds.size > 0) {
+        const ahl = await fetchAhlByPlayerId()
+        for (const id of benchedInjuredIds) {
+          const r = byId.get(id)
+          if (!r || r.player_type !== 'actif' || ahl.has(r.player_id)) continue
+          const injury = injuries.get(r.player_id)
+          if (injury && !injury.backInAction) swapCredits[getPlayerBucket(r.players?.position ?? null)]++
+        }
       }
       const returnRows = returns.map(a => byId.get(a.returnLtirEntryId!)).filter((r): r is typeof rows[number] => !!r)
       const { data: ltirEvents } = returnRows.length > 0 && dureeMin > 0
@@ -600,7 +621,7 @@ export async function submitBatchAction(input: {
           continue
         }
         return {
-          error: `${name} doit rester sur la LTIR jusqu'au ${until} (durée minimale de ${dureeMin} jours), sauf si tu mets sur la LTIR, dans le même lot, un joueur de la même position admissible au LTIR.`,
+          error: `${name} doit rester sur la LTIR jusqu'au ${until} (durée minimale de ${dureeMin} jours), sauf si, dans le même lot, tu mets sur la LTIR un joueur de la même position admissible au LTIR, ou tu envoies en réserve ou en banque de recrues un actif de la même position blessé (pas en AHL).`,
         }
       }
     }
