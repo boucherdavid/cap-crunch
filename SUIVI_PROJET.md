@@ -24,7 +24,7 @@ admin courantes, alors que ces routes avaient été consolidées en pages hub à
 **[Feat] — Durée minimale sur LTIR : exception élargie** (`app/app/gestion-effectifs/actions.ts`, `GestionEffectifsManager.tsx`, `app/app/aide/LtirRulesContent.tsx`) :
 - Demande d'un pooler, règle de David : un joueur peut sortir de la LTIR avant la fin de la durée minimale si le même lot envoie dans les réservistes ou la banque de recrues un actif de la même position, blessé en ce moment (2 sources sur 3, badge rouge ou vert, pas « de retour au jeu ») et pas en AHL. Un pour un, effet immédiat, sans approbation de l'admin (pas de mise sur LTIR dans le lot).
 - Compté dans le même `swapCredits` que la mise sur LTIR d'un joueur admissible (actions `change_status` ou désactivation du formulaire Retour LTIR). AHL lu dans le cache existant (`fetchAhlByPlayerId`), seulement si le lot contient une telle désactivation. Même règle à l'écran (panier + formulaire en cours).
-- Commit : à venir
+- Commits : `fbcdda0` (staging), promu en prod par David (`79542e9`)
 
 **[Fix] — Indicateurs de forme calculés sur le début de saison** (`app/lib/streaks.ts`) :
 - Signalé par David : Logan Thompson affiché 🔥 et 🏆 alors qu'il venait de perdre. L'API game-log de la LNH donne le match le plus récent en premier ; le `.reverse()` faisait partir toutes les séquences (patineurs et gardiens) du premier match de la saison — Thompson : 3 victoires en octobre, alors que ses 3 derniers départs sont L, L et sans décision.
