@@ -558,6 +558,13 @@ export default function GestionEffectifsManager({
     (item.type === 'ltir' || item.type === 'ltir_sign') && !!item.ltirEntry
     && posCategory(item.ltirEntry.position) === posCategory(returnLtirEntry.position)
     && !!item.ltirEntry.injury?.eligible && !item.ltirEntry.injury.backInAction)
+    // Exception élargie (David, 2026-11-25) : un actif de même position blessé (pas en AHL),
+    // envoyé en réserve ou en banque dans ce même lot — le panier ou le formulaire en cours.
+    || (!!returnLtirEntry && [...cartMoves(cart), ...formMoves].some(m =>
+      m.entry.id !== returnLtirEntry.id && m.entry.playerType === 'actif'
+      && (m.to === 'reserviste' || m.to === 'recrue') && !m.entry.ahlTeamName
+      && !!m.entry.injury && !m.entry.injury.backInAction
+      && posCategory(m.entry.position) === posCategory(returnLtirEntry.position)))
   // L'admin n'est jamais bloqué, mais le contournement est noté publiquement (override_note).
   const ltirMinBlocked = !isAdmin && !!ltirMinUntil && !ltirSwapInCart
   const entry1Locked = !isAdmin && addNewType1 === 'actif' && blockedIds.has(addEntry1Id)
@@ -991,7 +998,8 @@ export default function GestionEffectifsManager({
             {renderLockWarning(addReturnNewType === 'actif' ? findEntry(addReturnLtirId) : undefined, 'Ce joueur')}
             {ltirMinUntil && (ltirSwapInCart ? (
               <p className="text-xs text-green-700">
-                Durée minimale sur la LTIR levée : ton panier met sur la LTIR un joueur de la même position admissible au LTIR.
+                Durée minimale sur la LTIR levée : ce lot met sur la LTIR un joueur de la même position admissible au LTIR,
+                ou envoie en réserve ou en banque un actif blessé de la même position.
               </p>
             ) : isAdmin ? (
               <p className="text-xs text-red-700">
@@ -1001,7 +1009,8 @@ export default function GestionEffectifsManager({
             ) : (
               <p className="text-xs text-orange-600">
                 Ce joueur doit rester sur la LTIR jusqu&apos;au {ltirMinUntil}{' '}(durée minimale de {dureeMinLtirJours}{' '}jours), même s&apos;il a rejoué.
-                Exception : ajoute d&apos;abord au panier la mise sur la LTIR d&apos;un joueur de la même position admissible au LTIR.
+                Exceptions : désactive en échange un actif blessé de la même position (pas en AHL) vers la réserve ou la banque de recrues,
+                ou ajoute d&apos;abord au panier la mise sur la LTIR d&apos;un joueur de la même position admissible au LTIR.
               </p>
             ))}
           </div>

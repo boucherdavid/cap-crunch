@@ -1830,7 +1830,9 @@ Lots antérieurs : `python_script/backfill_journal_gestion.py` (dry-run, `--appl
   `reactivationUnlockDay`), même s'il rejoue. `submitBatchAction` refuse un Retour LTIR d'un pooler
   avant la fin, **sauf** si le même lot met sur LTIR (`ltir`/`ltir_sign`) un joueur de la même
   position admissible au LTIR (badge vert, pas « de retour au jeu ») — un pour un ; pour un pooler,
-  ce lot passe par l'approbation (demande de LTIR + `extra_actions`). Même règle à l'écran
+  ce lot passe par l'approbation (demande de LTIR + `extra_actions`). Exception élargie (David, 2026-11-25) : le
+  même lot envoie en réserve ou en banque de recrues un actif de la même position blessé (2 sources,
+  pas « de retour au jeu ») et pas en AHL — un pour un, effet immédiat (sans approbation). Même règle à l'écran
   (`RosterEntry.ltirSince`, `ltirMinBlocked`). Admin jamais bloqué. Rejoue avant la fin : la date
   limite de réintégration part de la fin de la durée minimale (`deadlineFor`, `lib/ltirReturns.ts`),
   avis qui le dit ; un suivi déjà ouvert avec une date trop tôt est corrigé sans nouvel avis. « Réintégrable
